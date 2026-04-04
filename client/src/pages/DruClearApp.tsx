@@ -434,8 +434,15 @@ async function checkMxRecord(domain: string): Promise<boolean> {
     );
     if (!res.ok) return true; // fail open if DNS unreachable
     const data = await res.json();
-    // Status 0 = NOERROR, check if Answer array has MX records
-    return data.Status === 0 && Array.isArray(data.Answer) && data.Answer.length > 0;
+    // Status 0 = NOERROR, check if Answer array has real MX records
+    // Reject null MX records like "0 ." which mean "no mail server"
+    if (data.Status !== 0 || !Array.isArray(data.Answer) || data.Answer.length === 0) return false;
+    const hasRealMx = data.Answer.some((rec: { data: string }) => {
+      const d = (rec.data || "").trim();
+      // Null MX: "0 ." or just "." means explicitly no mail server
+      return d !== "." && d !== "0 ." && !d.endsWith(" .");
+    });
+    return hasRealMx;
   } catch {
     return true; // fail open on network error
   }
