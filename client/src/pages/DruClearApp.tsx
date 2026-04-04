@@ -102,7 +102,7 @@ const TIER_MESSAGES: Record<string, string> = {
 };
 
 const BOOKING_URL =
-  "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation";
+  "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation?utm_source=pwa&utm_medium=scorecard&utm_campaign=ai-readiness";
 
 // ─── Logo Component ───────────────────────────────────────────────────────────
 

@@ -208,7 +208,7 @@ dru-clear-pwa/
 | What to change | Where to change it |
 |---|---|
 | Webhook URL | `WEBHOOK_CONFIG.url` in `DruClearApp.tsx` |
-| Booking link | `BOOKING_URL` constant in `DruClearApp.tsx` |
+| Booking link | `BOOKING_URL` constant in `DruClearApp.tsx` (UTM params pre-configured) |
 | Brand colors | CSS variables in `client/src/index.css` |
 | Scorecard questions | `questions` arrays in `DruClearApp.tsx` |
 | Tier score thresholds | `getTier()` function in `DruClearApp.tsx` |
