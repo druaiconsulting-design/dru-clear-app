@@ -109,6 +109,9 @@ const BOOKING_URL =
 const LOGO_CDN =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-logo-transparent_fdbc9d32.png";
 
+const HEADSHOT_CDN =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
+
 function DruLogo({ className = "" }: { className?: string }) {
   return (
     <img
@@ -216,7 +219,34 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
     >
       {/* Header */}
       <div className="flex flex-col items-center mb-6">
-        <DruLogo className="w-48 max-w-full mb-6" />
+        <DruLogo className="w-48 max-w-full mb-4" />
+
+        {/* Headshot */}
+        <div
+          style={{
+            width: 120,
+            height: 120,
+            borderRadius: "50%",
+            border: "2.5px solid #D4AF37",
+            boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)",
+            overflow: "hidden",
+            marginBottom: "1.25rem",
+            flexShrink: 0,
+          }}
+        >
+          <img
+            src={HEADSHOT_CDN}
+            alt="DeAnna R. Upshaw"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center top",
+              display: "block",
+            }}
+          />
+        </div>
+
         <h1
           className="text-3xl font-bold text-center mb-1"
           style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}
