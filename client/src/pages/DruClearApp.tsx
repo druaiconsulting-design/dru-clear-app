@@ -467,11 +467,11 @@ function LeadCaptureScreen({
             }}
           >
             <option value="" disabled>Select your role...</option>
-            <option value="CEO / Founder">CEO / Founder</option>
-            <option value="Executive Director">Executive Director</option>
-            <option value="HR / Team Leader">HR / Team Leader</option>
-            <option value="IT Director">IT Director</option>
-            <option value="Finance / CFO">Finance / CFO</option>
+            <option value="C-Suite Executive">C-Suite Executive</option>
+            <option value="VP / Senior Director">VP / Senior Director</option>
+            <option value="Director">Director</option>
+            <option value="Team Leader">Team Leader</option>
+            <option value="Consultant / Advisor">Consultant / Advisor</option>
             <option value="Other">Other</option>
           </select>
           {submitted && !form.role && (
@@ -663,10 +663,7 @@ function ResultsScreen({
   // Only show gaps for pillars scoring below 80% (< 12/15)
   const topGaps = sorted.filter((p) => p.score < 12).slice(0, 2);
 
-  const ctaLabel =
-    tier.label === "LEADING"
-      ? "Explore AI Leadership Advisory →"
-      : "Book Your DRU CLEAR™ Alignment Diagnostic →";
+  const ctaLabel = "Take The Next Step →";
 
   const bookingUrl = buildBookingUrl(lead);
 
@@ -875,8 +872,7 @@ function ThankYouScreen() {
         className="text-base mb-8 max-w-xs"
         style={{ color: "#E6E6E6", lineHeight: 1.6 }}
       >
-        Your consultation is being scheduled.{" "}
-        <span style={{ color: "rgba(230,230,230,0.75)" }}>Check your email for confirmation.</span>
+        Now that you've reviewed your insights, let's move forward together.
       </p>
 
       {/* Book CTA Button */}
