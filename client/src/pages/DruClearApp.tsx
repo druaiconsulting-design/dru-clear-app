@@ -462,17 +462,16 @@ function LeadCaptureScreen({
               ...(submitted && !form.role ? { borderColor: "#E53935" } : {}),
               background: "#0A2342",
               color: form.role ? "#FFFFFF" : "rgba(230,230,230,0.4)",
-              appearance: "none",
-              WebkitAppearance: "none",
+              appearance: "auto" as const,
               cursor: "pointer",
             }}
           >
             <option value="" disabled>Select your role...</option>
             <option value="CEO / Founder">CEO / Founder</option>
-            <option value="VP / Executive">VP / Executive</option>
-            <option value="Director">Director</option>
-            <option value="Team Leader">Team Leader</option>
-            <option value="Consultant">Consultant</option>
+            <option value="Executive Director">Executive Director</option>
+            <option value="HR / Team Leader">HR / Team Leader</option>
+            <option value="IT Director">IT Director</option>
+            <option value="Finance / CFO">Finance / CFO</option>
             <option value="Other">Other</option>
           </select>
           {submitted && !form.role && (
@@ -879,6 +878,35 @@ function ThankYouScreen() {
         Your consultation is being scheduled.{" "}
         <span style={{ color: "rgba(230,230,230,0.75)" }}>Check your email for confirmation.</span>
       </p>
+
+      {/* Book CTA Button */}
+      <a
+        href="https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "block",
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "2rem",
+          padding: "0.875rem 1.5rem",
+          background: "#C2185B",
+          color: "#FFFFFF",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.95rem",
+          letterSpacing: "0.04em",
+          textAlign: "center",
+          textDecoration: "none",
+          borderRadius: 4,
+          boxShadow: "0 4px 16px rgba(194,24,91,0.35)",
+          transition: "background 0.2s, box-shadow 0.2s",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#AD1457"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#C2185B"; }}
+      >
+        Book Your Free Clarity Call
+      </a>
 
       {/* Divider */}
       <div style={{ width: 48, height: 1, background: "rgba(212,175,55,0.3)", marginBottom: "2rem" }} />

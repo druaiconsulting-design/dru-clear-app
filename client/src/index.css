@@ -244,6 +244,12 @@
     color: rgba(230, 230, 230, 0.35);
   }
 
+  select.dru-input {
+    appearance: auto;
+    -webkit-appearance: auto;
+    padding-right: 2rem;
+  }
+
   .dru-input:focus {
     border-color: #D4AF37;
     background: rgba(255, 255, 255, 0.08);
