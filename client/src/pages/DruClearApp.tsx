@@ -317,31 +317,26 @@ function LeadCaptureScreen({
     company: "",
     role: "",
   });
+  const [submitted, setSubmitted] = useState(false);
+  const [blurredEmail, setBlurredEmail] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [emailError, setEmailError] = useState("");
 
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  const validateEmail = (value: string) => {
-    if (!value) {
-      setEmailError("Required");
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setEmailError("Please enter a valid email address");
-    } else {
-      setEmailError("");
-    }
+  // Derive email error from current form value (no separate state needed)
+  const getEmailError = (email: string): string => {
+    if (!email) return "Required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address";
+    return "";
   };
 
+  const showEmailError = submitted || blurredEmail;
+  const emailError = showEmailError ? getEmailError(form.email) : "";
+
   const handleSubmit = async () => {
-    setTouched({ firstName: true, lastName: true, email: true, company: true, role: true });
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email || !form.company.trim() || !form.role) {
+    setSubmitted(true);
+    const emailErr = getEmailError(form.email);
+    if (!form.firstName.trim() || !form.lastName.trim() || emailErr || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setEmailError("Please enter a valid email address");
-      setError("Please enter a valid email address.");
       return;
     }
     setError("");
@@ -400,10 +395,10 @@ function LeadCaptureScreen({
               className="dru-input"
               placeholder="First name"
               value={form.firstName}
-              onChange={(e) => { setForm({ ...form, firstName: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, firstName: false })); }}
-              style={touched.firstName && !form.firstName.trim() ? { borderColor: "#E53935" } : {}}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              style={submitted && !form.firstName.trim() ? { borderColor: "#E53935" } : {}}
             />
-            {touched.firstName && !form.firstName.trim() && (
+            {submitted && !form.firstName.trim() && (
               <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
             )}
           </div>
@@ -415,10 +410,10 @@ function LeadCaptureScreen({
               className="dru-input"
               placeholder="Last name"
               value={form.lastName}
-              onChange={(e) => { setForm({ ...form, lastName: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, lastName: false })); }}
-              style={touched.lastName && !form.lastName.trim() ? { borderColor: "#E53935" } : {}}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              style={submitted && !form.lastName.trim() ? { borderColor: "#E53935" } : {}}
             />
-            {touched.lastName && !form.lastName.trim() && (
+            {submitted && !form.lastName.trim() && (
               <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
             )}
           </div>
@@ -432,12 +427,8 @@ function LeadCaptureScreen({
             type="email"
             placeholder="your@email.com"
             value={form.email}
-            onChange={(e) => {
-              setForm({ ...form, email: e.target.value });
-              if (emailError) validateEmail(e.target.value);
-              setTouched(t => ({ ...t, email: false }));
-            }}
-            onBlur={(e) => validateEmail(e.target.value)}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onBlur={() => setBlurredEmail(true)}
             style={emailError ? { borderColor: "#E53935" } : {}}
           />
           {emailError && (
@@ -446,16 +437,16 @@ function LeadCaptureScreen({
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
-            Company Name
+            Company Name <span style={{ color: "#E53935" }}>*</span>
           </label>
           <input
             className="dru-input"
             placeholder="Your organization"
             value={form.company}
-            onChange={(e) => { setForm({ ...form, company: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, company: false })); }}
-            style={touched.company && !form.company.trim() ? { borderColor: "#E53935" } : {}}
+            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            style={submitted && !form.company.trim() ? { borderColor: "#E53935" } : {}}
           />
-          {touched.company && !form.company.trim() && (
+          {submitted && !form.company.trim() && (
             <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
           )}
         </div>
@@ -466,9 +457,9 @@ function LeadCaptureScreen({
           <select
             className="dru-input"
             value={form.role}
-            onChange={(e) => { setForm({ ...form, role: e.target.value }); if (e.target.value) setTouched(t => ({ ...t, role: false })); }}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
             style={{
-              ...(touched.role && !form.role ? { borderColor: "#E53935" } : {}),
+              ...(submitted && !form.role ? { borderColor: "#E53935" } : {}),
               background: "#0A2342",
               color: form.role ? "#FFFFFF" : "rgba(230,230,230,0.4)",
               appearance: "none",
@@ -484,7 +475,7 @@ function LeadCaptureScreen({
             <option value="Consultant">Consultant</option>
             <option value="Other">Other</option>
           </select>
-          {touched.role && !form.role && (
+          {submitted && !form.role && (
             <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
           )}
         </div>
@@ -670,7 +661,8 @@ function ResultsScreen({
   ];
 
   const sorted = [...pillars].sort((a, b) => a.score - b.score);
-  const topGaps = sorted.slice(0, 2);
+  // Only show gaps for pillars scoring below 80% (< 12/15)
+  const topGaps = sorted.filter((p) => p.score < 12).slice(0, 2);
 
   const ctaLabel =
     tier.label === "LEADING"
@@ -781,31 +773,33 @@ function ResultsScreen({
       <div className="gold-divider mb-3" />
 
       {/* Top Gap Areas — compact */}
-      <div className="mb-3">
-        <h3
-          className="text-xs font-semibold uppercase tracking-widest mb-2"
-          style={{ color: "rgba(212,175,55,0.7)" }}
-        >
-          Top Gap Areas
-        </h3>
-        <div className="flex flex-col gap-2">
-          {topGaps.map((g) => (
-            <div key={g.name} className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
-              <div className="flex items-start gap-2">
-                <span style={{ color: "#D4AF37", fontSize: "0.85rem", marginTop: 1 }}>⚠</span>
-                <div>
-                  <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
-                    {g.name} Gap
-                  </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
-                    {GAP_MESSAGES[g.name]}
-                  </p>
+      {topGaps.length > 0 && (
+        <div className="mb-3">
+          <h3
+            className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: "rgba(212,175,55,0.7)" }}
+          >
+            Top Gap Areas
+          </h3>
+          <div className="flex flex-col gap-2">
+            {topGaps.map((g) => (
+              <div key={g.name} className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
+                <div className="flex items-start gap-2">
+                  <span style={{ color: "#D4AF37", fontSize: "0.85rem", marginTop: 1 }}>⚠</span>
+                  <div>
+                    <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
+                      {g.name} Gap
+                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
+                      {GAP_MESSAGES[g.name]}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tier Message — compact */}
       <div className="dru-card mb-3" style={{ padding: "0.6rem 0.75rem" }}>
