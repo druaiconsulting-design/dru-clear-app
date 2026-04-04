@@ -101,8 +101,24 @@ const TIER_MESSAGES: Record<string, string> = {
     "You're operating ahead of most organizations in AI readiness. The question now is sustainability and scale. An AI Leadership Advisory engagement will help you maintain your competitive edge and dominate your industry.",
 };
 
-const BOOKING_URL =
-  "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation?utm_source=pwa&utm_medium=scorecard&utm_campaign=ai-readiness";
+const BOOKING_BASE_URL =
+  "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation";
+
+function buildBookingUrl(lead: LeadData): string {
+  const nameParts = lead.fullName.trim().split(" ");
+  const firstName = nameParts[0] || "";
+  const lastName = nameParts.slice(1).join(" ") || "";
+  const params = new URLSearchParams({
+    utm_source: "pwa",
+    utm_medium: "scorecard",
+    utm_campaign: "ai-readiness",
+    first_name: firstName,
+    last_name: lastName,
+    email: lead.email,
+    company: lead.company,
+  });
+  return `${BOOKING_BASE_URL}?${params.toString()}`;
+}
 
 // ─── Logo Component ───────────────────────────────────────────────────────────
 
@@ -125,6 +141,8 @@ function DruLogo({ className = "" }: { className?: string }) {
 
 // ─── Score Button Row ─────────────────────────────────────────────────────────
 
+const LIKERT_LABELS = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"];
+
 function ScoreRow({
   questionNum,
   question,
@@ -137,28 +155,27 @@ function ScoreRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-5">
       <p className="text-sm font-medium mb-3" style={{ color: "#E6E6E6", lineHeight: 1.5 }}>
         <span style={{ color: "#D4AF37", marginRight: "0.4em" }}>{questionNum}.</span>
         {question}
       </p>
-      <div className="flex items-center gap-2">
-        <span className="text-xs" style={{ color: "rgba(230,230,230,0.45)", minWidth: 24 }}>
-          SD
-        </span>
+      {/* Likert scale with full labels */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             className={`score-btn${value === n ? " selected" : ""}`}
             onClick={() => onChange(n)}
-            aria-label={`Score ${n}`}
+            aria-label={LIKERT_LABELS[n - 1].replace("\n", " ")}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px", height: "auto" }}
           >
-            {n}
+            <span style={{ fontSize: "1rem", fontWeight: 700, lineHeight: 1 }}>{n}</span>
+            <span style={{ fontSize: "0.6rem", lineHeight: 1.2, textAlign: "center", whiteSpace: "pre-line", opacity: 0.85, fontFamily: "'Inter', sans-serif" }}>
+              {LIKERT_LABELS[n - 1]}
+            </span>
           </button>
         ))}
-        <span className="text-xs" style={{ color: "rgba(230,230,230,0.45)", minWidth: 24 }}>
-          SA
-        </span>
       </div>
     </div>
   );
@@ -584,6 +601,8 @@ function ResultsScreen({
       ? "Explore AI Leadership Advisory →"
       : "Book Your DRU CLEAR™ Alignment Diagnostic →";
 
+  const bookingUrl = buildBookingUrl(lead);
+
   // Send results webhook on mount
   const sentRef = useRef(false);
   useEffect(() => {
@@ -620,56 +639,58 @@ function ResultsScreen({
         height: "100%",
         background: "#0A2342",
         overflowY: "auto",
-        padding: "2rem 1.5rem 2.5rem",
+        padding: "1.5rem 1.25rem 1.5rem",
         maxWidth: 480,
         margin: "0 auto",
         width: "100%",
       }}
     >
-      {/* Overall Score */}
-      <div className="text-center mb-6">
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "rgba(230,230,230,0.5)" }}>
-          Your AI Readiness Score
-        </p>
-        <div
-          className="count-up text-6xl font-bold mb-2"
-          style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}
-        >
-          {total}
-          <span className="text-3xl" style={{ color: "rgba(212,175,55,0.5)" }}>
-            /75
-          </span>
+      {/* Overall Score — compact row layout */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "rgba(230,230,230,0.5)" }}>
+            AI Readiness Score
+          </p>
+          <div
+            className="count-up text-5xl font-bold"
+            style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1 }}
+          >
+            {total}
+            <span className="text-2xl" style={{ color: "rgba(212,175,55,0.5)" }}>
+              /75
+            </span>
+          </div>
         </div>
         <div
-          className="text-xl font-bold tracking-widest"
-          style={{ color: tier.color, fontFamily: "'Inter', sans-serif" }}
+          className="text-lg font-bold tracking-widest px-4 py-2 rounded"
+          style={{ color: tier.color, border: `1.5px solid ${tier.color}`, fontFamily: "'Inter', sans-serif", background: `${tier.color}18` }}
         >
           {tier.label}
         </div>
       </div>
 
-      <div className="gold-divider mb-6" />
+      <div className="gold-divider mb-3" />
 
-      {/* Pillar Breakdown */}
-      <div className="mb-6">
+      {/* Pillar Breakdown — compact */}
+      <div className="mb-3">
         <h3
-          className="text-sm font-semibold uppercase tracking-widest mb-4"
+          className="text-xs font-semibold uppercase tracking-widest mb-2"
           style={{ color: "rgba(212,175,55,0.7)" }}
         >
           Pillar Breakdown
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {pillars.map((p) => (
             <div key={p.name}>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium" style={{ color: "#E6E6E6" }}>
+                <span className="text-xs font-medium" style={{ color: "#E6E6E6" }}>
                   {p.name[0]} — {p.name}
                 </span>
-                <span className="text-sm font-semibold" style={{ color: "#D4AF37" }}>
+                <span className="text-xs font-semibold" style={{ color: "#D4AF37" }}>
                   {p.score}/15
                 </span>
               </div>
-              <div className="pillar-bar-track">
+              <div className="pillar-bar-track" style={{ height: 5 }}>
                 <div
                   className="pillar-bar-fill"
                   style={{ width: `${(p.score / 15) * 100}%` }}
@@ -680,24 +701,26 @@ function ResultsScreen({
         </div>
       </div>
 
-      {/* Top Gap Areas */}
-      <div className="mb-6">
+      <div className="gold-divider mb-3" />
+
+      {/* Top Gap Areas — compact */}
+      <div className="mb-3">
         <h3
-          className="text-sm font-semibold uppercase tracking-widest mb-4"
+          className="text-xs font-semibold uppercase tracking-widest mb-2"
           style={{ color: "rgba(212,175,55,0.7)" }}
         >
           Top Gap Areas
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {topGaps.map((g) => (
-            <div key={g.name} className="dru-card">
+            <div key={g.name} className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
               <div className="flex items-start gap-2">
-                <span style={{ color: "#D4AF37", fontSize: "1rem", marginTop: 1 }}>⚠</span>
+                <span style={{ color: "#D4AF37", fontSize: "0.85rem", marginTop: 1 }}>⚠</span>
                 <div>
-                  <p className="text-sm font-semibold mb-1" style={{ color: "#FFFFFF" }}>
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
                     {g.name} Gap
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
                     {GAP_MESSAGES[g.name]}
                   </p>
                 </div>
@@ -707,31 +730,28 @@ function ResultsScreen({
         </div>
       </div>
 
-      {/* Tier Message */}
-      <div className="dru-card mb-6">
-        <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6" }}>
+      {/* Tier Message — compact */}
+      <div className="dru-card mb-3" style={{ padding: "0.6rem 0.75rem" }}>
+        <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
           {TIER_MESSAGES[tier.label]}
         </p>
       </div>
 
       {/* CTA */}
       <button
-        className="btn-magenta mb-6"
-        onClick={() => window.open(BOOKING_URL, "_blank")}
+        className="btn-magenta mb-4"
+        onClick={() => window.open(bookingUrl, "_blank")}
       >
         {ctaLabel}
       </button>
 
-      {/* Footer */}
-      <div className="gold-divider mb-4" />
-      <div className="flex flex-col items-center gap-2">
-        <DruLogo className="w-32" />
-        <p className="text-xs text-center" style={{ color: "rgba(230,230,230,0.5)" }}>
-          DRU AI Consulting
-        </p>
-        <p className="text-xs text-center" style={{ color: "rgba(230,230,230,0.4)" }}>
-          DeAnna R. Upshaw — AI Authority
-        </p>
+      {/* Footer — minimal */}
+      <div className="flex items-center justify-center gap-3">
+        <DruLogo className="w-24" />
+        <div>
+          <p className="text-xs" style={{ color: "rgba(230,230,230,0.5)" }}>DRU AI Consulting</p>
+          <p className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>DeAnna R. Upshaw — AI Authority</p>
+        </div>
       </div>
     </div>
   );
