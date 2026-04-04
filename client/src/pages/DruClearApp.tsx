@@ -322,8 +322,8 @@ function LeadCaptureScreen({
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleSubmit = async () => {
-    setTouched({ firstName: true, lastName: true, email: true, company: true });
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email || !form.company.trim()) {
+    setTouched({ firstName: true, lastName: true, email: true, company: true, role: true });
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
       return;
     }
@@ -443,14 +443,32 @@ function LeadCaptureScreen({
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
-            Your Role / Title
+            Your Role / Title <span style={{ color: "#E53935" }}>*</span>
           </label>
-          <input
+          <select
             className="dru-input"
-            placeholder="e.g. CEO, VP of Operations"
             value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          />
+            onChange={(e) => { setForm({ ...form, role: e.target.value }); if (e.target.value) setTouched(t => ({ ...t, role: false })); }}
+            style={{
+              ...(touched.role && !form.role ? { borderColor: "#E53935" } : {}),
+              background: "#0A2342",
+              color: form.role ? "#FFFFFF" : "rgba(230,230,230,0.4)",
+              appearance: "none",
+              WebkitAppearance: "none",
+              cursor: "pointer",
+            }}
+          >
+            <option value="" disabled>Select your role...</option>
+            <option value="CEO / Founder">CEO / Founder</option>
+            <option value="VP / Executive">VP / Executive</option>
+            <option value="Director">Director</option>
+            <option value="Team Leader">Team Leader</option>
+            <option value="Consultant">Consultant</option>
+            <option value="Other">Other</option>
+          </select>
+          {touched.role && !form.role && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          )}
         </div>
       </div>
 
@@ -847,7 +865,7 @@ export default function DruClearApp() {
           pillarName="CLARITY"
           subtitle="AI Vision & Strategic Direction"
           progress={20}
-          progressLabel="1 of 5"
+          progressLabel="Pillar 1 of 5"
           questions={[
             "Our organization has a clearly defined AI vision that connects to our overall business strategy.",
             "Leaders and teams across the organization understand why we are pursuing AI and what success looks like.",
@@ -866,7 +884,7 @@ export default function DruClearApp() {
           pillarName="LEADERSHIP"
           subtitle="Executive AI Fluency & Sponsorship"
           progress={40}
-          progressLabel="2 of 5"
+          progressLabel="Pillar 2 of 5"
           questions={[
             "Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.",
             "There is a designated executive sponsor who is accountable for driving AI transformation.",
@@ -885,7 +903,7 @@ export default function DruClearApp() {
           pillarName="EXECUTION"
           subtitle="Operational AI Implementation Capacity"
           progress={60}
-          progressLabel="3 of 5"
+          progressLabel="Pillar 3 of 5"
           questions={[
             "We have identified specific business processes where AI can deliver measurable impact.",
             "Our teams have the skills, tools, and resources needed to implement AI solutions today.",
@@ -904,7 +922,7 @@ export default function DruClearApp() {
           pillarName="ALIGNMENT"
           subtitle="Cross-Functional Strategic Coherence"
           progress={80}
-          progressLabel="4 of 5"
+          progressLabel="Pillar 4 of 5"
           questions={[
             "Our AI initiatives are aligned with our overall business goals and strategic plan.",
             "There is clear and consistent communication between departments about AI priorities and progress.",
@@ -923,7 +941,7 @@ export default function DruClearApp() {
           pillarName="RESULTS"
           subtitle="Measurement, Tracking & ROI"
           progress={100}
-          progressLabel="5 of 5"
+          progressLabel="Pillar 5 of 5"
           questions={[
             "We have defined clear Key Performance Indicators to measure the success of our AI initiatives.",
             "We can demonstrate measurable return on investment from at least one AI-related initiative.",
