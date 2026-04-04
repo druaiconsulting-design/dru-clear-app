@@ -3,6 +3,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DruClearApp from "./pages/DruClearApp";
+import AdminDashboard from "./pages/AdminDashboard";
+
+function Router() {
+  // Simple path-based routing without a library dependency
+  const path = window.location.pathname;
+  if (path === "/admin" || path === "/admin/") {
+    return <AdminDashboard />;
+  }
+  return <DruClearApp />;
+}
 
 function App() {
   return (
@@ -10,7 +20,7 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <DruClearApp />
+          <Router />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
