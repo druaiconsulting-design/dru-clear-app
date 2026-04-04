@@ -22,7 +22,8 @@ type Screen =
   | "results";
 
 interface LeadData {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   company: string;
   role: string;
@@ -107,9 +108,8 @@ const BOOKING_BASE_URL =
   "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation";
 
 function buildBookingUrl(lead: LeadData): string {
-  const nameParts = lead.fullName.trim().split(" ");
-  const firstName = nameParts[0] || "";
-  const lastName = nameParts.slice(1).join(" ") || "";
+  const firstName = lead.firstName || "";
+  const lastName = lead.lastName || "";
   const params = new URLSearchParams({
     utm_source: "pwa",
     utm_medium: "scorecard",
@@ -310,7 +310,8 @@ function LeadCaptureScreen({
   onContinue: (data: LeadData) => void;
 }) {
   const [form, setForm] = useState<LeadData>({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     company: "",
     role: "",
@@ -318,9 +319,12 @@ function LeadCaptureScreen({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const handleSubmit = async () => {
-    if (!form.fullName || !form.email || !form.company || !form.role) {
-      setError("Please fill in all fields to continue.");
+    setTouched({ firstName: true, lastName: true, email: true, company: true });
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email || !form.company.trim()) {
+      setError("Please complete all fields to continue.");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
@@ -332,7 +336,9 @@ function LeadCaptureScreen({
 
     const payload = {
       event: "lead_capture",
-      fullName: form.fullName,
+      fullName: `${form.firstName} ${form.lastName}`.trim(),
+      firstName: form.firstName,
+      lastName: form.lastName,
       email: form.email,
       company: form.company,
       role: form.role,
@@ -372,16 +378,37 @@ function LeadCaptureScreen({
       </div>
 
       <div className="flex flex-col gap-4 mb-6">
-        <div>
-          <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
-            Full Name
-          </label>
-          <input
-            className="dru-input"
-            placeholder="Your full name"
-            value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
+              First Name <span style={{ color: "#E53935" }}>*</span>
+            </label>
+            <input
+              className="dru-input"
+              placeholder="First name"
+              value={form.firstName}
+              onChange={(e) => { setForm({ ...form, firstName: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, firstName: false })); }}
+              style={touched.firstName && !form.firstName.trim() ? { borderColor: "#E53935" } : {}}
+            />
+            {touched.firstName && !form.firstName.trim() && (
+              <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
+              Last Name <span style={{ color: "#E53935" }}>*</span>
+            </label>
+            <input
+              className="dru-input"
+              placeholder="Last name"
+              value={form.lastName}
+              onChange={(e) => { setForm({ ...form, lastName: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, lastName: false })); }}
+              style={touched.lastName && !form.lastName.trim() ? { borderColor: "#E53935" } : {}}
+            />
+            {touched.lastName && !form.lastName.trim() && (
+              <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+            )}
+          </div>
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
@@ -392,8 +419,12 @@ function LeadCaptureScreen({
             type="email"
             placeholder="your@email.com"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => { setForm({ ...form, email: e.target.value }); if (e.target.value) setTouched(t => ({ ...t, email: false })); }}
+            style={touched.email && !form.email ? { borderColor: "#E53935" } : {}}
           />
+          {touched.email && !form.email && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
@@ -403,8 +434,12 @@ function LeadCaptureScreen({
             className="dru-input"
             placeholder="Your organization"
             value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            onChange={(e) => { setForm({ ...form, company: e.target.value }); if (e.target.value.trim()) setTouched(t => ({ ...t, company: false })); }}
+            style={touched.company && !form.company.trim() ? { borderColor: "#E53935" } : {}}
           />
+          {touched.company && !form.company.trim() && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
@@ -614,7 +649,7 @@ function ResultsScreen({
 
     const payload = {
       event: "scorecard_complete",
-      fullName: lead.fullName,
+      fullName: `${lead.firstName} ${lead.lastName}`.trim(),
       email: lead.email,
       company: lead.company,
       role: lead.role,
@@ -765,7 +800,7 @@ function ResultsScreen({
 
 export default function DruClearApp() {
   const [screen, setScreen] = useState<Screen>("splash");
-  const [lead, setLead] = useState<LeadData>({ fullName: "", email: "", company: "", role: "" });
+  const [lead, setLead] = useState<LeadData>({ firstName: "", lastName: "", email: "", company: "", role: "" });
   const [scores, setScores] = useState<Scores>({});
 
   // Register service worker
