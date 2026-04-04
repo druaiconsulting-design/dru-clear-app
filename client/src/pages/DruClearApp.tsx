@@ -19,7 +19,8 @@ type Screen =
   | "alignment"
   | "results-pillar"
   | "calculating"
-  | "results";
+  | "results"
+  | "thank-you";
 
 interface LeadData {
   firstName: string;
@@ -318,8 +319,19 @@ function LeadCaptureScreen({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const validateEmail = (value: string) => {
+    if (!value) {
+      setEmailError("Required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  };
 
   const handleSubmit = async () => {
     setTouched({ firstName: true, lastName: true, email: true, company: true, role: true });
@@ -328,6 +340,7 @@ function LeadCaptureScreen({
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setEmailError("Please enter a valid email address");
       setError("Please enter a valid email address.");
       return;
     }
@@ -412,18 +425,23 @@ function LeadCaptureScreen({
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
-            Email Address
+            Email Address <span style={{ color: "#E53935" }}>*</span>
           </label>
           <input
             className="dru-input"
             type="email"
             placeholder="your@email.com"
             value={form.email}
-            onChange={(e) => { setForm({ ...form, email: e.target.value }); if (e.target.value) setTouched(t => ({ ...t, email: false })); }}
-            style={touched.email && !form.email ? { borderColor: "#E53935" } : {}}
+            onChange={(e) => {
+              setForm({ ...form, email: e.target.value });
+              if (emailError) validateEmail(e.target.value);
+              setTouched(t => ({ ...t, email: false }));
+            }}
+            onBlur={(e) => validateEmail(e.target.value)}
+            style={emailError ? { borderColor: "#E53935" } : {}}
           />
-          {touched.email && !form.email && (
-            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          {emailError && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>{emailError}</p>
           )}
         </div>
         <div>
@@ -627,9 +645,11 @@ function CalculatingScreen({ onDone }: { onDone: () => void }) {
 function ResultsScreen({
   lead,
   scores,
+  onBookCall,
 }: {
   lead: LeadData;
   scores: Scores;
+  onBookCall: () => void;
 }) {
   const clarityScore = getPillarScore(scores, 0);
   const leadershipScore = getPillarScore(scores, 3);
@@ -797,7 +817,10 @@ function ResultsScreen({
       {/* CTA */}
       <button
         className="btn-magenta mb-4"
-        onClick={() => window.open(bookingUrl, "_blank")}
+        onClick={() => {
+          window.open(bookingUrl, "_blank");
+          onBookCall();
+        }}
       >
         {ctaLabel}
       </button>
@@ -810,6 +833,78 @@ function ResultsScreen({
           <p className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>DeAnna R. Upshaw — AI Authority</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Thank You Screen ────────────────────────────────────────────────────────
+
+function ThankYouScreen() {
+  return (
+    <div
+      className="screen-enter flex flex-col items-center justify-center"
+      style={{
+        height: "100%",
+        background: "#0A2342",
+        padding: "2.5rem 1.5rem",
+        textAlign: "center",
+      }}
+    >
+      {/* Gold checkmark circle */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          border: "2px solid #D4AF37",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "1.5rem",
+          background: "rgba(212,175,55,0.08)",
+        }}
+      >
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      {/* Headline */}
+      <h2
+        className="text-3xl font-bold mb-3"
+        style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1.2 }}
+      >
+        You're One Step Closer to Clarity.
+      </h2>
+
+      {/* Subtext */}
+      <p
+        className="text-base mb-8 max-w-xs"
+        style={{ color: "#E6E6E6", lineHeight: 1.6 }}
+      >
+        Your consultation is being scheduled.{" "}
+        <span style={{ color: "rgba(230,230,230,0.75)" }}>Check your email for confirmation.</span>
+      </p>
+
+      {/* Divider */}
+      <div style={{ width: 48, height: 1, background: "rgba(212,175,55,0.3)", marginBottom: "2rem" }} />
+
+      {/* Logo */}
+      <DruLogo className="w-48 max-w-full mb-3" />
+
+      {/* Powered by */}
+      <p className="text-xs mb-1" style={{ color: "rgba(230,230,230,0.5)" }}>Powered by DRU AI Consulting</p>
+
+      {/* Website link */}
+      <a
+        href="https://druaiconsulting.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs"
+        style={{ color: "#D4AF37", textDecoration: "underline", textUnderlineOffset: 3 }}
+      >
+        druaiconsulting.com
+      </a>
     </div>
   );
 }
@@ -957,7 +1052,9 @@ export default function DruClearApp() {
 
       {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
 
-      {screen === "results" && <ResultsScreen lead={lead} scores={scores} />}
+      {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("thank-you")} />}
+
+      {screen === "thank-you" && <ThankYouScreen />}
     </div>
   );
 }
