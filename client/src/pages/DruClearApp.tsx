@@ -305,6 +305,166 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
 // ─── Screen: Lead Capture ─────────────────────────────────────────────────────
 
+// ─── Email Verification Utilities ───────────────────────────────────────────
+
+// Comprehensive list of disposable/throwaway email domains
+const DISPOSABLE_DOMAINS = new Set([
+  "mailinator.com","guerrillamail.com","guerrillamail.net","guerrillamail.org",
+  "guerrillamail.biz","guerrillamail.de","guerrillamail.info","guerrillamailblock.com",
+  "tempmail.com","temp-mail.org","temp-mail.io","throwam.com","throwaway.email",
+  "trashmail.com","trashmail.me","trashmail.net","trashmail.at","trashmail.io",
+  "trashmail.xyz","dispostable.com","maildrop.cc","yopmail.com","yopmail.fr",
+  "cool.fr.nf","jetable.fr.nf","nospam.ze.tc","nomail.xl.cx","mega.zik.dj",
+  "speed.1s.fr","courriel.fr.nf","moncourrier.fr.nf","monemail.fr.nf",
+  "monmail.fr.nf","sharklasers.com","guerrillamailblock.com","grr.la",
+  "guerrillamail.info","spam4.me","spamgourmet.com","spamgourmet.net",
+  "spamgourmet.org","spamgourmet.com","spamhereplease.com","spamspot.com",
+  "spamthis.co.uk","spamtroll.net","spamtrap.ro","spamwc.de","spamwc.ga",
+  "spamwc.gq","spamwc.ml","spamwc.cf","fakeinbox.com","fakeinbox.net",
+  "fakeinbox.org","fakemail.fr","fakemail.net","fakemailgenerator.com",
+  "10minutemail.com","10minutemail.net","10minutemail.org","10minutemail.de",
+  "10minutemail.co.uk","10minutemail.co.za","10minutemail.info","10minutemail.us",
+  "10minutemail.be","10minutemail.cf","10minutemail.ga","10minutemail.gq",
+  "10minutemail.ml","10minutemail.ru","10minemail.com","20minutemail.com",
+  "20minutemail.it","mailnull.com","mailnew.com","mailnesia.com","mailnull.com",
+  "mailscrap.com","mailseal.de","mailshell.com","mailsiphon.com","mailslite.com",
+  "mailtemp.info","mailtome.de","mailtothis.com","mailzilla.com","mailzilla.org",
+  "mohmal.com","mytemp.email","mytempmail.com","nada.email","nada.ltd",
+  "nowmymail.com","objectmail.com","obobbo.com","odaymail.com","oneoffmail.com",
+  "onewaymail.com","online.ms","onqin.com","opayq.com","ordinaryamerican.net",
+  "otherinbox.com","ourklips.com","outlawspam.com","owlpic.com","pecinan.com",
+  "pecinan.net","pecinan.org","pepbot.com","pfui.ru","pimpedupmyspace.com",
+  "pjjkp.com","plexolan.de","poczta.onet.pl","politikerclub.de","poofy.org",
+  "pookmail.com","pop3.xyz","postacin.com","privacy.net","privatdemail.net",
+  "proxymail.eu","prtnx.com","punkass.com","putthisinyourspamdatabase.com",
+  "qq.com","quickinbox.com","rcpt.at","recode.me","recursor.net","regbypass.com",
+  "regbypass.comsafe-mail.net","rejectmail.com","rklips.com","rmqkr.net",
+  "royal.net","rppkn.com","rtrtr.com","s0ny.net","safe-mail.net","safersignup.de",
+  "safetymail.info","safetypost.de","sandelf.de","sanfinder.com","sanim.net",
+  "sast.ro","saynotospams.com","schafmail.de","schrott-email.de","secretemail.de",
+  "secure-mail.biz","selfdestructingmail.com","sendspamhere.com","senseless-entertainment.com",
+  "services391.com","sharklasers.com","shieldedmail.com","shiftmail.com",
+  "shitmail.me","shitmail.org","shitware.nl","shmeriously.com","shortmail.net",
+  "sibmail.com","sinnlos-mail.de","slapsfromlastnight.com","slaskpost.se",
+  "slopsbox.com","smellfear.com","smwg.info","snakemail.com","sneakemail.com",
+  "sneakmail.de","snkmail.com","sofimail.com","sofort-mail.de","sogetthis.com",
+  "soisz.com","sol.dk","spam.la","spam.su","spam4.me","spamavert.com",
+  "spambob.com","spambob.net","spambob.org","spambog.com","spambog.de",
+  "spambog.ru","spambox.info","spambox.irishspringrealty.com","spambox.us",
+  "spamcannon.com","spamcannon.net","spamcero.com","spamcon.org","spamcorptastic.com",
+  "spamcowboy.com","spamcowboy.net","spamcowboy.org","spamday.com","spamex.com",
+  "spamfree24.de","spamfree24.eu","spamfree24.info","spamfree24.net","spamfree24.org",
+  "spamgoes.in","spamgourmet.com","spamgourmet.net","spamgourmet.org",
+  "spamherelots.com","spamhereplease.com","spamhole.com","spamify.com",
+  "spaminator.de","spamkill.info","spaml.com","spaml.de","spammotel.com",
+  "spamobox.com","spamoff.de","spamslicer.com","spamspot.com","spamstack.net",
+  "spamthis.co.uk","spamthisplease.com","spamtrail.com","spamtrap.ro",
+  "spamtroll.net","spamwc.de","spamwc.ga","spamwc.gq","spamwc.ml","spamwc.cf",
+  "speed.1s.fr","supergreatmail.com","supermailer.jp","superrito.com",
+  "superstachel.de","suremail.info","svk.jp","sweetxxx.de","tafmail.com",
+  "tagyourself.com","talkinator.com","tapchicuoihoi.com","teewars.org",
+  "teleworm.com","teleworm.us","tempalias.com","tempe-mail.com","tempemail.biz",
+  "tempemail.com","tempemail.net","tempemail.org","tempinbox.co.uk","tempinbox.com",
+  "tempmail.eu","tempmail.it","tempmail2.com","tempmaildemo.com","tempmailer.com",
+  "tempmailer.de","tempomail.fr","temporaryemail.net","temporaryemail.us",
+  "temporaryforwarding.com","temporaryinbox.com","temporarymailaddress.com",
+  "tempthe.net","thankyou2010.com","thc.st","thelimestones.com","thisisnotmyrealemail.com",
+  "throam.com","throwam.com","throwaway.email","throwam.com","tilien.com",
+  "tittbit.in","tizi.com","tmailinator.com","toomail.biz","topranklist.de",
+  "tradermail.info","trash-mail.at","trash-mail.com","trash-mail.de","trash-mail.ga",
+  "trash-mail.gq","trash-mail.io","trash-mail.me","trash-mail.ml","trash-mail.net",
+  "trash-mail.tk","trash2009.com","trash2010.com","trash2011.com","trashdevil.com",
+  "trashdevil.de","trashemail.de","trashmail.at","trashmail.com","trashmail.de",
+  "trashmail.io","trashmail.me","trashmail.net","trashmail.org","trashmail.xyz",
+  "trashmailer.com","trashspam.com","trbvm.com","trillianpro.com","trmailbox.com",
+  "trollproject.com","trtt.net","turual.com","twinmail.de","tyldd.com",
+  "uggsrock.com","umail.net","unlimit.com","unmail.ru","uroid.com",
+  "us.af","username.e4ward.com","utiket.us","uu.gl","uwork4.us",
+  "venompen.com","veryrealemail.com","vidchart.com","viditag.com","viewcastmedia.com",
+  "viewcastmedia.net","viewcastmedia.org","viralplays.com","vkcode.ru","vomoto.com",
+  "vpn.st","vsimcard.com","vubby.com","walala.org","walkmail.net","walkmail.ru",
+  "webemail.me","webm4il.info","wegwerfadresse.de","wegwerfemail.com",
+  "wegwerfemail.de","wegwerfemail.net","wegwerfemail.org","wegwerfmail.de",
+  "wegwerfmail.info","wegwerfmail.net","wegwerfmail.org","wetrainbayarea.com",
+  "wetrainbayarea.org","wh4f.org","whyspam.me","wickmail.net","wilemail.com",
+  "willhackforfood.biz","willselfdestruct.com","winemaven.info","wronghead.com",
+  "wuzupmail.net","www.e4ward.com","www.gishpuppy.com","www.mailinator.com",
+  "wwwnew.eu","x.ip6.li","xagloo.com","xemaps.com","xents.com","xmaily.com",
+  "xoxy.net","xyzfree.net","yapped.net","yeah.net","yep.it","yogamaven.com",
+  "yopmail.com","yopmail.fr","yopmail.pp.ua","yourdomain.com","yuurok.com",
+  "z1p.biz","za.com","zehnminuten.de","zehnminutenmail.de","zetmail.com",
+  "zippymail.info","zoaxe.com","zoemail.com","zoemail.net","zoemail.org",
+  "zomg.info","zxcv.com","zxcvbnm.com","zzz.com",
+  // Common typo domains to catch and suggest corrections
+  "gmial.com","gmal.com","gmai.com","gmali.com","gmaill.com","gmaio.com",
+  "yahooo.com","yahho.com","yaho.com","yahooo.co.uk","yhaoo.com",
+  "hotmial.com","hotmal.com","hotmai.com","hotmaill.com","hotmali.com",
+  "outlok.com","outloo.com","outloook.com","outlookk.com",
+]);
+
+// Typo correction suggestions for common domains
+const DOMAIN_TYPOS: Record<string, string> = {
+  "gmial.com": "gmail.com",
+  "gmal.com": "gmail.com",
+  "gmai.com": "gmail.com",
+  "gmali.com": "gmail.com",
+  "gmaill.com": "gmail.com",
+  "gmaio.com": "gmail.com",
+  "yahooo.com": "yahoo.com",
+  "yahho.com": "yahoo.com",
+  "yaho.com": "yahoo.com",
+  "yhaoo.com": "yahoo.com",
+  "hotmial.com": "hotmail.com",
+  "hotmal.com": "hotmail.com",
+  "hotmai.com": "hotmail.com",
+  "hotmaill.com": "hotmail.com",
+  "hotmali.com": "hotmail.com",
+  "outlok.com": "outlook.com",
+  "outloo.com": "outlook.com",
+  "outloook.com": "outlook.com",
+  "outlookk.com": "outlook.com",
+};
+
+// Check MX records via Cloudflare DNS-over-HTTPS
+async function checkMxRecord(domain: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`,
+      { headers: { Accept: "application/dns-json" } }
+    );
+    if (!res.ok) return true; // fail open if DNS unreachable
+    const data = await res.json();
+    // Status 0 = NOERROR, check if Answer array has MX records
+    return data.Status === 0 && Array.isArray(data.Answer) && data.Answer.length > 0;
+  } catch {
+    return true; // fail open on network error
+  }
+}
+
+// Full email verification: format → typo → disposable → MX
+async function verifyEmail(email: string): Promise<{ valid: boolean; error: string; suggestion?: string }> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return { valid: false, error: "Required" };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { valid: false, error: "Please enter a valid email address" };
+  }
+  const domain = trimmed.split("@")[1];
+  // Check for typos
+  if (DOMAIN_TYPOS[domain]) {
+    return { valid: false, error: `Did you mean ${trimmed.split("@")[0]}@${DOMAIN_TYPOS[domain]}?`, suggestion: `${trimmed.split("@")[0]}@${DOMAIN_TYPOS[domain]}` };
+  }
+  // Check disposable
+  if (DISPOSABLE_DOMAINS.has(domain)) {
+    return { valid: false, error: "Disposable email addresses are not accepted. Please use your work or personal email." };
+  }
+  // Check MX record
+  const hasMx = await checkMxRecord(domain);
+  if (!hasMx) {
+    return { valid: false, error: `No mail server found for "${domain}". Please check your email address.` };
+  }
+  return { valid: true, error: "" };
+}
+
 function LeadCaptureScreen({
   onContinue,
 }: {
@@ -318,27 +478,62 @@ function LeadCaptureScreen({
     role: "",
   });
   const [submitted, setSubmitted] = useState(false);
-  const [blurredEmail, setBlurredEmail] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailVerifying, setEmailVerifying] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [emailSuggestion, setEmailSuggestion] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const emailVerifyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Derive email error from current form value (no separate state needed)
-  const getEmailError = (email: string): string => {
-    if (!email) return "Required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address";
-    return "";
+  // Real-time email verification on blur
+  const handleEmailBlur = async () => {
+    if (!form.email) return;
+    setEmailVerifying(true);
+    setEmailError("");
+    setEmailSuggestion("");
+    setEmailVerified(false);
+    const result = await verifyEmail(form.email);
+    setEmailVerifying(false);
+    if (result.valid) {
+      setEmailVerified(true);
+      setEmailError("");
+    } else {
+      setEmailError(result.error);
+      setEmailSuggestion(result.suggestion || "");
+      setEmailVerified(false);
+    }
   };
 
-  const showEmailError = submitted || blurredEmail;
-  const emailError = showEmailError ? getEmailError(form.email) : "";
+  // Reset verification state when email changes
+  const handleEmailChange = (val: string) => {
+    setForm({ ...form, email: val });
+    setEmailVerified(false);
+    setEmailError("");
+    setEmailSuggestion("");
+    if (emailVerifyTimeout.current) clearTimeout(emailVerifyTimeout.current);
+  };
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    const emailErr = getEmailError(form.email);
-    if (!form.firstName.trim() || !form.lastName.trim() || emailErr || !form.company.trim() || !form.role) {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
       return;
     }
+    // Always verify email on submit
+    setEmailVerifying(true);
+    setEmailError("");
+    setEmailSuggestion("");
+    const result = await verifyEmail(form.email);
+    setEmailVerifying(false);
+    if (!result.valid) {
+      setEmailError(result.error);
+      setEmailSuggestion(result.suggestion || "");
+      setEmailVerified(false);
+      setError("Please fix the errors above to continue.");
+      return;
+    }
+    setEmailVerified(true);
     setError("");
     setLoading(true);
 
@@ -422,17 +617,44 @@ function LeadCaptureScreen({
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
             Email Address <span style={{ color: "#E53935" }}>*</span>
           </label>
-          <input
-            className="dru-input"
-            type="email"
-            placeholder="your@email.com"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            onBlur={() => setBlurredEmail(true)}
-            style={emailError ? { borderColor: "#E53935" } : {}}
-          />
+          <div style={{ position: "relative" }}>
+            <input
+              className="dru-input"
+              type="email"
+              placeholder="your@email.com"
+              value={form.email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              onBlur={handleEmailBlur}
+              style={{
+                ...(emailError ? { borderColor: "#E53935" } : {}),
+                ...(emailVerified ? { borderColor: "#4CAF50" } : {}),
+                paddingRight: (emailVerifying || emailVerified) ? "2.5rem" : undefined,
+              }}
+            />
+            {emailVerifying && (
+              <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#D4AF37", fontSize: "0.75rem" }}>
+                Checking…
+              </span>
+            )}
+            {emailVerified && !emailVerifying && (
+              <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#4CAF50", fontSize: "1rem" }}>
+                ✓
+              </span>
+            )}
+          </div>
           {emailError && (
-            <p className="text-xs mt-1" style={{ color: "#E53935" }}>{emailError}</p>
+            <div className="text-xs mt-1" style={{ color: "#E53935" }}>
+              {emailError}
+              {emailSuggestion && (
+                <button
+                  type="button"
+                  onClick={() => { setForm({ ...form, email: emailSuggestion }); setEmailSuggestion(""); setEmailError(""); }}
+                  style={{ marginLeft: "0.5rem", color: "#D4AF37", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", padding: 0 }}
+                >
+                  Use {emailSuggestion}
+                </button>
+              )}
+            </div>
           )}
         </div>
         <div>
@@ -1052,7 +1274,7 @@ export default function DruClearApp() {
         <PillarScreen
           pillarLetter="R"
           pillarName="RESULTS"
-          subtitle="Measurement, Tracking & ROI"
+          subtitle="Measurement, Tracking & Return on Investment"
           progress={100}
           progressLabel="Pillar 5 of 5"
           questions={[
