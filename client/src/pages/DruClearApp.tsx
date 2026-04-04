@@ -523,7 +523,7 @@ function LeadCaptureScreen({
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.company.trim() || !form.role) {
+    if (!form.firstName.trim() || form.firstName.trim().length < 2 || !form.lastName.trim() || form.lastName.trim().length < 2 || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
       return;
     }
@@ -598,10 +598,13 @@ function LeadCaptureScreen({
               placeholder="First name"
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              style={submitted && !form.firstName.trim() ? { borderColor: "#E53935" } : {}}
+              style={submitted && (!form.firstName.trim() || form.firstName.trim().length < 2) ? { borderColor: "#E53935" } : {}}
             />
             {submitted && !form.firstName.trim() && (
               <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+            )}
+            {submitted && form.firstName.trim() && form.firstName.trim().length < 2 && (
+              <p className="text-xs mt-1" style={{ color: "#E53935" }}>Must be at least 2 characters</p>
             )}
           </div>
           <div>
@@ -613,10 +616,13 @@ function LeadCaptureScreen({
               placeholder="Last name"
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              style={submitted && !form.lastName.trim() ? { borderColor: "#E53935" } : {}}
+              style={submitted && (!form.lastName.trim() || form.lastName.trim().length < 2) ? { borderColor: "#E53935" } : {}}
             />
             {submitted && !form.lastName.trim() && (
               <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+            )}
+            {submitted && form.lastName.trim() && form.lastName.trim().length < 2 && (
+              <p className="text-xs mt-1" style={{ color: "#E53935" }}>Must be at least 2 characters</p>
             )}
           </div>
         </div>
