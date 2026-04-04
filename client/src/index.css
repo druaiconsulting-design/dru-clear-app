@@ -1,3 +1,12 @@
+/* =============================================================
+   DRU CLEAR™ PWA — Design System
+   Philosophy: Executive Prestige — Dark Luxury
+   Background: Deep Sea Blue (#0A2342)
+   Primary accent: Gold (#D4AF37)
+   CTA accent: Magenta (#C2185B)
+   Headings: Playfair Display | Body: Inter
+   ============================================================= */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -27,132 +36,85 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
-}
+  --radius: 0.5rem;
 
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* DRU CLEAR Brand Colors */
+  --deep-sea-blue: #0A2342;
+  --gold: #D4AF37;
+  --gold-light: #E8C84A;
+  --gold-dark: #B8960C;
+  --magenta: #C2185B;
+  --magenta-hover: #AD1457;
+  --soft-white: #E6E6E6;
+  --pure-white: #FFFFFF;
+
+  /* Theme tokens — dark by default */
+  --background: oklch(0.12 0.04 240);
+  --foreground: oklch(0.92 0.005 65);
+  --card: oklch(0.16 0.04 240);
+  --card-foreground: oklch(0.92 0.005 65);
+  --popover: oklch(0.16 0.04 240);
+  --popover-foreground: oklch(0.92 0.005 65);
+  --primary: oklch(0.78 0.12 85);
+  --primary-foreground: oklch(0.12 0.04 240);
+  --secondary: oklch(0.20 0.04 240);
+  --secondary-foreground: oklch(0.85 0.005 65);
+  --muted: oklch(0.20 0.04 240);
+  --muted-foreground: oklch(0.65 0.01 65);
+  --accent: oklch(0.20 0.04 240);
+  --accent-foreground: oklch(0.92 0.005 65);
+  --destructive: oklch(0.62 0.22 15);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.78 0.12 85);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    background-color: #0A2342;
+    color: #E6E6E6;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+  }
+
   button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [type="button"]:not(:disabled),
-  [type="submit"]:not(:disabled),
-  [type="reset"]:not(:disabled),
-  a[href],
-  select:not(:disabled),
-  input[type="checkbox"]:not(:disabled),
-  input[type="radio"]:not(:disabled) {
-    @apply cursor-pointer;
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
   }
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    max-width: 480px;
   }
 
   .flex {
@@ -160,18 +122,206 @@
     min-width: 0;
   }
 
-  @media (min-width: 640px) {
-    .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
-    }
+  /* Gold gradient text */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #D4AF37 0%, #E8C84A 50%, #B8960C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  @media (min-width: 1024px) {
-    .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
-    }
+  /* Screen transitions */
+  .screen-enter {
+    animation: screenFadeIn 0.4s ease forwards;
+  }
+
+  @keyframes screenFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Score button */
+  .score-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(212, 175, 55, 0.4);
+    background: transparent;
+    color: #E6E6E6;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .score-btn:hover {
+    border-color: #D4AF37;
+    color: #D4AF37;
+    background: rgba(212, 175, 55, 0.08);
+  }
+
+  .score-btn.selected {
+    background: #D4AF37;
+    border-color: #D4AF37;
+    color: #0A2342;
+    font-weight: 700;
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
+    transform: scale(1.08);
+  }
+
+  /* Gold divider */
+  .gold-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+    opacity: 0.5;
+  }
+
+  /* CTA Button — Gold */
+  .btn-gold {
+    background: #D4AF37;
+    color: #0A2342;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
+    border-radius: 4px;
+    border: none;
+    width: 100%;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-gold:hover {
+    background: #E8C84A;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+  }
+
+  .btn-gold:active {
+    transform: translateY(0);
+  }
+
+  /* CTA Button — Magenta */
+  .btn-magenta {
+    background: #C2185B;
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
+    border-radius: 4px;
+    border: none;
+    width: 100%;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-magenta:hover {
+    background: #AD1457;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(194, 24, 91, 0.35);
+  }
+
+  /* Input fields */
+  .dru-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 4px;
+    padding: 0.875rem 1rem;
+    color: #E6E6E6;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+    outline: none;
+  }
+
+  .dru-input::placeholder {
+    color: rgba(230, 230, 230, 0.35);
+  }
+
+  .dru-input:focus {
+    border-color: #D4AF37;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Progress bar */
+  .progress-bar-track {
+    height: 3px;
+    background: rgba(212, 175, 55, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #D4AF37, #E8C84A);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* Pillar bar (results) */
+  .pillar-bar-track {
+    height: 8px;
+    background: rgba(212, 175, 55, 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .pillar-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #D4AF37, #E8C84A);
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  /* Card surface */
+  .dru-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(212, 175, 55, 0.12);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+
+  /* Spinner */
+  .gold-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(212, 175, 55, 0.2);
+    border-top-color: #D4AF37;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Count-up animation */
+  @keyframes countUp {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .count-up {
+    animation: countUp 0.6s ease forwards;
+  }
+
+  /* Tier badge */
+  .tier-emerging { color: #E53935; }
+  .tier-developing { color: #D4AF37; }
+  .tier-advancing { color: #1E88E5; }
+  .tier-leading { color: #43A047; }
+
+  /* Shield watermark */
+  .shield-watermark {
+    position: absolute;
+    opacity: 0.03;
+    pointer-events: none;
+    user-select: none;
   }
 }

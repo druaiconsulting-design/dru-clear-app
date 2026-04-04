@@ -1,0 +1,24 @@
+{
+  "name": "DRU CLEAR™ AI Readiness Scorecard",
+  "short_name": "DRU CLEAR™",
+  "description": "Assess your organization's AI readiness across 5 strategic pillars with the DRU CLEAR™ framework.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A2342",
+  "theme_color": "#0A2342",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-icon-192_dd35b263.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-icon-512_c2c74b33.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
