@@ -71,9 +71,11 @@ function getPillarScore(scores: Scores, startQ: number): number {
 }
 
 function getTier(total: number): { label: string; className: string; color: string } {
-  if (total <= 30) return { label: "EMERGING", className: "tier-emerging", color: "#E53935" };
-  if (total <= 45) return { label: "DEVELOPING", className: "tier-developing", color: "#D4AF37" };
-  if (total <= 60) return { label: "ADVANCING", className: "tier-advancing", color: "#1E88E5" };
+  // Thresholds based on 100-point scaled score: EMERGING 0–40, DEVELOPING 41–60, ADVANCING 61–80, LEADING 81–100
+  const scaled = Math.round((total / 75) * 100);
+  if (scaled <= 40) return { label: "EMERGING", className: "tier-emerging", color: "#E53935" };
+  if (scaled <= 60) return { label: "DEVELOPING", className: "tier-developing", color: "#D4AF37" };
+  if (scaled <= 80) return { label: "ADVANCING", className: "tier-advancing", color: "#1E88E5" };
   return { label: "LEADING", className: "tier-leading", color: "#43A047" };
 }
 
@@ -582,6 +584,7 @@ function ResultsScreen({
   const alignmentScore = getPillarScore(scores, 9);
   const resultsScore = getPillarScore(scores, 12);
   const total = clarityScore + leadershipScore + executionScore + alignmentScore + resultsScore;
+  const scaledScore = Math.round((total / 75) * 100);
 
   const tier = getTier(total);
 
@@ -615,7 +618,8 @@ function ResultsScreen({
       email: lead.email,
       company: lead.company,
       role: lead.role,
-      totalScore: total,
+      totalScore: scaledScore,
+      rawScore: total,
       pillarScores: {
         clarity: clarityScore,
         leadership: leadershipScore,
@@ -649,15 +653,15 @@ function ResultsScreen({
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "rgba(230,230,230,0.5)" }}>
-            AI Readiness Score
+            Your Score
           </p>
           <div
             className="count-up text-5xl font-bold"
             style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1 }}
           >
-            {total}
+            {scaledScore}
             <span className="text-2xl" style={{ color: "rgba(212,175,55,0.5)" }}>
-              /75
+              /100
             </span>
           </div>
         </div>
