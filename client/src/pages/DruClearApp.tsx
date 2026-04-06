@@ -1196,12 +1196,37 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const total = Object.values(scores).reduce((a, b) => a + b, 0);
   const tier = getTier(total);
   const scaledScore = Math.round((total / 75) * 100);
+  const [copied, setCopied] = useState(false);
 
   const shareText = `I just completed the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 — ${tier.label} tier. Find out where your organization stands: ${window.location.origin}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent(shareText)}`;
   const emailSubject = encodeURIComponent(`My DRU CLEAR™ AI Readiness Score: ${scaledScore}/100 — ${tier.label}`);
   const emailBody = encodeURIComponent(`${shareText}\n\nTake the free assessment at: ${window.location.origin}`);
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+
+  // Fire a lightweight webhook to GHL when a user clicks any share button
+  const fireShareWebhook = (channel: string) => {
+    sendWebhook({
+      event: "share_click",
+      channel,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareText).then(() => {
+      setCopied(true);
+      fireShareWebhook("clipboard");
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {});
+  };
+
   return (
     <div
       className="screen-enter flex flex-col items-center justify-center"
@@ -1308,6 +1333,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             href={linkedInUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => fireShareWebhook("linkedin")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1334,6 +1360,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
           {/* Email */}
           <a
             href={emailUrl}
+            onClick={() => fireShareWebhook("email")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1359,6 +1386,39 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             </svg>
             Email
           </a>
+          {/* Copy to Clipboard */}
+          <button
+            onClick={handleCopy}
+            title="Copy to clipboard"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.55rem 0.9rem",
+              background: copied ? "rgba(212,175,55,0.18)" : "transparent",
+              color: copied ? "#D4AF37" : "rgba(230,230,230,0.5)",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.78rem",
+              border: `1px solid ${copied ? "rgba(212,175,55,0.6)" : "rgba(230,230,230,0.2)"}`,
+              borderRadius: 4,
+              letterSpacing: "0.02em",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+            )}
+            {copied ? "Copied!" : "Copy"}
+          </button>
         </div>
       </div>
 
