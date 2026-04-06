@@ -1279,7 +1279,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
 
       {/* Book CTA Button */}
       <a
-        href="https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation"
+        href="https://druaiconsulting.com/appointment"
         target="_blank"
         rel="noopener noreferrer"
         style={{
@@ -1303,7 +1303,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
         onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#AD1457"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#C2185B"; }}
       >
-        Book Your Free Clarity Call
+        Book Your Clarity Call
       </a>
 
       {/* Share Section */}
@@ -1648,7 +1648,7 @@ export default function DruClearApp() {
 
       {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
 
-      {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => window.open("https://druaiconsulting.com/appointment", "_blank", "noopener,noreferrer")} />}
+      {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("thank-you")} />}
 
       {screen === "thank-you" && <ThankYouScreen lead={lead} scores={scores} />}
     </div>
