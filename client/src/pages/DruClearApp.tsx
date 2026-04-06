@@ -1069,6 +1069,21 @@ function ResultsScreen({
         {ctaLabel}
       </button>
 
+      {/* Disclaimer */}
+      <p
+        className="text-center mb-4"
+        style={{
+          color: "#E6E6E6",
+          fontSize: "0.65rem",
+          lineHeight: 1.6,
+          opacity: 0.6,
+          maxWidth: 400,
+          margin: "0 auto 1rem",
+        }}
+      >
+        This assessment is for informational purposes only and does not constitute professional consulting advice. Results are based on your self-reported responses. For a personalized strategy, book a consultation with DRU AI Consulting.
+      </p>
+
       {/* Footer — minimal */}
       <div className="flex items-center justify-center gap-3">
         <DruLogo className="w-24" />
