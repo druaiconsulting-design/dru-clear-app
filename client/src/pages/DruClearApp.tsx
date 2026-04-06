@@ -26,6 +26,7 @@ interface LeadData {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
   company: string;
   role: string;
 }
@@ -36,10 +37,9 @@ interface Scores {
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-// WEBHOOK CONFIGURATION
-// To connect your GoHighLevel CRM, update this URL:
+// WEBHOOK CONFIGURATION — GoHighLevel
 const WEBHOOK_CONFIG = {
-  url: "", // ← PASTE YOUR GHL WEBHOOK URL HERE
+  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/36fbc5eb-d816-4e41-b8ba-468d7975c305",
 };
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
@@ -481,6 +481,7 @@ function LeadCaptureScreen({
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
     company: "",
     role: "",
   });
@@ -527,6 +528,7 @@ function LeadCaptureScreen({
       setError("Please complete all fields to continue.");
       return;
     }
+    // Phone is optional — no hard block, but strip non-digits for validation display
     // Always verify email on submit
     setEmailVerifying(true);
     setEmailError("");
@@ -546,10 +548,10 @@ function LeadCaptureScreen({
 
     const payload = {
       event: "lead_capture",
-      fullName: `${form.firstName} ${form.lastName}`.trim(),
-      firstName: form.firstName,
-      lastName: form.lastName,
+      first_name: form.firstName,
+      last_name: form.lastName,
       email: form.email,
+      phone: form.phone || "",
       company: form.company,
       role: form.role,
       timestamp: new Date().toISOString(),
@@ -669,6 +671,18 @@ function LeadCaptureScreen({
               )}
             </div>
           )}
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
+            Phone Number <span style={{ color: "rgba(230,230,230,0.35)" }}>(optional)</span>
+          </label>
+          <input
+            className="dru-input"
+            type="tel"
+            placeholder="+1 (555) 000-0000"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
@@ -910,11 +924,14 @@ function ResultsScreen({
 
     const payload = {
       event: "scorecard_complete",
-      fullName: `${lead.firstName} ${lead.lastName}`.trim(),
+      first_name: lead.firstName,
+      last_name: lead.lastName,
       email: lead.email,
+      phone: lead.phone || "",
       company: lead.company,
       role: lead.role,
-      totalScore: scaledScore,
+      score: scaledScore,
+      result: tier.label,
       rawScore: total,
       pillarScores: {
         clarity: clarityScore,
@@ -923,7 +940,6 @@ function ResultsScreen({
         alignment: alignmentScore,
         results: resultsScore,
       },
-      tier: tier.label,
       topGaps: topGaps.map((g) => g.name),
       timestamp: new Date().toISOString(),
     };
@@ -1166,7 +1182,7 @@ function ThankYouScreen() {
 
 export default function DruClearApp() {
   const [screen, setScreen] = useState<Screen>("splash");
-  const [lead, setLead] = useState<LeadData>({ firstName: "", lastName: "", email: "", company: "", role: "" });
+  const [lead, setLead] = useState<LeadData>({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
   const [scores, setScores] = useState<Scores>({});
 
   // Register service worker
