@@ -192,6 +192,26 @@ const TIER_MESSAGES: Record<string, string> = {
     "You're operating ahead of most organizations in AI readiness. The question now is sustainability and scale. An AI Leadership Advisory engagement will help you maintain your competitive edge and dominate your industry.",
 };
 
+const STRENGTH_MESSAGES: Record<string, string> = {
+  Clarity:
+    "Your AI vision is clearly defined and connected to your business strategy — a critical foundation that most organizations struggle to establish.",
+  Leadership:
+    "Your executive team is AI-fluent and actively sponsoring transformation — the single most important driver of successful AI adoption.",
+  Execution:
+    "Your teams have the skills, tools, and processes to implement AI effectively — turning strategy into measurable results.",
+  Alignment:
+    "Your departments operate as a unified AI front with clear communication and coordinated priorities — rare and powerful.",
+  Results:
+    "You measure, track, and demonstrate AI ROI consistently — giving you the credibility and data to scale confidently.",
+};
+
+const BADGE_URLS: Record<string, string> = {
+  EMERGING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-emerging_6233aed6.png",
+  DEVELOPING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-developing_226a8643.png",
+  ADVANCING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-advancing_d5ded127.png",
+  LEADING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-leading_3fa87f71.png",
+};
+
 const BOOKING_BASE_URL =
   "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation";
 
@@ -1003,6 +1023,8 @@ function ResultsScreen({
   const sorted = [...pillars].sort((a, b) => a.score - b.score);
   // Only show gaps for pillars scoring below 80% (< 12/15)
   const topGaps = sorted.filter((p) => p.score < 12).slice(0, 2);
+  // Strongest pillar: highest scoring
+  const strongestPillar = [...pillars].sort((a, b) => b.score - a.score)[0];
 
   const ctaLabel = "Take The Next Step →";
 
@@ -1062,6 +1084,11 @@ function ResultsScreen({
         width: "100%",
       }}
     >
+      {/* Page indicator */}
+      <div className="flex justify-end mb-2">
+        <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 7 of 8</span>
+      </div>
+
       {/* Overall Score — compact row layout */}
       <div className="flex items-center justify-between mb-3">
         <div>
@@ -1119,6 +1146,31 @@ function ResultsScreen({
       </div>
 
       <div className="gold-divider mb-3" />
+
+      {/* Strongest Pillar — compact */}
+      {strongestPillar && (
+        <div className="mb-3">
+          <h3
+            className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: "rgba(212,175,55,0.7)" }}
+          >
+            Your Strongest Pillar
+          </h3>
+          <div className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
+            <div className="flex items-start gap-2">
+              <span style={{ color: "#43A047", fontSize: "0.85rem", marginTop: 1 }}>★</span>
+              <div>
+                <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
+                  {strongestPillar.name} — {strongestPillar.score}/15
+                </p>
+                <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
+                  {STRENGTH_MESSAGES[strongestPillar.name]}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Gap Areas — compact */}
       {topGaps.length > 0 && (
@@ -1232,16 +1284,24 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
     }).catch(() => {});
   };
 
+  const badgeUrl = BADGE_URLS[tier.label];
+
   return (
     <div
-      className="screen-enter flex flex-col items-center justify-center"
+      className="screen-enter flex flex-col items-center"
       style={{
         height: "100%",
         background: "#0A2342",
-        padding: "2.5rem 1.5rem",
+        overflowY: "auto",
+        padding: "2rem 1.5rem 2.5rem",
         textAlign: "center",
       }}
     >
+      {/* Page indicator */}
+      <div className="flex justify-end w-full mb-2" style={{ maxWidth: 320 }}>
+        <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 8 of 8</span>
+      </div>
+
       {/* Gold checkmark circle */}
       <div
         style={{
@@ -1276,6 +1336,22 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
       >
         Now that you've reviewed your insights, let's move forward together.
       </p>
+
+      {/* Tier Badge Image */}
+      {badgeUrl && (
+        <img
+          src={badgeUrl}
+          alt={`${tier.label} tier badge`}
+          style={{
+            width: "100%",
+            maxWidth: 320,
+            borderRadius: 8,
+            marginBottom: "1.5rem",
+            border: `1px solid ${tier.color}30`,
+            boxShadow: `0 4px 24px ${tier.color}20`,
+          }}
+        />
+      )}
 
       {/* Book CTA Button */}
       <a
