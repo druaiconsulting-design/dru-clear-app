@@ -1099,25 +1099,25 @@ function ResultsScreen({
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 7 of 8</span>
       </div>
 
-      {/* Overall Score — compact row layout */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
+      {/* Overall Score — stacks vertically on mobile to prevent overlap */}
+      <div className="flex flex-col items-center mb-4" style={{ gap: "0.75rem" }}>
+        <div className="text-center">
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "rgba(230,230,230,0.5)" }}>
             Your Score
           </p>
           <div
-            className="count-up text-5xl font-bold"
-            style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1 }}
+            className="count-up font-bold"
+            style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1, fontSize: "clamp(2.5rem, 12vw, 3rem)" }}
           >
             {scaledScore}
-            <span className="text-2xl" style={{ color: "rgba(212,175,55,0.5)" }}>
+            <span style={{ color: "rgba(212,175,55,0.5)", fontSize: "clamp(1.25rem, 6vw, 1.5rem)" }}>
               /100
             </span>
           </div>
         </div>
         <div
-          className="text-lg font-bold tracking-widest px-4 py-2 rounded"
-          style={{ color: tier.color, border: `1.5px solid ${tier.color}`, fontFamily: "'Inter', sans-serif", background: `${tier.color}18` }}
+          className="font-bold tracking-widest px-4 py-2 rounded"
+          style={{ color: tier.color, border: `1.5px solid ${tier.color}`, fontFamily: "'Inter', sans-serif", background: `${tier.color}18`, fontSize: "clamp(0.8rem, 4vw, 1rem)", letterSpacing: "0.12em" }}
         >
           {tier.label}
         </div>
@@ -1125,8 +1125,8 @@ function ResultsScreen({
 
       {/* Score comparison line */}
       <p
-        className="text-xs text-center mb-3"
-        style={{ color: "rgba(212,175,55,0.75)", fontStyle: "italic", lineHeight: 1.5 }}
+        className="text-xs text-center mb-4"
+        style={{ color: "rgba(212,175,55,0.75)", fontStyle: "italic", lineHeight: 1.6, padding: "0 0.5rem" }}
       >
         You scored higher than <strong style={{ color: "#D4AF37" }}>{percentile}%</strong> of organizations assessed on AI readiness.
       </p>
@@ -1134,21 +1134,21 @@ function ResultsScreen({
       <div className="gold-divider mb-3" />
 
       {/* Pillar Breakdown — compact */}
-      <div className="mb-3">
+      <div className="mb-4">
         <h3
           className="text-xs font-semibold uppercase tracking-widest mb-2"
           style={{ color: "rgba(212,175,55,0.7)" }}
         >
           Pillar Breakdown
         </h3>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col" style={{ gap: "0.6rem" }}>
           {pillars.map((p) => (
             <div key={p.name}>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-medium" style={{ color: "#E6E6E6" }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: "0.3rem" }}>
+                <span style={{ color: "#E6E6E6", fontSize: "clamp(0.7rem, 3vw, 0.75rem)", fontWeight: 500 }}>
                   {p.name[0]} — {p.name}
                 </span>
-                <span className="text-xs font-semibold" style={{ color: "#D4AF37" }}>
+                <span style={{ color: "#D4AF37", fontSize: "clamp(0.7rem, 3vw, 0.75rem)", fontWeight: 600, whiteSpace: "nowrap", marginLeft: "0.5rem" }}>
                   {p.score}/15
                 </span>
               </div>
@@ -1167,7 +1167,7 @@ function ResultsScreen({
 
       {/* Strongest Pillar — compact */}
       {strongestPillar && (
-        <div className="mb-3">
+        <div className="mb-4">
           <h3
             className="text-xs font-semibold uppercase tracking-widest mb-2"
             style={{ color: "rgba(212,175,55,0.7)" }}
@@ -1181,7 +1181,7 @@ function ResultsScreen({
                 <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
                   {strongestPillar.name} — {strongestPillar.score}/15
                 </p>
-                <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
+                <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.8vw, 0.7rem)", lineHeight: 1.6 }}>
                   {STRENGTH_MESSAGES[strongestPillar.name]}
                 </p>
               </div>
@@ -1192,7 +1192,7 @@ function ResultsScreen({
 
       {/* Top Gap Areas — compact */}
       {topGaps.length > 0 && (
-        <div className="mb-3">
+        <div className="mb-4">
           <h3
             className="text-xs font-semibold uppercase tracking-widest mb-2"
             style={{ color: "rgba(212,175,55,0.7)" }}
@@ -1208,7 +1208,7 @@ function ResultsScreen({
                     <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
                       {g.name} Gap
                     </p>
-                    <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
+                    <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.8vw, 0.7rem)", lineHeight: 1.6 }}>
                       {GAP_MESSAGES[g.name]}
                     </p>
                   </div>
@@ -1220,8 +1220,8 @@ function ResultsScreen({
       )}
 
       {/* Tier Message — compact */}
-      <div className="dru-card mb-3" style={{ padding: "0.6rem 0.75rem" }}>
-        <p className="text-xs leading-relaxed" style={{ color: "#E6E6E6", fontSize: "0.7rem" }}>
+      <div className="dru-card mb-4" style={{ padding: "0.75rem 0.875rem" }}>
+        <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.8vw, 0.7rem)", lineHeight: 1.7 }}>
           {TIER_MESSAGES[tier.label]}
         </p>
       </div>
@@ -1268,7 +1268,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const total = Object.values(scores).reduce((a, b) => a + b, 0);
   const tier = getTier(total);
   const scaledScore = Math.round((total / 75) * 100);
-  const [copied, setCopied] = useState(false);
+  // Copy button removed per design spec
 
   // Referral URL: appends ?ref=<email> so referred visitors are attributed to this promoter
   const refParam = lead.email ? `?ref=${encodeURIComponent(lead.email)}` : "";
@@ -1294,13 +1294,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
     });
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareText).then(() => {
-      setCopied(true);
-      fireShareWebhook("clipboard");
-      setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {});
-  };
+
 
   const badgeUrl = BADGE_URLS[tier.label];
 
@@ -1568,9 +1562,15 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
         <img
           src={badgeUrl}
           alt={`${tier.label} tier badge`}
+          loading="eager"
+          width="320"
+          height="168"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           style={{
             width: "100%",
             maxWidth: 320,
+            height: "auto",
+            display: "block",
             borderRadius: 8,
             marginBottom: "1.5rem",
             border: `1px solid ${tier.color}30`,
@@ -1693,39 +1693,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             </svg>
             Email
           </a>
-          {/* Copy to Clipboard */}
-          <button
-            onClick={handleCopy}
-            title="Copy to clipboard"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.55rem 0.9rem",
-              background: copied ? "rgba(212,175,55,0.18)" : "transparent",
-              color: copied ? "#D4AF37" : "rgba(230,230,230,0.5)",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: "0.78rem",
-              border: `1px solid ${copied ? "rgba(212,175,55,0.6)" : "rgba(230,230,230,0.2)"}`,
-              borderRadius: 4,
-              letterSpacing: "0.02em",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            {copied ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-              </svg>
-            )}
-            {copied ? "Copied!" : "Copy"}
-          </button>
+
         </div>
       </div>
 
