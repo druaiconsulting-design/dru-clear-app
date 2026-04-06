@@ -47,9 +47,12 @@ const WEBHOOK_CONFIG = {
 async function sendWebhook(payload: object): Promise<boolean> {
   if (!WEBHOOK_CONFIG.url) return false;
   try {
+    // Use text/plain to avoid CORS preflight — GHL parses the JSON body regardless.
+    // application/json triggers an OPTIONS preflight that GHL webhooks do not support
+    // from browser origins, causing the request to be silently blocked.
     await fetch(WEBHOOK_CONFIG.url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload),
     });
     return true;
@@ -1061,10 +1064,7 @@ function ResultsScreen({
       {/* CTA */}
       <button
         className="btn-magenta mb-4"
-        onClick={() => {
-          window.open(bookingUrl, "_blank");
-          onBookCall();
-        }}
+        onClick={onBookCall}
       >
         {ctaLabel}
       </button>
