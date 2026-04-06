@@ -1253,10 +1253,53 @@ function ThankYouScreen() {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
+// ─── SessionStorage Progress Save ────────────────────────────────────────────────────
+const PROGRESS_KEY = "dru_clear_progress";
+
+// Screens that are safe to resume at (not transient)
+const RESUMABLE_SCREENS: Screen[] = [
+  "lead-capture",
+  "clarity",
+  "leadership",
+  "execution",
+  "alignment",
+  "results-pillar",
+];
+
+function saveProgress(screen: Screen, lead: LeadData, scores: Scores): void {
+  try {
+    sessionStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({ screen, lead, scores, savedAt: new Date().toISOString() })
+    );
+  } catch {}
+}
+
+function loadProgress(): { screen: Screen; lead: LeadData; scores: Scores } | null {
+  try {
+    const raw = sessionStorage.getItem(PROGRESS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.screen || !RESUMABLE_SCREENS.includes(parsed.screen)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearProgress(): void {
+  try { sessionStorage.removeItem(PROGRESS_KEY); } catch {}
+}
+
 export default function DruClearApp() {
-  const [screen, setScreen] = useState<Screen>("splash");
-  const [lead, setLead] = useState<LeadData>({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
-  const [scores, setScores] = useState<Scores>({});
+  // Restore from sessionStorage if a previous in-progress session exists
+  const saved = loadProgress();
+
+  const [screen, setScreen] = useState<Screen>(saved?.screen ?? "splash");
+  const [lead, setLead] = useState<LeadData>(
+    saved?.lead ?? { firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }
+  );
+  const [scores, setScores] = useState<Scores>(saved?.scores ?? {});
 
   // Register service worker + flush any queued webhooks from previous sessions
   useEffect(() => {
@@ -1266,6 +1309,16 @@ export default function DruClearApp() {
     // Retry any webhooks that failed due to network issues in a previous session
     flushWebhookQueue();
   }, []);
+
+  // Persist progress to sessionStorage whenever screen, lead, or scores change
+  useEffect(() => {
+    if (RESUMABLE_SCREENS.includes(screen)) {
+      saveProgress(screen, lead, scores);
+    } else if (screen === "results" || screen === "thank-you" || screen === "calculating") {
+      // Assessment complete — clear saved progress so next visit starts fresh
+      clearProgress();
+    }
+  }, [screen, lead, scores]);
 
   const updateScore = (qIndex: number, value: number) => {
     setScores((prev) => ({ ...prev, [qIndex]: value }));
