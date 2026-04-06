@@ -28,6 +28,8 @@ interface LeadData {
   lastName: string;
   email: string;
   phone: string;
+  country_name?: string;
+  country_iso?: string;
   company: string;
   role: string;
 }
@@ -1073,9 +1075,23 @@ function LeadCaptureScreen({
     if (emailVerifyTimeout.current) clearTimeout(emailVerifyTimeout.current);
   };
 
+  // Phone digit count validation against selected country's min/max
+  const getPhoneError = (): string => {
+    const digits = form.phone.replace(/\D/g, "");
+    if (!digits) return "Required";
+    if (digits.length < countryCode.minLen) {
+      return `A valid ${countryCode.name} number requires at least ${countryCode.minLen} digits`;
+    }
+    if (digits.length > countryCode.maxLen) {
+      return `A valid ${countryCode.name} number has at most ${countryCode.maxLen} digits`;
+    }
+    return "";
+  };
+
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (!form.firstName.trim() || form.firstName.trim().length < 2 || !form.lastName.trim() || form.lastName.trim().length < 2 || !form.phone.trim() || !form.company.trim() || !form.role) {
+    const phoneErr = getPhoneError();
+    if (!form.firstName.trim() || form.firstName.trim().length < 2 || !form.lastName.trim() || form.lastName.trim().length < 2 || phoneErr || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
       return;
     }
@@ -1102,6 +1118,8 @@ function LeadCaptureScreen({
       last_name: form.lastName,
       email: form.email,
       phone: normalizePhone(countryCode.code + (form.phone || "")), // full international number
+      country_name: countryCode.name,
+      country_iso: countryCode.iso,
       company: form.company,
       role: form.role,
       // UTM attribution
@@ -1113,7 +1131,14 @@ function LeadCaptureScreen({
     await sendWebhook(payload);
 
     setLoading(false);
-    onContinue(form);
+    // Pass country through to Results/ThankYou screens via LeadData
+    const leadWithCountry: LeadData = {
+      ...form,
+      phone: normalizePhone(countryCode.code + (form.phone || "")),
+      country_name: countryCode.name,
+      country_iso: countryCode.iso,
+    };
+    onContinue(leadWithCountry);
   };
 
   return (
@@ -1234,7 +1259,7 @@ function LeadCaptureScreen({
               gap: "0.5rem",
               alignItems: "stretch",
               borderRadius: 4,
-              ...(submitted && !form.phone.trim() ? { outline: "1px solid #E53935" } : {}),
+              ...(submitted && getPhoneError() ? { outline: "1px solid #E53935" } : {}),
             }}
           >
             <CountryCodeSelector value={countryCode} onChange={setCountryCode} />
@@ -1247,12 +1272,12 @@ function LeadCaptureScreen({
               style={{
                 flex: 1,
                 minWidth: 0,
-                ...(submitted && !form.phone.trim() ? { borderColor: "#E53935" } : {}),
+                ...(submitted && getPhoneError() ? { borderColor: "#E53935" } : {}),
               }}
             />
           </div>
-          {submitted && !form.phone.trim() && (
-            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          {submitted && getPhoneError() && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>{getPhoneError()}</p>
           )}
         </div>
         <div>
@@ -1512,6 +1537,8 @@ function ResultsScreen({
       full_name: `${lead.firstName} ${lead.lastName}`.trim(),
       email: lead.email,
       phone: normalizePhone(lead.phone || ""),
+      country_name: lead.country_name || "",
+      country_iso: lead.country_iso || "",
       company: lead.company,
       role: lead.role,
       // Scorecard results — used to trigger tier-based email workflows in GHL
