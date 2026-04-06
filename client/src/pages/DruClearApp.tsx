@@ -135,6 +135,7 @@ interface UtmParams {
   utm_campaign: string;
   utm_content: string;
   utm_term: string;
+  referral_code: string; // ?ref= param — email of the promoter who shared the link
 }
 
 function captureUtmParams(): UtmParams {
@@ -145,6 +146,7 @@ function captureUtmParams(): UtmParams {
     utm_campaign: p.get("utm_campaign") || "",
     utm_content: p.get("utm_content") || "",
     utm_term: p.get("utm_term") || "",
+    referral_code: p.get("ref") || "", // populated when a promoter shares their result
   };
 }
 
@@ -1198,10 +1200,13 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const scaledScore = Math.round((total / 75) * 100);
   const [copied, setCopied] = useState(false);
 
-  const shareText = `I just completed the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 — ${tier.label} tier. Find out where your organization stands: ${window.location.origin}`;
-  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent(shareText)}`;
+  // Referral URL: appends ?ref=<email> so referred visitors are attributed to this promoter
+  const refParam = lead.email ? `?ref=${encodeURIComponent(lead.email)}` : "";
+  const assessmentUrl = `${window.location.origin}${refParam}`;
+  const shareText = `I just completed the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 — ${tier.label} tier. Find out where your organization stands: ${assessmentUrl}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(assessmentUrl)}&summary=${encodeURIComponent(shareText)}`;
   const emailSubject = encodeURIComponent(`My DRU CLEAR™ AI Readiness Score: ${scaledScore}/100 — ${tier.label}`);
-  const emailBody = encodeURIComponent(`${shareText}\n\nTake the free assessment at: ${window.location.origin}`);
+  const emailBody = encodeURIComponent(`${shareText}\n\nTake the free assessment at: ${assessmentUrl}`);
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
   // Fire a lightweight webhook to GHL when a user clicks any share button
