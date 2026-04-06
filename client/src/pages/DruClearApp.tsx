@@ -1191,7 +1191,17 @@ function ResultsScreen({
 
 // ─── Thank You Screen ────────────────────────────────────────────────────────
 
-function ThankYouScreen() {
+function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
+  // Build share content from the user's actual tier
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  const tier = getTier(total);
+  const scaledScore = Math.round((total / 75) * 100);
+
+  const shareText = `I just completed the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 — ${tier.label} tier. Find out where your organization stands: ${window.location.origin}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent(shareText)}`;
+  const emailSubject = encodeURIComponent(`My DRU CLEAR™ AI Readiness Score: ${scaledScore}/100 — ${tier.label}`);
+  const emailBody = encodeURIComponent(`${shareText}\n\nTake the free assessment at: ${window.location.origin}`);
+  const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
   return (
     <div
       className="screen-enter flex flex-col items-center justify-center"
@@ -1265,6 +1275,92 @@ function ThankYouScreen() {
       >
         Book Your Free Clarity Call
       </a>
+
+      {/* Share Section */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "2rem",
+          padding: "1.25rem 1.5rem",
+          background: "rgba(212,175,55,0.06)",
+          border: "1px solid rgba(212,175,55,0.2)",
+          borderRadius: 6,
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            color: "rgba(230,230,230,0.6)",
+            fontSize: "0.7rem",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: "0.875rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 600,
+          }}
+        >
+          Share Your Results
+        </p>
+        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+          {/* LinkedIn */}
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.55rem 1rem",
+              background: "#0A66C2",
+              color: "#FFFFFF",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.78rem",
+              textDecoration: "none",
+              borderRadius: 4,
+              letterSpacing: "0.02em",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#004182"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#0A66C2"; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+            </svg>
+            LinkedIn
+          </a>
+          {/* Email */}
+          <a
+            href={emailUrl}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.55rem 1rem",
+              background: "transparent",
+              color: "#D4AF37",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.78rem",
+              textDecoration: "none",
+              borderRadius: 4,
+              border: "1px solid rgba(212,175,55,0.4)",
+              letterSpacing: "0.02em",
+              transition: "border-color 0.2s, background 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#D4AF37"; (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            Email
+          </a>
+        </div>
+      </div>
 
       {/* Divider */}
       <div style={{ width: 48, height: 1, background: "rgba(212,175,55,0.3)", marginBottom: "2rem" }} />
@@ -1489,7 +1585,7 @@ export default function DruClearApp() {
 
       {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("thank-you")} />}
 
-      {screen === "thank-you" && <ThankYouScreen />}
+      {screen === "thank-you" && <ThankYouScreen lead={lead} scores={scores} />}
     </div>
   );
 }
