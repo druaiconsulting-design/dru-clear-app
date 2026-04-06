@@ -39,7 +39,7 @@ interface Scores {
 
 // WEBHOOK CONFIGURATION — GoHighLevel
 const WEBHOOK_CONFIG = {
-  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/36fbc5eb-d816-4e41-b8ba-468d7975c305",
+  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/cc8e9b00-5fd6-4f5c-9965-36094289b7ee",
 };
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
@@ -524,11 +524,10 @@ function LeadCaptureScreen({
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (!form.firstName.trim() || form.firstName.trim().length < 2 || !form.lastName.trim() || form.lastName.trim().length < 2 || !form.company.trim() || !form.role) {
+    if (!form.firstName.trim() || form.firstName.trim().length < 2 || !form.lastName.trim() || form.lastName.trim().length < 2 || !form.phone.trim() || !form.company.trim() || !form.role) {
       setError("Please complete all fields to continue.");
       return;
     }
-    // Phone is optional — no hard block, but strip non-digits for validation display
     // Always verify email on submit
     setEmailVerifying(true);
     setEmailError("");
@@ -674,7 +673,7 @@ function LeadCaptureScreen({
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
-            Phone Number <span style={{ color: "rgba(230,230,230,0.35)" }}>(optional)</span>
+            Phone Number <span style={{ color: "#E53935" }}>*</span>
           </label>
           <input
             className="dru-input"
@@ -682,7 +681,11 @@ function LeadCaptureScreen({
             placeholder="+1 (555) 000-0000"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            style={submitted && !form.phone.trim() ? { borderColor: "#E53935" } : {}}
           />
+          {submitted && !form.phone.trim() && (
+            <p className="text-xs mt-1" style={{ color: "#E53935" }}>Required</p>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium mb-1 block" style={{ color: "rgba(230,230,230,0.6)" }}>
