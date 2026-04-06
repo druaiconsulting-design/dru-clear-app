@@ -44,16 +44,23 @@ const WEBHOOK_CONFIG = {
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
 
-async function sendWebhook(payload: object): Promise<boolean> {
+async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
   if (!WEBHOOK_CONFIG.url) return false;
   try {
-    // Use text/plain to avoid CORS preflight — GHL parses the JSON body regardless.
-    // application/json triggers an OPTIONS preflight that GHL webhooks do not support
-    // from browser origins, causing the request to be silently blocked.
-    await fetch(WEBHOOK_CONFIG.url, {
+    // Flatten all payload fields into URL query parameters.
+    // GHL webhook endpoints parse query params reliably regardless of body.
+    // text/plain avoids a CORS preflight; body is intentionally empty.
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== null && value !== undefined) {
+        params.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+      }
+    }
+    const url = `${WEBHOOK_CONFIG.url}?${params.toString()}`;
+    await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
+      body: "",
     });
     return true;
   } catch {
