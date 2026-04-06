@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import jsPDF from "jspdf";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1028,6 +1029,15 @@ function ResultsScreen({
 
   const ctaLabel = "Take The Next Step →";
 
+  // Score comparison: static percentile benchmarks per tier
+  const BENCHMARK_PERCENTILES: Record<string, number> = {
+    EMERGING: 25,
+    DEVELOPING: 52,
+    ADVANCING: 74,
+    LEADING: 93,
+  };
+  const percentile = BENCHMARK_PERCENTILES[tier.label];
+
   const bookingUrl = buildBookingUrl(lead);
 
   // Send results webhook on mount
@@ -1112,6 +1122,14 @@ function ResultsScreen({
           {tier.label}
         </div>
       </div>
+
+      {/* Score comparison line */}
+      <p
+        className="text-xs text-center mb-3"
+        style={{ color: "rgba(212,175,55,0.75)", fontStyle: "italic", lineHeight: 1.5 }}
+      >
+        You scored higher than <strong style={{ color: "#D4AF37" }}>{percentile}%</strong> of organizations assessed on AI readiness.
+      </p>
 
       <div className="gold-divider mb-3" />
 
@@ -1285,6 +1303,214 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   };
 
   const badgeUrl = BADGE_URLS[tier.label];
+
+  // PDF report generation
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const generatePdf = () => {
+    setPdfLoading(true);
+    try {
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const W = 210;
+      const margin = 20;
+      const contentW = W - margin * 2;
+      let y = 0;
+
+      // ── Header band ──────────────────────────────────────────────────────────
+      doc.setFillColor(10, 35, 66); // #0A2342
+      doc.rect(0, 0, W, 42, "F");
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(212, 175, 55); // #D4AF37
+      doc.text("DRU CLEAR\u2122 AI Readiness Report", margin, 18);
+
+      // Tagline
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(230, 230, 230);
+      doc.text("AI Mastery. Leadership Clarity. Measurable Results.", margin, 26);
+
+      // Date
+      doc.setFontSize(8);
+      doc.setTextColor(180, 180, 180);
+      doc.text(`Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, margin, 34);
+
+      y = 54;
+
+      // ── Contact info ─────────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(10, 35, 66);
+      doc.text(`${lead.firstName} ${lead.lastName}`, margin, y);
+      y += 7;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`${lead.company}  |  ${lead.role}  |  ${lead.email}`, margin, y);
+      y += 12;
+
+      // ── Score & Tier ─────────────────────────────────────────────────────────
+      doc.setFillColor(10, 35, 66);
+      doc.roundedRect(margin, y, contentW, 28, 3, 3, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(28);
+      doc.setTextColor(212, 175, 55);
+      doc.text(`${scaledScore}/100`, margin + 8, y + 18);
+
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text(tier.label, margin + 50, y + 12);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(200, 200, 200);
+      const tierMsg = TIER_MESSAGES[tier.label] || "";
+      const tierLines = doc.splitTextToSize(tierMsg, contentW - 55);
+      doc.text(tierLines, margin + 50, y + 20);
+      y += 36;
+
+      // ── Score comparison ─────────────────────────────────────────────────────
+      const BENCH: Record<string, number> = { EMERGING: 25, DEVELOPING: 52, ADVANCING: 74, LEADING: 93 };
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`You scored higher than ${BENCH[tier.label]}% of organizations assessed on AI readiness.`, margin, y);
+      y += 10;
+
+      // ── Pillar Breakdown ──────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(10, 35, 66);
+      doc.text("CLEAR\u2122 Pillar Breakdown", margin, y);
+      y += 2;
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y + 2, margin + contentW, y + 2);
+      y += 7;
+
+      const pillarsData = [
+        { name: "Clarity", score: getPillarScore(scores, 0) },
+        { name: "Leadership", score: getPillarScore(scores, 3) },
+        { name: "Execution", score: getPillarScore(scores, 6) },
+        { name: "Alignment", score: getPillarScore(scores, 9) },
+        { name: "Results", score: getPillarScore(scores, 12) },
+      ];
+
+      for (const p of pillarsData) {
+        const pct = p.score / 15;
+        // Label
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(40, 40, 40);
+        doc.text(`${p.name[0]} — ${p.name}`, margin, y + 4);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(10, 35, 66);
+        doc.text(`${p.score}/15`, margin + contentW - 10, y + 4, { align: "right" });
+        // Bar track
+        doc.setFillColor(220, 220, 220);
+        doc.roundedRect(margin, y + 6, contentW, 4, 1, 1, "F");
+        // Bar fill
+        doc.setFillColor(212, 175, 55);
+        doc.roundedRect(margin, y + 6, contentW * pct, 4, 1, 1, "F");
+        y += 14;
+      }
+
+      y += 4;
+
+      // ── Strongest Pillar ──────────────────────────────────────────────────────
+      const strongest = [...pillarsData].sort((a, b) => b.score - a.score)[0];
+      doc.setFillColor(240, 248, 240);
+      doc.roundedRect(margin, y, contentW, 22, 2, 2, "F");
+      doc.setDrawColor(67, 160, 71);
+      doc.setLineWidth(0.8);
+      doc.line(margin, y, margin, y + 22);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 100, 30);
+      doc.text(`\u2605 Strongest Pillar: ${strongest.name} (${strongest.score}/15)`, margin + 4, y + 7);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      const strLines = doc.splitTextToSize(STRENGTH_MESSAGES[strongest.name] || "", contentW - 6);
+      doc.text(strLines, margin + 4, y + 13);
+      y += 28;
+
+      // ── Top Gap Areas ─────────────────────────────────────────────────────────
+      const gaps = [...pillarsData].sort((a, b) => a.score - b.score).filter(p => p.score < 12).slice(0, 2);
+      if (gaps.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(10, 35, 66);
+        doc.text("Top Gap Areas", margin, y);
+        y += 2;
+        doc.setDrawColor(212, 175, 55);
+        doc.line(margin, y + 2, margin + contentW, y + 2);
+        y += 7;
+
+        for (const g of gaps) {
+          doc.setFillColor(255, 248, 240);
+          doc.roundedRect(margin, y, contentW, 22, 2, 2, "F");
+          doc.setDrawColor(212, 175, 55);
+          doc.setLineWidth(0.8);
+          doc.line(margin, y, margin, y + 22);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(150, 80, 0);
+          doc.text(`\u26A0 ${g.name} Gap (${g.score}/15)`, margin + 4, y + 7);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(60, 60, 60);
+          const gapLines = doc.splitTextToSize(GAP_MESSAGES[g.name] || "", contentW - 6);
+          doc.text(gapLines, margin + 4, y + 13);
+          y += 28;
+        }
+      }
+
+      // ── CTA ───────────────────────────────────────────────────────────────────
+      y += 4;
+      doc.setFillColor(194, 24, 91); // #C2185B
+      doc.roundedRect(margin, y, contentW, 14, 3, 3, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Book Your AI Strategy Consultation: druaiconsulting.com/appointment", W / 2, y + 9, { align: "center" });
+      y += 20;
+
+      // ── Footer ────────────────────────────────────────────────────────────────
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text("\u00A9 DRU AI Consulting  |  druaiconsulting.com  |  This report is for informational purposes only.", W / 2, 285, { align: "center" });
+
+      doc.save(`DRU-CLEAR-Report-${lead.firstName}-${lead.lastName}.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // Feedback state
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+
+  const handleFeedback = (rating: "up" | "down") => {
+    if (feedback) return; // already submitted
+    setFeedback(rating);
+    sendWebhook({
+      event: "feedback",
+      rating,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+  };
 
   return (
     <div
@@ -1501,6 +1727,122 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
+      </div>
+
+      {/* PDF Download Button */}
+      <button
+        onClick={generatePdf}
+        disabled={pdfLoading}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.5rem",
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "1.25rem",
+          padding: "0.75rem 1.5rem",
+          background: "transparent",
+          color: "#D4AF37",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          letterSpacing: "0.04em",
+          border: "1.5px solid rgba(212,175,55,0.5)",
+          borderRadius: 4,
+          cursor: pdfLoading ? "wait" : "pointer",
+          opacity: pdfLoading ? 0.6 : 1,
+          transition: "all 0.2s",
+        }}
+        onMouseEnter={(e) => { if (!pdfLoading) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.1)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#D4AF37"; } }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,55,0.5)"; }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        {pdfLoading ? "Generating..." : "Download Your Report (PDF)"}
+      </button>
+
+      {/* Feedback Prompt */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "2rem",
+          padding: "1rem 1.25rem",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(230,230,230,0.1)",
+          borderRadius: 6,
+          textAlign: "center",
+        }}
+      >
+        {feedback === null ? (
+          <>
+            <p className="text-xs mb-3" style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif" }}>
+              Was this assessment helpful?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => handleFeedback("up")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  padding: "0.45rem 1rem",
+                  background: "transparent",
+                  color: "rgba(230,230,230,0.6)",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  border: "1px solid rgba(230,230,230,0.2)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(67,160,71,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#43A047"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(67,160,71,0.5)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(230,230,230,0.6)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(230,230,230,0.2)"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" />
+                  <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+                </svg>
+                Yes
+              </button>
+              <button
+                onClick={() => handleFeedback("down")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  padding: "0.45rem 1rem",
+                  background: "transparent",
+                  color: "rgba(230,230,230,0.6)",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  border: "1px solid rgba(230,230,230,0.2)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,57,53,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#E53935"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(229,57,53,0.5)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(230,230,230,0.6)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(230,230,230,0.2)"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z" />
+                  <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
+                </svg>
+                Not Really
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs" style={{ color: feedback === "up" ? "#43A047" : "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif" }}>
+            {feedback === "up" ? "Thank you! We're glad it was helpful. ♥" : "Thanks for the feedback. We'll keep improving."}
+          </p>
+        )}
       </div>
 
       {/* Divider */}
