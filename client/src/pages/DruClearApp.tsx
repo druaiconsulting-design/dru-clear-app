@@ -1118,8 +1118,8 @@ function LeadCaptureScreen({
       last_name: form.lastName,
       email: form.email,
       phone: normalizePhone(countryCode.code + (form.phone || "")), // full international number
-      country_name: countryCode.name,
-      country_iso: countryCode.iso,
+      ai_country_name: countryCode.name,
+      ai_country_iso: countryCode.iso,
       company: form.company,
       role: form.role,
       // UTM attribution
@@ -1135,7 +1135,7 @@ function LeadCaptureScreen({
     const leadWithCountry: LeadData = {
       ...form,
       phone: normalizePhone(countryCode.code + (form.phone || "")),
-      country_name: countryCode.name,
+      country_name: countryCode.name,  // stored on LeadData for internal use
       country_iso: countryCode.iso,
     };
     onContinue(leadWithCountry);
@@ -1537,8 +1537,8 @@ function ResultsScreen({
       full_name: `${lead.firstName} ${lead.lastName}`.trim(),
       email: lead.email,
       phone: normalizePhone(lead.phone || ""),
-      country_name: lead.country_name || "",
-      country_iso: lead.country_iso || "",
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
       company: lead.company,
       role: lead.role,
       // Scorecard results — used to trigger tier-based email workflows in GHL
@@ -1774,6 +1774,8 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
       email: lead.email,
       score: scaledScore,
       result: tier.label,
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
       ...UTM_PARAMS,
       timestamp: new Date().toISOString(),
     });
@@ -1986,6 +1988,8 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
       email: lead.email,
       score: scaledScore,
       result: tier.label,
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
       ...UTM_PARAMS,
       timestamp: new Date().toISOString(),
     });
