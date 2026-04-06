@@ -44,7 +44,41 @@ const WEBHOOK_CONFIG = {
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
 
-async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
+// ─── Phone Normalization ─────────────────────────────────────────────────────
+// Strips all non-digit characters so GHL always receives a clean number.
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+// ─── Webhook Retry Queue ─────────────────────────────────────────────────────
+const RETRY_QUEUE_KEY = "dru_clear_webhook_queue";
+
+function enqueueWebhook(payload: Record<string, unknown>): void {
+  try {
+    const queue = JSON.parse(localStorage.getItem(RETRY_QUEUE_KEY) || "[]");
+    queue.push({ payload, queuedAt: new Date().toISOString(), attempts: 0 });
+    localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(queue));
+  } catch {}
+}
+
+async function flushWebhookQueue(): Promise<void> {
+  try {
+    const queue: Array<{ payload: Record<string, unknown>; queuedAt: string; attempts: number }> =
+      JSON.parse(localStorage.getItem(RETRY_QUEUE_KEY) || "[]");
+    if (queue.length === 0) return;
+    const remaining: typeof queue = [];
+    for (const item of queue) {
+      const ok = await sendWebhookDirect(item.payload);
+      if (!ok && item.attempts < 5) {
+        remaining.push({ ...item, attempts: item.attempts + 1 });
+      }
+    }
+    localStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(remaining));
+  } catch {}
+}
+
+// Internal: sends without queueing (used by both sendWebhook and flushWebhookQueue)
+async function sendWebhookDirect(payload: Record<string, unknown>): Promise<boolean> {
   if (!WEBHOOK_CONFIG.url) return false;
   try {
     // Flatten all payload fields into URL query parameters.
@@ -53,19 +87,35 @@ async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(payload)) {
       if (value !== null && value !== undefined) {
-        params.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+        // Arrays (e.g. topGaps) become comma-separated strings for GHL readability
+        if (Array.isArray(value)) {
+          params.append(key, value.join(","));
+        } else if (typeof value === "object") {
+          params.append(key, JSON.stringify(value));
+        } else {
+          params.append(key, String(value));
+        }
       }
     }
     const url = `${WEBHOOK_CONFIG.url}?${params.toString()}`;
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
       body: "",
     });
-    return true;
+    return res.ok || res.status < 500; // treat 2xx/4xx as delivered; 5xx = retry
   } catch {
     return false;
   }
+}
+
+async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
+  const ok = await sendWebhookDirect(payload);
+  if (!ok) {
+    // Network failure or server error — queue for retry on next app load
+    enqueueWebhook(payload);
+  }
+  return ok;
 }
 
 function saveToLocalStorage(key: string, data: object) {
@@ -560,7 +610,7 @@ function LeadCaptureScreen({
       first_name: form.firstName,
       last_name: form.lastName,
       email: form.email,
-      phone: form.phone || "",
+      phone: normalizePhone(form.phone || ""),
       company: form.company,
       role: form.role,
       timestamp: new Date().toISOString(),
@@ -940,20 +990,18 @@ function ResultsScreen({
       first_name: lead.firstName,
       last_name: lead.lastName,
       email: lead.email,
-      phone: lead.phone || "",
+      phone: normalizePhone(lead.phone || ""),
       company: lead.company,
       role: lead.role,
       score: scaledScore,
       result: tier.label,
       rawScore: total,
-      pillarScores: {
-        clarity: clarityScore,
-        leadership: leadershipScore,
-        execution: executionScore,
-        alignment: alignmentScore,
-        results: resultsScore,
-      },
-      topGaps: topGaps.map((g) => g.name),
+      pillar_clarity: clarityScore,
+      pillar_leadership: leadershipScore,
+      pillar_execution: executionScore,
+      pillar_alignment: alignmentScore,
+      pillar_results: resultsScore,
+      top_gaps: topGaps.map((g) => g.name),
       timestamp: new Date().toISOString(),
     };
 
@@ -1210,11 +1258,13 @@ export default function DruClearApp() {
   const [lead, setLead] = useState<LeadData>({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
   const [scores, setScores] = useState<Scores>({});
 
-  // Register service worker
+  // Register service worker + flush any queued webhooks from previous sessions
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+    // Retry any webhooks that failed due to network issues in a previous session
+    flushWebhookQueue();
   }, []);
 
   const updateScore = (qIndex: number, value: number) => {
