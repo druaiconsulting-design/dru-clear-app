@@ -126,6 +126,31 @@ function saveToLocalStorage(key: string, data: object) {
   } catch {}
 }
 
+// ─── UTM Parameter Capture ─────────────────────────────────────────────────────
+// Read UTM params from the URL once on page load and cache them.
+// They persist for the full session so they are available when webhooks fire.
+interface UtmParams {
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content: string;
+  utm_term: string;
+}
+
+function captureUtmParams(): UtmParams {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    utm_source: p.get("utm_source") || "",
+    utm_medium: p.get("utm_medium") || "",
+    utm_campaign: p.get("utm_campaign") || "",
+    utm_content: p.get("utm_content") || "",
+    utm_term: p.get("utm_term") || "",
+  };
+}
+
+// Captured once at module load time so they are never lost after navigation
+const UTM_PARAMS: UtmParams = captureUtmParams();
+
 // ─── Score Utilities ─────────────────────────────────────────────────────────
 
 function getPillarScore(scores: Scores, startQ: number): number {
@@ -613,6 +638,8 @@ function LeadCaptureScreen({
       phone: normalizePhone(form.phone || ""),
       company: form.company,
       role: form.role,
+      // UTM attribution
+      ...UTM_PARAMS,
       timestamp: new Date().toISOString(),
     };
 
@@ -987,21 +1014,32 @@ function ResultsScreen({
 
     const payload = {
       event: "scorecard_complete",
+      // Contact identity — all fields needed for GHL to create/update a contact
       first_name: lead.firstName,
       last_name: lead.lastName,
+      full_name: `${lead.firstName} ${lead.lastName}`.trim(),
       email: lead.email,
       phone: normalizePhone(lead.phone || ""),
       company: lead.company,
       role: lead.role,
+      // Scorecard results — used to trigger tier-based email workflows in GHL
       score: scaledScore,
       result: tier.label,
-      rawScore: total,
+      result_message: TIER_MESSAGES[tier.label] || "",
+      top_gaps: topGaps.map((g) => g.name),
+      top_gap_1: topGaps[0]?.name || "",
+      top_gap_2: topGaps[1]?.name || "",
+      top_gap_1_message: topGaps[0] ? GAP_MESSAGES[topGaps[0].name] || "" : "",
+      top_gap_2_message: topGaps[1] ? GAP_MESSAGES[topGaps[1].name] || "" : "",
+      // Individual pillar scores (0–15 each)
       pillar_clarity: clarityScore,
       pillar_leadership: leadershipScore,
       pillar_execution: executionScore,
       pillar_alignment: alignmentScore,
       pillar_results: resultsScore,
-      top_gaps: topGaps.map((g) => g.name),
+      raw_score: total,
+      // UTM attribution
+      ...UTM_PARAMS,
       timestamp: new Date().toISOString(),
     };
 
