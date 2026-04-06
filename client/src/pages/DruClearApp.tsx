@@ -1648,7 +1648,7 @@ export default function DruClearApp() {
 
       {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
 
-      {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("thank-you")} />}
+      {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => window.open("https://druaiconsulting.com/appointment", "_blank", "noopener,noreferrer")} />}
 
       {screen === "thank-you" && <ThankYouScreen lead={lead} scores={scores} />}
     </div>
