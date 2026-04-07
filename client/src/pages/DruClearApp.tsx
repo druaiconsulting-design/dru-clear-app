@@ -331,16 +331,14 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-// ─── Screen: Welcome ─────────────────────────────────────────────────────────
-
+/// ─── Screen: Welcome ─────────────────────────────────────────────────────────
 function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <div
       className="screen-enter flex flex-col"
       style={{
-        height: "100%",
+        minHeight: "100dvh",
         background: "#0A2342",
-        overflowY: "auto",
         padding: "2.5rem 1.5rem 2rem",
         maxWidth: 480,
         margin: "0 auto",
@@ -1039,6 +1037,7 @@ function LeadCaptureScreen({
   });
   const [countryCode, setCountryCode] = useState<CountryCode>(COUNTRY_CODES[0]); // default +1 US
   const [submitted, setSubmitted] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailVerifying, setEmailVerifying] = useState(false);
@@ -1145,9 +1144,8 @@ function LeadCaptureScreen({
     <div
       className="screen-enter flex flex-col"
       style={{
-        height: "100%",
+        minHeight: "100dvh",
         background: "#0A2342",
-        overflowY: "auto",
         padding: "2.5rem 1.5rem 2rem",
         maxWidth: 480,
         margin: "0 auto",
@@ -1259,7 +1257,7 @@ function LeadCaptureScreen({
               gap: "0.5rem",
               alignItems: "stretch",
               borderRadius: 4,
-              ...(submitted && getPhoneError() ? { outline: "1px solid #E53935" } : {}),
+              ...((submitted || phoneTouched) && getPhoneError() ? { outline: "1px solid #E53935" } : {}),
             }}
           >
             <CountryCodeSelector value={countryCode} onChange={setCountryCode} />
@@ -1269,20 +1267,21 @@ function LeadCaptureScreen({
               placeholder="555 000 0000"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onBlur={() => setPhoneTouched(true)}
               style={{
                 flex: 1,
                 minWidth: 0,
-                ...(submitted && getPhoneError() ? { borderColor: "#E53935" } : {}),
+                ...((submitted || phoneTouched) && getPhoneError() ? { borderColor: "#E53935" } : {}),
               }}
             />
           </div>
-          {/* Live format hint — always visible, updates when country changes */}
-          {!submitted || !getPhoneError() ? (
+          {/* Live format hint — shows error on blur or submit, otherwise shows format hint */}
+          {(submitted || phoneTouched) && getPhoneError() ? (
+            <p className="text-xs mt-1" style={{ color: "#E53935", fontFamily: "'Inter', sans-serif" }}>{getPhoneError()}</p>
+          ) : (
             <p className="text-xs mt-1" style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif" }}>
               {countryCode.hint}
             </p>
-          ) : (
-            <p className="text-xs mt-1" style={{ color: "#E53935" }}>{getPhoneError()}</p>
           )}
         </div>
         <div>
@@ -1380,9 +1379,8 @@ function PillarScreen({
     <div
       className="screen-enter flex flex-col"
       style={{
-        height: "100%",
+        minHeight: "100dvh",
         background: "#0A2342",
-        overflowY: "auto",
         padding: "2rem 1.5rem 2rem",
         maxWidth: 480,
         margin: "0 auto",
@@ -1596,9 +1594,8 @@ function ResultsScreen({
     <div
       className="screen-enter flex flex-col"
       style={{
-        minHeight: "100%",
+        minHeight: "100dvh",
         background: "#0A2342",
-        overflowY: "auto",
         overflowX: "hidden",
         padding: "clamp(1rem, 4vw, 1.5rem) clamp(0.875rem, 4vw, 1.25rem) 2rem",
         maxWidth: 480,
@@ -2071,9 +2068,8 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
     <div
       className="screen-enter flex flex-col items-center"
       style={{
-        height: "100%",
+        minHeight: "100dvh",
         background: "#0A2342",
-        overflowY: "auto",
         padding: "2rem 1.5rem 2.5rem",
         textAlign: "center",
       }}
@@ -2498,8 +2494,6 @@ export default function DruClearApp() {
 
   const goTo = (s: Screen) => setScreen(s);
 
-  const isScrollableScreen = screen === "results" || screen === "thank-you" || screen === "lead-capture";
-
   return (
     <div
       style={{
@@ -2508,7 +2502,6 @@ export default function DruClearApp() {
         background: "#0A2342",
         display: "flex",
         flexDirection: "column",
-        overflowY: isScrollableScreen ? "auto" : "hidden",
         overflowX: "hidden",
         position: "relative",
       }}

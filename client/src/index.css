@@ -81,7 +81,7 @@
 
   html, body {
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
   }
 
   body {
@@ -94,7 +94,7 @@
 
   #root {
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
   }
 
   h1, h2, h3 {
