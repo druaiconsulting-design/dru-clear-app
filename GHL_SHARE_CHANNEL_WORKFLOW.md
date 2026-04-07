@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every time a user clicks a share button on the Thank You page (Page 8), the app fires a `share_click` webhook event to GoHighLevel. The payload includes a `channel` field that identifies exactly which platform the user shared on. This document explains how to set up a conditional GHL workflow that tags contacts differently by channel and enables tracking of which platform drives the most referred completions.
+Every time a user clicks a share button on the Thank You page (Page 8) or the "Copy My Results Link" button on the Results page (Page 7), the app fires a `share_click` webhook event to GoHighLevel. The payload includes a `channel` field that identifies exactly which platform the user shared on. This document explains how to set up a conditional GHL workflow that tags contacts differently by channel, writes a filterable `last_share_channel` custom field, increments a `share_count` counter to surface your most active promoters, and tracks which platform drives the most referred completions.
 
 ---
 
@@ -82,6 +82,29 @@ This field is overwritten on each share event, always reflecting the most recent
 
 Also write the `last_shared_at` field to `{{trigger.timestamp}}` in the same Update Contact action to record the exact time of the most recent share.
 
+### Step 3a — Increment share_count After Each Branch
+
+After the Update Contact actions inside **every branch** (LinkedIn, WhatsApp, Telegram, Email, and Clipboard), add a **Math Operation** action to increment the `share_count` field by 1. This step is identical across all five branches — the same configuration applies to each.
+
+**Math Operation configuration:**
+
+| Setting | Value |
+|---|---|
+| Action type | Math Operation |
+| Field | `share_count` (Number custom field) |
+| Operation | Add |
+| Value | `1` |
+
+GHL's Math Operation action reads the current value of `share_count`, adds 1, and writes the result back to the contact record. If the field is empty (first share), GHL treats it as 0 and writes 1.
+
+**Action order inside each branch:**
+
+1. Update Contact — apply tag (e.g. `shared-via-linkedin`)
+2. Update Contact — write `last_share_channel`, `last_shared_at`
+3. Math Operation — increment `share_count` by 1
+
+Once populated, sort contacts in **Contacts → Sort by → share_count (descending)** to instantly identify your most active promoters. Contacts with a high `share_count` and a `drove-referred-completion` tag are your highest-value advocates and ideal candidates for a VIP referral reward outreach.
+
 ### Step 4 — Track Referred Completions
 
 To identify which platform drives the most referred completions, use the `referral_code` field (the sharer's email) on the `scorecard_complete` event:
@@ -143,4 +166,10 @@ Compare the counts of each Smart List to determine which channel drives the most
 
 ## Summary
 
-The `channel` field is already present in every `share_click` webhook payload fired by the DRU CLEAR app. No code changes are needed. The GHL workflow described above is the only configuration required to enable per-channel tagging, referral attribution, and conversion tracking.
+The `channel` field is already present in every `share_click` webhook payload fired by the DRU CLEAR app — from both the Thank You page (Page 8) share buttons and the "Copy My Results Link" button on the Results page (Page 7). No code changes are needed. The GHL workflow described above is the only configuration required to enable:
+
+- Per-channel contact tagging (`shared-via-linkedin`, `shared-via-whatsapp`, etc.)
+- A filterable `last_share_channel` dropdown field for instant Contacts view segmentation
+- A `share_count` incrementor that identifies your most active promoters by sort order
+- Referral attribution linking shared links back to the original promoter contact
+- Conversion tracking to determine which platform drives the most completed assessments
