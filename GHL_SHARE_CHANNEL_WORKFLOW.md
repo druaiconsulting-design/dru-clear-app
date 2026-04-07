@@ -50,9 +50,11 @@ After the trigger, add an **If/Else** action. Create five branches based on the 
 | Branch 4 | `channel` equals `email` |
 | Branch 5 | `channel` equals `clipboard` (catch-all / else) |
 
-### Step 3 — Tag Contacts Per Branch
+### Step 3 — Tag Contacts and Write last_share_channel Per Branch
 
-Inside each branch, add an **Update Contact** action to apply a tag:
+Inside each branch, add **two** sequential **Update Contact** actions:
+
+**Action 1 — Apply tag:**
 
 | Branch | Tag to Apply |
 |---|---|
@@ -63,6 +65,22 @@ Inside each branch, add an **Update Contact** action to apply a tag:
 | Clipboard | `shared-via-clipboard` |
 
 These tags accumulate on the contact record, so a contact who shares on both LinkedIn and WhatsApp will carry both tags.
+
+**Action 2 — Write `last_share_channel` custom field:**
+
+In the same **Update Contact** action (or a second one immediately after), set the custom field `last_share_channel` to the channel name:
+
+| Branch | `last_share_channel` Value |
+|---|---|
+| LinkedIn | `linkedin` |
+| WhatsApp | `whatsapp` |
+| Telegram | `telegram` |
+| Email | `email` |
+| Clipboard | `clipboard` |
+
+This field is overwritten on each share event, always reflecting the most recent channel. Because it is a standard contact field (not a tag), it is directly filterable in **Contacts → Filters** without needing Smart Lists — select "Custom Field" → `last_share_channel` → equals → `linkedin` to instantly see all contacts who last shared via LinkedIn.
+
+Also write the `last_shared_at` field to `{{trigger.timestamp}}` in the same Update Contact action to record the exact time of the most recent share.
 
 ### Step 4 — Track Referred Completions
 
@@ -91,16 +109,18 @@ You can add a follow-up email or SMS inside each branch to reinforce the share. 
 
 ## Custom Fields to Create in GHL
 
-Add these custom contact fields to store share data for reporting and segmentation:
+Before building the workflow, create these custom contact fields in GHL under **Settings → Custom Fields → Contacts → + Add Field**:
 
-| Field Name | Type | Purpose |
-|---|---|---|
-| `last_share_channel` | Text | Most recent channel used to share |
-| `share_count` | Number | Total number of times this contact has shared |
-| `referred_completions_count` | Number | How many people completed the assessment via this contact's share link |
-| `last_shared_at` | Date/Time | Timestamp of most recent share event |
+| Field Name | Field Label | Type | Purpose |
+|---|---|---|---|
+| `last_share_channel` | Last Share Channel | Text / Dropdown | Most recent platform used to share; directly filterable in Contacts view |
+| `share_count` | Share Count | Number | Total number of times this contact has shared |
+| `referred_completions_count` | Referred Completions | Number | How many people completed the assessment via this contact's share link |
+| `last_shared_at` | Last Shared At | Date/Time | Timestamp of most recent share event |
 
-To populate these fields, add **Update Contact** actions in each branch of the workflow.
+**Creating `last_share_channel` as a Dropdown field** is recommended over plain Text because it enables GHL's built-in filter UI to show a picklist of values (`linkedin`, `whatsapp`, `telegram`, `email`, `clipboard`) rather than requiring free-text entry. To create it as a Dropdown, choose **Dropdown** as the field type and add the five values listed above as options.
+
+Once created, these fields are populated by the **Update Contact** actions inside each workflow branch as described in Step 3. The `last_share_channel` field is then available in **Contacts → Filters → Custom Fields** for instant segmentation without Smart Lists.
 
 ---
 

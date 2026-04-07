@@ -1544,9 +1544,49 @@ function ResultsScreen({
     LEADING: 93,
   };
   const percentile = BENCHMARK_PERCENTILES[tier.label];
-
   const bookingUrl = buildBookingUrl(lead);
-
+  // Scroll hint — hide after user scrolls 60px
+  const [showScrollHint, setShowScrollHint] = useState(true);
+  // Copy results link state
+  const [resultsCopied, setResultsCopied] = useState(false);
+  const handleCopyResultsLink = () => {
+    const refParam = lead.email ? `?ref=${encodeURIComponent(lead.email)}` : "";
+    const url = `https://assessment.druaiconsulting.com${refParam}&score=${scaledScore}&result=${tier.label}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setResultsCopied(true);
+      setTimeout(() => setResultsCopied(false), 2500);
+    }).catch(() => {
+      // Fallback for browsers that block clipboard
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setResultsCopied(true);
+      setTimeout(() => setResultsCopied(false), 2500);
+    });
+    sendWebhook({
+      event: "share_click",
+      channel: "clipboard",
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+  };
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 60) setShowScrollHint(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   // Send results webhook on mount
   const sentRef = useRef(false);
   useEffect(() => {
@@ -1640,6 +1680,18 @@ function ResultsScreen({
       >
         You scored higher than <strong style={{ color: "#D4AF37" }}>{percentile}%</strong> of organizations assessed on AI readiness.
       </p>
+      {/* Scroll-down indicator — fades out after user scrolls */}
+      {showScrollHint && (
+        <div
+          className="flex flex-col items-center mb-3"
+          style={{ opacity: 1, transition: "opacity 0.4s ease", pointerEvents: "none" }}
+        >
+          <p className="text-xs mb-1" style={{ color: "rgba(212,175,55,0.55)", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em" }}>scroll to see your full results</p>
+          <svg className="scroll-chevron" width="20" height="12" viewBox="0 0 20 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 2L10 10L18 2" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
 
       {/* AI Readiness Badge — tappable to download */}
       {badgeUrl && (
@@ -1771,9 +1823,43 @@ function ResultsScreen({
         className="btn-magenta mb-4"
         onClick={onBookCall}
       >
-        {ctaLabel}
+         {ctaLabel}
       </button>
-
+      {/* Copy My Results Link — one-tap share from Page 7 */}
+      <button
+        onClick={handleCopyResultsLink}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.5rem",
+          width: "100%",
+          padding: "0.65rem 1rem",
+          marginBottom: "1rem",
+          background: resultsCopied ? "rgba(212,175,55,0.12)" : "transparent",
+          color: resultsCopied ? "#D4AF37" : "rgba(212,175,55,0.7)",
+          border: `1px solid ${resultsCopied ? "#D4AF37" : "rgba(212,175,55,0.3)"}`,
+          borderRadius: 4,
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.8rem",
+          letterSpacing: "0.06em",
+          cursor: "pointer",
+          transition: "all 0.2s",
+        }}
+      >
+        {resultsCopied ? (
+          <>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7L5.5 10.5L12 3.5" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            LINK COPIED!
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 1H13V5M13 1L7 7M6 3H2C1.44772 3 1 3.44772 1 4V12C1 12.5523 1.44772 13 2 13H10C10.5523 13 11 12.5523 11 12V8" stroke="rgba(212,175,55,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            COPY MY RESULTS LINK
+          </>
+        )}
+      </button>
       {/* Disclaimer */}
       <p
         className="text-center mb-4"
@@ -2268,7 +2354,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
           {/* Copy Link */}
           <button
             onClick={handleCopyLink}
-            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: copied ? "rgba(212,175,55,0.15)" : "transparent", color: copied ? "#D4AF37" : "rgba(230,230,230,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", border: "1px solid " + (copied ? "#D4AF37" : "rgba(230,230,230,0.25)"), borderRadius: 4, cursor: "pointer", letterSpacing: "0.02em", transition: "all 0.2s", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: copied ? "rgba(212,175,55,0.15)" : "transparent", color: copied ? "#D4AF37" : "rgba(212,175,55,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", border: "1px solid " + (copied ? "#D4AF37" : "rgba(212,175,55,0.35)"), borderRadius: 4, cursor: "pointer", letterSpacing: "0.02em", transition: "all 0.2s", whiteSpace: "nowrap" }}
           >
             {copied ? (
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
