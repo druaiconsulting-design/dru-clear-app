@@ -186,7 +186,7 @@ const GAP_MESSAGES: Record<string, string> = {
 
 const TIER_MESSAGES: Record<string, string> = {
   EMERGING:
-    "Your organization is in the early stages of AI readiness. Without a structured approach, you risk wasting resources on disconnected initiatives. The DRU CLEAR Alignment Diagnostic will pinpoint exactly where to start for maximum impact.",
+    "Your organization is in the early stages of AI readiness. Without a structured approach, you risk wasting resources on disconnected initiatives. The DRU CLEAR™ Alignment Diagnostic will pinpoint exactly where to start for maximum impact.",
   DEVELOPING:
     "You've begun the AI conversation, but critical gaps in Clarity and Alignment are slowing your momentum. A full diagnostic will reveal the specific friction points and give you a clear path forward.",
   ADVANCING:
@@ -1911,16 +1911,33 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
 
   // Copy Link state
   const [copied, setCopied] = useState(false);
+  // Share confirmation — shows inline banner after any share button click
+  const [shareConfirmChannel, setShareConfirmChannel] = useState<string | null>(null);
+  const shareConfirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showShareConfirm = (channel: string) => {
+    if (shareConfirmTimer.current) clearTimeout(shareConfirmTimer.current);
+    setShareConfirmChannel(channel);
+    shareConfirmTimer.current = setTimeout(() => setShareConfirmChannel(null), 3500);
+  };
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {
+      const el = document.createElement("textarea");
+      el.value = shareText;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
     fireShareWebhook("clipboard");
   };
-
   // Fire a lightweight webhook to GHL when a user clicks any share button
   const fireShareWebhook = (channel: string) => {
+    showShareConfirm(channel);
     sendWebhook({
       event: "share_click",
       channel,
@@ -2365,7 +2382,37 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
           </button>
         </div>
       </div>
-
+      {/* Share confirmation banner — appears after any share button click */}
+      <div
+        style={{
+          height: shareConfirmChannel ? "2.5rem" : "0",
+          overflow: "hidden",
+          transition: "height 0.3s ease",
+          marginBottom: shareConfirmChannel ? "0.75rem" : "0",
+        }}
+      >
+        {shareConfirmChannel && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1rem",
+              background: "rgba(212,175,55,0.1)",
+              border: "1px solid rgba(212,175,55,0.35)",
+              borderRadius: 4,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.06em" }}>
+              Shared! Your link is being tracked.
+            </span>
+          </div>
+        )}
+      </div>
       {/* PDF Download Button */}
       <button
         onClick={generatePdf}
@@ -2555,6 +2602,35 @@ export default function DruClearApp() {
   );
   const [scores, setScores] = useState<Scores>(saved?.scores ?? {});
 
+  // PWA Add to Home Screen prompt
+  const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(() => {
+    try { return localStorage.getItem("dru_install_dismissed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+      if (!installDismissed) setShowInstallBanner(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, [installDismissed]);
+  const handleInstall = async () => {
+    if (!installPromptEvent) return;
+    (installPromptEvent as any).prompt();
+    const { outcome } = await (installPromptEvent as any).userChoice;
+    if (outcome === "accepted") {
+      setShowInstallBanner(false);
+      setInstallPromptEvent(null);
+    }
+  };
+  const dismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    setInstallDismissed(true);
+    try { localStorage.setItem("dru_install_dismissed", "1"); } catch {}
+  };
   // Register service worker + flush any queued webhooks from previous sessions
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -2702,10 +2778,69 @@ export default function DruClearApp() {
       )}
 
       {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
-
       {screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("thank-you")} />}
-
       {screen === "thank-you" && <ThankYouScreen lead={lead} scores={scores} />}
+
+      {/* PWA Add to Home Screen banner — shown once per device, dismissed permanently */}
+      {showInstallBanner && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)",
+            borderTop: "1px solid rgba(212,175,55,0.4)",
+            padding: "1rem 1.25rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.5)",
+          }}
+        >
+          <img
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/pwa-icon-192-PkzUaZDGJVSP5NXAVXoSfp.png"
+            alt="DRU CLEAR™"
+            style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Add to Home Screen</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em" }}>Install DRU CLEAR™ for quick access</div>
+          </div>
+          <button
+            onClick={handleInstall}
+            style={{ background: "#D4AF37", color: "#0A1628", border: "none", borderRadius: 4, padding: "0.45rem 0.9rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: "pointer", flexShrink: 0 }}
+          >
+            INSTALL
+          </button>
+          <button
+            onClick={dismissInstallBanner}
+            aria-label="Dismiss"
+            style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Global footer — copyright and trademark */}
+      {screen !== "splash" && screen !== "calculating" && (
+        <footer
+          style={{
+            textAlign: "center",
+            padding: "0.75rem 1rem",
+            color: "rgba(255,255,255,0.25)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 400,
+            fontSize: "0.65rem",
+            letterSpacing: "0.04em",
+            background: "transparent",
+          }}
+        >
+          © 2026 DRU CLEAR™ &nbsp;·&nbsp; All Rights Reserved &nbsp;·&nbsp; DRU AI Consulting
+        </footer>
+      )}
     </div>
   );
 }
