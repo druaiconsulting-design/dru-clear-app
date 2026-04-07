@@ -1276,7 +1276,12 @@ function LeadCaptureScreen({
               }}
             />
           </div>
-          {submitted && getPhoneError() && (
+          {/* Live format hint — always visible, updates when country changes */}
+          {!submitted || !getPhoneError() ? (
+            <p className="text-xs mt-1" style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif" }}>
+              {countryCode.hint}
+            </p>
+          ) : (
             <p className="text-xs mt-1" style={{ color: "#E53935" }}>{getPhoneError()}</p>
           )}
         </div>
@@ -1570,13 +1575,15 @@ function ResultsScreen({
     <div
       className="screen-enter flex flex-col"
       style={{
-        height: "100%",
+        minHeight: "100%",
         background: "#0A2342",
         overflowY: "auto",
-        padding: "1.5rem 1.25rem 1.5rem",
+        overflowX: "hidden",
+        padding: "clamp(1rem, 4vw, 1.5rem) clamp(0.875rem, 4vw, 1.25rem) 2rem",
         maxWidth: 480,
         margin: "0 auto",
         width: "100%",
+        boxSizing: "border-box",
       }}
     >
       {/* Page indicator */}
@@ -1629,11 +1636,11 @@ function ResultsScreen({
         <div className="flex flex-col" style={{ gap: "0.6rem" }}>
           {pillars.map((p) => (
             <div key={p.name}>
-              <div className="flex justify-between items-center" style={{ marginBottom: "0.3rem" }}>
-                <span style={{ color: "#E6E6E6", fontSize: "clamp(0.7rem, 3vw, 0.75rem)", fontWeight: 500 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem", gap: "0.25rem" }}>
+                <span style={{ color: "#E6E6E6", fontSize: "clamp(0.68rem, 2.8vw, 0.75rem)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                   {p.name[0]} — {p.name}
                 </span>
-                <span style={{ color: "#D4AF37", fontSize: "clamp(0.7rem, 3vw, 0.75rem)", fontWeight: 600, whiteSpace: "nowrap", marginLeft: "0.5rem" }}>
+                <span style={{ color: "#D4AF37", fontSize: "clamp(0.68rem, 2.8vw, 0.75rem)", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {p.score}/15
                 </span>
               </div>
@@ -1659,14 +1666,14 @@ function ResultsScreen({
           >
             Your Strongest Pillar
           </h3>
-          <div className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
-            <div className="flex items-start gap-2">
-              <span style={{ color: "#43A047", fontSize: "0.85rem", marginTop: 1 }}>★</span>
-              <div>
-                <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
+          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.6rem 0.75rem", wordBreak: "break-word", overflowWrap: "break-word" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+              <span style={{ color: "#43A047", fontSize: "0.85rem", marginTop: 1, flexShrink: 0 }}>★</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ color: "#FFFFFF", fontSize: "clamp(0.68rem, 2.8vw, 0.75rem)", fontWeight: 600, marginBottom: "0.25rem" }}>
                   {strongestPillar.name} — {strongestPillar.score}/15
                 </p>
-                <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.8vw, 0.7rem)", lineHeight: 1.6 }}>
+                <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.6vw, 0.7rem)", lineHeight: 1.6, margin: 0 }}>
                   {STRENGTH_MESSAGES[strongestPillar.name]}
                 </p>
               </div>
@@ -1686,14 +1693,14 @@ function ResultsScreen({
           </h3>
           <div className="flex flex-col gap-2">
             {topGaps.map((g) => (
-              <div key={g.name} className="dru-card" style={{ padding: "0.6rem 0.75rem" }}>
-                <div className="flex items-start gap-2">
-                  <span style={{ color: "#D4AF37", fontSize: "0.85rem", marginTop: 1 }}>⚠</span>
-                  <div>
-                    <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFFFFF" }}>
+              <div key={g.name} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.6rem 0.75rem", wordBreak: "break-word", overflowWrap: "break-word" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <span style={{ color: "#D4AF37", fontSize: "0.85rem", marginTop: 1, flexShrink: 0 }}>⚠</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ color: "#FFFFFF", fontSize: "clamp(0.68rem, 2.8vw, 0.75rem)", fontWeight: 600, marginBottom: "0.25rem" }}>
                       {g.name} Gap
                     </p>
-                    <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.8vw, 0.7rem)", lineHeight: 1.6 }}>
+                    <p style={{ color: "#E6E6E6", fontSize: "clamp(0.65rem, 2.6vw, 0.7rem)", lineHeight: 1.6, margin: 0 }}>
                       {GAP_MESSAGES[g.name]}
                     </p>
                   </div>
@@ -1753,16 +1760,30 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const total = Object.values(scores).reduce((a, b) => a + b, 0);
   const tier = getTier(total);
   const scaledScore = Math.round((total / 75) * 100);
-  // Copy button removed per design spec
-
   // Referral URL: appends ?ref=<email> so referred visitors are attributed to this promoter
   const refParam = lead.email ? `?ref=${encodeURIComponent(lead.email)}` : "";
-  const assessmentUrl = `${window.location.origin}${refParam}`;
-  const shareText = `I just completed the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 — ${tier.label} tier. Find out where your organization stands: ${assessmentUrl}`;
+  const assessmentUrl = `https://assessment.druaiconsulting.com${refParam}`;
+
+  // Unified share message used across ALL channels
+  const shareText = `I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`;
+
+  // Per-channel URLs
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(assessmentUrl)}&summary=${encodeURIComponent(shareText)}`;
-  const emailSubject = encodeURIComponent(`My DRU CLEAR™ AI Readiness Score: ${scaledScore}/100 — ${tier.label}`);
-  const emailBody = encodeURIComponent(`${shareText}\n\nTake the free assessment at: ${assessmentUrl}`);
+  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(assessmentUrl)}&text=${encodeURIComponent(shareText)}`;
+  const emailSubject = encodeURIComponent("Your DRU AI Readiness Assessment Score");
+  const emailBody = encodeURIComponent(`I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`);
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+
+  // Copy Link state
+  const [copied, setCopied] = useState(false);
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+    fireShareWebhook("clipboard");
+  };
 
   // Fire a lightweight webhook to GHL when a user clicks any share button
   const fireShareWebhook = (channel: string) => {
@@ -2123,66 +2144,69 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
         >
           Share Your Results
         </p>
-        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
+          {/* Email */}
+          <a
+            href={emailUrl}
+            onClick={() => fireShareWebhook("email")}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "none", borderRadius: 4, border: "1px solid rgba(212,175,55,0.4)", letterSpacing: "0.02em", transition: "border-color 0.2s, background 0.2s", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#D4AF37"; (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+            Email
+          </a>
           {/* LinkedIn */}
           <a
             href={linkedInUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => fireShareWebhook("linkedin")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.55rem 1rem",
-              background: "#0A66C2",
-              color: "#FFFFFF",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: "0.78rem",
-              textDecoration: "none",
-              borderRadius: 4,
-              letterSpacing: "0.02em",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#004182"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#0A66C2"; }}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: "#0077B5", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "none", borderRadius: 4, letterSpacing: "0.02em", transition: "background 0.2s", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#005f8e"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#0077B5"; }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-            </svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
             LinkedIn
           </a>
-          {/* Email */}
+          {/* WhatsApp */}
           <a
-            href={emailUrl}
-            onClick={() => fireShareWebhook("email")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.55rem 1rem",
-              background: "transparent",
-              color: "#D4AF37",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: "0.78rem",
-              textDecoration: "none",
-              borderRadius: 4,
-              border: "1px solid rgba(212,175,55,0.4)",
-              letterSpacing: "0.02em",
-              transition: "border-color 0.2s, background 0.2s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#D4AF37"; (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+            href={whatsAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fireShareWebhook("whatsapp")}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: "#25D366", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "none", borderRadius: 4, letterSpacing: "0.02em", transition: "background 0.2s", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#1da851"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#25D366"; }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            Email
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
           </a>
-
+          {/* Telegram */}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fireShareWebhook("telegram")}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: "#0088cc", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "none", borderRadius: 4, letterSpacing: "0.02em", transition: "background 0.2s", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#006699"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#0088cc"; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            Telegram
+          </a>
+          {/* Copy Link */}
+          <button
+            onClick={handleCopyLink}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 0.9rem", background: copied ? "rgba(212,175,55,0.15)" : "transparent", color: copied ? "#D4AF37" : "rgba(230,230,230,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", border: "1px solid " + (copied ? "#D4AF37" : "rgba(230,230,230,0.25)"), borderRadius: 4, cursor: "pointer", letterSpacing: "0.02em", transition: "all 0.2s", whiteSpace: "nowrap" }}
+          >
+            {copied ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            )}
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
         </div>
       </div>
 
