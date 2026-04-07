@@ -1517,6 +1517,27 @@ function ResultsScreen({
 
   const ctaLabel = "Take The Next Step →";
 
+  const badgeUrl = BADGE_URLS[tier.label];
+
+  // Download badge as PNG
+  const handleBadgeDownload = async () => {
+    if (!badgeUrl) return;
+    try {
+      const res = await fetch(badgeUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DRU-CLEAR-Badge-${tier.label}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(badgeUrl, "_blank");
+    }
+  };
+
   // Score comparison: static percentile benchmarks per tier
   const BENCHMARK_PERCENTILES: Record<string, number> = {
     EMERGING: 25,
@@ -1622,6 +1643,36 @@ function ResultsScreen({
       >
         You scored higher than <strong style={{ color: "#D4AF37" }}>{percentile}%</strong> of organizations assessed on AI readiness.
       </p>
+
+      {/* AI Readiness Badge — tappable to download */}
+      {badgeUrl && (
+        <div className="flex flex-col items-center mb-4" style={{ gap: "0.4rem" }}>
+          <button
+            onClick={handleBadgeDownload}
+            title="Tap to save & share"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "block", width: "100%", maxWidth: 320 }}
+          >
+            <img
+              src={badgeUrl}
+              alt={`${tier.label} tier badge`}
+              loading="eager"
+              width="320"
+              height="168"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              style={{
+                width: "100%",
+                maxWidth: 320,
+                height: "auto",
+                display: "block",
+                borderRadius: 8,
+                border: `1px solid ${tier.color}40`,
+                boxShadow: `0 4px 24px ${tier.color}20`,
+              }}
+            />
+          </button>
+          <p style={{ color: "rgba(212,175,55,0.55)", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>Tap to save &amp; share</p>
+        </div>
+      )}
 
       <div className="gold-divider mb-3" />
 
@@ -2067,26 +2118,49 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
         Now that you've reviewed your insights, let's move forward together.
       </p>
 
-      {/* Tier Badge Image */}
+      {/* Tier Badge Image — tappable to download */}
       {badgeUrl && (
-        <img
-          src={badgeUrl}
-          alt={`${tier.label} tier badge`}
-          loading="eager"
-          width="320"
-          height="168"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          style={{
-            width: "100%",
-            maxWidth: 320,
-            height: "auto",
-            display: "block",
-            borderRadius: 8,
-            marginBottom: "1.5rem",
-            border: `1px solid ${tier.color}30`,
-            boxShadow: `0 4px 24px ${tier.color}20`,
-          }}
-        />
+        <div className="flex flex-col items-center" style={{ gap: "0.4rem", marginBottom: "1.5rem", width: "100%", maxWidth: 320 }}>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(badgeUrl);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `DRU-CLEAR-Badge-${tier.label}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                window.open(badgeUrl, "_blank");
+              }
+            }}
+            title="Tap to save & share"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "block", width: "100%" }}
+          >
+            <img
+              src={badgeUrl}
+              alt={`${tier.label} tier badge`}
+              loading="eager"
+              width="320"
+              height="168"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              style={{
+                width: "100%",
+                maxWidth: 320,
+                height: "auto",
+                display: "block",
+                borderRadius: 8,
+                border: `1px solid ${tier.color}40`,
+                boxShadow: `0 4px 24px ${tier.color}20`,
+              }}
+            />
+          </button>
+          <p style={{ color: "rgba(212,175,55,0.55)", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>Tap to save &amp; share</p>
+        </div>
       )}
 
       {/* Book CTA Button */}
@@ -2424,15 +2498,18 @@ export default function DruClearApp() {
 
   const goTo = (s: Screen) => setScreen(s);
 
+  const isScrollableScreen = screen === "results" || screen === "thank-you" || screen === "lead-capture";
+
   return (
     <div
       style={{
-        height: "100dvh",
+        minHeight: "100dvh",
         width: "100%",
         background: "#0A2342",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflowY: isScrollableScreen ? "auto" : "hidden",
+        overflowX: "hidden",
         position: "relative",
       }}
     >
