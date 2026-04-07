@@ -82,6 +82,24 @@ This field is overwritten on each share event, always reflecting the most recent
 
 Also write the `last_shared_at` field to `{{trigger.timestamp}}` in the same Update Contact action to record the exact time of the most recent share.
 
+**Action 3 — Write `first_share_channel` (write-once):**
+
+After Action 2, add a third **Update Contact** action inside each branch to write `first_share_channel`. To ensure this field is only written on the very first share and never overwritten on subsequent shares, configure it as follows:
+
+1. Add an **If/Else** condition immediately before this Update Contact action.
+2. Set the condition to: `first_share_channel` **is empty** (i.e. the field has no value yet).
+3. Inside the **Yes** branch of that condition, add the **Update Contact** action that writes the channel name to `first_share_channel`.
+4. Leave the **No** branch empty — if the field already has a value, do nothing.
+
+This write-once pattern means `first_share_channel` permanently records the platform a promoter chose on their very first share, regardless of how many times they share afterward. Comparing `first_share_channel` against `last_share_channel` reveals whether a promoter's preferred platform has shifted over time.
+
+**Complete action order inside each branch (after the above additions):**
+
+1. Update Contact — apply tag (e.g. `shared-via-linkedin`)
+2. Update Contact — write `last_share_channel` + `last_shared_at`
+3. If/Else: `first_share_channel` is empty → Update Contact writes `first_share_channel`
+4. Math Operation — increment `share_count` by 1 *(see Step 3a below)*
+
 ### Step 3a — Increment share_count After Each Branch
 
 After the Update Contact actions inside **every branch** (LinkedIn, WhatsApp, Telegram, Email, and Clipboard), add a **Math Operation** action to increment the `share_count` field by 1. This step is identical across all five branches — the same configuration applies to each.
@@ -97,11 +115,12 @@ After the Update Contact actions inside **every branch** (LinkedIn, WhatsApp, Te
 
 GHL's Math Operation action reads the current value of `share_count`, adds 1, and writes the result back to the contact record. If the field is empty (first share), GHL treats it as 0 and writes 1.
 
-**Action order inside each branch:**
+**Action order inside each branch (complete sequence):**
 
 1. Update Contact — apply tag (e.g. `shared-via-linkedin`)
-2. Update Contact — write `last_share_channel`, `last_shared_at`
-3. Math Operation — increment `share_count` by 1
+2. Update Contact — write `last_share_channel` + `last_shared_at`
+3. If/Else: `first_share_channel` is empty → Update Contact writes `first_share_channel`
+4. Math Operation — increment `share_count` by 1
 
 Once populated, sort contacts in **Contacts → Sort by → share_count (descending)** to instantly identify your most active promoters. Contacts with a high `share_count` and a `drove-referred-completion` tag are your highest-value advocates and ideal candidates for a VIP referral reward outreach.
 
@@ -137,6 +156,7 @@ Before building the workflow, create these custom contact fields in GHL under **
 | Field Name | Field Label | Type | Purpose |
 |---|---|---|---|
 | `last_share_channel` | Last Share Channel | Text / Dropdown | Most recent platform used to share; directly filterable in Contacts view |
+| `first_share_channel` | First Share Channel | Text / Dropdown | Platform chosen on the very first share; never overwritten after initial write |
 | `share_count` | Share Count | Number | Total number of times this contact has shared |
 | `referred_completions_count` | Referred Completions | Number | How many people completed the assessment via this contact's share link |
 | `last_shared_at` | Last Shared At | Date/Time | Timestamp of most recent share event |
@@ -170,6 +190,7 @@ The `channel` field is already present in every `share_click` webhook payload fi
 
 - Per-channel contact tagging (`shared-via-linkedin`, `shared-via-whatsapp`, etc.)
 - A filterable `last_share_channel` dropdown field for instant Contacts view segmentation
+- A `first_share_channel` write-once field recording each promoter's original platform preference
 - A `share_count` incrementor that identifies your most active promoters by sort order
 - Referral attribution linking shared links back to the original promoter contact
 - Conversion tracking to determine which platform drives the most completed assessments
