@@ -9,19 +9,54 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en",
+  "categories": ["business", "productivity", "education"],
   "icons": [
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/pwa-icon-192-PkzUaZDGJVSP5NXAVXoSfp.png",
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-16x16_d7b9ebad.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-32x32_63304b79.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-48x48_bea65eea.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-120x120_b511a7b9.png",
+      "sizes": "120x120",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-152x152_8a9db39d.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-167x167_4131ba7c.png",
+      "sizes": "167x167",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-180x180_932489cb.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-192x192_774fb608.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/pwa-icon-512-XyW4zi9f9tJhZQb74wqndA.png",
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-512x512_d8947d53.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["business", "productivity", "education"]
+  ]
 }
