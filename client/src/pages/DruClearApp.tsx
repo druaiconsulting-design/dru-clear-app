@@ -2608,6 +2608,17 @@ export default function DruClearApp() {
   const [installDismissed, setInstallDismissed] = useState(() => {
     try { return localStorage.getItem("dru_install_dismissed") === "1"; } catch { return false; }
   });
+  // iOS-specific Add to Home Screen nudge (Safari does not fire beforeinstallprompt)
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandaloneMode = (window.navigator as any).standalone === true;
+  const [showIosBanner, setShowIosBanner] = useState(false);
+  const [iosBannerDismissed] = useState(() => {
+    try { return localStorage.getItem("dru_ios_install_dismissed") === "1"; } catch { return false; }
+  });
+  const dismissIosBanner = () => {
+    setShowIosBanner(false);
+    try { localStorage.setItem("dru_ios_install_dismissed", "1"); } catch {}
+  };
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -2631,6 +2642,13 @@ export default function DruClearApp() {
     setInstallDismissed(true);
     try { localStorage.setItem("dru_install_dismissed", "1"); } catch {}
   };
+  // Show iOS banner when user reaches results screen (only on iOS Safari, not in standalone mode)
+  useEffect(() => {
+    if (isIos && !isInStandaloneMode && !iosBannerDismissed && screen === "results") {
+      const timer = setTimeout(() => setShowIosBanner(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [screen, isIos, isInStandaloneMode, iosBannerDismissed]);
   // Register service worker + flush any queued webhooks from previous sessions
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -2800,7 +2818,7 @@ export default function DruClearApp() {
           }}
         >
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/pwa-icon-192-PkzUaZDGJVSP5NXAVXoSfp.png"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-tm-192x192_553a3e0a.png"
             alt="DRU CLEAR™"
             style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
           />
@@ -2821,6 +2839,51 @@ export default function DruClearApp() {
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* iOS Add to Home Screen instruction banner — Safari/iPhone specific */}
+      {showIosBanner && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)",
+            borderTop: "1px solid rgba(212,175,55,0.4)",
+            padding: "1rem 1.25rem 1.5rem",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-tm-192x192_553a3e0a.png"
+              alt="DRU CLEAR™"
+              style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 3 }}>Add DRU CLEAR™ to Your Home Screen</div>
+              <div style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em", lineHeight: 1.5 }}>Install for instant access anytime, no app store required.</div>
+            </div>
+            <button
+              onClick={dismissIosBanner}
+              aria-label="Dismiss"
+              style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1, marginTop: "-2px" }}
+            >
+              ×
+            </button>
+          </div>
+          {/* Step-by-step instruction */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 6, padding: "0.6rem 0.75rem" }}>
+            <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", letterSpacing: "0.02em", lineHeight: 1.6 }}>
+              Tap the{" "}
+              <span style={{ display: "inline-block", background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4, padding: "1px 6px", color: "#D4AF37", fontWeight: 700, fontSize: "0.68rem" }}>Share ↗</span>
+              {" "}button at the bottom of Safari, then tap{" "}
+              <span style={{ color: "#D4AF37", fontWeight: 700 }}>"Add to Home Screen"</span>
+            </span>
+          </div>
         </div>
       )}
 
