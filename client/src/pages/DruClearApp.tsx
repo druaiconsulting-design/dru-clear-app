@@ -2340,18 +2340,11 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
           textAlign: "center",
         }}
       >
-        <p
-          style={{
-            color: "rgba(230,230,230,0.6)",
-            fontSize: "0.7rem",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            marginBottom: "0.875rem",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 600,
-          }}
-        >
-          Share Your Results
+        <p style={{ color: "#D4AF37", fontSize: "1rem", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 800 }}>
+          Spread the Word
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.7rem", lineHeight: 1.5, fontFamily: "'Lato', sans-serif", marginBottom: "1rem" }}>
+          Help a fellow leader discover their AI readiness score.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
           {/* Email */}
@@ -2418,6 +2411,12 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
           </button>
         </div>
       </div>
+      {/* Caption Blocks Section Header */}
+      <div style={{ width: "100%", maxWidth: 320, marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(212,175,55,0.2)" }} />
+        <p style={{ color: "rgba(212,175,55,0.6)", fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, whiteSpace: "nowrap" }}>Ready-Made Copy</p>
+        <div style={{ flex: 1, height: 1, background: "rgba(212,175,55,0.2)" }} />
+      </div>
       {/* LinkedIn Suggested Caption */}
       <div
         style={{
@@ -2455,12 +2454,12 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             alignItems: "center",
             gap: "0.35rem",
             padding: "0.45rem 0.85rem",
-            background: captionCopied ? "rgba(0,119,181,0.2)" : "transparent",
-            color: captionCopied ? "#4FC3F7" : "rgba(0,119,181,0.9)",
+            background: captionCopied ? "rgba(212,175,55,0.2)" : "rgba(212,175,55,0.08)",
+            color: captionCopied ? "#D4AF37" : "rgba(212,175,55,0.85)",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: "0.7rem",
-            border: "1px solid " + (captionCopied ? "rgba(79,195,247,0.6)" : "rgba(0,119,181,0.4)"),
+            border: "1px solid " + (captionCopied ? "#D4AF37" : "rgba(212,175,55,0.4)"),
             borderRadius: 4,
             cursor: "pointer",
             letterSpacing: "0.05em",
@@ -2512,12 +2511,12 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             alignItems: "center",
             gap: "0.35rem",
             padding: "0.45rem 0.85rem",
-            background: whatsAppCaptionCopied ? "rgba(37,211,102,0.15)" : "transparent",
-            color: whatsAppCaptionCopied ? "#25D366" : "rgba(37,211,102,0.85)",
+            background: whatsAppCaptionCopied ? "rgba(212,175,55,0.2)" : "rgba(212,175,55,0.08)",
+            color: whatsAppCaptionCopied ? "#D4AF37" : "rgba(212,175,55,0.85)",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: "0.7rem",
-            border: "1px solid " + (whatsAppCaptionCopied ? "rgba(37,211,102,0.6)" : "rgba(37,211,102,0.35)"),
+            border: "1px solid " + (whatsAppCaptionCopied ? "#D4AF37" : "rgba(212,175,55,0.4)"),
             borderRadius: 4,
             cursor: "pointer",
             letterSpacing: "0.05em",
@@ -2569,12 +2568,12 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             alignItems: "center",
             gap: "0.35rem",
             padding: "0.45rem 0.85rem",
-            background: telegramCaptionCopied ? "rgba(41,182,246,0.15)" : "transparent",
-            color: telegramCaptionCopied ? "#29B6F6" : "rgba(41,182,246,0.85)",
+            background: telegramCaptionCopied ? "rgba(212,175,55,0.2)" : "rgba(212,175,55,0.08)",
+            color: telegramCaptionCopied ? "#D4AF37" : "rgba(212,175,55,0.85)",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: "0.7rem",
-            border: "1px solid " + (telegramCaptionCopied ? "rgba(41,182,246,0.6)" : "rgba(41,182,246,0.35)"),
+            border: "1px solid " + (telegramCaptionCopied ? "#D4AF37" : "rgba(212,175,55,0.4)"),
             borderRadius: 4,
             cursor: "pointer",
             letterSpacing: "0.05em",
@@ -2628,12 +2627,12 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             alignItems: "center",
             gap: "0.35rem",
             padding: "0.45rem 0.85rem",
-            background: emailSubjectCopied ? "rgba(212,175,55,0.15)" : "transparent",
-            color: emailSubjectCopied ? "#D4AF37" : "rgba(212,175,55,0.7)",
+            background: emailSubjectCopied ? "rgba(212,175,55,0.2)" : "rgba(212,175,55,0.08)",
+            color: emailSubjectCopied ? "#D4AF37" : "rgba(212,175,55,0.85)",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: "0.7rem",
-            border: "1px solid " + (emailSubjectCopied ? "rgba(212,175,55,0.6)" : "rgba(212,175,55,0.3)"),
+            border: "1px solid " + (emailSubjectCopied ? "#D4AF37" : "rgba(212,175,55,0.4)"),
             borderRadius: 4,
             cursor: "pointer",
             letterSpacing: "0.05em",
