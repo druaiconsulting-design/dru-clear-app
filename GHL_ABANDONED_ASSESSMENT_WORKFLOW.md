@@ -88,7 +88,7 @@ Mark the contact as having abandoned the assessment so they appear in the Smart 
 
 #### Step 5 — Send Re-Engagement Email
 
-Send a warm, non-pushy email that reminds the contact their results are waiting and provides a direct link back to the assessment.
+Send a warm, non-pushy email that reminds the contact their results are waiting and provides a direct link back to the start of the assessment. There is no session saving — the contact will begin fresh from the Welcome screen, which takes only 5–7 minutes to complete.
 
 - **Action type:** Send Email  
 - **From name:** `{{custom_values.sender_name}}` (e.g., *The DRU CLEAR™ Team*)  
@@ -109,7 +109,7 @@ The assessment covers six pillars of AI readiness and takes about 5–7 minutes 
 👉 Complete your assessment here:
 https://assessment.druaiconsulting.com
 
-Your answers are not saved between sessions, so you'll start fresh — but the questions are straightforward and the insights are worth it.
+The assessment takes just 5–7 minutes from start to finish. Your answers aren't saved between visits, so you'll begin fresh — but the questions are straightforward and the insights are well worth it.
 
 If you have any questions before diving in, just reply to this email.
 
@@ -120,7 +120,7 @@ DRU AI Consulting
 assessment.druaiconsulting.com
 ```
 
-> **Note:** The assessment URL is hardcoded rather than a personalised deep-link because the app does not currently support session resumption. If session persistence is added in a future version, replace this URL with a contact-specific `{{contact.referral_link}}` merge field.
+> **Note:** The assessment does not save progress between sessions by design. Every visit starts from the Welcome screen. The re-engagement email intentionally frames this as a quick 5–7 minute commitment rather than a continuation, which reduces friction and sets accurate expectations.
 
 ---
 
@@ -215,7 +215,7 @@ A healthy abandonment rate for a 5–7 minute assessment is typically 30–50%. 
 
 | Workflow | Relationship |
 |---|---|
-| `GHL_REFERRAL_LINK_AND_TEST_CHECKLIST.md` | The referral link used in share emails should also appear in the re-engagement email once session persistence is added |
+| `GHL_REFERRAL_LINK_AND_TEST_CHECKLIST.md` | The referral link used in share emails is separate from the re-engagement link; re-engagement always points to the assessment start |
 | `GHL_SHARE_CHANNEL_WORKFLOW.md` | Contacts who complete after re-engagement will still trigger share tracking on Page 8 |
 | `GHL_VIP_PROMOTER_WORKFLOW.md` | Re-engaged completions count toward share_count and VIP Promoter thresholds |
 | `GHL_PWA_INSTALLED_WORKFLOW.md` | If the contact installs the PWA before completing, the pwa_installed event fires independently and does not affect this workflow |
