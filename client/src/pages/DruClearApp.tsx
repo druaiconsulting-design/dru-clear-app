@@ -3028,49 +3028,129 @@ export default function DruClearApp() {
   );
   const [scores, setScores] = useState<Scores>(saved?.scores ?? {});
 
-  // ── PWA Install Banner — unified browser detection ──────────────────────────
-  // Detect browser type for platform-specific install instructions
+  // ── PWA Install Banner — unified browser detection (2026) ───────────────────
   const ua = navigator.userAgent;
   const isInStandaloneMode = (window.navigator as any).standalone === true ||
     window.matchMedia("(display-mode: standalone)").matches;
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const isAndroid = /android/i.test(ua);
+  const isMobile = isIos || isAndroid;
   const isSamsungBrowser = /samsungbrowser/i.test(ua);
   const isFirefox = /firefox/i.test(ua) && !/seamonkey/i.test(ua);
-  const isEdge = /edg\//i.test(ua);
-  const isChrome = /chrome/i.test(ua) && !/edg\//i.test(ua) && !/samsungbrowser/i.test(ua);
-  const isIosSafari = isIos && /safari/i.test(ua) && !/crios/i.test(ua) && !/fxios/i.test(ua);
+  const isEdgeBrowser = /edg\//i.test(ua);
+  const isOperaBrowser = /opr\//i.test(ua) || /opera/i.test(ua);
+  const isChromeBased = /chrome/i.test(ua) && !/edg\//i.test(ua) && !/samsungbrowser/i.test(ua) && !/opr\//i.test(ua);
+  // iOS: all browsers use the native Share sheet (iOS 16.4+)
+  // CriOS = Chrome on iOS, FxiOS = Firefox on iOS, EdgiOS = Edge on iOS
+  const isIosAnyBrowser = isIos; // all iOS browsers share the same Share sheet method
   const isIosChrome = isIos && /crios/i.test(ua);
   const isIosFirefox = isIos && /fxios/i.test(ua);
+  const isIosEdge = isIos && /edgios/i.test(ua);
+  const isIosSafari = isIos && !isIosChrome && !isIosFirefox && !isIosEdge;
+  // Desktop detection
+  const isDesktop = !isMobile;
+  const isDesktopChrome = isDesktop && isChromeBased;
+  const isDesktopEdge = isDesktop && isEdgeBrowser;
+  const isDesktopFirefox = isDesktop && isFirefox;
   // Browser-specific install instructions
-  type BrowserInstallInfo = { label: string; steps: string[] };
+  type BrowserInstallInfo = { label: string; steps: string[]; note?: string };
   const getBrowserInstallInfo = (): BrowserInstallInfo | null => {
     if (isInStandaloneMode) return null; // already installed
-    if (isIosSafari) return {
-      label: "Safari on iPhone/iPad",
-      steps: ["Tap the Share ↗ button at the bottom", "Scroll down and tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"],
-    };
+    // ── iOS: ALL browsers use the native Share sheet ──
+    // On iOS 16.4+, Chrome, Firefox, Edge, and Safari all use the Share icon
     if (isIosChrome) return {
       label: "Chrome on iPhone/iPad",
-      steps: ["Tap the ··· menu (bottom right)", "Tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"],
+      steps: [
+        "Tap the Share button (↑ box-with-arrow icon) at the bottom of Chrome",
+        "Scroll down in the Share sheet and tap \"Add to Home Screen\"",
+        "Tap \"Add\" in the top-right corner to confirm",
+      ],
+      note: "The Share button is in Chrome's bottom toolbar, not the ⋯ menu.",
     };
     if (isIosFirefox) return {
       label: "Firefox on iPhone/iPad",
-      steps: ["Tap the ··· menu (bottom right)", "Tap \"Share\"", "Tap \"Add to Home Screen\""],
+      steps: [
+        "Tap the Share button (↑ box-with-arrow icon) at the bottom of Firefox",
+        "Scroll down and tap \"Add to Home Screen\"",
+        "Tap \"Add\" to confirm",
+      ],
     };
+    if (isIosEdge) return {
+      label: "Edge on iPhone/iPad",
+      steps: [
+        "Tap the Share button (↑ box-with-arrow icon) at the bottom of Edge",
+        "Scroll down and tap \"Add to Home Screen\"",
+        "Tap \"Add\" to confirm",
+      ],
+    };
+    if (isIosSafari) return {
+      label: "Safari on iPhone/iPad",
+      steps: [
+        "Tap the Share button (↑ box-with-arrow icon) at the bottom of Safari",
+        "Scroll down and tap \"Add to Home Screen\"",
+        "Tap \"Add\" in the top-right corner to confirm",
+      ],
+    };
+    // ── Android browsers ──
     if (isSamsungBrowser) return {
       label: "Samsung Internet",
-      steps: ["Tap the ☰ menu (bottom right)", "Tap \"Add page to\"", "Tap \"Home screen\""],
+      steps: [
+        "Tap the ☰ menu icon (bottom right)",
+        "Tap \"Add page to\"",
+        "Tap \"Home screen\" and confirm",
+      ],
     };
     if (isFirefox && isAndroid) return {
       label: "Firefox on Android",
-      steps: ["Tap the ··· menu (top right)", "Tap \"Install\"", "Tap \"Add\" to confirm"],
+      steps: [
+        "Tap the ⋯ menu (top right)",
+        "Tap \"Install\"",
+        "Tap \"Add\" to confirm",
+      ],
     };
-    if (isEdge) return {
-      label: "Microsoft Edge",
-      steps: ["Tap the ··· menu (bottom)", "Tap \"Add to phone\"", "Tap \"Install\" to confirm"],
+    if (isEdgeBrowser && isAndroid) return {
+      label: "Edge on Android",
+      steps: [
+        "Tap the ⋯ menu (bottom center)",
+        "Tap \"Add to phone\"",
+        "Tap \"Install\" to confirm",
+      ],
     };
-    // Chrome on Android — uses beforeinstallprompt, handled by INSTALL button
+    if (isOperaBrowser && isAndroid) return {
+      label: "Opera on Android",
+      steps: [
+        "Tap the ⋯ menu (bottom right)",
+        "Tap \"Home screen\"",
+        "Tap \"Add\" to confirm",
+      ],
+    };
+    // Chrome on Android — uses native beforeinstallprompt (INSTALL button shown)
+    // ── Desktop browsers ──
+    if (isDesktopChrome) return {
+      label: "Chrome on Desktop",
+      steps: [
+        "Click the install icon (⤓) in the address bar (right side)",
+        "Click \"Install\" in the popup to confirm",
+      ],
+      note: "If no install icon appears, click ⋮ → Save and share → Install page as app.",
+    };
+    if (isDesktopEdge) return {
+      label: "Edge on Desktop",
+      steps: [
+        "Click the install icon (⤓ or app icon) in the address bar",
+        "Click \"Install\" in the popup to confirm",
+      ],
+      note: "Or click ⋯ → Apps → Install this site as an app.",
+    };
+    if (isDesktopFirefox) return {
+      label: "Firefox on Desktop",
+      steps: [
+        "Click the install icon (⤓) in the address bar if visible",
+        "Or open the Firefox menu (≡) and click \"Install\"",
+        "Click \"Add\" to confirm",
+      ],
+      note: "Firefox desktop PWA support requires Firefox 116 or later.",
+    };
     return null;
   };
   const browserInstallInfo = getBrowserInstallInfo();
@@ -3382,6 +3462,13 @@ export default function DruClearApp() {
               </div>
             ))}
           </div>
+          {/* Optional clarifying note for browsers with non-obvious install paths */}
+          {browserInstallInfo.note && (
+            <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "flex-start", gap: "0.4rem" }}>
+              <span style={{ color: "#D4AF37", fontSize: "0.7rem", flexShrink: 0, marginTop: 1 }}>&#9432;</span>
+              <span style={{ color: "rgba(255,255,255,0.45)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.63rem", letterSpacing: "0.02em", lineHeight: 1.5, fontStyle: "italic" }}>{browserInstallInfo.note}</span>
+            </div>
+          )}
         </div>
       )}
 
