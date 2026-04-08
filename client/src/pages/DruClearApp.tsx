@@ -3129,6 +3129,28 @@ export default function DruClearApp() {
     // Retry any webhooks that failed due to network issues in a previous session
     flushWebhookQueue();
   }, []);
+  // Fire pwa_installed webhook when user installs the app to their home screen
+  useEffect(() => {
+    const handleInstalled = () => {
+      sendWebhook({
+        event: "pwa_installed",
+        first_name: lead.firstName,
+        last_name: lead.lastName,
+        email: lead.email,
+        phone: normalizePhone(lead.phone || ""),
+        ai_country_name: lead.country_name || "",
+        ai_country_iso: lead.country_iso || "",
+        company: lead.company,
+        role: lead.role,
+        browser: navigator.userAgent,
+        platform: navigator.platform || "",
+        ...UTM_PARAMS,
+        timestamp: new Date().toISOString(),
+      });
+    };
+    window.addEventListener("appinstalled", handleInstalled);
+    return () => window.removeEventListener("appinstalled", handleInstalled);
+  }, [lead]);
 
   // Persist progress to sessionStorage whenever screen, lead, or scores change
   useEffect(() => {
