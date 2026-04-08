@@ -1917,6 +1917,13 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   // LinkedIn suggested caption
   const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier. If you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time. Take it here: ${assessmentUrl} #AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
   const [captionCopied, setCaptionCopied] = useState(false);
+  // WhatsApp suggested caption
+  const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
+  const [whatsAppCaptionCopied, setWhatsAppCaptionCopied] = useState(false);
+  // Email suggested subject line
+  const emailSuggestedSubject = `Have you checked your AI Readiness score yet?`;
+  const emailSuggestedBody = `Hi,\n\nI just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIt's a free 3-minute assessment that tells you exactly where your organization stands on AI readiness across 5 key pillars: Clarity, Leadership, Execution, Alignment, and Results.\n\nTake yours here: ${assessmentUrl}\n\nThought you'd find it useful.`;
+  const [emailSubjectCopied, setEmailSubjectCopied] = useState(false);
   // Copy Link state
   const [copied, setCopied] = useState(false);
   // Share confirmation — shows inline banner after any share button click
@@ -1942,6 +1949,20 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
       setTimeout(() => setCopied(false), 2500);
     });
     fireShareWebhook("clipboard");
+  };
+  // Fire a caption_copied webhook to GHL when user copies a suggested caption
+  const fireCaptionCopiedWebhook = (channel: string) => {
+    sendWebhook({
+      event: "caption_copied",
+      channel,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
   };
   // Fire a lightweight webhook to GHL when a user clicks any share button
   const fireShareWebhook = (channel: string) => {
@@ -2156,6 +2177,10 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
 
   // Feedback state
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  // Share with a Colleague form
+  const [colleagueEmail, setColleagueEmail] = useState("");
+  const [colleagueSent, setColleagueSent] = useState(false);
+  const [colleagueError, setColleagueError] = useState("");
 
   const handleFeedback = (rating: "up" | "down") => {
     if (feedback) return; // already submitted
@@ -2420,6 +2445,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             });
             setCaptionCopied(true);
             setTimeout(() => setCaptionCopied(false), 2500);
+            fireCaptionCopiedWebhook("linkedin");
           }}
           style={{
             display: "flex",
@@ -2444,6 +2470,122 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
           )}
           {captionCopied ? "Caption Copied!" : "Copy Caption"}
+        </button>
+      </div>
+      {/* WhatsApp Suggested Caption */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "1rem",
+          padding: "1rem 1.25rem",
+          background: "rgba(37,211,102,0.06)",
+          border: "1px solid rgba(37,211,102,0.2)",
+          borderRadius: 6,
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+          Suggested WhatsApp Message
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.55, fontFamily: "'Lato', sans-serif", marginBottom: "0.75rem", wordBreak: "break-word" }}>
+          {whatsAppCaption}
+        </p>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(whatsAppCaption).catch(() => {
+              const el = document.createElement("textarea");
+              el.value = whatsAppCaption;
+              document.body.appendChild(el);
+              el.select();
+              document.execCommand("copy");
+              document.body.removeChild(el);
+            });
+            setWhatsAppCaptionCopied(true);
+            setTimeout(() => setWhatsAppCaptionCopied(false), 2500);
+            fireCaptionCopiedWebhook("whatsapp");
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            padding: "0.45rem 0.85rem",
+            background: whatsAppCaptionCopied ? "rgba(37,211,102,0.15)" : "transparent",
+            color: whatsAppCaptionCopied ? "#25D366" : "rgba(37,211,102,0.85)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            border: "1px solid " + (whatsAppCaptionCopied ? "rgba(37,211,102,0.6)" : "rgba(37,211,102,0.35)"),
+            borderRadius: 4,
+            cursor: "pointer",
+            letterSpacing: "0.05em",
+            transition: "all 0.2s",
+          }}
+        >
+          {whatsAppCaptionCopied ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+          )}
+          {whatsAppCaptionCopied ? "Message Copied!" : "Copy Message"}
+        </button>
+      </div>
+      {/* Email Suggested Subject + Body */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "1rem",
+          padding: "1rem 1.25rem",
+          background: "rgba(212,175,55,0.05)",
+          border: "1px solid rgba(212,175,55,0.18)",
+          borderRadius: 6,
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+          Suggested Email Subject &amp; Body
+        </p>
+        <p style={{ color: "rgba(212,175,55,0.75)", fontSize: "0.68rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, marginBottom: "0.25rem", letterSpacing: "0.03em" }}>Subject:</p>
+        <p style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.5, fontFamily: "'Lato', sans-serif", marginBottom: "0.6rem" }}>{emailSuggestedSubject}</p>
+        <p style={{ color: "rgba(212,175,55,0.75)", fontSize: "0.68rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, marginBottom: "0.25rem", letterSpacing: "0.03em" }}>Body:</p>
+        <p style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.55, fontFamily: "'Lato', sans-serif", marginBottom: "0.75rem", whiteSpace: "pre-line", wordBreak: "break-word" }}>{emailSuggestedBody}</p>
+        <button
+          onClick={() => {
+            const full = `Subject: ${emailSuggestedSubject}\n\n${emailSuggestedBody}`;
+            navigator.clipboard.writeText(full).catch(() => {
+              const el = document.createElement("textarea");
+              el.value = full;
+              document.body.appendChild(el);
+              el.select();
+              document.execCommand("copy");
+              document.body.removeChild(el);
+            });
+            setEmailSubjectCopied(true);
+            setTimeout(() => setEmailSubjectCopied(false), 2500);
+            fireCaptionCopiedWebhook("email");
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            padding: "0.45rem 0.85rem",
+            background: emailSubjectCopied ? "rgba(212,175,55,0.15)" : "transparent",
+            color: emailSubjectCopied ? "#D4AF37" : "rgba(212,175,55,0.7)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            border: "1px solid " + (emailSubjectCopied ? "rgba(212,175,55,0.6)" : "rgba(212,175,55,0.3)"),
+            borderRadius: 4,
+            cursor: "pointer",
+            letterSpacing: "0.05em",
+            transition: "all 0.2s",
+          }}
+        >
+          {emailSubjectCopied ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+          )}
+          {emailSubjectCopied ? "Email Copied!" : "Copy Subject + Body"}
         </button>
       </div>
       {/* Share confirmation banner — appears after any share button click */}
@@ -2593,9 +2735,99 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
         )}
       </div>
 
+       {/* Share with a Colleague */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "2rem",
+          padding: "1.25rem 1.5rem",
+          background: "rgba(212,175,55,0.05)",
+          border: "1px solid rgba(212,175,55,0.2)",
+          borderRadius: 6,
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+          Share with a Colleague
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.65)", fontSize: "0.72rem", lineHeight: 1.5, fontFamily: "'Lato', sans-serif", marginBottom: "0.875rem" }}>
+          Know a leader who should take this? Enter their email and we'll send them your referral link.
+        </p>
+        {colleagueSent ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem 0.875rem", background: "rgba(67,160,71,0.12)", border: "1px solid rgba(67,160,71,0.35)", borderRadius: 4 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#43A047" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            <span style={{ color: "#43A047", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em" }}>Link sent! Check their inbox.</span>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch" }}>
+              <input
+                type="email"
+                placeholder="colleague@company.com"
+                value={colleagueEmail}
+                onChange={(e) => { setColleagueEmail(e.target.value); setColleagueError(""); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(colleagueEmail)) { setColleagueError("Please enter a valid email address."); return; }
+                    const subject = encodeURIComponent(`${lead.firstName} thinks you should take the DRU CLEAR™ AI Readiness Scorecard`);
+                    const body = encodeURIComponent(`Hi,\n\n${lead.firstName} ${lead.lastName} just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier).\n\nThey thought you'd find it valuable too. Take the free 3-minute assessment here:\n${assessmentUrl}\n\nSee where your organization really stands on AI readiness.`);
+                    window.location.href = `mailto:${colleagueEmail}?subject=${subject}&body=${body}`;
+                    setColleagueSent(true);
+                    fireCaptionCopiedWebhook("colleague_email");
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: "0.55rem 0.75rem",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid " + (colleagueError ? "rgba(229,57,53,0.6)" : "rgba(212,175,55,0.25)"),
+                  borderRadius: 4,
+                  color: "rgba(230,230,230,0.9)",
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.75rem",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={() => {
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(colleagueEmail)) { setColleagueError("Please enter a valid email address."); return; }
+                  const subject = encodeURIComponent(`${lead.firstName} thinks you should take the DRU CLEAR™ AI Readiness Scorecard`);
+                  const body = encodeURIComponent(`Hi,\n\n${lead.firstName} ${lead.lastName} just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier).\n\nThey thought you'd find it valuable too. Take the free 3-minute assessment here:\n${assessmentUrl}\n\nSee where your organization really stands on AI readiness.`);
+                  window.location.href = `mailto:${colleagueEmail}?subject=${subject}&body=${body}`;
+                  setColleagueSent(true);
+                  fireCaptionCopiedWebhook("colleague_email");
+                }}
+                style={{
+                  padding: "0.55rem 0.875rem",
+                  background: "rgba(212,175,55,0.15)",
+                  color: "#D4AF37",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "0.72rem",
+                  border: "1px solid rgba(212,175,55,0.4)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  letterSpacing: "0.04em",
+                  transition: "all 0.2s",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.25)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.15)"; }}
+              >
+                Send Link
+              </button>
+            </div>
+            {colleagueError && (
+              <p style={{ color: "rgba(229,57,53,0.85)", fontSize: "0.68rem", fontFamily: "'Lato', sans-serif", marginTop: "0.35rem" }}>{colleagueError}</p>
+            )}
+          </>
+        )}
+      </div>
       {/* Divider */}
       <div style={{ width: 48, height: 1, background: "rgba(212,175,55,0.3)", marginBottom: "2rem" }} />
-
       {/* Logo */}
       <DruLogo className="w-48 max-w-full mb-3" />
 
