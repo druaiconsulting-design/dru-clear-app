@@ -3392,7 +3392,7 @@ export default function DruClearApp() {
           }}
         >
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-tm-192x192_553a3e0a.png"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png"
             alt="DRU CLEAR™"
             style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
           />
@@ -3433,7 +3433,7 @@ export default function DruClearApp() {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/icon-tm-192x192_553a3e0a.png"
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png"
               alt="DRU CLEAR™"
               style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
             />
