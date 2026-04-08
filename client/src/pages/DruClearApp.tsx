@@ -1914,6 +1914,9 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const emailBody = encodeURIComponent(`I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`);
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
+  // LinkedIn suggested caption
+  const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier. If you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time. Take it here: ${assessmentUrl} #AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
+  const [captionCopied, setCaptionCopied] = useState(false);
   // Copy Link state
   const [copied, setCopied] = useState(false);
   // Share confirmation — shows inline banner after any share button click
@@ -2386,6 +2389,62 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             {copied ? "Copied!" : "Copy Link"}
           </button>
         </div>
+      </div>
+      {/* LinkedIn Suggested Caption */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "1rem",
+          padding: "1rem 1.25rem",
+          background: "rgba(0,119,181,0.07)",
+          border: "1px solid rgba(0,119,181,0.25)",
+          borderRadius: 6,
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+          Suggested LinkedIn Caption
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.55, fontFamily: "'Lato', sans-serif", marginBottom: "0.75rem", wordBreak: "break-word" }}>
+          {linkedInCaption}
+        </p>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(linkedInCaption).catch(() => {
+              const el = document.createElement("textarea");
+              el.value = linkedInCaption;
+              document.body.appendChild(el);
+              el.select();
+              document.execCommand("copy");
+              document.body.removeChild(el);
+            });
+            setCaptionCopied(true);
+            setTimeout(() => setCaptionCopied(false), 2500);
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            padding: "0.45rem 0.85rem",
+            background: captionCopied ? "rgba(0,119,181,0.2)" : "transparent",
+            color: captionCopied ? "#4FC3F7" : "rgba(0,119,181,0.9)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            border: "1px solid " + (captionCopied ? "rgba(79,195,247,0.6)" : "rgba(0,119,181,0.4)"),
+            borderRadius: 4,
+            cursor: "pointer",
+            letterSpacing: "0.05em",
+            transition: "all 0.2s",
+          }}
+        >
+          {captionCopied ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+          )}
+          {captionCopied ? "Caption Copied!" : "Copy Caption"}
+        </button>
       </div>
       {/* Share confirmation banner — appears after any share button click */}
       <div

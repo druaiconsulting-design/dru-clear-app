@@ -65,6 +65,20 @@ https://assessment.druaiconsulting.com?ref=jane%40acmecorp.com
 
 ---
 
+## Part 1b — LinkedIn Caption Template (Page 8)
+
+A **Suggested LinkedIn Caption** block appears on Page 8 (Thank You screen) below the share buttons. It contains a pre-written post with the user's actual score, tier, referral URL, and four hashtags. A **Copy Caption** button copies the full text to the clipboard in one tap.
+
+The caption text is dynamically generated per user:
+
+```
+Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored {score}/100 — {TIER} tier. If you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time. Take it here: https://assessment.druaiconsulting.com?ref={email} #AIReadiness #DRUClear #AILeadership #DigitalTransformation
+```
+
+This caption is not tracked by GHL separately — if the user copies it and then clicks the LinkedIn share button, the `share_click` webhook fires with `channel=linkedin` as normal. If they only copy the caption without clicking the LinkedIn button, no webhook fires (the copy action is clipboard-only).
+
+---
+
 ## Part 2 — End-to-End Webhook Test Checklist
 
 Use this checklist to verify the new webhook endpoint (`5498d39b-2d12-43e6-884a-ddf24f51b0d1`) is receiving all payloads correctly before enabling downstream GHL automations.
