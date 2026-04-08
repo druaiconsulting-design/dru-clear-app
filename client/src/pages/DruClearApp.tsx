@@ -1920,6 +1920,9 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   // WhatsApp suggested caption
   const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
   const [whatsAppCaptionCopied, setWhatsAppCaptionCopied] = useState(false);
+  // Telegram suggested message
+  const telegramCaption = `Just scored ${scaledScore}/100 on the DRU CLEAR™ AI Readiness Scorecard (${tier.label} tier). Free 3-min assessment — see how AI-ready your organization really is: ${assessmentUrl}`;
+  const [telegramCaptionCopied, setTelegramCaptionCopied] = useState(false);
   // Email suggested subject line
   const emailSuggestedSubject = `Have you checked your AI Readiness score yet?`;
   const emailSuggestedBody = `Hi,\n\nI just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIt's a free 3-minute assessment that tells you exactly where your organization stands on AI readiness across 5 key pillars: Clarity, Leadership, Execution, Alignment, and Results.\n\nTake yours here: ${assessmentUrl}\n\nThought you'd find it useful.`;
@@ -2527,6 +2530,63 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
           )}
           {whatsAppCaptionCopied ? "Message Copied!" : "Copy Message"}
+        </button>
+      </div>
+      {/* Telegram Suggested Message */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 320,
+          marginBottom: "1rem",
+          padding: "1rem 1.25rem",
+          background: "rgba(41,182,246,0.06)",
+          border: "1px solid rgba(41,182,246,0.2)",
+          borderRadius: 6,
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+          Suggested Telegram Message
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.55, fontFamily: "'Lato', sans-serif", marginBottom: "0.75rem", wordBreak: "break-word" }}>
+          {telegramCaption}
+        </p>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(telegramCaption).catch(() => {
+              const el = document.createElement("textarea");
+              el.value = telegramCaption;
+              document.body.appendChild(el);
+              el.select();
+              document.execCommand("copy");
+              document.body.removeChild(el);
+            });
+            setTelegramCaptionCopied(true);
+            setTimeout(() => setTelegramCaptionCopied(false), 2500);
+            fireCaptionCopiedWebhook("telegram");
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            padding: "0.45rem 0.85rem",
+            background: telegramCaptionCopied ? "rgba(41,182,246,0.15)" : "transparent",
+            color: telegramCaptionCopied ? "#29B6F6" : "rgba(41,182,246,0.85)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            border: "1px solid " + (telegramCaptionCopied ? "rgba(41,182,246,0.6)" : "rgba(41,182,246,0.35)"),
+            borderRadius: 4,
+            cursor: "pointer",
+            letterSpacing: "0.05em",
+            transition: "all 0.2s",
+          }}
+        >
+          {telegramCaptionCopied ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+          )}
+          {telegramCaptionCopied ? "Message Copied!" : "Copy Message"}
         </button>
       </div>
       {/* Email Suggested Subject + Body */}
