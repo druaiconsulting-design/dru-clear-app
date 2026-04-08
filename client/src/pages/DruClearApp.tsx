@@ -41,8 +41,13 @@ interface Scores {
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 // WEBHOOK CONFIGURATION — GoHighLevel
+// URL is read from the VITE_GHL_WEBHOOK_URL environment variable (set in Management UI → Settings → Secrets).
+// The hardcoded fallback ensures the app still works during local development before the env var is set.
+// To update the URL without a code change: update VITE_GHL_WEBHOOK_URL in the Secrets panel and redeploy.
+// On Vercel/GitHub: add VITE_GHL_WEBHOOK_URL as an environment variable in the Vercel project dashboard.
 const WEBHOOK_CONFIG = {
-  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1",
+  url: import.meta.env.VITE_GHL_WEBHOOK_URL as string
+    ?? "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1",
 };
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────

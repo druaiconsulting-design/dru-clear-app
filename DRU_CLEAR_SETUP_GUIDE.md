@@ -6,37 +6,44 @@
 
 ## 1. Connecting Your GoHighLevel Webhook
 
-The app is pre-wired for CRM integration. All you need to do is paste your GoHighLevel webhook URL into one configuration variable.
+The app is pre-wired for CRM integration. The webhook URL is stored as an **environment variable** (`VITE_GHL_WEBHOOK_URL`) so it can be updated without touching the source code.
 
-### Step 1 — Locate the config file
-
-Open the file:
-
+**Current active webhook URL:**
 ```
-client/src/pages/DruClearApp.tsx
+https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1
 ```
 
-Near the top of the file, find this block (around line 35):
+### How the URL is resolved (priority order)
+
+1. `VITE_GHL_WEBHOOK_URL` environment variable — set in Management UI → Settings → Secrets (or Vercel project settings)
+2. Hardcoded fallback in `DruClearApp.tsx` line 50 — used only if the env var is not set
+
+Both currently point to the same working URL above.
+
+### To update the webhook URL without a code change
+
+**On Manus hosting:**
+1. Open Management UI → Settings → Secrets
+2. Add or update: `VITE_GHL_WEBHOOK_URL` = your new GHL webhook URL
+3. Click **Publish** to redeploy
+
+**On Vercel/GitHub:**
+1. Go to your Vercel project → Settings → Environment Variables
+2. Add: `VITE_GHL_WEBHOOK_URL` = your new GHL webhook URL
+3. Trigger a redeploy
+
+### To update via code (fallback only)
+
+If the env var is not set, the app falls back to the hardcoded URL in `client/src/pages/DruClearApp.tsx` around line 48–51:
 
 ```typescript
-// WEBHOOK CONFIGURATION
-// To connect your GoHighLevel CRM, update this URL:
 const WEBHOOK_CONFIG = {
-  url: "", // ← PASTE YOUR GHL WEBHOOK URL HERE
+  url: import.meta.env.VITE_GHL_WEBHOOK_URL as string
+    ?? "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1",
 };
 ```
 
-### Step 2 — Paste your GHL webhook URL
-
-Replace the empty string with your GoHighLevel webhook URL:
-
-```typescript
-const WEBHOOK_CONFIG = {
-  url: "https://services.leadconnectorhq.com/hooks/YOUR_WEBHOOK_ID/webhook-trigger/YOUR_TRIGGER_ID",
-};
-```
-
-Save the file. That's it — no other changes required.
+Update the fallback string if you need to rotate the URL and cannot access the Secrets panel.
 
 ---
 
@@ -207,7 +214,7 @@ dru-clear-pwa/
 
 | What to change | Where to change it |
 |---|---|
-| Webhook URL | `WEBHOOK_CONFIG.url` in `DruClearApp.tsx` |
+| Webhook URL | `VITE_GHL_WEBHOOK_URL` env var (Management UI → Settings → Secrets) or fallback in `DruClearApp.tsx` line 50 |
 | Booking link | `BOOKING_URL` constant in `DruClearApp.tsx` (UTM params pre-configured) |
 | Brand colors | CSS variables in `client/src/index.css` |
 | Scorecard questions | `questions` arrays in `DruClearApp.tsx` |
