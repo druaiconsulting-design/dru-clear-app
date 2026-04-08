@@ -3028,22 +3028,67 @@ export default function DruClearApp() {
   );
   const [scores, setScores] = useState<Scores>(saved?.scores ?? {});
 
-  // PWA Add to Home Screen prompt
+  // ── PWA Install Banner — unified browser detection ──────────────────────────
+  // Detect browser type for platform-specific install instructions
+  const ua = navigator.userAgent;
+  const isInStandaloneMode = (window.navigator as any).standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches;
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isSamsungBrowser = /samsungbrowser/i.test(ua);
+  const isFirefox = /firefox/i.test(ua) && !/seamonkey/i.test(ua);
+  const isEdge = /edg\//i.test(ua);
+  const isChrome = /chrome/i.test(ua) && !/edg\//i.test(ua) && !/samsungbrowser/i.test(ua);
+  const isIosSafari = isIos && /safari/i.test(ua) && !/crios/i.test(ua) && !/fxios/i.test(ua);
+  const isIosChrome = isIos && /crios/i.test(ua);
+  const isIosFirefox = isIos && /fxios/i.test(ua);
+  // Browser-specific install instructions
+  type BrowserInstallInfo = { label: string; steps: string[] };
+  const getBrowserInstallInfo = (): BrowserInstallInfo | null => {
+    if (isInStandaloneMode) return null; // already installed
+    if (isIosSafari) return {
+      label: "Safari on iPhone/iPad",
+      steps: ["Tap the Share ↗ button at the bottom", "Scroll down and tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"],
+    };
+    if (isIosChrome) return {
+      label: "Chrome on iPhone/iPad",
+      steps: ["Tap the ··· menu (bottom right)", "Tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"],
+    };
+    if (isIosFirefox) return {
+      label: "Firefox on iPhone/iPad",
+      steps: ["Tap the ··· menu (bottom right)", "Tap \"Share\"", "Tap \"Add to Home Screen\""],
+    };
+    if (isSamsungBrowser) return {
+      label: "Samsung Internet",
+      steps: ["Tap the ☰ menu (bottom right)", "Tap \"Add page to\"", "Tap \"Home screen\""],
+    };
+    if (isFirefox && isAndroid) return {
+      label: "Firefox on Android",
+      steps: ["Tap the ··· menu (top right)", "Tap \"Install\"", "Tap \"Add\" to confirm"],
+    };
+    if (isEdge) return {
+      label: "Microsoft Edge",
+      steps: ["Tap the ··· menu (bottom)", "Tap \"Add to phone\"", "Tap \"Install\" to confirm"],
+    };
+    // Chrome on Android — uses beforeinstallprompt, handled by INSTALL button
+    return null;
+  };
+  const browserInstallInfo = getBrowserInstallInfo();
+  const needsManualInstructions = browserInstallInfo !== null;
+  // Android/Chrome/Edge: native beforeinstallprompt
   const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(() => {
     try { return localStorage.getItem("dru_install_dismissed") === "1"; } catch { return false; }
   });
-  // iOS-specific Add to Home Screen nudge (Safari does not fire beforeinstallprompt)
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInStandaloneMode = (window.navigator as any).standalone === true;
-  const [showIosBanner, setShowIosBanner] = useState(false);
-  const [iosBannerDismissed] = useState(() => {
-    try { return localStorage.getItem("dru_ios_install_dismissed") === "1"; } catch { return false; }
+  // Manual-instruction banner (iOS Safari/Chrome/Firefox, Samsung, Firefox Android)
+  const [showManualBanner, setShowManualBanner] = useState(false);
+  const [manualBannerDismissed] = useState(() => {
+    try { return localStorage.getItem("dru_manual_install_dismissed") === "1"; } catch { return false; }
   });
-  const dismissIosBanner = () => {
-    setShowIosBanner(false);
-    try { localStorage.setItem("dru_ios_install_dismissed", "1"); } catch {}
+  const dismissManualBanner = () => {
+    setShowManualBanner(false);
+    try { localStorage.setItem("dru_manual_install_dismissed", "1"); } catch {}
   };
   useEffect(() => {
     const handler = (e: Event) => {
@@ -3068,13 +3113,14 @@ export default function DruClearApp() {
     setInstallDismissed(true);
     try { localStorage.setItem("dru_install_dismissed", "1"); } catch {}
   };
-  // Show iOS banner when user reaches results screen (only on iOS Safari, not in standalone mode)
+  // Show manual-instruction banner on results and thank-you screens
   useEffect(() => {
-    if (isIos && !isInStandaloneMode && !iosBannerDismissed && screen === "results") {
-      const timer = setTimeout(() => setShowIosBanner(true), 3000);
+    if (needsManualInstructions && !isInStandaloneMode && !manualBannerDismissed &&
+        (screen === "results" || screen === "thank-you")) {
+      const timer = setTimeout(() => setShowManualBanner(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [screen, isIos, isInStandaloneMode, iosBannerDismissed]);
+  }, [screen, needsManualInstructions, isInStandaloneMode, manualBannerDismissed]);
   // Register service worker + flush any queued webhooks from previous sessions
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -3268,8 +3314,8 @@ export default function DruClearApp() {
         </div>
       )}
 
-      {/* iOS Add to Home Screen instruction banner — Safari/iPhone specific */}
-      {showIosBanner && (
+      {/* Unified browser-specific Add to Home Screen instruction banner */}
+      {showManualBanner && browserInstallInfo && (
         <div
           style={{
             position: "fixed",
@@ -3290,25 +3336,29 @@ export default function DruClearApp() {
               style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }}
             />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 3 }}>Add DRU CLEAR™ to Your Home Screen</div>
-              <div style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em", lineHeight: 1.5 }}>Install for instant access anytime, no app store required.</div>
+              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>
+                Add DRU CLEAR™ to Your Home Screen
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.65rem", letterSpacing: "0.02em" }}>
+                {browserInstallInfo.label}
+              </div>
             </div>
             <button
-              onClick={dismissIosBanner}
+              onClick={dismissManualBanner}
               aria-label="Dismiss"
               style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1, marginTop: "-2px" }}
             >
               ×
             </button>
           </div>
-          {/* Step-by-step instruction */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 6, padding: "0.6rem 0.75rem" }}>
-            <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", letterSpacing: "0.02em", lineHeight: 1.6 }}>
-              Tap the{" "}
-              <span style={{ display: "inline-block", background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4, padding: "1px 6px", color: "#D4AF37", fontWeight: 700, fontSize: "0.68rem" }}>Share ↗</span>
-              {" "}button at the bottom of Safari, then tap{" "}
-              <span style={{ color: "#D4AF37", fontWeight: 700 }}>"Add to Home Screen"</span>
-            </span>
+          {/* Step-by-step instructions — auto-detected for this browser */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 6, padding: "0.65rem 0.75rem" }}>
+            {browserInstallInfo.steps.map((step, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                <span style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.65rem", minWidth: 16, marginTop: 1 }}>{i + 1}.</span>
+                <span style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", letterSpacing: "0.02em", lineHeight: 1.5 }}>{step}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

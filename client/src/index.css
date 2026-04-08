@@ -82,6 +82,9 @@
   html, body {
     height: 100%;
     overflow: auto;
+    /* Disable pull-to-refresh and overscroll bounce on all pages */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
 
   body {
