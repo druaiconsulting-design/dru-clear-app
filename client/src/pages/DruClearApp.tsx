@@ -1117,7 +1117,7 @@ function LeadCaptureScreen({
     setLoading(true);
 
     const payload = {
-      event: "lead_capture",
+      event_type: "lead_capture",
       first_name: form.firstName,
       last_name: form.lastName,
       email: form.email,
@@ -1572,7 +1572,7 @@ function ResultsScreen({
       setTimeout(() => setResultsCopied(false), 2500);
     });
     sendWebhook({
-      event: "share_click",
+      event_type: "share_click",
       channel: "clipboard",
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -1657,7 +1657,7 @@ function ResultsScreen({
     sentRef.current = true;
 
     const payload = {
-      event: "scorecard_complete",
+      event_type: "scorecard_complete",
       // Contact identity — all fields needed for GHL to create/update a contact
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -2027,7 +2027,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   // Fire a caption_copied webhook to GHL when user copies a suggested caption
   const fireCaptionCopiedWebhook = (channel: string) => {
     sendWebhook({
-      event: "caption_copied",
+      event_type: "caption_copied",
       channel,
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -2042,7 +2042,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const fireShareWebhook = (channel: string) => {
     showShareConfirm(channel);
     sendWebhook({
-      event: "share_click",
+      event_type: "share_click",
       channel,
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -2260,7 +2260,7 @@ function ThankYouScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
     if (feedback) return; // already submitted
     setFeedback(rating);
     sendWebhook({
-      event: "feedback",
+      event_type: "feedback",
       rating,
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -3213,7 +3213,7 @@ export default function DruClearApp() {
   useEffect(() => {
     const handleInstalled = () => {
       sendWebhook({
-        event: "pwa_installed",
+        event_type: "pwa_installed",
         first_name: lead.firstName,
         last_name: lead.lastName,
         email: lead.email,
