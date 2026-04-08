@@ -42,7 +42,7 @@ interface Scores {
 
 // WEBHOOK CONFIGURATION — GoHighLevel
 const WEBHOOK_CONFIG = {
-  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/cc8e9b00-5fd6-4f5c-9965-36094289b7ee",
+  url: "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1",
 };
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
