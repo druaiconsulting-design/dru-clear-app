@@ -235,6 +235,26 @@ const STRENGTH_MESSAGES: Record<string, string> = {
     "You measure, track, and demonstrate AI ROI consistently — giving you the credibility and data to scale confidently.",
 };
 
+// Tier-specific one-liners shown below the badge after the animation sequence
+const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = {
+  EMERGING: {
+    text: "Most organizations don't even know where to start — now you do. Let's build your AI foundation together.",
+    color: "#E57373", // warm red/orange
+  },
+  DEVELOPING: {
+    text: "You've made progress, but the gaps are costing you. Let's close them before your competitors do.",
+    color: "#FFD54F", // amber/yellow
+  },
+  ADVANCING: {
+    text: "You're ahead of most organizations — here's how to turn that advantage into market dominance.",
+    color: "#66BB6A", // green/emerald
+  },
+  LEADING: {
+    text: "You're ahead of most organizations — here's how to turn that advantage into market dominance.",
+    color: "#66BB6A",
+  },
+};
+
 const BADGE_URLS: Record<string, string> = {
   EMERGING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-emerging_6233aed6.png",
   DEVELOPING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-developing_226a8643.png",
@@ -1569,6 +1589,43 @@ function ResultsScreen({
   };
   const percentile = BENCHMARK_PERCENTILES[tier.label];
   const bookingUrl = buildBookingUrl(lead);
+  // ── Score count-up animation ──────────────────────────────────────────────
+  // displayScore: the animated integer shown in the UI (0 → scaledScore)
+  const [displayScore, setDisplayScore] = useState(0);
+  // badgeVisible / oneLineVisible: control the staggered fade-in after count-up
+  const [badgeVisible, setBadgeVisible] = useState(false);
+  const [oneLineVisible, setOneLineVisible] = useState(false);
+
+  useEffect(() => {
+    const duration = 1200; // 1.2 s
+    const start = performance.now();
+    const target = scaledScore;
+
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    let rafId: number;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutCubic(progress);
+      setDisplayScore(Math.round(eased * target));
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        // Count-up done → wait 0.3 s then show badge
+        setTimeout(() => {
+          setBadgeVisible(true);
+          // 0.2 s after badge → show one-liner
+          setTimeout(() => setOneLineVisible(true), 200);
+        }, 300);
+      }
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Scroll hint — hide after user scrolls 60px
   const [showScrollHint, setShowScrollHint] = useState(true);
   // Copy results link state
@@ -1770,22 +1827,57 @@ function ResultsScreen({
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "rgba(230,230,230,0.5)" }}>
             Your Score
           </p>
+          {/* Animated count-up number */}
           <div
-            className="count-up font-bold"
+            className="font-bold"
             style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1, fontSize: "clamp(2.5rem, 12vw, 3rem)" }}
           >
-            {scaledScore}
+            {displayScore}
             <span style={{ color: "rgba(212,175,55,0.5)", fontSize: "clamp(1.25rem, 6vw, 1.5rem)" }}>
               /100
             </span>
           </div>
         </div>
+        {/* Tier badge — fades in with scale after count-up completes */}
         <div
           className="font-bold tracking-widest px-4 py-2 rounded"
-          style={{ color: tier.color, border: `1.5px solid ${tier.color}`, fontFamily: "'Inter', sans-serif", background: `${tier.color}18`, fontSize: "clamp(0.8rem, 4vw, 1rem)", letterSpacing: "0.12em" }}
+          style={{
+            color: tier.color,
+            border: `1.5px solid ${tier.color}`,
+            fontFamily: "'Inter', sans-serif",
+            background: `${tier.color}18`,
+            fontSize: "clamp(0.8rem, 4vw, 1rem)",
+            letterSpacing: "0.12em",
+            opacity: badgeVisible ? 1 : 0,
+            transform: badgeVisible ? "scale(1)" : "scale(0.8)",
+            transition: "opacity 0.4s ease, transform 0.4s ease",
+          }}
         >
           {tier.label}
         </div>
+        {/* Tier one-liner — fades in 0.2 s after badge */}
+        {(() => {
+          const oneLiner = TIER_ONE_LINERS[tier.label];
+          if (!oneLiner) return null;
+          return (
+            <p
+              style={{
+                color: oneLiner.color,
+                fontStyle: "italic",
+                fontSize: "clamp(0.78rem, 3.2vw, 0.88rem)",
+                lineHeight: 1.55,
+                textAlign: "center",
+                maxWidth: 320,
+                margin: "0.1rem 0 0",
+                opacity: oneLineVisible ? 1 : 0,
+                transition: "opacity 0.5s ease",
+                fontFamily: "'Lato', sans-serif",
+              }}
+            >
+              {oneLiner.text}
+            </p>
+          );
+        })()}
       </div>
 
       {/* Score comparison line */}
