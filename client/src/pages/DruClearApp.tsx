@@ -126,6 +126,28 @@ async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
   return ok;
 }
 
+// POST JSON webhook — used for form_submitted and assessment_completed events.
+// Sends a true application/json body so GHL receives a structured JSON object.
+async function sendWebhookJson(payload: Record<string, unknown>): Promise<boolean> {
+  if (!WEBHOOK_CONFIG.url) return false;
+  try {
+    const res = await fetch(WEBHOOK_CONFIG.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok && res.status >= 500) {
+      // 5xx — queue for retry via the existing query-param path as fallback
+      enqueueWebhook(payload);
+      return false;
+    }
+    return true;
+  } catch {
+    enqueueWebhook(payload);
+    return false;
+  }
+}
+
 function saveToLocalStorage(key: string, data: object) {
   try {
     const existing = JSON.parse(localStorage.getItem("dru_clear_submissions") || "[]");
@@ -1116,23 +1138,20 @@ function LeadCaptureScreen({
     setError("");
     setLoading(true);
 
+    // Webhook #1 — fires immediately on Page 2 form submission (POST JSON)
     const payload = {
-      event_type: "lead_capture",
+      event_type: "form_submitted",
+      tags: "AI-Assessment-Lead",
       first_name: form.firstName,
       last_name: form.lastName,
       email: form.email,
       phone: normalizePhone(countryCode.code + (form.phone || "")), // full international number
-      ai_country_name: countryCode.name,
-      ai_country_iso: countryCode.iso,
       company: form.company,
       role: form.role,
-      // UTM attribution
-      ...UTM_PARAMS,
-      timestamp: new Date().toISOString(),
     };
 
-    saveToLocalStorage("lead_capture", payload);
-    await sendWebhook(payload);
+    saveToLocalStorage("form_submitted", payload);
+    await sendWebhookJson(payload);
 
     setLoading(false);
     // Pass country through to Results/ThankYou screens via LeadData
@@ -1650,47 +1669,67 @@ function ResultsScreen({
     animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
   }, []);
-  // Send results webhook on mount
+  // Webhook #2 — fires when user reaches the Results screen after completing all 15 questions (POST JSON)
   const sentRef = useRef(false);
   useEffect(() => {
     if (sentRef.current) return;
     sentRef.current = true;
 
+    // Map numeric scores (1–5) to human-readable Likert labels
+    const LIKERT_MAP: Record<number, string> = {
+      1: "Strongly Disagree",
+      2: "Disagree",
+      3: "Neutral",
+      4: "Agree",
+      5: "Strongly Agree",
+    };
+    const answerLabel = (qIndex: number): string =>
+      LIKERT_MAP[scores[qIndex]] || "Not answered";
+
+    // score_category: Low (0–33%), Medium (34–66%), High (67–100%) of 75-point max
+    const scorePct = (total / 75) * 100;
+    const scoreCategory = scorePct <= 33 ? "Low" : scorePct <= 66 ? "Medium" : "High";
+
     const payload = {
-      event_type: "scorecard_complete",
+      event_type: "assessment_completed",
+      tags: "Assessment-Completed",
       // Contact identity — all fields needed for GHL to create/update a contact
       first_name: lead.firstName,
       last_name: lead.lastName,
-      full_name: `${lead.firstName} ${lead.lastName}`.trim(),
       email: lead.email,
       phone: normalizePhone(lead.phone || ""),
-      ai_country_name: lead.country_name || "",
-      ai_country_iso: lead.country_iso || "",
       company: lead.company,
       role: lead.role,
-      // Scorecard results — used to trigger tier-based email workflows in GHL
-      score: scaledScore,
-      result: tier.label,
-      result_message: TIER_MESSAGES[tier.label] || "",
-      top_gaps: topGaps.map((g) => g.name),
-      top_gap_1: topGaps[0]?.name || "",
-      top_gap_2: topGaps[1]?.name || "",
-      top_gap_1_message: topGaps[0] ? GAP_MESSAGES[topGaps[0].name] || "" : "",
-      top_gap_2_message: topGaps[1] ? GAP_MESSAGES[topGaps[1].name] || "" : "",
-      // Individual pillar scores (0–15 each)
-      pillar_clarity: clarityScore,
-      pillar_leadership: leadershipScore,
-      pillar_execution: executionScore,
-      pillar_alignment: alignmentScore,
-      pillar_results: resultsScore,
-      raw_score: total,
-      // UTM attribution
-      ...UTM_PARAMS,
-      timestamp: new Date().toISOString(),
+      // Score summary
+      total_score: scaledScore,
+      score_category: scoreCategory,
+      // Individual answers — question_1 through question_15 mapped to Likert labels
+      answers: {
+        // Pillar 1: Clarity (Q1–3)
+        question_1: answerLabel(0),
+        question_2: answerLabel(1),
+        question_3: answerLabel(2),
+        // Pillar 2: Leadership (Q4–6)
+        question_4: answerLabel(3),
+        question_5: answerLabel(4),
+        question_6: answerLabel(5),
+        // Pillar 3: Execution (Q7–9)
+        question_7: answerLabel(6),
+        question_8: answerLabel(7),
+        question_9: answerLabel(8),
+        // Pillar 4: Alignment (Q10–12)
+        question_10: answerLabel(9),
+        question_11: answerLabel(10),
+        question_12: answerLabel(11),
+        // Pillar 5: Results (Q13–15)
+        question_13: answerLabel(12),
+        question_14: answerLabel(13),
+        question_15: answerLabel(14),
+      },
     };
 
-    saveToLocalStorage("scorecard_complete", payload);
-    sendWebhook(payload);
+    saveToLocalStorage("assessment_completed", payload);
+    sendWebhookJson(payload);
   }, []);
 
   return (
