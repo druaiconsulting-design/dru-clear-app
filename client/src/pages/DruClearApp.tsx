@@ -1626,6 +1626,54 @@ function ResultsScreen({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Share Your Score button ──────────────────────────────────────────────
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const assessmentShareUrl = "https://assessment.druaiconsulting.com";
+  const handleShareScore = async () => {
+    const shareText = `I just scored ${scaledScore}/100 on the AI Readiness Assessment! Take yours here: ${assessmentShareUrl}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "DRU CLEAR™ AI Readiness Score", text: shareText, url: assessmentShareUrl });
+      } catch {
+        // User cancelled or share failed — silently ignore
+      }
+    } else {
+      // Desktop fallback: copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(`${shareText}`);
+      } catch {
+        const el = document.createElement("textarea");
+        el.value = shareText;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2000);
+    }
+  };
+
+  // ── Pillar bar IntersectionObserver animation ───────────────────────────────
+  // pillarsAnimated: true once the pillar section scrolls into view
+  const [pillarsAnimated, setPillarsAnimated] = useState(false);
+  const pillarSectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = pillarSectionRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPillarsAnimated(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Scroll hint — hide after user scrolls 60px
   const [showScrollHint, setShowScrollHint] = useState(true);
   // Copy results link state
@@ -1880,6 +1928,43 @@ function ResultsScreen({
         })()}
       </div>
 
+      {/* Share Your Score button — Web Share API on mobile, copy-link on desktop */}
+      <div className="flex justify-center mb-4">
+        <button
+          onClick={handleShareScore}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            padding: "0.65rem 1.4rem",
+            background: `${tier.color}18`,
+            color: tier.color,
+            border: `1.5px solid ${tier.color}60`,
+            borderRadius: 6,
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "clamp(0.8rem, 3.5vw, 0.9rem)",
+            letterSpacing: "0.04em",
+            cursor: "pointer",
+            transition: "background 0.2s, border-color 0.2s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = `${tier.color}30`; (e.currentTarget as HTMLButtonElement).style.borderColor = tier.color; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = `${tier.color}18`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${tier.color}60`; }}
+        >
+          {shareLinkCopied ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              Link Copied!
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
+              Share Your Score
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Score comparison line */}
       <p
         className="text-xs text-center mb-4"
@@ -1932,8 +2017,8 @@ function ResultsScreen({
 
       <div className="gold-divider mb-3" />
 
-      {/* Pillar Breakdown — compact */}
-      <div className="mb-4">
+      {/* Pillar Breakdown — compact, bars animate in when scrolled into view */}
+      <div className="mb-4" ref={pillarSectionRef}>
         <h3
           className="text-xs font-semibold uppercase tracking-widest mb-2"
           style={{ color: "rgba(212,175,55,0.7)" }}
@@ -1941,7 +2026,7 @@ function ResultsScreen({
           Pillar Breakdown
         </h3>
         <div className="flex flex-col" style={{ gap: "0.6rem" }}>
-          {pillars.map((p) => (
+          {pillars.map((p, i) => (
             <div key={p.name}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem", gap: "0.25rem" }}>
                 <span style={{ color: "#E6E6E6", fontSize: "clamp(0.68rem, 2.8vw, 0.75rem)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
@@ -1954,7 +2039,12 @@ function ResultsScreen({
               <div className="pillar-bar-track" style={{ height: 5 }}>
                 <div
                   className="pillar-bar-fill"
-                  style={{ width: `${(p.score / 15) * 100}%` }}
+                  style={{
+                    width: pillarsAnimated ? `${(p.score / 15) * 100}%` : "0%",
+                    transition: pillarsAnimated
+                      ? `width 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) ${i * 100}ms`
+                      : "none",
+                  }}
                 />
               </div>
             </div>
