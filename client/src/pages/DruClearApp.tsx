@@ -1846,6 +1846,38 @@ function ResultsScreen({
 
     saveToLocalStorage("assessment_completed", payload);
     sendWebhookJson(payload, WEBHOOK_COMPLETE_URL);
+
+    // ── Minimal completion webhook (Page 8 arrival) ───────────────────────────
+    // Fires a second, lightweight event to the same completed URL so GHL can
+    // update the contact record with a human-readable Eastern Time timestamp.
+    const now = new Date();
+    // Format as "YYYY-MM-DD HH:MM:SS AM/PM EST" in America/New_York timezone
+    const estDate = now.toLocaleDateString("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }); // "MM/DD/YYYY"
+    const estTime = now.toLocaleTimeString("en-US", {
+      timeZone: "America/New_York",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }); // "HH:MM:SS AM/PM"
+    // Reformat MM/DD/YYYY → YYYY-MM-DD
+    const [mm, dd, yyyy] = estDate.split("/");
+    const completedAt = `${yyyy}-${mm}-${dd} ${estTime} EST`;
+    const completionPayload = {
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      phone: normalizePhone(lead.phone || ""),
+      company: lead.company,
+      assessment_status: "completed",
+      completed_at: completedAt,
+    };
+    sendWebhookJson(completionPayload, WEBHOOK_COMPLETE_URL);
   }, []);
 
   return (
