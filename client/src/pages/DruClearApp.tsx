@@ -1849,25 +1849,33 @@ function ResultsScreen({
 
     // ── Minimal completion webhook (Page 8 arrival) ───────────────────────────
     // Fires a second, lightweight event to the same completed URL so GHL can
-    // update the contact record with a human-readable Eastern Time timestamp.
+    // update the contact record with human-readable timestamps in both CST and
+    // the user's own local timezone (auto-detected from the browser).
+    const formatTimestamp = (date: Date, tz: string, label: string): string => {
+      const datePart = date.toLocaleDateString("en-US", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }); // "MM/DD/YYYY"
+      const timePart = date.toLocaleTimeString("en-US", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }); // "HH:MM:SS AM/PM"
+      const [mo, dy, yr] = datePart.split("/");
+      return `${yr}-${mo}-${dy} ${timePart} ${label}`;
+    };
     const now = new Date();
-    // Format as "YYYY-MM-DD HH:MM:SS AM/PM EST" in America/New_York timezone
-    const estDate = now.toLocaleDateString("en-US", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }); // "MM/DD/YYYY"
-    const estTime = now.toLocaleTimeString("en-US", {
-      timeZone: "America/New_York",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    }); // "HH:MM:SS AM/PM"
-    // Reformat MM/DD/YYYY → YYYY-MM-DD
-    const [mm, dd, yyyy] = estDate.split("/");
-    const completedAt = `${yyyy}-${mm}-${dd} ${estTime} EST`;
+    // Detect the user's timezone from the browser (e.g. "America/New_York", "Europe/London")
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    // Abbreviate the user's timezone offset for the label (e.g. "UTC-5" or "UTC+5:30")
+    const offsetMin = -now.getTimezoneOffset(); // getTimezoneOffset returns inverted sign
+    const offsetHr = Math.floor(Math.abs(offsetMin) / 60);
+    const offsetMn = Math.abs(offsetMin) % 60;
+    const offsetLabel = `UTC${offsetMin >= 0 ? "+" : "-"}${String(offsetHr).padStart(2, "0")}${offsetMn ? ":" + String(offsetMn).padStart(2, "0") : ""}`;
     const completionPayload = {
       first_name: lead.firstName,
       last_name: lead.lastName,
@@ -1875,7 +1883,12 @@ function ResultsScreen({
       phone: normalizePhone(lead.phone || ""),
       company: lead.company,
       assessment_status: "completed",
-      completed_at: completedAt,
+      // CST timestamp — always America/Chicago so you can read it at a glance
+      completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
+      // User's local timestamp — based on their browser/device timezone
+      completed_at_user: formatTimestamp(now, userTz, offsetLabel),
+      // User's detected IANA timezone name
+      user_timezone: userTz,
     };
     sendWebhookJson(completionPayload, WEBHOOK_COMPLETE_URL);
   }, []);
