@@ -41,14 +41,24 @@ interface Scores {
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 // WEBHOOK CONFIGURATION — GoHighLevel
-// URL is read from the VITE_GHL_WEBHOOK_URL environment variable (set in Management UI → Settings → Secrets).
-// The hardcoded fallback ensures the app still works during local development before the env var is set.
-// To update the URL without a code change: update VITE_GHL_WEBHOOK_URL in the Secrets panel and redeploy.
-// On Vercel/GitHub: add VITE_GHL_WEBHOOK_URL as an environment variable in the Vercel project dashboard.
-const WEBHOOK_CONFIG = {
-  url: import.meta.env.VITE_GHL_WEBHOOK_URL as string
-    ?? "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1",
-};
+// Two separate URLs — one per event type. Each event fires to its own dedicated webhook.
+//
+// WEBHOOK_LEAD_URL   → fires when the Before You Begin form is submitted (event_type: form_submitted)
+// WEBHOOK_COMPLETE_URL → fires when the user completes all questions and results load (event_type: assessment_completed)
+//
+// To override without a code change, set VITE_GHL_WEBHOOK_LEAD and VITE_GHL_WEBHOOK_COMPLETE
+// in the Management UI → Settings → Secrets panel, then redeploy.
+const WEBHOOK_LEAD_URL: string =
+  (import.meta.env.VITE_GHL_WEBHOOK_LEAD as string) ||
+  "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/21253f6d-4eea-4781-8b9b-8ab28cb3b046";
+
+const WEBHOOK_COMPLETE_URL: string =
+  (import.meta.env.VITE_GHL_WEBHOOK_COMPLETE as string) ||
+  "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/5498d39b-2d12-43e6-884a-ddf24f51b0d1";
+
+// WEBHOOK_CONFIG keeps pointing at the completed URL so the existing retry-queue
+// path (sendWebhookDirect / sendWebhook) continues to work for non-JSON events.
+const WEBHOOK_CONFIG = { url: WEBHOOK_COMPLETE_URL };
 
 // ─── Webhook & Storage ───────────────────────────────────────────────────────
 
@@ -128,10 +138,11 @@ async function sendWebhook(payload: Record<string, unknown>): Promise<boolean> {
 
 // POST JSON webhook — used for form_submitted and assessment_completed events.
 // Sends a true application/json body so GHL receives a structured JSON object.
-async function sendWebhookJson(payload: Record<string, unknown>): Promise<boolean> {
-  if (!WEBHOOK_CONFIG.url) return false;
+// Pass the target URL explicitly so each event goes to its own dedicated webhook.
+async function sendWebhookJson(payload: Record<string, unknown>, targetUrl: string): Promise<boolean> {
+  if (!targetUrl) return false;
   try {
-    const res = await fetch(WEBHOOK_CONFIG.url, {
+    const res = await fetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1171,7 +1182,7 @@ function LeadCaptureScreen({
     };
 
     saveToLocalStorage("form_submitted", payload);
-    await sendWebhookJson(payload);
+    await sendWebhookJson(payload, WEBHOOK_LEAD_URL);
 
     setLoading(false);
     // Pass country through to Results/ThankYou screens via LeadData
@@ -1834,7 +1845,7 @@ function ResultsScreen({
     };
 
     saveToLocalStorage("assessment_completed", payload);
-    sendWebhookJson(payload);
+    sendWebhookJson(payload, WEBHOOK_COMPLETE_URL);
   }, []);
 
   return (
