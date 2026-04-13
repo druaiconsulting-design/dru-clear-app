@@ -2319,7 +2319,6 @@ useEffect(() => {
   );
 }
 
-
 function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: Scores }) {
   const total = Object.values(scores).reduce((a, b) => a + b, 0);
   const tier = getTier(total);
@@ -2333,62 +2332,36 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(assessmentUrl)}&summary=${encodeURIComponent(shareText)}`;
   const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(assessmentUrl)}&text=${encodeURIComponent(shareText)}`;
-  const emailSubject = encodeURIComponent("Your DRU AI Readiness Assessment Score");
-  const emailBody = encodeURIComponent(`I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`);
+  const emailSubject = encodeURIComponent("Have you checked your AI Readiness score yet?");
+  const emailBody = encodeURIComponent(`Hi,\n\nI just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIt's a free 3-minute assessment that tells you exactly where your organization stands on AI readiness across 5 key pillars: Clarity, Leadership, Execution, Alignment, and Results.\n\nTake yours here: ${assessmentUrl}\n\nThought you'd find it useful.`);
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
-  const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier. If you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time. Take it here: ${assessmentUrl} #AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
-  const [captionCopied, setCaptionCopied] = useState(false);
+  const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIf you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time.\n\nTake it here: ${assessmentUrl}\n\n#AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
 
   const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
-  const [whatsAppCaptionCopied, setWhatsAppCaptionCopied] = useState(false);
 
   const telegramCaption = `Just scored ${scaledScore}/100 on the DRU CLEAR™ AI Readiness Scorecard (${tier.label} tier). Free 3-min assessment — see how AI-ready your organization really is: ${assessmentUrl}`;
-  const [telegramCaptionCopied, setTelegramCaptionCopied] = useState(false);
 
   const emailSuggestedSubject = `Have you checked your AI Readiness score yet?`;
   const emailSuggestedBody = `Hi,\n\nI just completed the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIt's a free 3-minute assessment that tells you exactly where your organization stands on AI readiness across 5 key pillars: Clarity, Leadership, Execution, Alignment, and Results.\n\nTake yours here: ${assessmentUrl}\n\nThought you'd find it useful.`;
-  const [emailSubjectCopied, setEmailSubjectCopied] = useState(false);
 
+  const [captionCopied, setCaptionCopied] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [colleagueEmail, setColleagueEmail] = useState("");
+  const [colleagueSent, setColleagueSent] = useState(false);
+  const [colleagueError, setColleagueError] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [shareConfirmChannel, setShareConfirmChannel] = useState<string | null>(null);
   const shareConfirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [expandedCaption, setExpandedCaption] = useState<string | null>(null);
+
+  const badgeUrl = BADGE_URLS[tier.label];
 
   const showShareConfirm = (channel: string) => {
     if (shareConfirmTimer.current) clearTimeout(shareConfirmTimer.current);
     setShareConfirmChannel(channel);
     shareConfirmTimer.current = setTimeout(() => setShareConfirmChannel(null), 3500);
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {
-      const el = document.createElement("textarea");
-      el.value = shareText;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
-    fireShareWebhook("clipboard");
-  };
-
-  const fireCaptionCopiedWebhook = (channel: string) => {
-    sendWebhook({
-      event_type: "caption_copied",
-      channel,
-      first_name: lead.firstName,
-      last_name: lead.lastName,
-      email: lead.email,
-      score: scaledScore,
-      result: tier.label,
-      ...UTM_PARAMS,
-      timestamp: new Date().toISOString(),
-    });
   };
 
   const fireShareWebhook = (channel: string) => {
@@ -2408,12 +2381,121 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
     });
   };
 
-  const badgeUrl = BADGE_URLS[tier.label];
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const fireCaptionCopiedWebhook = (channel: string) => {
+    sendWebhook({
+      event_type: "caption_copied",
+      channel,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = shareText;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+    sendWebhook({
+      event_type: "link_copied",
+      channel: "clipboard",
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+    fireShareWebhook("clipboard");
+  };
+
+  const handleCopyCaption = async (text: string, channel: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCaptionCopied(channel);
+    setTimeout(() => setCaptionCopied(null), 2500);
+    fireCaptionCopiedWebhook(channel);
+  };
+
+  const handleColleagueSend = async () => {
+    if (!colleagueEmail.trim()) {
+      setColleagueError("Please enter an email address.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(colleagueEmail.trim())) {
+      setColleagueError("Please enter a valid email address.");
+      return;
+    }
+    setColleagueError("");
+    sendWebhook({
+      event_type: "referral_email_sent",
+      referrer_email: lead.email,
+      referrer_name: `${lead.firstName} ${lead.lastName}`,
+      referred_email: colleagueEmail.trim(),
+      referral_link: assessmentUrl,
+      score: scaledScore,
+      result: tier.label,
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+    setColleagueSent(true);
+  };
+
+  const handleFeedback = (rating: "up" | "down") => {
+    if (feedback) return;
+    setFeedback(rating);
+    sendWebhook({
+      event_type: "feedback",
+      rating,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      score: scaledScore,
+      result: tier.label,
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
+      ...UTM_PARAMS,
+      timestamp: new Date().toISOString(),
+    });
+  };
 
   const generatePdf = () => {
     setPdfLoading(true);
     try {
+      const clarityScore = getPillarScore(scores, 0);
+      const leadershipScore = getPillarScore(scores, 3);
+      const executionScore = getPillarScore(scores, 6);
+      const alignmentScore = getPillarScore(scores, 9);
+      const resultsScore = getPillarScore(scores, 12);
+      const pillarsData = [
+        { name: "Clarity", score: clarityScore },
+        { name: "Leadership", score: leadershipScore },
+        { name: "Execution", score: executionScore },
+        { name: "Alignment", score: alignmentScore },
+        { name: "Results", score: resultsScore },
+      ];
+
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const W = 210;
       const margin = 20;
@@ -2422,29 +2504,24 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
 
       doc.setFillColor(10, 35, 66);
       doc.rect(0, 0, W, 42, "F");
-
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
       doc.setTextColor(212, 175, 55);
       doc.text("DRU CLEAR™ AI Readiness Report", margin, 18);
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(230, 230, 230);
       doc.text("AI Mastery. Leadership Clarity. Measurable Results.", margin, 26);
-
       doc.setFontSize(8);
       doc.setTextColor(180, 180, 180);
       doc.text(`Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, margin, 34);
 
       y = 54;
-
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(10, 35, 66);
       doc.text(`${lead.firstName} ${lead.lastName}`, margin, y);
       y += 7;
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(80, 80, 80);
@@ -2453,16 +2530,13 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
 
       doc.setFillColor(10, 35, 66);
       doc.roundedRect(margin, y, contentW, 28, 3, 3, "F");
-
       doc.setFont("helvetica", "bold");
       doc.setFontSize(28);
       doc.setTextColor(212, 175, 55);
       doc.text(`${scaledScore}/100`, margin + 8, y + 18);
-
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
       doc.text(tier.label, margin + 50, y + 12);
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(200, 200, 200);
@@ -2488,14 +2562,6 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
       doc.line(margin, y + 2, margin + contentW, y + 2);
       y += 7;
 
-      const pillarsData = [
-        { name: "Clarity", score: getPillarScore(scores, 0) },
-        { name: "Leadership", score: getPillarScore(scores, 3) },
-        { name: "Execution", score: getPillarScore(scores, 6) },
-        { name: "Alignment", score: getPillarScore(scores, 9) },
-        { name: "Results", score: getPillarScore(scores, 12) },
-      ];
-
       for (const p of pillarsData) {
         const pct = p.score / 15;
         doc.setFont("helvetica", "normal");
@@ -2511,7 +2577,6 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
         doc.roundedRect(margin, y + 6, contentW * pct, 4, 1, 1, "F");
         y += 14;
       }
-
       y += 4;
 
       const strongest = [...pillarsData].sort((a, b) => b.score - a.score)[0];
@@ -2541,7 +2606,6 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
         doc.setDrawColor(212, 175, 55);
         doc.line(margin, y + 2, margin + contentW, y + 2);
         y += 7;
-
         for (const g of gaps) {
           doc.setFillColor(255, 248, 240);
           doc.roundedRect(margin, y, contentW, 22, 2, 2, "F");
@@ -2568,7 +2632,6 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
       doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
       doc.text("Reserve Your DRU CLEAR™ Executive Diagnostic: druaiconsulting.com/appointment", W / 2, y + 9, { align: "center" });
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
@@ -2582,28 +2645,77 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
     }
   };
 
-  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
-  const [colleagueEmail, setColleagueEmail] = useState("");
-  const [colleagueSent, setColleagueSent] = useState(false);
-  const [colleagueError, setColleagueError] = useState("");
+  // ── Shared button style ───────────────────────────────────────────────────
+  const shareBtnStyle = (color: string): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    width: "100%",
+    padding: "0.75rem 1rem",
+    background: `${color}14`,
+    color: color,
+    border: `1.5px solid ${color}50`,
+    borderRadius: 6,
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 700,
+    fontSize: "0.8rem",
+    letterSpacing: "0.05em",
+    cursor: "pointer",
+    transition: "background 0.2s, border-color 0.2s",
+    textDecoration: "none",
+  });
 
-  const handleFeedback = (rating: "up" | "down") => {
-    if (feedback) return;
-    setFeedback(rating);
-    sendWebhook({
-      event_type: "feedback",
-      rating,
-      first_name: lead.firstName,
-      last_name: lead.lastName,
-      email: lead.email,
-      score: scaledScore,
-      result: tier.label,
-      ai_country_name: lead.country_name || "",
-      ai_country_iso: lead.country_iso || "",
-      ...UTM_PARAMS,
-      timestamp: new Date().toISOString(),
-    });
-  };
+  const SHARE_CHANNELS = [
+    {
+      id: "linkedin",
+      label: "Share on LinkedIn",
+      color: "#0A66C2",
+      href: linkedInUrl,
+      caption: linkedInCaption,
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "whatsapp",
+      label: "Share on WhatsApp",
+      color: "#25D366",
+      href: whatsAppUrl,
+      caption: whatsAppCaption,
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "telegram",
+      label: "Share on Telegram",
+      color: "#2AABEE",
+      href: telegramUrl,
+      caption: telegramCaption,
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "email",
+      label: "Share via Email",
+      color: "#D4AF37",
+      href: emailUrl,
+      caption: `Subject: ${emailSuggestedSubject}\n\n${emailSuggestedBody}`,
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+        </svg>
+      ),
+    },
+  ];
 
   return (
     <div
@@ -2611,50 +2723,53 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
       style={{
         minHeight: "100dvh",
         background: "#0A2342",
-        padding: "2rem 1.5rem 2.5rem",
+        padding: "2rem 1.5rem 3rem",
         textAlign: "center",
       }}
     >
-      <div className="flex justify-end w-full mb-2" style={{ maxWidth: 320 }}>
+      {/* Page indicator */}
+      <div className="flex justify-end w-full mb-2" style={{ maxWidth: 360 }}>
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>
           Page 9 of 9
         </span>
       </div>
 
+      {/* Gold check */}
       <div
         style={{
-          width: 72,
-          height: 72,
-          borderRadius: "50%",
+          width: 72, height: 72, borderRadius: "50%",
           border: "2px solid #D4AF37",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "1.5rem",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginBottom: "1.25rem",
           background: "rgba(212,175,55,0.08)",
         }}
       >
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>
 
+      {/* ── HEADLINE ── */}
       <h2
         className="text-3xl font-bold mb-3"
-        style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1.2 }}
+        style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1.2, maxWidth: 340 }}
       >
-        Share Your Excitement
+        Lead the AI Conversation
       </h2>
 
-      <p
-        className="text-base mb-8 max-w-xs"
-        style={{ color: "#E6E6E6", lineHeight: 1.6 }}
-      >
-        Amplify your insight, invite other leaders to assess their AI readiness, and save your report for future reference.
+      {/* ── SUBTEXT ── */}
+      <p className="text-base mb-2 max-w-xs" style={{ color: "#E6E6E6", lineHeight: 1.6 }}>
+        Position yourself as an AI-forward leader. Share your results, invite others to assess their readiness, and expand the conversation.
       </p>
 
+      {/* ── SOCIAL PROOF LINE ── */}
+      <p className="text-xs mb-6 max-w-xs" style={{ color: "rgba(212,175,55,0.7)", fontStyle: "italic", lineHeight: 1.6 }}>
+        Leaders across industries are using this assessment to benchmark their AI readiness.
+      </p>
+
+      {/* ── BADGE ── */}
       {badgeUrl && (
-        <div className="flex flex-col items-center" style={{ gap: "0.4rem", marginBottom: "1.5rem", width: "100%", maxWidth: 320 }}>
+        <div className="flex flex-col items-center" style={{ gap: "0.4rem", marginBottom: "1.5rem", width: "100%", maxWidth: 340 }}>
           <button
             onClick={async () => {
               try {
@@ -2668,38 +2783,293 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-              } catch {
-                window.open(badgeUrl, "_blank");
-              }
+              } catch { window.open(badgeUrl, "_blank"); }
             }}
             title="Tap to save & share"
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "block", width: "100%" }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%" }}
           >
             <img
               src={badgeUrl}
               alt={`${tier.label} tier badge`}
               loading="eager"
-              width="320"
-              height="168"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-              style={{
-                width: "100%",
-                maxWidth: 320,
-                height: "auto",
-                display: "block",
-                borderRadius: 8,
-                border: `1px solid ${tier.color}40`,
-                boxShadow: `0 4px 24px ${tier.color}20`,
-              }}
+              style={{ width: "100%", maxWidth: 340, height: "auto", display: "block", borderRadius: 8, border: `1px solid ${tier.color}40`, boxShadow: `0 4px 24px ${tier.color}20` }}
             />
           </button>
           <p style={{ color: "rgba(212,175,55,0.55)", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>
-            Tap to save &amp; share
+            Save your badge and share your AI readiness score
           </p>
         </div>
       )}
 
-      {/* Keep all your existing share / ready-made copy / PDF / feedback / colleague blocks here */}
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── SPREAD THE WORD ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.5rem", textAlign: "left" }}>
+        <p style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.35rem" }}>
+          SPREAD THE WORD
+        </p>
+        <p style={{ color: "#E6E6E6", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.5rem" }}>
+          Know a leader who should take this? Share your link or send it directly.
+        </p>
+        <p style={{ color: "rgba(212,175,55,0.65)", fontSize: "0.72rem", fontStyle: "italic", lineHeight: 1.5, marginBottom: "1rem" }}>
+          Your unique referral link is automatically included in every share.
+        </p>
+
+        {/* Share buttons */}
+        <div className="flex flex-col gap-2 mb-3">
+          {SHARE_CHANNELS.map((ch) => (
+            <a
+              key={ch.id}
+              href={ch.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={shareBtnStyle(ch.color)}
+              onClick={() => fireShareWebhook(ch.id)}
+            >
+              {ch.icon}
+              {ch.label}
+            </a>
+          ))}
+
+          {/* Copy link button */}
+          <button onClick={handleCopyLink} style={shareBtnStyle("#FFFFFF")}>
+            {copied ? (
+              <><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7L5.5 10.5L12 3.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Link Copied!</>
+            ) : (
+              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Copy Link</>
+            )}
+          </button>
+        </div>
+
+        {/* Share confirmation toast */}
+        {shareConfirmChannel && (
+          <div style={{ background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 6, padding: "0.5rem 0.75rem", marginBottom: "0.75rem", textAlign: "center" }}>
+            <p style={{ color: "#D4AF37", fontSize: "0.75rem", margin: 0 }}>
+              ✓ Shared via {shareConfirmChannel}! Your referral link is included.
+            </p>
+          </div>
+        )}
+
+        {/* Referral tracking language */}
+        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 6, padding: "0.65rem 0.75rem", marginBottom: "0.5rem" }}>
+          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.6, margin: 0 }}>
+            When someone completes the assessment using your link, it's tracked to you.
+          </p>
+          <p style={{ color: "rgba(212,175,55,0.6)", fontSize: "0.68rem", fontStyle: "italic", lineHeight: 1.5, marginTop: "0.35rem", marginBottom: 0 }}>
+            Top referrers may receive exclusive access, private sessions, or strategic bonuses.
+          </p>
+        </div>
+      </div>
+
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── READY-MADE COPY ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.5rem", textAlign: "left" }}>
+        <p style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.35rem" }}>
+          READY-MADE COPY
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.72rem", marginBottom: "0.75rem" }}>
+          Use the captions below to quickly share your results across platforms.
+        </p>
+
+        {SHARE_CHANNELS.map((ch) => (
+          <div key={ch.id} style={{ marginBottom: "0.65rem" }}>
+            <button
+              onClick={() => setExpandedCaption(expandedCaption === ch.id ? null : ch.id)}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", padding: "0.55rem 0.75rem",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)",
+                borderRadius: expandedCaption === ch.id ? "6px 6px 0 0" : 6,
+                color: "#E6E6E6", fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 600, fontSize: "0.75rem", cursor: "pointer",
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: ch.color }}>
+                {ch.icon} {ch.id.charAt(0).toUpperCase() + ch.id.slice(1)}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: expandedCaption === ch.id ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>
+                <path d="M2 4L6 8L10 4" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {expandedCaption === ch.id && (
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderTop: "none", borderRadius: "0 0 6px 6px", padding: "0.65rem 0.75rem" }}>
+                <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.7rem", lineHeight: 1.6, marginBottom: "0.5rem", whiteSpace: "pre-line" }}>
+                  {ch.caption}
+                </p>
+                <button
+                  onClick={() => handleCopyCaption(ch.caption, ch.id)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.35rem",
+                    padding: "0.4rem 0.75rem", background: "rgba(212,175,55,0.1)",
+                    border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4,
+                    color: "#D4AF37", fontSize: "0.7rem", fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em",
+                  }}
+                >
+                  {captionCopied === ch.id ? "✓ Copied!" : "Copy Caption"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── DOWNLOAD REPORT ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.5rem", textAlign: "left" }}>
+        <p style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.35rem" }}>
+          Download Your Full Report
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+          Save your personalized AI readiness report for future reference and leadership discussions.
+        </p>
+        <button
+          onClick={generatePdf}
+          disabled={pdfLoading}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+            width: "100%", padding: "0.75rem 1rem",
+            background: "rgba(212,175,55,0.1)", border: "1.5px solid rgba(212,175,55,0.4)",
+            borderRadius: 6, color: "#D4AF37", fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.05em", cursor: pdfLoading ? "not-allowed" : "pointer",
+            opacity: pdfLoading ? 0.6 : 1, transition: "background 0.2s",
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          {pdfLoading ? "Generating..." : "Download My AI Readiness Report (PDF)"}
+        </button>
+      </div>
+
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── DIRECT REFERRAL INPUT ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.5rem", textAlign: "left" }}>
+        <p style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.35rem" }}>
+          Send This to a Colleague
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+          Enter their email and we'll send them your personalized assessment link.
+        </p>
+        {!colleagueSent ? (
+          <>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                className="dru-input"
+                type="email"
+                placeholder="colleague@company.com"
+                value={colleagueEmail}
+                onChange={(e) => { setColleagueEmail(e.target.value); setColleagueError(""); }}
+                style={{ flex: 1 }}
+              />
+              <button
+                onClick={handleColleagueSend}
+                style={{
+                  padding: "0 1rem", background: "#D4AF37", color: "#0A2342",
+                  border: "none", borderRadius: 4, fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                Send →
+              </button>
+            </div>
+            {colleagueError && <p style={{ color: "#E53935", fontSize: "0.7rem", marginTop: "0.35rem" }}>{colleagueError}</p>}
+          </>
+        ) : (
+          <div style={{ background: "rgba(67,160,71,0.1)", border: "1px solid rgba(67,160,71,0.3)", borderRadius: 6, padding: "0.65rem 0.75rem" }}>
+            <p style={{ color: "#43A047", fontSize: "0.78rem", margin: 0 }}>
+              ✓ Invite sent! Your referral link was included.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── FEEDBACK ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.5rem", textAlign: "center" }}>
+        <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.75rem" }}>
+          Was this assessment helpful?
+        </p>
+        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+          <button
+            onClick={() => handleFeedback("up")}
+            disabled={!!feedback}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.55rem 1.25rem",
+              background: feedback === "up" ? "rgba(67,160,71,0.15)" : "rgba(255,255,255,0.05)",
+              border: `1.5px solid ${feedback === "up" ? "#43A047" : "rgba(255,255,255,0.15)"}`,
+              borderRadius: 6, color: feedback === "up" ? "#43A047" : "#E6E6E6",
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem",
+              cursor: feedback ? "default" : "pointer", transition: "all 0.2s",
+            }}
+          >
+            👍 Yes
+          </button>
+          <button
+            onClick={() => handleFeedback("down")}
+            disabled={!!feedback}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.55rem 1.25rem",
+              background: feedback === "down" ? "rgba(229,57,53,0.1)" : "rgba(255,255,255,0.05)",
+              border: `1.5px solid ${feedback === "down" ? "#E53935" : "rgba(255,255,255,0.15)"}`,
+              borderRadius: 6, color: feedback === "down" ? "#E53935" : "#E6E6E6",
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem",
+              cursor: feedback ? "default" : "pointer", transition: "all 0.2s",
+            }}
+          >
+            👎 Not Really
+          </button>
+        </div>
+        {feedback && (
+          <p style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.72rem", marginTop: "0.5rem", fontStyle: "italic" }}>
+            {feedback === "up" ? "Thank you! We're glad it was helpful." : "Thank you for your feedback — we'll keep improving."}
+          </p>
+        )}
+      </div>
+
+      <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
+
+      {/* ── LOOP BACK TO MONEY PAGE (Revenue Recovery) ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.75rem", textAlign: "center" }}>
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.75rem", marginBottom: "0.5rem" }}>
+          Not ready to move forward yet?
+        </p>
+        <a
+          href="https://druaiconsulting.com/appointment"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.35rem",
+            color: "#C2185B", fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700, fontSize: "0.8rem", textDecoration: "underline",
+            textUnderlineOffset: 3, cursor: "pointer",
+          }}
+        >
+          → Revisit Your Executive Recommendation
+        </a>
+      </div>
+
+      {/* ── AUTHORITY FOOTER ── */}
+      <div style={{ width: "100%", maxWidth: 340, marginBottom: "1rem", textAlign: "center" }}>
+        <DruLogo className="w-40 max-w-full mb-3" />
+        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", marginBottom: "0.25rem" }}>
+          Created by DeAnna R. Upshaw — AI Authority
+        </p>
+        <a
+          href="https://druaiconsulting.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#D4AF37", fontSize: "0.72rem", textDecoration: "underline", textUnderlineOffset: 3 }}
+        >
+          druaiconsulting.com
+        </a>
+      </div>
     </div>
   );
 }
