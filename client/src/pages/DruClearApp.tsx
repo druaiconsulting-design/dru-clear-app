@@ -2976,6 +2976,1033 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
 
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
+function ResultsTransitionBlock({ onContinue }: { onContinue: () => void }) {
+  return (
+    <div style={{ width: "100%" }}>
+      {/* What This Means For You */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(212,175,55,0.18)",
+          borderRadius: 8,
+          padding: "1rem",
+          marginBottom: "1rem",
+        }}
+      >
+        <p
+          style={{
+            color: "#D4AF37",
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+          }}
+        >
+          What This Means For You
+        </p>
+        <p style={{ color: "#E6E6E6", fontSize: "0.78rem", lineHeight: 1.7 }}>
+          Your results highlight key areas across leadership, alignment, execution, and AI readiness.
+          This gives you visibility into where gaps may exist — but not why they exist or how to fix them.
+        </p>
+        <p
+          style={{
+            color: "rgba(230,230,230,0.6)",
+            fontSize: "0.75rem",
+            lineHeight: 1.6,
+            marginTop: "0.5rem",
+            fontStyle: "italic",
+          }}
+        >
+          Most leaders stay at this stage — aware of the challenges, but without a clear path forward.
+        </p>
+      </div>
+
+      {/* Your Next Step */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(212,175,55,0.18)",
+          borderRadius: 8,
+          padding: "1rem",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <p
+          style={{
+            color: "#D4AF37",
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+          }}
+        >
+          Your Next Step
+        </p>
+        <p style={{ color: "#E6E6E6", fontSize: "0.78rem", lineHeight: 1.7 }}>
+          To move forward, the next step is to go deeper — identify root causes, prioritize what matters most,
+          and gain clarity on what actions to take.
+        </p>
+      </div>
+
+      {/* Expiry notice */}
+      <p
+        style={{
+          color: "rgba(212,175,55,0.6)",
+          fontSize: "0.68rem",
+          textAlign: "center",
+          fontStyle: "italic",
+          marginBottom: "1rem",
+          lineHeight: 1.5,
+        }}
+      >
+        Your results are available for a limited time to ensure accuracy and relevance.
+      </p>
+
+      {/* Primary CTA */}
+      <button className="btn-magenta" onClick={onContinue} style={{ marginBottom: "0.75rem" }}>
+        Continue to Diagnostic Options →
+      </button>
+    </div>
+  );
+}
+
+// ─── 5. EXPIRED SCREEN ───────────────────────────────────────
+function ExpiredScreen({ onRetake }: { onRetake: () => void }) {
+  return (
+    <div
+      className="screen-enter flex flex-col items-center justify-center"
+      style={{
+        minHeight: "100dvh",
+        background: "#0A2342",
+        padding: "2.5rem 1.5rem",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          border: "2px solid rgba(212,175,55,0.4)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "1.5rem",
+          background: "rgba(212,175,55,0.06)",
+        }}
+      >
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="11" stroke="#D4AF37" strokeWidth="2" strokeOpacity="0.6"/>
+          <path d="M16 9v8l4 4" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.8"/>
+        </svg>
+      </div>
+
+      <h2
+        style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: "1.75rem",
+          fontWeight: 700,
+          color: "#D4AF37",
+          marginBottom: "1rem",
+          lineHeight: 1.2,
+        }}
+      >
+        Your Results Have Expired
+      </h2>
+
+      <p
+        style={{
+          color: "#E6E6E6",
+          fontSize: "0.85rem",
+          lineHeight: 1.7,
+          maxWidth: 320,
+          marginBottom: "0.75rem",
+        }}
+      >
+        Your AI Readiness score is only valid for 48 hours to ensure accuracy and relevance.
+      </p>
+
+      <p
+        style={{
+          color: "rgba(230,230,230,0.6)",
+          fontSize: "0.78rem",
+          lineHeight: 1.6,
+          maxWidth: 300,
+          marginBottom: "2rem",
+          fontStyle: "italic",
+        }}
+      >
+        To get your most accurate and current results, take the assessment again — it only takes 3 minutes.
+      </p>
+
+      <button className="btn-gold" onClick={onRetake} style={{ maxWidth: 320 }}>
+        Retake My Assessment →
+      </button>
+
+      <div style={{ marginTop: "2rem" }}>
+        <DruLogo className="w-36" />
+      </div>
+    </div>
+  );
+}
+
+// ─── 6. NUDGE BANNER ─────────────────────────────────────────
+// Add this component — renders as a top banner
+function NudgeBanner({ onDismiss, onBookNow }: { onDismiss: () => void; onBookNow: () => void }) {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)",
+        borderBottom: "1px solid rgba(212,175,55,0.4)",
+        padding: "0.75rem 1.25rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        zIndex: 9998,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            color: "#D4AF37",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.75rem",
+            letterSpacing: "0.04em",
+            marginBottom: 2,
+          }}
+        >
+          Your results expire soon
+        </div>
+        <div
+          style={{
+            color: "rgba(255,255,255,0.65)",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+          }}
+        >
+          Your AI Readiness score expires in less than 12 hours.
+        </div>
+      </div>
+      <button
+        onClick={onBookNow}
+        style={{
+          background: "#C2185B",
+          color: "#FFFFFF",
+          border: "none",
+          borderRadius: 4,
+          padding: "0.4rem 0.8rem",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.68rem",
+          letterSpacing: "0.04em",
+          cursor: "pointer",
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Reserve Now
+      </button>
+      <button
+        onClick={onDismiss}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "rgba(255,255,255,0.4)",
+          cursor: "pointer",
+          fontSize: "1.1rem",
+          flexShrink: 0,
+          padding: "0.25rem",
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+// ─── 7. DIAGNOSE PAGE ────────────────────────────────────────
+function DiagnoseScreen({
+  lead,
+  scores,
+  onSelectStrategic,
+  onSelectExecutive,
+  onSkipToTransformation,
+}: {
+  lead: LeadData;
+  scores: Scores;
+  onSelectStrategic: () => void;
+  onSelectExecutive: () => void;
+  onSkipToTransformation: () => void;
+}) {
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  const tier = getTier(total);
+  const scaledScore = Math.round((total / 75) * 100);
+  const [selected, setSelected] = useState<"strategic" | "executive" | null>(null);
+
+  return (
+    <div
+      className="screen-enter flex flex-col"
+      style={{
+        minHeight: "100dvh",
+        background: "#0A2342",
+        padding: "2rem 1.5rem 3rem",
+        maxWidth: 480,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        <DruLogo className="w-36 max-w-full mb-4" style={{ margin: "0 auto 1rem" }} />
+        <h2
+          style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: "1.6rem",
+            fontWeight: 700,
+            color: "#D4AF37",
+            marginBottom: "0.5rem",
+            lineHeight: 1.2,
+          }}
+        >
+          Your Results Are In.
+        </h2>
+        <p
+          style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: "1.1rem",
+            color: "#FFFFFF",
+            marginBottom: "0.75rem",
+          }}
+        >
+          Now It's Time to Turn Insight Into Action.
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.78rem", lineHeight: 1.65, maxWidth: 360, margin: "0 auto" }}>
+          Your scorecard revealed important signals across leadership, alignment, execution, and AI readiness.
+          The next step is to go deeper, identify what is slowing progress, and build the right path forward.
+        </p>
+      </div>
+
+      <div className="gold-divider" style={{ marginBottom: "1.25rem" }} />
+
+      {/* Score reminder */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.75rem",
+          marginBottom: "1.25rem",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(212,175,55,0.18)",
+          borderRadius: 8,
+          padding: "0.75rem 1rem",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Your Score</p>
+          <p style={{ color: "#D4AF37", fontSize: "1.5rem", fontWeight: 700, fontFamily: "'Playfair Display', serif", lineHeight: 1 }}>{scaledScore}<span style={{ fontSize: "0.9rem", color: "rgba(212,175,55,0.5)" }}>/100</span></p>
+        </div>
+        <div style={{ width: 1, height: 40, background: "rgba(212,175,55,0.2)" }} />
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Tier</p>
+          <p style={{ color: tier.color, fontSize: "0.9rem", fontWeight: 700, letterSpacing: "0.08em" }}>{tier.label}</p>
+        </div>
+      </div>
+
+      {/* What your score means */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <p
+          style={{
+            color: "#D4AF37",
+            fontSize: "0.68rem",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+          }}
+        >
+          What Your Score Really Means
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.78rem", lineHeight: 1.65 }}>
+          This free scorecard is designed to reveal patterns, not solve them. True transformation requires
+          a deeper look at your leadership alignment, decision readiness, team execution, and business opportunities.
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.55)", fontSize: "0.72rem", lineHeight: 1.6, marginTop: "0.5rem", fontStyle: "italic" }}>
+          Without a deeper diagnostic, most organizations stay aware of the gaps but never address the root causes behind them.
+        </p>
+      </div>
+
+      <div className="gold-divider" style={{ marginBottom: "1.25rem" }} />
+
+      {/* Choose your next step */}
+      <p
+        style={{
+          color: "#D4AF37",
+          fontSize: "0.68rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          marginBottom: "0.35rem",
+          fontFamily: "'Montserrat', sans-serif",
+        }}
+      >
+        Choose Your Next Step
+      </p>
+      <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "1rem" }}>
+        Both options help you move beyond general insight into strategic clarity.
+      </p>
+
+      {/* ── TIER CARDS ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}>
+
+        {/* Card 1 — Executive (BEST VALUE — shown first per mobile conversion strategy) */}
+        <div
+          onClick={() => setSelected("executive")}
+          style={{
+            background: selected === "executive" ? "rgba(212,175,55,0.08)" : "rgba(255,255,255,0.04)",
+            border: `2px solid ${selected === "executive" ? "#D4AF37" : "rgba(212,175,55,0.3)"}`,
+            borderRadius: 10,
+            padding: "1.25rem",
+            cursor: "pointer",
+            position: "relative",
+            transition: "all 0.2s",
+          }}
+        >
+          {/* Best Value badge */}
+          <div
+            style={{
+              position: "absolute",
+              top: -12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "#C2185B",
+              color: "#FFFFFF",
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              padding: "3px 14px",
+              borderRadius: 20,
+              fontFamily: "'Montserrat', sans-serif",
+              whiteSpace: "nowrap",
+            }}
+          >
+            BEST VALUE
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", marginTop: "0.25rem" }}>
+            <div>
+              <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>
+                Executive Diagnostic
+              </p>
+              <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.68rem" }}>+ 90-Day AI Roadmap</p>
+            </div>
+            <p style={{ color: "#D4AF37", fontSize: "1.4rem", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>$4,997</p>
+          </div>
+
+          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+            A premium executive-level diagnostic for leaders ready to move from insight to a clear transformation plan.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.75rem" }}>
+            {[
+              "Full executive diagnostic (25–35 Qs)",
+              "Full ecosystem: DRU CLEAR™ + 5D + 5C + AI Sales Mastery™",
+              "Executive AI Alignment Report (boardroom-ready)",
+              "Full gap analysis + risk + opportunity layers",
+              "Custom 90-Day AI Roadmap",
+              "90-min executive briefing",
+              "Executive-level recommendations + sequencing",
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                <span style={{ color: "#D4AF37", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
+                <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="btn-magenta"
+            onClick={(e) => { e.stopPropagation(); onSelectExecutive(); }}
+            style={{ fontSize: "0.82rem" }}
+          >
+            Choose Executive Diagnostic →
+          </button>
+          <p style={{ color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", textAlign: "center", marginTop: "0.4rem", fontStyle: "italic" }}>
+            Most leaders choose this option because it gives them both the insight and the plan.
+          </p>
+        </div>
+
+        {/* Card 2 — Strategic */}
+        <div
+          onClick={() => setSelected("strategic")}
+          style={{
+            background: selected === "strategic" ? "rgba(212,175,55,0.06)" : "rgba(255,255,255,0.03)",
+            border: `1.5px solid ${selected === "strategic" ? "rgba(212,175,55,0.6)" : "rgba(212,175,55,0.2)"}`,
+            borderRadius: 10,
+            padding: "1.25rem",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+            <div>
+              <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>
+                Strategic Diagnostic
+              </p>
+              <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.68rem" }}>For serious teams evaluating AI</p>
+            </div>
+            <p style={{ color: "#D4AF37", fontSize: "1.4rem", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>$3,497</p>
+          </div>
+
+          <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+            A deeper diagnostic designed to help leaders uncover the core gaps affecting alignment, execution, and AI readiness.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.75rem" }}>
+            {[
+              "Expanded diagnostic (20–25 Qs)",
+              "DRU CLEAR™ + 5D Leadership™ review",
+              "Strategic Insight Report",
+              "Top 5 gaps + priority ranking",
+              "Strategic AI readiness review",
+              "90-min strategy session",
+              "Priority findings + strategic direction",
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                <span style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
+                <span style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            style={{
+              width: "100%",
+              padding: "0.85rem",
+              background: "transparent",
+              border: "1.5px solid rgba(212,175,55,0.5)",
+              borderRadius: 4,
+              color: "#D4AF37",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              letterSpacing: "0.04em",
+            }}
+            onClick={(e) => { e.stopPropagation(); onSelectStrategic(); }}
+          >
+            Choose Strategic Diagnostic →
+          </button>
+        </div>
+      </div>
+
+      {/* Why upgrade */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(212,175,55,0.12)",
+          borderRadius: 8,
+          padding: "0.875rem",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <p
+          style={{
+            color: "#D4AF37",
+            fontSize: "0.68rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: "0.4rem",
+            fontFamily: "'Montserrat', sans-serif",
+          }}
+        >
+          Why Upgrade From the Free Scorecard?
+        </p>
+        <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.65 }}>
+          The free scorecard highlights <em>what</em> may be happening. The diagnostic identifies <em>why</em> it is
+          happening, what it is costing you, and what to do next.
+        </p>
+      </div>
+
+      {/* Soft skip to transformation */}
+      <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+        <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "0.35rem" }}>
+          Already know you need a full transformation?
+        </p>
+        <button
+          onClick={onSkipToTransformation}
+          style={{
+            background: "none",
+            border: "none",
+            color: "rgba(212,175,55,0.65)",
+            fontSize: "0.72rem",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+            cursor: "pointer",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 600,
+          }}
+        >
+          → Explore the 90-Day AI Transformation
+        </button>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+        <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.6rem", letterSpacing: "0.04em" }}>
+          © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── 8. PAYMENT SCREEN ───────────────────────────────────────
+function PaymentScreen({
+  tier,
+  price,
+  paymentUrl,
+  onBack,
+}: {
+  tier: "strategic" | "executive";
+  price: string;
+  paymentUrl: string;
+  onBack: () => void;
+}) {
+  const isExecutive = tier === "executive";
+
+  return (
+    <div
+      className="screen-enter flex flex-col"
+      style={{
+        minHeight: "100dvh",
+        background: "#0A2342",
+        padding: "2rem 1.5rem 3rem",
+        maxWidth: 480,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      {/* Back */}
+      <button
+        onClick={onBack}
+        style={{
+          background: "none",
+          border: "none",
+          color: "rgba(212,175,55,0.7)",
+          fontSize: "0.78rem",
+          cursor: "pointer",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 600,
+          textAlign: "left",
+          marginBottom: "1.25rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.35rem",
+        }}
+      >
+        ← Back to Options
+      </button>
+
+      <DruLogo className="w-32 max-w-full mb-4" />
+
+      {/* Offer summary */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: `1.5px solid ${isExecutive ? "#D4AF37" : "rgba(212,175,55,0.3)"}`,
+          borderRadius: 8,
+          padding: "1rem",
+          marginBottom: "1.25rem",
+        }}
+      >
+        {isExecutive && (
+          <div
+            style={{
+              background: "#C2185B",
+              color: "#FFFFFF",
+              fontSize: "0.62rem",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 20,
+              fontFamily: "'Montserrat', sans-serif",
+              display: "inline-block",
+              marginBottom: "0.5rem",
+            }}
+          >
+            BEST VALUE
+          </div>
+        )}
+        <p
+          style={{
+            color: "#FFFFFF",
+            fontWeight: 700,
+            fontSize: "0.95rem",
+            fontFamily: "'Montserrat', sans-serif",
+            marginBottom: "0.25rem",
+          }}
+        >
+          {isExecutive ? "Executive Diagnostic + 90-Day AI Roadmap" : "Strategic Diagnostic"}
+        </p>
+        <p style={{ color: "#D4AF37", fontSize: "1.5rem", fontWeight: 700, fontFamily: "'Playfair Display', serif", marginBottom: "0.75rem" }}>
+          {price}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+          {(isExecutive ? [
+            "Full executive diagnostic (25–35 Qs)",
+            "Full ecosystem review",
+            "Executive AI Alignment Report",
+            "Custom 90-Day AI Roadmap",
+            "90-min executive briefing",
+          ] : [
+            "Expanded diagnostic (20–25 Qs)",
+            "Strategic Insight Report",
+            "Top 5 priority gaps",
+            "90-min strategy session",
+          ]).map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ color: "#D4AF37", fontSize: "0.7rem", flexShrink: 0 }}>✓</span>
+              <span style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Payment iframe */}
+      <p
+        style={{
+          color: "#D4AF37",
+          fontSize: "0.68rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          marginBottom: "0.75rem",
+          fontFamily: "'Montserrat', sans-serif",
+        }}
+      >
+        Complete Your Payment
+      </p>
+
+      <iframe
+        src={paymentUrl}
+        style={{
+          width: "100%",
+          minHeight: 600,
+          border: "1px solid rgba(212,175,55,0.2)",
+          borderRadius: 8,
+          background: "#FFFFFF",
+          marginBottom: "1rem",
+        }}
+        title="Secure Payment"
+        allow="payment"
+      />
+
+      <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", textAlign: "center", lineHeight: 1.5 }}>
+        🔒 Secure payment powered by Stripe. Your information is encrypted and protected.
+      </p>
+    </div>
+  );
+}
+
+// ─── 9. THANK YOU SCREEN (TIER-SPECIFIC) ─────────────────────
+function ThankYouPurchaseScreen({
+  lead,
+  tier,
+  calendarUrl,
+  onContinue,
+}: {
+  lead: LeadData;
+  tier: "strategic" | "executive";
+  calendarUrl: string;
+  onContinue: () => void;
+}) {
+  const isExecutive = tier === "executive";
+
+  return (
+    <div
+      className="screen-enter flex flex-col items-center"
+      style={{
+        minHeight: "100dvh",
+        background: "#0A2342",
+        padding: "2rem 1.5rem 3rem",
+        textAlign: "center",
+        maxWidth: 480,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      {/* Check circle */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          border: "2px solid #D4AF37",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "1.25rem",
+          background: "rgba(212,175,55,0.08)",
+          boxShadow: "0 0 0 4px rgba(212,175,55,0.08)",
+        }}
+      >
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+
+      <h2
+        style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: "1.6rem",
+          fontWeight: 700,
+          color: "#D4AF37",
+          marginBottom: "0.65rem",
+          lineHeight: 1.2,
+          maxWidth: 320,
+        }}
+      >
+        {isExecutive ? "You're In. Let's Build Your Roadmap." : "You're In. Let's Get Started."}
+      </h2>
+
+      <p style={{ color: "#E6E6E6", fontSize: "0.82rem", lineHeight: 1.65, maxWidth: 320, marginBottom: "1.5rem" }}>
+        {isExecutive
+          ? "Your Executive Diagnostic + 90-Day AI Roadmap is confirmed. Book your session below and we'll begin building your transformation blueprint."
+          : "Your Strategic Diagnostic is confirmed. Book your 90-minute strategy session below and we'll uncover exactly what's holding your organization back."}
+      </p>
+
+      {/* What happens next */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 340,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(212,175,55,0.18)",
+          borderRadius: 8,
+          padding: "1rem",
+          marginBottom: "1.25rem",
+          textAlign: "left",
+        }}
+      >
+        <p
+          style={{
+            color: "#D4AF37",
+            fontSize: "0.68rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: "0.6rem",
+            fontFamily: "'Montserrat', sans-serif",
+          }}
+        >
+          What Happens Next
+        </p>
+        {[
+          "Book your session using the calendar below",
+          "You'll receive a confirmation email with your Zoom link",
+          isExecutive
+            ? "Complete a pre-session intake form to maximize your time"
+            : "Review your scorecard results before the call",
+          isExecutive
+            ? "Your custom 90-Day AI Roadmap will be delivered after your session"
+            : "Receive your Strategic Insight Report within 48 hours of your session",
+        ].map((item, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginBottom: "0.4rem" }}>
+            <span
+              style={{
+                background: "#D4AF37",
+                color: "#0A2342",
+                fontSize: "0.55rem",
+                fontWeight: 700,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                marginTop: 2,
+              }}
+            >
+              {i + 1}
+            </span>
+            <span style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Strategic bridge to $25K — subtle */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 340,
+          background: "rgba(194,24,91,0.06)",
+          border: "1px solid rgba(194,24,91,0.2)",
+          borderRadius: 8,
+          padding: "0.875rem",
+          marginBottom: "1.5rem",
+          textAlign: "left",
+        }}
+      >
+        <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.65, fontStyle: "italic" }}>
+          During your session, we'll review your results and, if appropriate, outline what it would look like
+          to move into a full 90-day AI leadership transformation.
+        </p>
+      </div>
+
+      {/* Calendar */}
+      <p
+        style={{
+          color: "#D4AF37",
+          fontSize: "0.68rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          marginBottom: "0.75rem",
+          fontFamily: "'Montserrat', sans-serif",
+          width: "100%",
+          maxWidth: 340,
+          textAlign: "left",
+        }}
+      >
+        Book Your Session
+      </p>
+
+      <iframe
+        src={calendarUrl}
+        style={{
+          width: "100%",
+          maxWidth: 340,
+          minHeight: 580,
+          border: "1px solid rgba(212,175,55,0.2)",
+          borderRadius: 8,
+          background: "#FFFFFF",
+          marginBottom: "0.75rem",
+        }}
+        title="Book Your Session"
+      />
+
+      <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+        Having trouble? <a href={calendarUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#D4AF37", textDecoration: "underline" }}>Open booking page</a>
+      </p>
+
+      {/* Continue to share */}
+      <button
+        onClick={onContinue}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "rgba(212,175,55,0.7)",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.75rem",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+          cursor: "pointer",
+          marginBottom: "1.5rem",
+        }}
+      >
+        Continue to Share Your Results →
+      </button>
+
+      <DruLogo className="w-36 max-w-full mb-2" />
+      <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>
+        Questions? <a href="mailto:hello@druaiconsulting.com" style={{ color: "#D4AF37" }}>hello@druaiconsulting.com</a>
+      </p>
+    </div>
+  );
+}
+
+// ─── 10. UPDATED MAIN APP ROUTER ─────────────────────────────
+// In your DruClearApp() function:
+// 1. ADD these state variables after existing useState declarations:
+//
+//   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+//   const [selectedTier, setSelectedTier] = useState<"strategic" | "executive" | null>(null);
+//   const expiryStatus = getExpiryStatus();
+//
+// 2. In the useEffect that handles screen changes, ADD:
+//   if (screen === "results") { saveExpiryTimestamp(); }
+//   if (screen === "splash") { clearExpiryTimestamp(); }
+//
+// 3. ADD these screen renders in the return statement:
+
+// {/* Expiry check — intercepts results/diagnose if expired */}
+// {(screen === "results" || screen === "diagnose") && expiryStatus === "expired" && (
+//   <ExpiredScreen onRetake={() => {
+//     clearExpiryTimestamp();
+//     clearProgress();
+//     setScores({});
+//     setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
+//     goTo("welcome");
+//   }} />
+// )}
+
+// {/* Nudge banner — shows on results/diagnose screens 36hrs before expiry */}
+// {(screen === "results" || screen === "diagnose") &&
+//   expiryStatus === "nudge" &&
+//   !nudgeDismissed && (
+//   <NudgeBanner
+//     onDismiss={() => setNudgeDismissed(true)}
+//     onBookNow={() => goTo("diagnose")}
+//   />
+// )}
+
+// {screen === "diagnose" && (
+//   <DiagnoseScreen
+//     lead={lead}
+//     scores={scores}
+//     onSelectStrategic={() => { setSelectedTier("strategic"); goTo("payment-strategic"); }}
+//     onSelectExecutive={() => { setSelectedTier("executive"); goTo("payment-executive"); }}
+//     onSkipToTransformation={() => {
+//       window.open("https://druaiconsulting.com/transformation", "_blank");
+//     }}
+//   />
+// )}
+
+// {screen === "payment-strategic" && (
+//   <PaymentScreen
+//     tier="strategic"
+//     price="$3,497"
+//     paymentUrl={PAYMENT_STRATEGIC_URL}
+//     onBack={() => goTo("diagnose")}
+//   />
+// )}
+
+// {screen === "payment-executive" && (
+//   <PaymentScreen
+//     tier="executive"
+//     price="$4,997"
+//     paymentUrl={PAYMENT_EXECUTIVE_URL}
+//     onBack={() => goTo("diagnose")}
+//   />
+// )}
+
+// {screen === "thankyou-strategic" && (
+//   <ThankYouPurchaseScreen
+//     lead={lead}
+//     tier="strategic"
+//     calendarUrl={CALENDAR_STRATEGIC_URL}
+//     onContinue={() => goTo("share-your-excitement")}
+//   />
+// )}
+
+// {screen === "thankyou-executive" && (
+//   <ThankYouPurchaseScreen
+//     lead={lead}
+//     tier="executive"
+//     calendarUrl={CALENDAR_EXECUTIVE_URL}
+//     onContinue={() => goTo("share-your-excitement")}
+//   />
+// )}
 
 // ─── SessionStorage Progress Save ────────────────────────────────────────────────────
 const PROGRESS_KEY = "dru_clear_progress";
