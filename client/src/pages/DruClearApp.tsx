@@ -1843,83 +1843,84 @@ function ResultsScreen({
     animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
   }, []);
-  // Webhook #2 — fires when user reaches the Results screen after completing all 15 questions (POST JSON)
+ // Webhook — fires when user reaches Results screen
   const sentRef = useRef(false);
-useEffect(() => {
-  if (sentRef.current) return;
-  sentRef.current = true;
+  useEffect(() => {
+    if (sentRef.current) return;
+    sentRef.current = true;
 
-  const LIKERT_MAP: Record<number, string> = {
-    1: "Strongly Disagree",
-    2: "Disagree",
-    3: "Neutral",
-    4: "Agree",
-    5: "Strongly Agree",
-  };
-  const answerLabel = (qIndex: number): string =>
-    LIKERT_MAP[scores[qIndex]] || "Not answered";
+    const LIKERT_MAP: Record<number, string> = {
+      1: "Strongly Disagree",
+      2: "Disagree",
+      3: "Neutral",
+      4: "Agree",
+      5: "Strongly Agree",
+    };
+    const answerLabel = (qIndex: number): string =>
+      LIKERT_MAP[scores[qIndex]] || "Not answered";
 
-  const scorePct = (total / 75) * 100;
-  const scoreCategory = scorePct <= 33 ? "Low" : scorePct <= 66 ? "Medium" : "High";
+    const scorePct = (total / 75) * 100;
+    const scoreCategory = scorePct <= 33 ? "Low" : scorePct <= 66 ? "Medium" : "High";
 
-  const formatTimestamp = (date: Date, tz: string, label: string): string => {
-    const datePart = date.toLocaleDateString("en-US", {
-      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-    });
-    const timePart = date.toLocaleTimeString("en-US", {
-      timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
-    });
-    const [mo, dy, yr] = datePart.split("/");
-    return `${yr}-${mo}-${dy} ${timePart} ${label}`;
-  };
+    const formatTimestamp = (date: Date, tz: string, label: string): string => {
+      const datePart = date.toLocaleDateString("en-US", {
+        timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      });
+      const timePart = date.toLocaleTimeString("en-US", {
+        timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+      });
+      const [mo, dy, yr] = datePart.split("/");
+      return `${yr}-${mo}-${dy} ${timePart} ${label}`;
+    };
 
-  const now = new Date();
-  const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const offsetMin = -now.getTimezoneOffset();
-  const offsetHr = Math.floor(Math.abs(offsetMin) / 60);
-  const offsetMn = Math.abs(offsetMin) % 60;
-  const offsetLabel = `UTC${offsetMin >= 0 ? "+" : "-"}${String(offsetHr).padStart(2, "0")}${offsetMn ? ":" + String(offsetMn).padStart(2, "0") : ""}`;
+    const now = new Date();
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const offsetMin = -now.getTimezoneOffset();
+    const offsetHr = Math.floor(Math.abs(offsetMin) / 60);
+    const offsetMn = Math.abs(offsetMin) % 60;
+    const offsetLabel = `UTC${offsetMin >= 0 ? "+" : "-"}${String(offsetHr).padStart(2, "0")}${offsetMn ? ":" + String(offsetMn).padStart(2, "0") : ""}`;
 
-  const mergedPayload = {
-    event_type: "assessment_completed",
-    tags: "Assessment-Completed",
-    first_name: lead.firstName,
-    last_name: lead.lastName,
-    email: lead.email,
-    phone: normalizePhone(lead.phone || ""),
-    company: lead.company,
-    role: lead.role,
-    ai_country_name: lead.country_name || "",
-    ai_country_iso: lead.country_iso || "",
-    total_score: scaledScore,
-    score_category: scoreCategory,
-    tier: tier.label,
-    assessment_status: "completed",
-    completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
-    completed_at_user: formatTimestamp(now, userTz, offsetLabel),
-    user_timezone: userTz,
-    ...UTM_PARAMS,
-    question_1: answerLabel(0),
-    question_2: answerLabel(1),
-    question_3: answerLabel(2),
-    question_4: answerLabel(3),
-    question_5: answerLabel(4),
-    question_6: answerLabel(5),
-    question_7: answerLabel(6),
-    question_8: answerLabel(7),
-    question_9: answerLabel(8),
-    question_10: answerLabel(9),
-    question_11: answerLabel(10),
-    question_12: answerLabel(11),
-    question_13: answerLabel(12),
-    question_14: answerLabel(13),
-    question_15: answerLabel(14),
-    timestamp: now.toISOString(),
-  };
-saveToLocalStorage("assessment_completed", mergedPayload);
-  sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    const mergedPayload = {
+      event_type: "assessment_completed",
+      tags: "Assessment-Completed",
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      email: lead.email,
+      phone: normalizePhone(lead.phone || ""),
+      company: lead.company,
+      role: lead.role,
+      ai_country_name: lead.country_name || "",
+      ai_country_iso: lead.country_iso || "",
+      total_score: scaledScore,
+      score_category: scoreCategory,
+      tier: tier.label,
+      assessment_status: "completed",
+      completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
+      completed_at_user: formatTimestamp(now, userTz, offsetLabel),
+      user_timezone: userTz,
+      ...UTM_PARAMS,
+      question_1: answerLabel(0),
+      question_2: answerLabel(1),
+      question_3: answerLabel(2),
+      question_4: answerLabel(3),
+      question_5: answerLabel(4),
+      question_6: answerLabel(5),
+      question_7: answerLabel(6),
+      question_8: answerLabel(7),
+      question_9: answerLabel(8),
+      question_10: answerLabel(9),
+      question_11: answerLabel(10),
+      question_12: answerLabel(11),
+      question_13: answerLabel(12),
+      question_14: answerLabel(13),
+      question_15: answerLabel(14),
+      timestamp: now.toISOString(),
+    };
+
+    saveToLocalStorage("assessment_completed", mergedPayload);
+    sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
  
   return (
     <div
