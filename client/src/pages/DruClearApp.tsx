@@ -2486,7 +2486,7 @@ function ThankYouScreen({ lead, scores, onContinue }: { lead: LeadData; scores: 
             letterSpacing: "0.02em",
           }}
         >
-          DRU CLEAR™ Executive Diagnostic — $2,500
+          DRU CLEAR™ Executive Diagnostic — $4,997
         </p>
         <p
           style={{
