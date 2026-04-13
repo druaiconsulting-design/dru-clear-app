@@ -1625,7 +1625,7 @@ function ResultsScreen({
   // Strongest pillar: highest scoring
   const strongestPillar = [...pillars].sort((a, b) => b.score - a.score)[0];
 
-  const ctaLabel = "Take The Next Step →";
+  <ResultsTransitionBlock onContinue={() => goTo("diagnose")} />
 
   const badgeUrl = BADGE_URLS[tier.label];
 
