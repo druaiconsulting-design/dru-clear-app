@@ -308,7 +308,7 @@ const TIER_DECISION_COPY: Record<string, { headline: string; subtext: string; de
   },
 };
 
-const BOOKING_BASE_URL =
+const BOOKING_BASE_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";  
 const PAYMENT_STRATEGIC_URL = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
 const PAYMENT_EXECUTIVE_URL = "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645";
 const CALENDAR_STRATEGIC_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
