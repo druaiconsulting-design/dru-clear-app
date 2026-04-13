@@ -309,7 +309,29 @@ const TIER_DECISION_COPY: Record<string, { headline: string; subtext: string; de
 };
 
 const BOOKING_BASE_URL =
-  "https://api.aiforbusiness.com/widget/bookings/dru-clear-ai-readiness-consultation";
+const PAYMENT_STRATEGIC_URL = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
+const PAYMENT_EXECUTIVE_URL = "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645";
+const CALENDAR_STRATEGIC_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
+const CALENDAR_EXECUTIVE_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation8yxwmy";
+const EXPIRY_KEY = "dru_clear_expiry";
+const EXPIRY_HOURS = 48;
+const NUDGE_HOURS = 36;
+function saveExpiryTimestamp(): void {
+try { localStorage.setItem(EXPIRY_KEY, new Date().toISOString()); } catch {}
+}
+function getExpiryStatus(): "valid" | "nudge" | "expired" {
+try {
+const saved = localStorage.getItem(EXPIRY_KEY);
+if (!saved) return "valid";
+const hoursElapsed = (Date.now() - new Date(saved).getTime()) / (1000 * 60 * 60);
+if (hoursElapsed >= EXPIRY_HOURS) return "expired";
+if (hoursElapsed >= NUDGE_HOURS) return "nudge";
+return "valid";
+} catch { return "valid"; }
+}
+function clearExpiryTimestamp(): void {
+try { localStorage.removeItem(EXPIRY_KEY); } catch {}
+}
 
 function buildBookingUrl(lead: LeadData): string {
   const firstName = lead.firstName || "";
