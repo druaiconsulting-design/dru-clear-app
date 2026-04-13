@@ -4444,7 +4444,7 @@ export default function DruClearApp() {
       )}
 
       {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
-{screen === "results" && expiryStatus !== "expired" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("diagnose")} />}
+{screen === "results" && <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("diagnose")} />}
 {screen === "results" && expiryStatus === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
 {screen === "diagnose" && <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => { window.open("https://druaiconsulting.com/transformation", "_blank"); }} />}
 {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
