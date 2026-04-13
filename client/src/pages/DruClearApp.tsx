@@ -22,7 +22,13 @@ type Screen =
   | "calculating"
   | "results"
   | "thank-you"
-  | "share-your-excitement";
+  | "diagnose"
+| "payment-strategic"
+| "payment-executive"
+| "thankyou-strategic"
+| "thankyou-executive"
+| "expired"
+| "share-your-excitement";
 
 interface LeadData {
   firstName: string;
