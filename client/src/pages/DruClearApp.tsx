@@ -1971,7 +1971,7 @@ useEffect(() => {
       user_timezone: userTz,
     };
     sendWebhookJson(completionPayload, WEBHOOK_COMPLETE_URL);
-  }, []);
+
 
   return (
     <div
