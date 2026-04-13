@@ -1916,7 +1916,10 @@ useEffect(() => {
     question_15: answerLabel(14),
     timestamp: now.toISOString(),
   };
-
+saveToLocalStorage("assessment_completed", mergedPayload);
+  sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
  
   return (
     <div
