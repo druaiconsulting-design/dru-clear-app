@@ -1597,15 +1597,12 @@ export default function DruClearApp() {
   const goTo = (s: Screen) => {
     setScreen(s);
     setTimeout(() => {
-      appRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+      if (appRef.current) appRef.current.scrollTop = 0;
     }, 0);
   };
 
   return (
-    <div ref={appRef} style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
+    <div ref={appRef} style={{ height: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", position: "relative" }}>
 
       {screen === "splash" && <SplashScreen onDone={() => goTo("welcome")} />}
       {screen === "welcome" && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
