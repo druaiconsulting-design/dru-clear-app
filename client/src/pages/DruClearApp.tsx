@@ -603,7 +603,7 @@ function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => voi
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2.5rem 1.5rem 2rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF" }}>Before we begin —</h2>
+        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}>Before we begin —</h2>
         <p className="text-sm leading-relaxed" style={{ color: "#E6E6E6" }}>Enter your details to receive your personalized results and AI readiness insights.</p>
       </div>
       <div className="flex flex-col gap-4 mb-6">
@@ -969,7 +969,7 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
         </div>
       )}
       {badgeUrl && (
-        <div className="flex flex-col items-center mb-4" style={{ gap: "0.4rem" }}>
+        <div className="flex flex-col items-center mb-4" style={{ gap: "0.4rem", position: "relative", zIndex: 1 }}>
           <button onClick={handleBadgeDownload} title="Tap to save & share" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "block", width: "100%", maxWidth: 320 }}>
             <img src={badgeUrl} alt={`${tier.label} tier badge`} loading="eager" width="320" height="168" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} style={{ width: "100%", maxWidth: 320, height: "auto", display: "block", borderRadius: 8, border: `1px solid ${tier.color}40`, boxShadow: `0 4px 24px ${tier.color}20` }} />
           </button>
@@ -1359,14 +1359,14 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
         <DruLogo className="w-28" />
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 9 of 9</span>
       </div>
-      <div style={{ width: 72, height: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem", background: "rgba(212,175,55,0.08)" }}>
+      <div style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem", background: "rgba(212,175,55,0.08)", flexShrink: 0 }}>
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </div>
       <h2 className="text-3xl font-bold mb-3" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", lineHeight: 1.2, maxWidth: 340 }}>Lead the AI Conversation</h2>
       <p className="text-base mb-2 max-w-xs" style={{ color: "#E6E6E6", lineHeight: 1.6 }}>Position yourself as an AI-forward leader. Share your results, invite others to assess their readiness, and expand the conversation.</p>
       <p className="text-xs mb-6 max-w-xs" style={{ color: "rgba(212,175,55,0.7)", fontStyle: "italic", lineHeight: 1.6 }}>Leaders across industries are using this assessment to benchmark their AI readiness.</p>
       {badgeUrl && (
-        <div className="flex flex-col items-center" style={{ gap: "0.4rem", marginBottom: "1.5rem", width: "100%", maxWidth: 340 }}>
+        <div className="flex flex-col items-center" style={{ gap: "0.4rem", marginBottom: "1.5rem", width: "100%", maxWidth: 340, position: "relative", zIndex: 1 }}>
           <button onClick={async () => { try { const res = await fetch(badgeUrl); const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `DRU-CLEAR-Badge-${tier.label}.png`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch { window.open(badgeUrl, "_blank"); } }} title="Tap to save & share" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%" }}>
             <img src={badgeUrl} alt={`${tier.label} tier badge`} loading="eager" style={{ width: "100%", maxWidth: 340, height: "auto", display: "block", borderRadius: 8, border: `1px solid ${tier.color}40`, boxShadow: `0 4px 24px ${tier.color}20` }} />
           </button>
