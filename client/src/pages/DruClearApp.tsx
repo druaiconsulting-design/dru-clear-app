@@ -1052,6 +1052,8 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
   const scaledScore = Math.round((total / 75) * 100);
   const [selected, setSelected] = useState<"strategic" | "executive" | null>(null);
 
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
@@ -1387,8 +1389,7 @@ function ShareYourExcitementScreen({ lead, scores }: { lead: LeadData; scores: S
       </div>
       <div className="gold-divider mb-5" style={{ width: "100%", maxWidth: 340 }} />
       <div style={{ width: "100%", maxWidth: 340, marginBottom: "1.75rem", textAlign: "center" }}>
-        <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.75rem", marginBottom: "0.5rem" }}>Not ready to move forward yet?</p>
-        <button onClick={() => window.open("https://druaiconsulting.com/appointment", "_blank")} style={{ background: "none", border: "none", color: "#D4AF37", fontWeight: 700, fontSize: "0.82rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>→ Revisit Your Executive Recommendation</button>
+        <button onClick={() => window.history.back()} style={{ background: "none", border: "none", color: "#D4AF37", fontWeight: 700, fontSize: "0.82rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>→ Revisit Your Diagnostic Options</button>
       </div>
       <div style={{ width: "100%", maxWidth: 340, marginBottom: "1rem", textAlign: "center" }}>
         <DruLogo className="w-40 max-w-full mb-3" />
@@ -1565,8 +1566,8 @@ export default function DruClearApp() {
         </>
       )}
 
-      {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
-      {screen === "payment-executive" && <PaymentScreen tier="executive" price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL} onBack={() => goTo("diagnose")} />}
+      {screen === "payment-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
+      {screen === "payment-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
@@ -1603,7 +1604,7 @@ export default function DruClearApp() {
           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
             <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Add DRU CLEAR™ to Your Home Screen</div>
+              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Save this app for instant access to your Leadership with AI Transformation</div>
               <div style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.65rem", letterSpacing: "0.02em" }}>{browserInstallInfo.label}</div>
             </div>
             <button onClick={dismissManualBanner} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1, marginTop: "-2px" }}>×</button>
