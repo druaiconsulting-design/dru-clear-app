@@ -1587,23 +1587,25 @@ export default function DruClearApp() {
     if (screen === "splash") clearExpiryTimestamp();
   }, [screen]);
 
-  // Global scroll to top on every screen change
-  useEffect(() => {
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    window.scrollTo(0, 0);
-  }, [screen]);
-
   useEffect(() => {
     if (RESUMABLE_SCREENS.includes(screen)) { saveProgress(screen, lead, scores); }
     else if (screen === "results" || screen === "calculating") { clearProgress(); }
   }, [screen, lead, scores]);
 
   const updateScore = (qIndex: number, value: number) => { setScores((prev) => ({ ...prev, [qIndex]: value })); };
-  const goTo = (s: Screen) => setScreen(s);
+  const appRef = useRef<HTMLDivElement>(null);
+  const goTo = (s: Screen) => {
+    setScreen(s);
+    setTimeout(() => {
+      appRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 0);
+  };
 
   return (
-    <div style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
+    <div ref={appRef} style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
 
       {screen === "splash" && <SplashScreen onDone={() => goTo("welcome")} />}
       {screen === "welcome" && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
