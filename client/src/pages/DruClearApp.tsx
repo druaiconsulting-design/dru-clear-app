@@ -1081,19 +1081,40 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
       <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.35rem", fontFamily: "'Montserrat', sans-serif" }}>Choose Your Next Step</p>
       <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "1rem" }}>Both options help you move beyond general insight into strategic clarity.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}>
-        {/* Executive Card — BEST VALUE shown first */}
+
+        {/* Executive Card — BEST VALUE */}
         <div onClick={() => setSelected("executive")} style={{ background: selected === "executive" ? "rgba(212,175,55,0.08)" : "rgba(255,255,255,0.04)", border: `2px solid ${selected === "executive" ? "#D4AF37" : "rgba(212,175,55,0.3)"}`, borderRadius: 10, padding: "1.25rem", cursor: "pointer", position: "relative", transition: "all 0.2s" }}>
           <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: "#C2185B", color: "#FFFFFF", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", padding: "3px 14px", borderRadius: 20, fontFamily: "'Montserrat', sans-serif", whiteSpace: "nowrap" }}>BEST VALUE</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", marginTop: "0.25rem" }}>
-            <div>
-              <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>Executive Diagnostic</p>
-              <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.68rem" }}>+ 90-Day AI Roadmap</p>
-            </div>
+            <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif" }}>Executive Diagnostic</p>
             <p style={{ color: "#D4AF37", fontSize: "1.4rem", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>$4,997</p>
           </div>
-          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>A premium executive-level diagnostic for leaders ready to move from insight to a clear transformation plan.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.75rem" }}>
-            {["Full executive diagnostic (25–35 Qs)","Full ecosystem: DRU CLEAR™ + 5D + 5C + AI Sales Mastery™","Executive AI Alignment Report (boardroom-ready)","Full gap analysis + risk + opportunity layers","Custom 90-Day AI Roadmap","90-min executive briefing","Executive-level recommendations + sequencing"].map((item, i) => (
+          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>
+            A premium executive-level diagnostic designed for leaders prepared to implement clarity, complemented by a 90-day AI Roadmap, facilitated with DRU AI Transformation Pathway™ to progression.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
+            {[
+              "Full executive diagnostic (25–35 additional deeper-level Qs)",
+              "Review of The DRU AI Leadership Ecosystem™ Four Frameworks",
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                <span style={{ color: "#D4AF37", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
+                <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+              <span style={{ color: "#D4AF37", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
+                <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>5C Cultural DNA™ · 5D Leadership™</span>
+                <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>AI Sales Mastery™ · DRU CLEAR™ Flagship Framework</span>
+              </div>
+            </div>
+            {[
+              "Executive AI Alignment Report (boardroom-ready)",
+              "Comprehensive gap analysis, including risk assessment and identification of opportunity layers",
+              "120-min Zoom executive briefing",
+              "Executive-level recommendations + sequencing",
+            ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span style={{ color: "#D4AF37", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
                 <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
@@ -1101,39 +1122,46 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
             ))}
           </div>
           <button className="btn-magenta" onClick={(e) => { e.stopPropagation(); onSelectExecutive(); }} style={{ fontSize: "0.82rem" }}>Choose Executive Diagnostic →</button>
-          <p style={{ color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", textAlign: "center", marginTop: "0.4rem", fontStyle: "italic" }}>Most leaders choose this option because it gives them both the insight and the plan.</p>
+          <p style={{ color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", textAlign: "center", marginTop: "0.4rem", fontStyle: "italic" }}>Leadership teams opt for this choice because it provides them with both the insight and the strategic plan.</p>
         </div>
+
         {/* Strategic Card */}
         <div onClick={() => setSelected("strategic")} style={{ background: selected === "strategic" ? "rgba(212,175,55,0.06)" : "rgba(255,255,255,0.03)", border: `1.5px solid ${selected === "strategic" ? "rgba(212,175,55,0.6)" : "rgba(212,175,55,0.2)"}`, borderRadius: 10, padding: "1.25rem", cursor: "pointer", transition: "all 0.2s" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
-            <div>
-              <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif", marginBottom: 2 }}>Strategic Diagnostic</p>
-              <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.68rem" }}>For serious teams evaluating AI</p>
-            </div>
+            <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif" }}>Strategic Diagnostic</p>
             <p style={{ color: "#D4AF37", fontSize: "1.4rem", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>$3,497</p>
           </div>
-          <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>A deeper diagnostic designed to help leaders uncover the core gaps affecting alignment, execution, and AI readiness.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.75rem" }}>
-            {["Expanded diagnostic (20–25 Qs)","DRU CLEAR™ + 5D Leadership™ review","Strategic Insight Report","Top 5 gaps + priority ranking","Strategic AI readiness review","90-min strategy session","Priority findings + strategic direction"].map((item, i) => (
+          <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>
+            Strategic clarity, leadership, and AI choices. A thorough diagnostic designed to help leaders identify the fundamental gaps that affect alignment, execution, facilitated with DRU AI Transformation Pathway™
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
+            {[
+              "Expanded diagnostic (20–25 additional deeper-level Qs)",
+              "Review of The DRU AI Leadership Ecosystem™ Two Frameworks",
+              "5D Leadership™ · DRU CLEAR™ Flagship Framework",
+              "Strategic AI Insight Report",
+              "Top five gaps and priority ranking",
+              "90-min Zoom strategy session",
+              "Priority findings and strategic direction",
+            ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
                 <span style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
               </div>
             ))}
           </div>
-          <button style={{ width: "100%", padding: "0.85rem", background: "transparent", border: "1.5px solid rgba(212,175,55,0.5)", borderRadius: 4, color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", letterSpacing: "0.04em" }} onClick={(e) => { e.stopPropagation(); onSelectStrategic(); }}>Choose Strategic Diagnostic →</button>
+          <button className="btn-magenta" onClick={(e) => { e.stopPropagation(); onSelectStrategic(); }} style={{ fontSize: "0.82rem" }}>Choose Strategic Diagnostic →</button>
+          <p style={{ color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", textAlign: "center", marginTop: "0.4rem", fontStyle: "italic" }}>Leadership teams choose this option to gain strategic clarity and identify exactly where to focus first.</p>
         </div>
       </div>
+
       <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.875rem", marginBottom: "1.25rem" }}>
         <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.4rem", fontFamily: "'Montserrat', sans-serif" }}>Why Upgrade From the Free Scorecard?</p>
         <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.65 }}>The free scorecard highlights <em>what</em> may be happening. The diagnostic identifies <em>why</em> it is happening, what it is costing you, and what to do next.</p>
       </div>
+
       <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-        <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "0.35rem" }}>Already know you need a full transformation?</p>
-        <button onClick={onSkipToTransformation} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.65)", fontSize: "0.72rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>→ Explore the 90-Day AI Transformation</button>
-      </div>
-      <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-        <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.6rem", letterSpacing: "0.04em" }}>© 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting</p>
+        <button onClick={onSkipToTransformation} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.65)", fontSize: "0.75rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>→ Not ready yet? Continue to Share Your Results</button>
       </div>
     </div>
   );
@@ -1533,7 +1561,7 @@ export default function DruClearApp() {
       {screen === "diagnose" && expiryStatus !== "expired" && (
         <>
           {expiryStatus === "nudge" && !nudgeDismissed && <NudgeBanner onDismiss={() => setNudgeDismissed(true)} onBookNow={() => goTo("diagnose")} />}
-          <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => { window.open("https://druaiconsulting.com/transformation", "_blank"); }} />
+          <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => goTo("share-your-excitement")} />
         </>
       )}
 
