@@ -1054,12 +1054,6 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
   const [selected, setSelected] = useState<"strategic" | "executive" | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
-
   return (
     <div ref={topRef} className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
@@ -1288,7 +1282,7 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
 
       <div style={{ textAlign: "center" }}>
         <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>
-          Questions? <a href="mailto:hello@druaiconsulting.com" style={{ color: "#D4AF37" }}>hello@druaiconsulting.com</a>
+          Questions? <a href="mailto:support@replies.druaiconsulting.com" style={{ color: "#D4AF37" }}>support@replies.druaiconsulting.com</a>
         </p>
       </div>
     </div>
@@ -1358,11 +1352,6 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   };
 
   const shareBtnStyle = (color: string): React.CSSProperties => ({ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", width: "100%", padding: "0.75rem 1rem", background: `${color}14`, color: color, border: `1.5px solid ${color}50`, borderRadius: 6, fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.05em", cursor: "pointer", transition: "background 0.2s, border-color 0.2s", textDecoration: "none" });
-
-  useEffect(() => {
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
 
   return (
     <div className="screen-enter flex flex-col items-center" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", textAlign: "center" }}>
@@ -1596,6 +1585,13 @@ export default function DruClearApp() {
   useEffect(() => {
     if (screen === "results") saveExpiryTimestamp();
     if (screen === "splash") clearExpiryTimestamp();
+  }, [screen]);
+
+  // Global scroll to top on every screen change
+  useEffect(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo(0, 0);
   }, [screen]);
 
   useEffect(() => {
