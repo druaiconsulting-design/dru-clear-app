@@ -1359,9 +1359,15 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
 
   const shareBtnStyle = (color: string): React.CSSProperties => ({ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", width: "100%", padding: "0.75rem 1rem", background: `${color}14`, color: color, border: `1.5px solid ${color}50`, borderRadius: 6, fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.05em", cursor: "pointer", transition: "background 0.2s, border-color 0.2s", textDecoration: "none" });
 
+  useEffect(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   return (
     <div className="screen-enter flex flex-col items-center" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", textAlign: "center" }}>
-      <div className="flex justify-end w-full mb-2" style={{ maxWidth: 360 }}>
+      <div className="flex justify-between items-center w-full mb-4" style={{ maxWidth: 360 }}>
+        <DruLogo className="w-28" />
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 9 of 9</span>
       </div>
       <div style={{ width: 72, height: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem", background: "rgba(212,175,55,0.08)" }}>
@@ -1457,11 +1463,9 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
         <button onClick={onRevisit} style={{ background: "none", border: "none", color: "#D4AF37", fontWeight: 700, fontSize: "0.82rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>→ Revisit Your Diagnostic Options</button>
       </div>
       <div style={{ width: "100%", maxWidth: 340, marginBottom: "1rem", textAlign: "center" }}>
-        <DruLogo className="w-40 max-w-full mb-3" />
         <p style={{ color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", marginBottom: "0.25rem" }}>Created by DeAnna R. Upshaw — AI Authority</p>
         <a href="https://druaiconsulting.com" target="_blank" rel="noopener noreferrer" style={{ color: "#D4AF37", fontSize: "0.72rem", textDecoration: "underline", textUnderlineOffset: 3 }}>druaiconsulting.com</a>
       </div>
-      <p style={{ textAlign: "center", fontSize: "0.6rem", color: "rgba(255,255,255,0.2)", marginTop: "1.5rem", letterSpacing: "0.04em" }}>© 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting</p>
     </div>
   );
 }
