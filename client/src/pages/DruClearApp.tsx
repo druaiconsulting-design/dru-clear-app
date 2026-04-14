@@ -1594,16 +1594,18 @@ export default function DruClearApp() {
 
   const updateScore = (qIndex: number, value: number) => { setScores((prev) => ({ ...prev, [qIndex]: value })); };
   const appRef = useRef<HTMLDivElement>(null);
+  const topAnchorRef = useRef<HTMLDivElement>(null);
   const goTo = (s: Screen) => {
     setScreen(s);
     setTimeout(() => {
-      if (appRef.current) appRef.current.scrollTop = 0;
-    }, 0);
+      topAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+    }, 50);
   };
 
   return (
-    <div ref={appRef} style={{ height: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", position: "relative" }}>
-
+    <div ref={appRef} style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
+      <div ref={topAnchorRef} style={{ height: 0, overflow: "hidden", position: "absolute", top: 0, left: 0 }} aria-hidden="true" />
+      <div key={screen} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
       {screen === "splash" && <SplashScreen onDone={() => goTo("welcome")} />}
       {screen === "welcome" && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
       {screen === "lead-capture" && <LeadCaptureScreen onContinue={(data) => { setLead(data); goTo("clarity"); }} />}
@@ -1636,6 +1638,7 @@ export default function DruClearApp() {
       {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
       {screen === "share-your-excitement" && <ShareYourExcitementScreen lead={lead} scores={scores} onRevisit={() => goTo("diagnose")} />}
+      </div>{/* end keyed screen container */}
 
       {/* PWA Update Banner */}
       {showUpdateAvailable && (
