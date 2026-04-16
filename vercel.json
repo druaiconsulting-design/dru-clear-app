@@ -1,9 +1,15 @@
 {
-  "buildCommand": "vite build",
-  "outputDirectory": "dist/public",
-  "installCommand": "pnpm install",
-  "framework": null,
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "assessment.druaiconsulting.com"
+        }
+      ],
+      "destination": "https://app.druaiconsulting.com/$1",
+      "permanent": true
+    }
   ]
 }
