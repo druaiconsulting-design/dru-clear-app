@@ -12,14 +12,36 @@ import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
-
-const PUBLIC_ROUTES = ["/", "/roi", "/affiliate", "/frameworks"];
+import { useEffect } from "react";
+import { supabase } from "./lib/supabase";
 
 function Router() {
-  const { isLoggedIn, isAdmin, isClient } = useAuth();
+  const { isLoggedIn, isAdmin, loading } = useAuth();
   const path = window.location.pathname;
+  const hash = window.location.hash;
 
-  // Public routes — no login needed
+  // Handle Supabase OAuth callback
+  useEffect(() => {
+    if (hash && hash.includes("access_token")) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const role = session.user.email?.toLowerCase() === "deanna@druaiconsulting.com" ? "admin" : "client";
+          window.location.href = role === "admin" ? "/admin" : "/portal";
+        }
+      });
+    }
+  }, [hash]);
+
+  // Show nothing while auth is loading
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.5rem" }}>DRU</div>
+      </div>
+    );
+  }
+
+  // Public routes
   if (path === "/" || path === "") return <DruClearApp />;
   if (path === "/roi" || path === "/roi/") return <ROI />;
   if (path === "/affiliate" || path === "/affiliate/") return <Affiliate />;
@@ -28,10 +50,7 @@ function Router() {
 
   // Admin protected
   if (path === "/admin" || path === "/admin/") {
-    if (!isLoggedIn || !isAdmin) {
-      window.location.href = "/login";
-      return null;
-    }
+    if (!isLoggedIn || !isAdmin) { window.location.href = "/login"; return null; }
     return <Admin />;
   }
 
