@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
-type Mode = "choose" | "admin" | "client-email" | "client-login" | "client-register" | "forgot-password" | "forgot-sent";
+type Mode = "choose" | "client-email" | "client-login" | "client-register" | "forgot-password" | "forgot-sent";
 
 export default function Login() {
-  const { loginAdmin, loginClient, registerClient, loginWithGoogle, resetPassword } = useAuth();
+  const { loginClient, registerClient, loginWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,8 +39,6 @@ export default function Login() {
     cursor: "pointer",
   } as const;
 
-  const btnMagenta = { ...btnGold, background: "#C2185B", color: "#FFFFFF" };
-
   const getPasswordStrength = (p: string) => {
     let score = 0;
     if (p.length >= 8) score++;
@@ -60,14 +58,6 @@ export default function Login() {
     setError(""); setLoading(true);
     const result = await loginWithGoogle();
     if (!result.success) { setError(result.error || "Google sign in failed."); setLoading(false); }
-  };
-
-  const handleAdminLogin = async () => {
-    setError(""); setLoading(true);
-    const result = await loginAdmin(email, password);
-    setLoading(false);
-    if (!result.success) setError(result.error || "Login failed.");
-    else window.location.href = "/admin";
   };
 
   const handleClientLogin = async () => {
@@ -132,16 +122,11 @@ export default function Login() {
               <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <button onClick={() => setMode("admin")} style={{ background: "rgba(194,24,91,0.1)", border: "1px solid rgba(194,24,91,0.35)", borderRadius: 10, padding: "1rem 1.25rem", cursor: "pointer", textAlign: "left" }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.15rem" }}>Admin Access</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.72rem" }}>Authorized personnel only</p>
-              </button>
-              <button onClick={() => setMode("client-email")} style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 10, padding: "1rem 1.25rem", cursor: "pointer", textAlign: "left" }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.15rem" }}>Client Portal</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.72rem" }}>Sign in with email & password</p>
-              </button>
-            </div>
+            <button onClick={() => setMode("client-email")} style={{ width: "100%", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 10, padding: "1rem 1.25rem", cursor: "pointer", textAlign: "left" }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.15rem" }}>Sign in with Email</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.72rem" }}>Use your email & password</p>
+            </button>
+
             {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginTop: "1rem", textAlign: "center" }}>{error}</p>}
             <p style={{ textAlign: "center", marginTop: "1.5rem" }}>
               <a href="/" style={{ color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", textDecoration: "none" }}>← Back to Assessment</a>
@@ -149,28 +134,13 @@ export default function Login() {
           </div>
         )}
 
-        {/* ADMIN */}
-        {mode === "admin" && (
-          <div>
-            <button onClick={back("choose")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Admin Sign In</h1>
-            <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>DRU AI Consulting — Command Center</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", marginBottom: "1.25rem" }}>
-              <input type="email" placeholder="Admin email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()} style={inputStyle} />
-            </div>
-            {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.875rem" }}>{error}</p>}
-            <button onClick={handleAdminLogin} disabled={loading} style={btnMagenta}>{loading ? "Signing in..." : "Sign In →"}</button>
-          </div>
-        )}
-
         {/* CLIENT EMAIL */}
         {mode === "client-email" && (
           <div>
             <button onClick={back("choose")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Client Portal</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Welcome</h1>
             <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Enter your email to continue</p>
-            <input type="email" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setMode("client-login")} style={{ ...inputStyle, marginBottom: "1.25rem" }} />
+            <input type="email" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...inputStyle, marginBottom: "1.25rem" }} />
             {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.875rem" }}>{error}</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
               <button onClick={() => { if (email) setMode("client-login"); else setError("Please enter your email."); }} style={btnGold}>Sign In →</button>
@@ -220,7 +190,7 @@ export default function Login() {
           <div>
             <button onClick={back("client-login")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Reset Password</h1>
-            <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Enter your email and we'll send you a reset link.</p>
+            <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Enter your email and we'll send you a reset link automatically.</p>
             <input type="email" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()} style={{ ...inputStyle, marginBottom: "1.25rem" }} />
             {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.875rem" }}>{error}</p>}
             <button onClick={handleForgotPassword} disabled={loading} style={btnGold}>{loading ? "Sending..." : "Send Reset Link →"}</button>
