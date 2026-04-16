@@ -1,145 +1,154 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import type { User, Session } from "@supabase/supabase-js";
 
-// ─── Admin Credentials — Change these to your real email and password ─────────
+// ─── Admin Email ──────────────────────────────────────────────────────────────
 const ADMIN_EMAIL = "deanna@druaiconsulting.com";
-const ADMIN_PASSWORD = "AbundantLife4041$$";
-
-// ─── Storage Keys ─────────────────────────────────────────────────────────────
-const AUTH_KEY = "dru_auth_session";
-const CLIENTS_KEY = "dru_registered_clients";
 
 export type UserRole = "admin" | "client" | null;
 
 interface AuthUser {
+  id: string;
   email: string;
   role: UserRole;
   firstName?: string;
   picture?: string;
-  googleAuth?: boolean;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
+  session: Session | null;
   isAdmin: boolean;
   isClient: boolean;
   isLoggedIn: boolean;
-  loginAdmin: (email: string, password: string) => { success: boolean; error?: string };
-  loginClient: (email: string, password: string) => { success: boolean; error?: string };
-  registerClient: (email: string, password: string, firstName: string) => { success: boolean; error?: string };
-  loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  checkClientExists: (email: string) => boolean;
+  loading: boolean;
+  loginAdmin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginClient: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerClient: (email: string, password: string, firstName: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Decode Google JWT token
-function parseGoogleJWT(token: string) {
-  try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(atob(base64).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-    return JSON.parse(json);
-  } catch { return null; }
+function getRole(email: string): UserRole {
+  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "client";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    try {
-      const saved = localStorage.getItem(AUTH_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-      else localStorage.removeItem(AUTH_KEY);
-    } catch {}
-  }, [user]);
-
-  const getClients = (): Record<string, { password?: string; firstName: string; googleAuth?: boolean }> => {
-    try { return JSON.parse(localStorage.getItem(CLIENTS_KEY) || "{}"); } catch { return {}; }
-  };
-
-  const saveClients = (clients: Record<string, { password?: string; firstName: string; googleAuth?: boolean }>) => {
-    try { localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients)); } catch {}
-  };
-
-  const loginAdmin = (email: string, password: string) => {
-    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
-      setUser({ email, role: "admin", firstName: "DeAnna" });
-      return { success: true };
-    }
-    return { success: false, error: "Invalid email or password." };
-  };
-
-  const checkClientExists = (email: string) => {
-    const clients = getClients();
-    return !!clients[email.toLowerCase()];
-  };
-
-  const loginWithGoogle = async (credential: string) => {
-    try {
-      const payload = parseGoogleJWT(credential);
-      if (!payload || !payload.email) return { success: false, error: "Could not read Google account info." };
-
-      const { email, given_name, picture } = payload;
-      const clients = getClients();
-      const key = email.toLowerCase();
-
-      // Auto-register if first time
-      if (!clients[key]) {
-        clients[key] = { firstName: given_name || email.split("@")[0], googleAuth: true };
-        saveClients(clients);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        setUser(buildUser(session.user));
       }
+      setLoading(false);
+    });
 
-      // Check if this is admin email
-      const role: UserRole = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "client";
-      setUser({ email, role, firstName: given_name || clients[key].firstName, picture, googleAuth: true });
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setUser(buildUser(session.user));
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
 
-      return { success: true };
-    } catch {
-      return { success: false, error: "Google sign in failed. Please try again." };
+    return () => subscription.unsubscribe();
+  }, []);
+
+  function buildUser(supabaseUser: User): AuthUser {
+    const email = supabaseUser.email || "";
+    return {
+      id: supabaseUser.id,
+      email,
+      role: getRole(email),
+      firstName: supabaseUser.user_metadata?.given_name || supabaseUser.user_metadata?.first_name || email.split("@")[0],
+      picture: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture,
+    };
+  }
+
+  const loginAdmin = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      await supabase.auth.signOut();
+      return { success: false, error: "This login is for admin access only." };
     }
+    return { success: true };
   };
 
-  const registerClient = (email: string, password: string, firstName: string) => {
+  const loginClient = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: "Incorrect email or password." };
+    return { success: true };
+  };
+
+  const registerClient = async (email: string, password: string, firstName: string) => {
     if (password.length < 8) return { success: false, error: "Password must be at least 8 characters." };
     if (!/[0-9]/.test(password)) return { success: false, error: "Password must include at least one number." };
     if (!/[^a-zA-Z0-9]/.test(password)) return { success: false, error: "Password must include at least one special character." };
-    const clients = getClients();
-    const key = email.toLowerCase();
-    if (clients[key]) return { success: false, error: "An account with this email already exists. Please log in." };
-    clients[key] = { password, firstName };
-    saveClients(clients);
-    setUser({ email, role: "client", firstName });
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { first_name: firstName },
+      },
+    });
+
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
-  const loginClient = (email: string, password: string) => {
-    const clients = getClients();
-    const client = clients[email.toLowerCase()];
-    if (!client) return { success: false, error: "No account found. Please register first." };
-    if (client.googleAuth) return { success: false, error: "This account uses Google Sign In. Please use the Google button above." };
-    if (client.password !== password) return { success: false, error: "Incorrect password." };
-    setUser({ email, role: "client", firstName: client.firstName });
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/portal`,
+      },
+    });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
-  const logout = () => setUser(null);
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    window.location.href = "/login";
+  };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
       isAdmin: user?.role === "admin",
       isClient: user?.role === "client",
       isLoggedIn: !!user,
+      loading,
       loginAdmin,
       loginClient,
       registerClient,
       loginWithGoogle,
+      resetPassword,
       logout,
-      checkClientExists,
     }}>
       {children}
     </AuthContext.Provider>
