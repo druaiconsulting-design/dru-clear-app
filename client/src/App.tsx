@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DruClearApp from "./pages/DruClearApp";
 import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
 import Portal from "./pages/Portal";
 import Frameworks from "./pages/Frameworks";
 import Resources from "./pages/Resources";
@@ -25,14 +26,14 @@ function Router() {
     if (hash && hash.includes("access_token")) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          const role = session.user.email?.toLowerCase() === "deanna@druaiconsulting.com" ? "admin" : "client";
+          const role = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL ? "admin" : "client";
           window.location.href = role === "admin" ? "/admin" : "/portal";
         }
       });
     }
   }, [hash]);
 
-  // Show nothing while auth is loading
+  // Loading state
   if (loading) {
     return (
       <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -41,20 +42,22 @@ function Router() {
     );
   }
 
-  // Public routes
+  // Public routes — no login needed
   if (path === "/" || path === "") return <DruClearApp />;
   if (path === "/roi" || path === "/roi/") return <ROI />;
   if (path === "/affiliate" || path === "/affiliate/") return <Affiliate />;
   if (path === "/frameworks" || path === "/frameworks/") return <Frameworks />;
+
+  // Client login page — no admin option shown
   if (path === "/login" || path === "/login/") return <Login />;
 
-  // Admin protected
+  // Admin route — shows private admin login if not authenticated as admin
   if (path === "/admin" || path === "/admin/") {
-    if (!isLoggedIn || !isAdmin) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
   }
 
-  // Client protected
+  // Client protected routes
   if (path === "/portal" || path === "/portal/") {
     if (!isLoggedIn) { window.location.href = "/login"; return null; }
     return <Portal />;
