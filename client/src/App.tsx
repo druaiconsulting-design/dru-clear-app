@@ -1,29 +1,41 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import DruClearApp from "./DruClearApp";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import ErrorBoundary from "./components/ErrorBoundary";
+import DruClearApp from "./pages/DruClearApp";
+import AdminDashboard from "./pages/AdminDashboard";
 import Portal from "./pages/Portal";
-import Admin from "./pages/Admin";
-import Resources from "./pages/Resources";
 import Frameworks from "./pages/Frameworks";
+import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
 import Affiliate from "./pages/Affiliate";
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Assessment — exactly as live today, nothing changed */}
-        <Route path="/" element={<DruClearApp />} />
+function Router() {
+  const path = window.location.pathname;
 
-        {/* New pages — Sprint 2 and beyond */}
-        <Route path="/portal" element={<Portal />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/resources" element={<Resources />} />
-        <Route path="/frameworks" element={<Frameworks />} />
-        <Route path="/daily" element={<Daily />} />
-        <Route path="/roi" element={<ROI />} />
-        <Route path="/affiliate" element={<Affiliate />} />
-      </Routes>
-    </BrowserRouter>
+  if (path === "/admin" || path === "/admin/") return <AdminDashboard />;
+  if (path === "/portal" || path === "/portal/") return <Portal />;
+  if (path === "/frameworks" || path === "/frameworks/") return <Frameworks />;
+  if (path === "/resources" || path === "/resources/") return <Resources />;
+  if (path === "/daily" || path === "/daily/") return <Daily />;
+  if (path === "/roi" || path === "/roi/") return <ROI />;
+  if (path === "/affiliate" || path === "/affiliate/") return <Affiliate />;
+
+  return <DruClearApp />;
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
+
+export default App;
