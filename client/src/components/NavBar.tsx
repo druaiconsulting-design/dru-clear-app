@@ -5,7 +5,7 @@ const NAV_LINKS = [
   { label: "Frameworks",  href: "/frameworks" },
   { label: "Resources",   href: "/resources" },
   { label: "Daily",       href: "/daily" },
-  { label: "ROI",         href: "/roi" },x
+  { label: "ROI",         href: "/roi" },
   { label: "Affiliate",   href: "/affiliate" },
 ];
 
