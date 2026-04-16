@@ -7,7 +7,7 @@ const STAT_CARDS = [
   { label: "Sessions Booked", value: "—", sub: "Upcoming calls", icon: "📅", color: "#1E88E5" },
 ];
 
-const QUICK_LINKS = [å
+const QUICK_LINKS = [
   { label: "GHL Dashboard", href: "https://app.gohighlevel.com", icon: "🔗" },
   { label: "Strategic Payment Link", href: "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222", icon: "💳" },
   { label: "Executive Payment Link", href: "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645", icon: "💳" },
