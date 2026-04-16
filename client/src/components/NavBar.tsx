@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 const NAV_LINKS = [
   { label: "Portal",      href: "/portal" },
@@ -11,6 +12,11 @@ const NAV_LINKS = [
 
 export default function NavBar({ active }: { active?: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isLoggedIn, isAdmin, user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <nav style={{
@@ -58,24 +64,70 @@ export default function NavBar({ active }: { active?: string }) {
             {link.label}
           </a>
         ))}
-        {/* Admin pill */}
-        <a href="/admin" style={{
-          marginLeft: "0.5rem",
-          fontFamily: "'Montserrat', sans-serif",
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: active === "/admin" ? "#0A2342" : "#C2185B",
-          textDecoration: "none",
-          padding: "0.35rem 0.8rem",
-          borderRadius: 4,
-          background: active === "/admin" ? "#C2185B" : "rgba(194,24,91,0.12)",
-          border: "1px solid rgba(194,24,91,0.4)",
-          transition: "all 0.2s",
-        }}>
-          Admin
-        </a>
+
+        {/* Right side — role aware */}
+        {!isLoggedIn && (
+          <a href="/login" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#D4AF37",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            border: "1px solid rgba(212,175,55,0.4)",
+            transition: "all 0.2s",
+          }}>
+            Sign In
+          </a>
+        )}
+
+        {isLoggedIn && isAdmin && (
+          <a href="/admin" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: active === "/admin" ? "#0A2342" : "#C2185B",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            background: active === "/admin" ? "#C2185B" : "rgba(194,24,91,0.12)",
+            border: "1px solid rgba(194,24,91,0.4)",
+          }}>
+            Admin
+          </a>
+        )}
+
+        {isLoggedIn && (
+          <button
+            onClick={handleLogout}
+            style={{
+              marginLeft: "0.5rem",
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.5)",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.15)",
+              padding: "0.35rem 0.8rem",
+              borderRadius: 4,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+          >
+            Log Out
+          </button>
+        )}
       </div>
 
       {/* Mobile hamburger */}
@@ -113,7 +165,7 @@ export default function NavBar({ active }: { active?: string }) {
           gap: "0.25rem",
           zIndex: 999,
         }}>
-          {[...NAV_LINKS, { label: "Admin", href: "/admin" }].map((link) => (
+          {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -133,6 +185,14 @@ export default function NavBar({ active }: { active?: string }) {
               {link.label}
             </a>
           ))}
+          {isLoggedIn && isAdmin && (
+            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>Admin</a>
+          )}
+          {isLoggedIn ? (
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", background: "none", border: "none", padding: "0.6rem 0.5rem", textAlign: "left", cursor: "pointer" }}>Log Out</button>
+          ) : (
+            <a href="/login" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem" }}>Sign In</a>
+          )}
         </div>
       )}
 
