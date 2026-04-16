@@ -1,30 +1,29 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import ErrorBoundary from "./components/ErrorBoundary";
-import DruClearApp from "./pages/DruClearApp";
-import AdminDashboard from "./pages/AdminDashboard";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import DruClearApp from "./DruClearApp";
+import Portal from "./pages/Portal";
+import Admin from "./pages/Admin";
+import Resources from "./pages/Resources";
+import Frameworks from "./pages/Frameworks";
+import Daily from "./pages/Daily";
+import ROI from "./pages/ROI";
+import Affiliate from "./pages/Affiliate";
 
-function Router() {
-  // Simple path-based routing without a library dependency
-  const path = window.location.pathname;
-  if (path === "/admin" || path === "/admin/") {
-    return <AdminDashboard />;
-  }
-  return <DruClearApp />;
-}
-
-function App() {
+export default function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <BrowserRouter>
+      <Routes>
+        {/* Assessment — exactly as live today, nothing changed */}
+        <Route path="/" element={<DruClearApp />} />
+
+        {/* New pages — Sprint 2 and beyond */}
+        <Route path="/portal" element={<Portal />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/resources" element={<Resources />} />
+        <Route path="/frameworks" element={<Frameworks />} />
+        <Route path="/daily" element={<Daily />} />
+        <Route path="/roi" element={<ROI />} />
+        <Route path="/affiliate" element={<Affiliate />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
