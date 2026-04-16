@@ -85,7 +85,26 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         )}
 
-        {isLoggedIn && isAdmin && (
+        {isLoggedIn && isAdmin && active !== "/portal" && (
+          <a href="/portal" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#D4AF37",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            background: "rgba(212,175,55,0.08)",
+            border: "1px solid rgba(212,175,55,0.3)",
+            transition: "all 0.2s",
+          }}>
+            Client View
+          </a>
+        )}
+        {isLoggedIn && isAdmin && active === "/portal" && (
           <a href="/admin" style={{
             marginLeft: "0.5rem",
             fontFamily: "'Montserrat', sans-serif",
@@ -93,14 +112,15 @@ export default function NavBar({ active }: { active?: string }) {
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: active === "/admin" ? "#0A2342" : "#C2185B",
+            color: "#C2185B",
             textDecoration: "none",
             padding: "0.35rem 0.8rem",
             borderRadius: 4,
-            background: active === "/admin" ? "#C2185B" : "rgba(194,24,91,0.12)",
-            border: "1px solid rgba(194,24,91,0.4)",
+            background: "rgba(194,24,91,0.08)",
+            border: "1px solid rgba(194,24,91,0.3)",
+            transition: "all 0.2s",
           }}>
-            Admin
+            Admin View
           </a>
         )}
 
