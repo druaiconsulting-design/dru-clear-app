@@ -34,9 +34,8 @@ export default function NavBar({ active }: { active?: string }) {
       boxSizing: "border-box",
     }}>
       {/* Logo */}
-      <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontWeight: 700, fontSize: "1.1rem", letterSpacing: "0.04em" }}>DRU</span>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.5)", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>AI Consulting</span>
+      <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 34, width: "auto" }} />
       </a>
 
       {/* Desktop links */}
