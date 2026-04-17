@@ -33,8 +33,7 @@ export default function AdminLogin() {
     <div style={{ minHeight: "100dvh", background: "#071a30", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
 
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.8rem", fontWeight: 700, letterSpacing: "0.04em", marginBottom: "0.25rem" }}>DRU</p>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase" }}>Command Center</p>
+        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 48, width: "auto", margin: "0 auto" }} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 360 }}>
