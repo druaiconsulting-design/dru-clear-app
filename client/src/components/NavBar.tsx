@@ -1,178 +1,227 @@
 import { useState } from "react";
-import NavBar from "../components/NavBar";
+import { useAuth } from "../contexts/AuthContext";
 
-const WEBHOOK_LEAD_URL = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/21253f6d-4eea-4781-8b9b-8ab28cb3b046";
+const NAV_LINKS = [
+  { label: "Portal",      href: "/portal" },
+  { label: "Frameworks",  href: "/frameworks" },
+  { label: "Resources",   href: "/resources" },
+  { label: "Daily",       href: "/daily" },
+  { label: "ROI",         href: "/roi" },
+  { label: "Affiliate",   href: "/affiliate" },
+  { label: "Coming Soon", href: "/coming-soon" },
+];ComingSoon.tsx
 
-const COMING_SOON = [
-  {
-    id: "scale",
-    badge: "New",
-    badgeColor: "#C2185B",
-    icon: "🚀",
-    title: "DRU Scale System™",
-    subtitle: "Build · Automate · Scale",
-    description: "The exact system DeAnna used to build a global AI consulting empire — now available for entrepreneurs and consultants ready to scale with AI. Course + Mastermind + Done-With-You VIP.",
-    features: [
-      "8 core modules — self-paced with lifetime access",
-      "Live group coaching calls with DeAnna",
-      "GHL white label affiliate setup included",
-      "AI tools stack — Manus, Lovable, Claude",
-      "Build your own IP framework",
-      "Revenue while you sleep architecture",
-    ],
-    price: "Starting at $2,997",
-    cta: "Join the Waitlist",
-  },
+export default function NavBar({ active }: { active?: string }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { isLoggedIn, isAdmin, user, logout } = useAuth();
 
-
-];
-
-export default function ComingSoon() {
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [submitted, setSubmitted] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleWaitlist = async (offerId: string, offerTitle: string) => {
-    if (!email || !firstName) return;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        event_type: "waitlist_signup",
-        tags: `Waitlist-${offerTitle}`,
-        first_name: firstName,
-        email,
-        offer_id: offerId,
-        offer_title: offerTitle,
-        timestamp: new Date().toISOString(),
-      });
-      await fetch(`${WEBHOOK_LEAD_URL}?${params.toString()}`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: "",
-      });
-    } catch {}
-    setLoading(false);
-    setSubmitted(offerId);
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/coming-soon" />
+    <nav style={{
+      width: "100%",
+      background: "#071a30",
+      borderBottom: "1px solid rgba(212,175,55,0.2)",
+      padding: "0 1.25rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 56,
+      position: "sticky",
+      top: 0,
+      zIndex: 1000,
+      boxSizing: "border-box",
+    }}>
+      {/* Logo */}
+      <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 34, width: "auto" }} />
+      </a>
 
-      <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
+      {/* Desktop links */}
+      <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }} className="desktop-nav">
+        {NAV_LINKS.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.72rem",
+              fontWeight: active === link.href ? 700 : 500,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.55)",
+              textDecoration: "none",
+              padding: "0.4rem 0.75rem",
+              borderRadius: 4,
+              borderBottom: active === link.href ? "2px solid #D4AF37" : "2px solid transparent",
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#D4AF37"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active === link.href ? "#D4AF37" : "rgba(255,255,255,0.55)"; }}
+          >
+            {link.label}
+          </a>
+        ))}
 
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Sprint 4 — Coming Soon</p>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Something Big Is Coming</h1>
-          <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", lineHeight: 1.7, maxWidth: 500, margin: "0 auto" }}>
-            The DRU Scale System™ is launching soon — the exact system DeAnna used to build a global AI consulting empire. Join the waitlist to be first in.
-          </p>
-        </div>
+        {/* Right side — role aware */}
+        {!isLoggedIn && (
+          <a href="/login" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#D4AF37",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            border: "1px solid rgba(212,175,55,0.4)",
+            transition: "all 0.2s",
+          }}>
+            Sign In
+          </a>
+        )}
 
-        {/* Waitlist capture */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 12, padding: "1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Global Waitlist</p>
-          <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1rem" }}>Enter your info once — get notified for all upcoming launches.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            <div style={{ display: "flex", gap: "0.6rem" }}>
-              <input type="text" placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.65rem 0.875rem", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", outline: "none" }} />
-              <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} style={{ flex: 2, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.65rem 0.875rem", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", outline: "none" }} />
-            </div>
-          </div>
-        </div>
+        {isLoggedIn && isAdmin && active !== "/portal" && (
+          <a href="/portal" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#D4AF37",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            background: "rgba(212,175,55,0.08)",
+            border: "1px solid rgba(212,175,55,0.3)",
+            transition: "all 0.2s",
+          }}>
+            Client View
+          </a>
+        )}
+        {isLoggedIn && isAdmin && active === "/portal" && (
+          <a href="/admin" style={{
+            marginLeft: "0.5rem",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#C2185B",
+            textDecoration: "none",
+            padding: "0.35rem 0.8rem",
+            borderRadius: 4,
+            background: "rgba(194,24,91,0.08)",
+            border: "1px solid rgba(194,24,91,0.3)",
+            transition: "all 0.2s",
+          }}>
+            Admin View
+          </a>
+        )}
 
-        {/* Coming soon cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {COMING_SOON.map((item) => (
-            <div key={item.id} style={{
-              background: "rgba(255,255,255,0.03)",
-              border: `1px solid ${item.badgeColor}30`,
-              borderRadius: 12,
-              overflow: "hidden",
-            }}>
-              {/* Card header */}
-              <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: "1px solid rgba(212,175,55,0.1)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <span style={{ fontSize: "1.5rem" }}>{item.icon}</span>
-                    <span style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontSize: "0.62rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: item.badgeColor,
-                      background: `${item.badgeColor}18`,
-                      border: `1px solid ${item.badgeColor}40`,
-                      borderRadius: 4,
-                      padding: "0.2rem 0.55rem",
-                    }}>{item.badge}</span>
-                  </div>
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.75rem", fontWeight: 700 }}>{item.price}</span>
-                </div>
-                <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.35rem", fontWeight: 700, marginBottom: "0.2rem" }}>{item.title}</h2>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.7rem", letterSpacing: "0.06em" }}>{item.subtitle}</p>
-              </div>
+        {isLoggedIn && (
+          <button
+            onClick={handleLogout}
+            style={{
+              marginLeft: "0.5rem",
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.5)",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.15)",
+              padding: "0.35rem 0.8rem",
+              borderRadius: 4,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+          >
+            Log Out
+          </button>
+        )}
+      </div>
 
-              {/* Card body */}
-              <div style={{ padding: "1.25rem 1.5rem" }}>
-                <p style={{ color: "rgba(230,230,230,0.8)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.75, marginBottom: "1rem" }}>{item.description}</p>
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        style={{ display: "none", background: "transparent", border: "none", cursor: "pointer", padding: "0.5rem" }}
+        className="mobile-menu-btn"
+        aria-label="Menu"
+      >
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          {menuOpen ? (
+            <path d="M4 4L18 18M18 4L4 18" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round"/>
+          ) : (
+            <>
+              <line x1="3" y1="6" x2="19" y2="6" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="3" y1="11" x2="19" y2="11" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="3" y1="16" x2="19" y2="16" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round"/>
+            </>
+          )}
+        </svg>
+      </button>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
-                  {item.features.map((f, i) => (
-                    <div key={i} style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start" }}>
-                      <span style={{ color: item.badgeColor, fontSize: "0.7rem", marginTop: 2, flexShrink: 0 }}>✦</span>
-                      <span style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.5 }}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {submitted === item.id ? (
-                  <div style={{ background: "rgba(67,160,71,0.08)", border: "1px solid rgba(67,160,71,0.3)", borderRadius: 6, padding: "0.75rem", textAlign: "center" }}>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#43A047", fontWeight: 700, fontSize: "0.8rem" }}>✓ You're on the waitlist! We'll be in touch.</p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleWaitlist(item.id, item.title)}
-                    disabled={loading || !email || !firstName}
-                    style={{
-                      width: "100%",
-                      background: item.badgeColor,
-                      color: "#FFFFFF",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "0.75rem 1rem",
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 700,
-                      fontSize: "0.78rem",
-                      letterSpacing: "0.08em",
-                      cursor: email && firstName ? "pointer" : "not-allowed",
-                      opacity: email && firstName ? 1 : 0.5,
-                    }}
-                  >
-                    {loading ? "Joining..." : `${item.cta} →`}
-                  </button>
-                )}
-              </div>
-            </div>
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div style={{
+          position: "absolute",
+          top: 56,
+          left: 0,
+          right: 0,
+          background: "#071a30",
+          borderBottom: "1px solid rgba(212,175,55,0.2)",
+          padding: "0.75rem 1.25rem 1.25rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.25rem",
+          zIndex: 999,
+        }}>
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.7)",
+                textDecoration: "none",
+                padding: "0.6rem 0.5rem",
+                borderBottom: "1px solid rgba(212,175,55,0.08)",
+              }}
+            >
+              {link.label}
+            </a>
           ))}
+          {isLoggedIn && isAdmin && (
+            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>Admin</a>
+          )}
+          {isLoggedIn ? (
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", background: "none", border: "none", padding: "0.6rem 0.5rem", textAlign: "left", cursor: "pointer" }}>Log Out</button>
+          ) : (
+            <a href="/login" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem" }}>Sign In</a>
+          )}
         </div>
+      )}
 
-        {/* Mantra */}
-        <div style={{ marginTop: "2rem", textAlign: "center", padding: "1.5rem", background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10 }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.95rem", fontStyle: "italic", lineHeight: 1.8 }}>
-            "I walk with purpose, lead with AI authority,<br/>and empower transformation through effective AI."
-          </p>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.65rem", letterSpacing: "0.08em", marginTop: "0.5rem" }}>— DeAnna R. Upshaw</p>
-        </div>
-
-      </main>
-
-      <footer style={{ textAlign: "center", padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
-        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
-      </footer>
-    </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: block !important; }
+        }
+      `}</style>
+    </nav>
   );
 }
