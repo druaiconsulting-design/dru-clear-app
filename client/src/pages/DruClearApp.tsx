@@ -1616,9 +1616,8 @@ export default function DruClearApp() {
           <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => goTo("share-your-excitement")} />
         </>
       )}
-
-      {screen === "payment-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
-      {screen === "payment-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
+      {screen === "payment-strategic" && (() => { window.location.href = PAYMENT_STRATEGIC_URL; return null; })()}
+      {screen === "payment-executive" && (() => { window.location.href = PAYMENT_EXECUTIVE_URL; return null; })()}
       {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
