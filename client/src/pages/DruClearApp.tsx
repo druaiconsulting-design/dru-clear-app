@@ -921,9 +921,6 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
       total_score: scaledScore,
       score_category: scoreCategory,
       tier: tier.label,
-      // ─── TOP GAPS — Added for GHL custom field mapping ───────────────────
-      top_gaps: topGaps.map((g) => g.name).join(", "),
-      // ────────────────────────────────────────────────────────────────────
       assessment_status: "completed",
       completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
       completed_at_user: formatTimestamp(now, userTz, offsetLabel),
@@ -1221,23 +1218,34 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
 
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
+
+      {/* Logo top left */}
       <div style={{ marginBottom: "1.75rem" }}>
         <DruLogo className="w-32" />
       </div>
+
+      {/* Gold checkmark circle — centered */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.25rem" }}>
         <div style={{ width: 72, height: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(212,175,55,0.08)", boxShadow: "0 0 0 4px rgba(212,175,55,0.08)" }}>
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       </div>
+
+      {/* Title */}
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", fontWeight: 700, color: "#D4AF37", marginBottom: "0.75rem", lineHeight: 1.2, textAlign: "center" }}>
         Thank You, Payment Confirmed
       </h2>
+
+      {/* Warm paragraph */}
       <p style={{ color: "#E6E6E6", fontSize: "0.82rem", lineHeight: 1.7, maxWidth: 340, margin: "0 auto 1.5rem", textAlign: "center" }}>
         {isExecutive
           ? "You are one step closer towards your vision. Book your 120-minute executive briefing below and we'll begin to design your future."
           : "You are one step closer towards your vision. Book your 90-minute strategy session below and we'll begin to design your future."}
       </p>
+
       <div className="gold-divider" style={{ marginBottom: "1.25rem" }} />
+
+      {/* What Happens Next */}
       <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 8, padding: "1rem", marginBottom: "1.25rem" }}>
         <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.75rem", fontFamily: "'Montserrat', sans-serif" }}>What Happens Next</p>
         {nextSteps.map((item, i) => (
@@ -1247,10 +1255,15 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
           </div>
         ))}
       </div>
+
+      {/* Warm closing line */}
       <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.65, textAlign: "center", fontStyle: "italic", marginBottom: "1.5rem" }}>
         We look forward to partnering with you and adding value.
       </p>
+
       <div className="gold-divider" style={{ marginBottom: "1.25rem" }} />
+
+      {/* Calendar */}
       <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.75rem", fontFamily: "'Montserrat', sans-serif" }}>
         Book Your Session
       </p>
@@ -1262,9 +1275,11 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
       <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", marginBottom: "1.5rem", lineHeight: 1.5, textAlign: "center" }}>
         Having trouble? <a href={calendarUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#D4AF37", textDecoration: "underline" }}>Open booking page</a>
       </p>
+
       <button onClick={onContinue} style={{ background: "transparent", border: "none", color: "rgba(212,175,55,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }}>
         Continue to Share Your Results →
       </button>
+
       <div style={{ textAlign: "center" }}>
         <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>
           Questions? <a href="mailto:support@replies.druaiconsulting.com" style={{ color: "#D4AF37" }}>support@replies.druaiconsulting.com</a>
@@ -1616,13 +1631,14 @@ export default function DruClearApp() {
           <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => goTo("share-your-excitement")} />
         </>
       )}
-      {screen === "payment-strategic" && (() => { window.location.href = PAYMENT_STRATEGIC_URL; return null; })()}
-      {screen === "payment-executive" && (() => { window.location.href = PAYMENT_EXECUTIVE_URL; return null; })()}
+
+      {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
+      {screen === "payment-executive" && <PaymentScreen tier="executive" price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL} onBack={() => goTo("diagnose")} />}
       {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
       {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
       {screen === "share-your-excitement" && <ShareYourExcitementScreen lead={lead} scores={scores} onRevisit={() => goTo("diagnose")} />}
-      </div>
+      </div>{/* end keyed screen container */}
 
       {/* PWA Update Banner */}
       {showUpdateAvailable && (
