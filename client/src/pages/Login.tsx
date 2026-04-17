@@ -93,8 +93,7 @@ export default function Login() {
 
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.8rem", fontWeight: 700, letterSpacing: "0.04em", marginBottom: "0.25rem" }}>DRU</p>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>AI Consulting</p>
+        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 52, width: "auto", margin: "0 auto" }} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 400 }}>
