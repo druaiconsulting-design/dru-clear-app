@@ -8,9 +8,8 @@ const NAV_LINKS = [
   { label: "Daily",       href: "/daily" },
   { label: "ROI",         href: "/roi" },
   { label: "Affiliate",   href: "/affiliate" },
-  { label: "Coming Soon", href: "/coming-soon" },
-];ComingSoon.tsx
 
+  ];
 export default function NavBar({ active }: { active?: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isLoggedIn, isAdmin, user, logout } = useAuth();
