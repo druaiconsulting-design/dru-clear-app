@@ -13,6 +13,7 @@ import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
+import ComingSoon from "./pages/ComingSoon";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
 
@@ -21,43 +22,40 @@ function Router() {
   const path = window.location.pathname;
   const hash = window.location.hash;
 
-  // Handle Supabase OAuth callback
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          const role = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL ? "admin" : "client";
-          window.location.href = role === "admin" ? "/admin" : "/portal";
+          const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          window.location.href = isAdminUser ? "/admin" : "/portal";
         }
       });
     }
   }, [hash]);
 
-  // Loading state
   if (loading) {
     return (
       <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.5rem" }}>DRU</div>
+        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 48, width: "auto", opacity: 0.8 }} />
       </div>
     );
   }
 
-  // Public routes — no login needed
+  // Public routes
   if (path === "/" || path === "") return <DruClearApp />;
   if (path === "/roi" || path === "/roi/") return <ROI />;
   if (path === "/affiliate" || path === "/affiliate/") return <Affiliate />;
   if (path === "/frameworks" || path === "/frameworks/") return <Frameworks />;
-
-  // Client login page — no admin option shown
+  if (path === "/coming-soon" || path === "/coming-soon/") return <ComingSoon />;
   if (path === "/login" || path === "/login/") return <Login />;
 
-  // Admin route — shows private admin login if not authenticated as admin
+  // Admin — private door
   if (path === "/admin" || path === "/admin/") {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
   }
 
-  // Client protected routes
+  // Protected routes
   if (path === "/portal" || path === "/portal/") {
     if (!isLoggedIn) { window.location.href = "/login"; return null; }
     return <Portal />;
