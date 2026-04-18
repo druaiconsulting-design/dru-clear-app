@@ -12,7 +12,7 @@ const FRAMEWORKS = [
     name: "DRU CLEAR™",
     tagline: "Align for AI Execution",
     theme: null,
-    image: "/DRU_CLEAR_.png",
+    image: "/DRU%20CLEAR%20.png",
     price: "$7,500",
     intro: "Every organization has a starting point. DRU CLEAR™ is the framework that finds it — and builds the bridge from where you are to where AI can take you.\n\nAs the flagship framework of the DRU AI Leadership Ecosystem™, DRU CLEAR™ is the transformation pathway that connects all four frameworks into a unified, executable strategy. It is not just an assessment — it is a complete AI readiness diagnosis, strategy design, and execution alignment system built for organizations ready to lead in the AI era.",
     dimensions: [
@@ -33,7 +33,7 @@ const FRAMEWORKS = [
     name: "5C Cultural DNA™",
     tagline: "Communication · Connection · Collaboration · Coaching · Culture Transformation",
     theme: "Learn IT. Live IT. Lead IT. Leadership Thinking with AI.",
-    image: "/5C_.png",
+    image: "/5C%20.png",
     price: "$6,000",
     intro: "Most organizations don't have an AI problem — they have a culture problem. Before any technology can transform a business, the people, communication patterns, and leadership behaviors have to be ready to receive it.\n\nThe 5C Cultural DNA™ framework helps organizations discover and address cultural dysfunction, silos, and communication breakdowns that silently block progress. It gives leaders a structured path to use AI as a strategic thinking partner — not a decision-maker — moving through all five dimensions for greater organizational results.",
     dimensions: [
@@ -54,7 +54,7 @@ const FRAMEWORKS = [
     name: "5D Leadership™",
     tagline: "Transformational Leadership Across Five Critical Dimensions",
     theme: null,
-    image: "/5D_Leadership_visual_model_design.png",
+    image: "/5D%20Leadership%20visual%20model%20design.png",
     price: "$6,500",
     intro: "Most leadership development programs focus on skills. 5D Leadership™ focuses on the whole leader — building from the inside out across five critical dimensions that determine whether leadership actually transforms an organization or just manages it.\n\nThis AI-infused leadership methodology ensures that personal mastery, team effectiveness, organizational strength, and strategic impact all develop together — not in isolation.",
     dimensions: [
@@ -75,7 +75,7 @@ const FRAMEWORKS = [
     name: "AI Sales Mastery™",
     tagline: "DISC Behavioral Insights + AI for Revenue Acceleration",
     theme: "Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.",
-    image: "/AI_Sales_Mastery_framework_infographic.png",
+    image: "/AI%20Sales%20Mastery%20framework%20infographic.png",
     price: "$6,000",
     intro: "The future of sales is not louder — it's smarter. AI Sales Mastery™ combines the proven power of DISC behavioral insights with AI to create a sales approach that feels natural, builds trust, and accelerates revenue without pressure tactics or guesswork.\n\nWhen you understand how your client thinks, decides, and communicates — and you use AI to personalize that understanding at scale — selling stops feeling like selling.",
     dimensions: [
