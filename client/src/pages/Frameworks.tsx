@@ -1,3 +1,4 @@
+import { useState } from "react";
 import NavBar from "../components/NavBar";
 
 const PAYMENT_STRATEGIC_URL = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
@@ -45,7 +46,7 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Organizations navigating culture shifts, leadership teams experiencing silos or communication breakdowns, and executives ready to build a culture where AI and human intelligence work together.",
-    cta: "strategic",
+    cta: "executive-only",
   },
   {
     id: "5d-leadership",
@@ -66,7 +67,7 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Companies that need leadership at every level — not just at the top. Organizations ready to develop leaders from the inside out across every tier of their business.",
-    cta: "strategic",
+    cta: "both",
   },
   {
     id: "ai-sales-mastery",
@@ -87,95 +88,62 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Sales teams ready to integrate AI into their sales strategy and leaders who want to accelerate revenue without sacrificing relationship.",
-    cta: "strategic",
+    cta: "executive-only",
   },
 ];
 
-// ─── Shared pricing section styles ───────────────────────────────────────────
-
+// ─── Shared pricing styles ────────────────────────────────────────────────────
 const pSection = { marginBottom: "2rem" } as const;
-
-const pStepHeader = {
-  display: "flex", alignItems: "center", gap: 12, marginBottom: 14,
-} as const;
-
-const pDivider = {
-  flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)",
-} as const;
-
-const pRow = {
-  display: "flex", alignItems: "center", justifyContent: "space-between",
-  padding: "0.9rem 1rem", borderRadius: 8, gap: 12,
-  border: "1px solid rgba(255,255,255,0.08)",
-  marginBottom: 8, background: "rgba(255,255,255,0.04)",
-} as const;
-
-const pRowGold = {
-  ...pRow, borderLeft: "3px solid #D4AF37",
-} as const;
-
-const pRowMag = {
-  ...pRow, borderLeft: "3px solid #C2185B",
-} as const;
-
-const pName = {
-  fontFamily: "'Playfair Display', serif",
-  fontSize: "0.88rem", fontWeight: 600,
-  color: "#FFFFFF", margin: "0 0 3px",
-} as const;
-
-const pSub = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: "0.68rem", color: "rgba(230,230,230,0.55)",
-  margin: 0, lineHeight: 1.5,
-} as const;
-
-const pPrice = {
-  fontFamily: "'Playfair Display', serif",
-  fontSize: "1rem", fontWeight: 700,
-  color: "#D4AF37", whiteSpace: "nowrap" as const,
-  textAlign: "right" as const,
-} as const;
-
-const pMeta = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: "0.62rem", color: "rgba(230,230,230,0.4)",
-  textAlign: "right" as const, whiteSpace: "nowrap" as const,
-} as const;
-
-const pReportTag = {
-  display: "inline-block", marginTop: 6,
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: "0.6rem", fontWeight: 600,
-  padding: "2px 8px", borderRadius: 20,
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  color: "rgba(230,230,230,0.5)",
-} as const;
-
-const pSubLabel = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: "0.62rem", letterSpacing: "0.1em",
-  textTransform: "uppercase" as const,
-  color: "rgba(212,175,55,0.6)",
-  fontWeight: 600, margin: "16px 0 8px 2px",
-} as const;
-
-const anchorTag = {
-  display: "inline-block",
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: "0.58rem", fontWeight: 700,
-  padding: "2px 7px", borderRadius: 20,
-  background: "rgba(212,175,55,0.15)",
-  color: "#D4AF37", marginRight: 5,
-} as const;
-
+const pStepHeader = { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 } as const;
+const pDivider = { flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)" } as const;
+const pRow = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
+const pRowGold = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
+const pRowMag = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
+const pName = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
+const pSub = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
+const pPrice = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
+const pMeta = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.4)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
+const pReportTag = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(230,230,230,0.5)" } as const;
+const pSubLabel = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: "16px 0 8px 2px" } as const;
+const anchorTag = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
 // ─────────────────────────────────────────────────────────────────────────────
 
+type ModalConfig = { url: string; title: string } | null;
+
 export default function Frameworks() {
+  const [modal, setModal] = useState<ModalConfig>(null);
+  const openModal = (url: string, title: string) => setModal({ url, title });
+  const closeModal = () => setModal(null);
+
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/frameworks" />
+
+      {/* ── MODAL ─────────────────────────────────────────────────────────── */}
+      {modal && (
+        <div
+          onClick={closeModal}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "flex-start", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 520, height: "100dvh", background: "#FFFFFF", display: "flex", flexDirection: "column" }}
+          >
+            {/* Modal header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1.25rem", background: "#0A2342", borderBottom: "1px solid rgba(212,175,55,0.25)", flexShrink: 0 }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", margin: 0 }}>{modal.title}</p>
+              <button
+                onClick={closeModal}
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600, padding: "0.35rem 0.75rem", cursor: "pointer", letterSpacing: "0.06em" }}
+              >
+                ✕ Close
+              </button>
+            </div>
+            {/* iframe */}
+            <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
+          </div>
+        </div>
+      )}
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
@@ -183,9 +151,7 @@ export default function Frameworks() {
 
         {/* Strategic Outcomes */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(230,230,230,0.45)", fontWeight: 600, marginBottom: 10 }}>
-            Strategic Outcomes
-          </p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(230,230,230,0.45)", fontWeight: 600, marginBottom: 10 }}>Strategic Outcomes</p>
           <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
             {["Innovation", "Effectiveness", "Integration", "Performance"].map((o) => (
               <span key={o} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.5)", color: "#D4AF37" }}>{o}</span>
@@ -196,41 +162,22 @@ export default function Frameworks() {
         {/* Hero */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your Investment in Transformation</p>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.85rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.875rem" }}>
-            Every transformation begins<br />with clarity.
-          </h1>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.85rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.875rem" }}>Every transformation begins<br />with clarity.</h1>
           <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.8, maxWidth: 500, margin: "0 auto 1.25rem" }}>
             The DRU AI Transformation Pathway™ is a proven, sequential journey that moves you from awareness to full organizational activation. Every client walks the same five stages — no shortcuts, no skipped steps.
           </p>
-
-          {/* Pathway */}
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(230,230,230,0.35)", marginBottom: 8 }}>
-            The DRU AI Transformation Pathway™
-          </p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(230,230,230,0.35)", marginBottom: 8 }}>The DRU AI Transformation Pathway™</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 0 }}>
-            {[
-              { label: "Discover", color: "#D4AF37" },
-              { label: "Diagnose", color: "#D4AF37" },
-              { label: "Design", color: "#D4AF37" },
-              { label: "Deploy", color: "#C2185B" },
-              { label: "Dominate", color: "#C2185B" },
-            ].map((stage, i, arr) => (
+            {[{ label: "Discover", color: "#D4AF37" }, { label: "Diagnose", color: "#D4AF37" }, { label: "Design", color: "#D4AF37" }, { label: "Deploy", color: "#C2185B" }, { label: "Dominate", color: "#C2185B" }].map((stage, i, arr) => (
               <div key={stage.label} style={{ display: "flex", alignItems: "center" }}>
-                <span style={{
-                  fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 600,
-                  color: "#FFFFFF", padding: "4px 8px",
-                  borderBottom: `2px solid ${stage.color}`,
-                  letterSpacing: "0.04em",
-                }}>{stage.label}</span>
-                {i < arr.length - 1 && (
-                  <span style={{ color: "#D4AF37", fontSize: "0.75rem", padding: "0 3px" }}>›</span>
-                )}
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 600, color: "#FFFFFF", padding: "4px 8px", borderBottom: `2px solid ${stage.color}`, letterSpacing: "0.04em" }}>{stage.label}</span>
+                {i < arr.length - 1 && <span style={{ color: "#D4AF37", fontSize: "0.75rem", padding: "0 3px" }}>›</span>}
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── STEP 1: Assessment ── */}
+        {/* STEP 1 */}
         <div style={pSection}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -242,7 +189,6 @@ export default function Frameworks() {
             </div>
             <div style={pDivider} />
           </div>
-
           <div style={pRowGold}>
             <div style={{ flex: 1 }}>
               <p style={pName}>DRU CLEAR™ AI Readiness Scorecard</p>
@@ -252,7 +198,7 @@ export default function Frameworks() {
           </div>
         </div>
 
-        {/* ── STEP 2: Diagnostic ── */}
+        {/* STEP 2 */}
         <div style={pSection}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -264,32 +210,31 @@ export default function Frameworks() {
             </div>
             <div style={pDivider} />
           </div>
-
-          {/* ED — first / Best Value */}
           <div style={pRowMag}>
             <div style={{ flex: 1 }}>
-              <p style={pName}>
-                Executive Diagnostic (ED)
-                <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#D4AF37", color: "#3a2e00", marginLeft: 8, verticalAlign: "middle" }}>Best Value</span>
-              </p>
+              <p style={pName}>Executive Diagnostic (ED) <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#D4AF37", color: "#3a2e00", marginLeft: 8, verticalAlign: "middle" }}>Best Value</span></p>
               <p style={pSub}>120-min Zoom · Review of all 4 frameworks</p>
               <span style={pReportTag}>Includes: Executive AI Alignment Report — boardroom-ready</span>
             </div>
-            <p style={pPrice}>$4,997</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              <p style={pPrice}>$4,997</p>
+              <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ background: "#C2185B", color: "#FFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.07em", textTransform: "uppercase", padding: "0.45rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Book Now →</button>
+            </div>
           </div>
-
-          {/* SD */}
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>Strategic Diagnostic (SD)</p>
               <p style={pSub}>90-min Zoom · Review of 5D Leadership™ + DRU CLEAR™</p>
               <span style={pReportTag}>Includes: Strategic AI Insight Report</span>
             </div>
-            <p style={pPrice}>$3,497</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              <p style={pPrice}>$3,497</p>
+              <button onClick={() => openModal(PAYMENT_STRATEGIC_URL, "Strategic Diagnostic — $3,497")} style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.07em", textTransform: "uppercase", padding: "0.4rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.4)", cursor: "pointer", whiteSpace: "nowrap" }}>Book Now →</button>
+            </div>
           </div>
         </div>
 
-        {/* ── Transition ── */}
+        {/* Transition */}
         <div style={{ textAlign: "center", padding: "1.5rem 1rem", margin: "0.5rem 0", borderTop: "1px solid rgba(212,175,55,0.15)", borderBottom: "1px solid rgba(212,175,55,0.15)" }}>
           <p style={{ fontSize: "1.25rem", color: "#D4AF37", marginBottom: 8 }}>↓</p>
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", color: "#FFFFFF", fontWeight: 600, marginBottom: 6 }}>Your diagnostic is complete. Your pathway is clear.</p>
@@ -298,7 +243,7 @@ export default function Frameworks() {
           </p>
         </div>
 
-        {/* ── STEP 3: Activate ── */}
+        {/* STEP 3 */}
         <div style={{ ...pSection, marginTop: "1.5rem" }}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#C2185B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -311,7 +256,6 @@ export default function Frameworks() {
             <div style={pDivider} />
           </div>
 
-          {/* Individual Frameworks */}
           <p style={pSubLabel}>Individual Frameworks</p>
           {[
             { name: "DRU CLEAR™", sub: "Flagship · Connects all 4 frameworks", price: "$7,500", gold: true },
@@ -331,22 +275,15 @@ export default function Frameworks() {
             </div>
           ))}
 
-          {/* Bundles */}
           <p style={pSubLabel}>Bundles</p>
-
-          {/* Full Ecosystem — Best Value — first */}
           <div style={pRowMag}>
             <div style={{ flex: 1 }}>
-              <p style={pName}>
-                Full Ecosystem — All 4
-                <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#C2185B", color: "#fff", marginLeft: 8, verticalAlign: "middle" }}>Best Value</span>
-              </p>
+              <p style={pName}>Full Ecosystem — All 4 <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#C2185B", color: "#fff", marginLeft: 8, verticalAlign: "middle" }}>Best Value</span></p>
               <p style={pSub}><span style={anchorTag}>Anchor</span> DRU CLEAR™ · 5D · 5C · AI Sales · 3 months</p>
               <p style={{ ...pSub, marginTop: 3 }}>4 sessions/month · 90 min · 12 sessions total</p>
             </div>
             <p style={pPrice}>$26,000</p>
           </div>
-
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>DRU CLEAR™ + 2 Frameworks</p>
@@ -354,7 +291,6 @@ export default function Frameworks() {
             </div>
             <p style={pPrice}>$19,500</p>
           </div>
-
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>DRU CLEAR™ + 1 Framework</p>
@@ -364,35 +300,22 @@ export default function Frameworks() {
           </div>
         </div>
 
-        {/* ── App CTA ── */}
+        {/* App CTA */}
         <div style={{ textAlign: "center", padding: "2rem 1.5rem", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(212,175,55,0.2)", marginBottom: "3rem" }}>
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#FFFFFF", fontWeight: 600, marginBottom: 8 }}>Every journey starts with the assessment.</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.55)", lineHeight: 1.75, marginBottom: 20 }}>
-            Discover your gaps. See where you are.<br />Define where you are destined to be.
-          </p>
+          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.55)", lineHeight: 1.75, marginBottom: 20 }}>Discover your gaps. See where you are.<br />Define where you are destined to be.</p>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(230,230,230,0.5)", marginBottom: 14 }}>Choose Your Diagnostic</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360, margin: "0 auto" }}>
-            <a
-              href={PAYMENT_EXECUTIVE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "block", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.875rem 1rem", borderRadius: 6 }}
-            >
+            <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.875rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
               Book Executive Diagnostic →
-            </a>
-            <a
-              href={PAYMENT_STRATEGIC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.8rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}
-            >
+            </button>
+            <button onClick={() => openModal(PAYMENT_STRATEGIC_URL, "Strategic Diagnostic — $3,497")} style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.8rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)", cursor: "pointer" }}>
               Book Strategic Diagnostic →
-            </a>
+            </button>
           </div>
         </div>
 
-        {/* ── FRAMEWORK DETAILS SECTION ───────────────────────────────────── */}
-
+        {/* ── FRAMEWORK DETAILS ───────────────────────────────────────────── */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>DRU AI Leadership Ecosystem™</p>
           <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Explore the Frameworks</h2>
@@ -405,42 +328,24 @@ export default function Frameworks() {
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {FRAMEWORKS.map((fw) => (
             <div key={fw.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 12, overflow: "hidden" }}>
-
-              {/* Image + Price header */}
               <div style={{ position: "relative" }}>
                 <img src={fw.image} alt={fw.name} style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", objectPosition: "center top" }} />
-
-                {/* Price badge — bigger */}
-                <div style={{
-                  position: "absolute", top: 12, right: 12,
-                  background: "rgba(10,35,66,0.9)",
-                  border: "1px solid rgba(212,175,55,0.55)",
-                  borderRadius: 10,
-                  padding: "0.65rem 1.25rem",
-                  backdropFilter: "blur(4px)",
-                }}>
+                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(10,35,66,0.9)", border: "1px solid rgba(212,175,55,0.55)", borderRadius: 10, padding: "0.65rem 1.25rem", backdropFilter: "blur(4px)" }}>
                   <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontWeight: 700, fontSize: "1.5rem", lineHeight: 1 }}>{fw.price}</p>
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.5)", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 3 }}>Virtual</p>
                 </div>
-
-                {/* Badge bottom left */}
                 <div style={{ position: "absolute", bottom: 12, left: 12 }}>
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: fw.badgeColor, background: "rgba(10,35,66,0.85)", border: `1px solid ${fw.badgeColor}60`, borderRadius: 4, padding: "0.2rem 0.55rem" }}>{fw.badge}</span>
                 </div>
               </div>
 
-              {/* Card content */}
               <div style={{ padding: "1.25rem 1.5rem" }}>
                 <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.35rem", fontWeight: 700, marginBottom: "0.25rem" }}>{fw.name}</h2>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.45)", fontSize: "0.7rem", letterSpacing: "0.06em", marginBottom: fw.theme ? "0.4rem" : "1rem" }}>{fw.tagline}</p>
-                {fw.theme && (
-                  <p style={{ fontFamily: "'Inter', sans-serif", color: "#D4AF37", fontSize: "0.75rem", fontStyle: "italic", marginBottom: "1rem", opacity: 0.85 }}>{fw.theme}</p>
-                )}
-
+                {fw.theme && <p style={{ fontFamily: "'Inter', sans-serif", color: "#D4AF37", fontSize: "0.75rem", fontStyle: "italic", marginBottom: "1rem", opacity: 0.85 }}>{fw.theme}</p>}
                 {fw.intro.split("\n\n").map((para, i) => (
                   <p key={i} style={{ color: "rgba(230,230,230,0.8)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.75, marginBottom: "0.875rem" }}>{para}</p>
                 ))}
-
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1rem" }}>
                   {fw.dimensions.map((dim) => (
                     <div key={dim.label} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
@@ -452,36 +357,44 @@ export default function Frameworks() {
                     </div>
                   ))}
                 </div>
-
                 {fw.closing && (
                   <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.875rem", marginBottom: "1rem" }}>
                     <p style={{ color: "rgba(230,230,230,0.75)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.65, fontStyle: "italic" }}>{fw.closing}</p>
                   </div>
                 )}
-
                 <div style={{ marginBottom: "1.25rem" }}>
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
                   <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>{fw.whoFor}</p>
                 </div>
 
-                {/* CTAs */}
+                {/* Per-framework CTAs */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  <a
-                    href={fw.cta === "executive" ? PAYMENT_EXECUTIVE_URL : PAYMENT_STRATEGIC_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "block", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.75rem 1rem", borderRadius: 6 }}
-                  >
-                    {fw.cta === "executive" ? "Get Started — Executive Diagnostic →" : "Get Started — Strategic Diagnostic →"}
-                  </a>
-                  <a
-                    href={CALENDAR_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.65rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)" }}
-                  >
+                  {fw.cta === "executive-only" && (
+                    <>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.35)", letterSpacing: "0.04em", textAlign: "center", margin: "0 0 2px" }}>This framework is reviewed in the Executive Diagnostic</p>
+                      <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
+                        Get Started — Executive Diagnostic →
+                      </button>
+                    </>
+                  )}
+                  {fw.cta === "both" && (
+                    <>
+                      <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
+                        Get Started — Executive Diagnostic →
+                      </button>
+                      <button onClick={() => openModal(PAYMENT_STRATEGIC_URL, "Strategic Diagnostic — $3,497")} style={{ display: "block", width: "100%", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.65rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)", cursor: "pointer" }}>
+                        Get Started — Strategic Diagnostic →
+                      </button>
+                    </>
+                  )}
+                  {fw.cta === "executive" && (
+                    <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
+                      Get Started — Executive Diagnostic →
+                    </button>
+                  )}
+                  <button onClick={() => openModal(CALENDAR_URL, "Book a Discovery Call")} style={{ display: "block", width: "100%", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.65rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)", cursor: "pointer" }}>
                     Book a Discovery Call
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -492,9 +405,9 @@ export default function Frameworks() {
         <div style={{ marginTop: "2rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "center" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Workshop Pricing</p>
           <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>Available for on-site facilitation. Custom pricing based on team size, location, and engagement scope.</p>
-          <a href={CALENDAR_URL} target="_blank" rel="noopener noreferrer" style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none" }}>
+          <button onClick={() => openModal(CALENDAR_URL, "Book a Strategy Call")} style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", border: "none", cursor: "pointer", padding: 0 }}>
             Book a Strategy Call for Custom Pricing →
-          </a>
+          </button>
         </div>
 
       </main>
