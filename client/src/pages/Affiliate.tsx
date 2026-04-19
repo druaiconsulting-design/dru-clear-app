@@ -5,25 +5,25 @@ const TOOLS = [
     name: "Manus AI",
     category: "AI Agent Platform",
     description: "The most capable AI agent platform for complex, multi-step tasks. Build, deploy, and automate workflows that used to require a team.",
-    badge: "DeAnna Uses This",
+    badge: "DeAnna Actively Uses",
     badgeColor: "#C2185B",
     badgeBg: "rgba(194,24,91,0.12)",
     badgeBorder: "rgba(194,24,91,0.3)",
     href: "https://druaiconsulting.com/manus",
     showButton: true,
-    affiliateNote: "Affiliate link — DeAnna earns a commission at no cost to you.",
+    affiliateNote: "",
   },
   {
     name: "Lovable",
     category: "AI App Builder",
     description: "Build full-stack web apps with plain English prompts. The fastest way for non-developers to bring digital products to life.",
-    badge: "Recommended",
+    badge: "DeAnna Actively Uses",
     badgeColor: "#C2185B",
     badgeBg: "rgba(194,24,91,0.12)",
     badgeBorder: "rgba(194,24,91,0.3)",
     href: "https://druaiconsulting.com/lovable",
     showButton: true,
-    affiliateNote: "Affiliate link — DeAnna earns a commission at no cost to you.",
+    affiliateNote: "",
   },
   {
     name: "GoHighLevel (GHL)",
@@ -90,7 +90,7 @@ export default function Affiliate() {
               ) : (
                 <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 6, padding: "0.65rem 0.875rem" }}>
                   <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.75rem", fontStyle: "italic" }}>
-                    Ask DeAnna about GHL during your diagnostic session.
+                    Ask DeAnna about GHL during your diagnostic session for a great value.
                   </p>
                 </div>
               )}
