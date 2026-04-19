@@ -16,7 +16,6 @@ export default function TermsPage() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 620, margin: "0 auto", width: "100%" }}>
 
-        {/* Header */}
         <div style={{ marginBottom: "2.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>DRU AI Consulting</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.75rem" }}>Terms of Engagement</h1>
@@ -26,7 +25,6 @@ export default function TermsPage() {
           </p>
         </div>
 
-        {/* Terms Sections */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
           {TERMS.map((section) => (
             <div key={section.title} style={{ borderLeft: "2px solid rgba(212,175,55,0.3)", paddingLeft: "1.25rem" }}>
@@ -36,12 +34,14 @@ export default function TermsPage() {
           ))}
         </div>
 
-        {/* Contact */}
         <div style={{ marginTop: "2.5rem", padding: "1.25rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Questions?</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.6)", lineHeight: 1.7 }}>
-            Contact DRU AI Consulting at <span style={{ color: "#D4AF37" }}>app.druaiconsulting.com</span> for any questions regarding these terms prior to completing your purchase.
+          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.6)", lineHeight: 1.7, marginBottom: 6 }}>
+            Contact DRU AI Consulting prior to completing your purchase with any questions regarding these terms.
           </p>
+          <a href="mailto:support@druaiconsulting.com" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.04em", textDecoration: "none" }}>
+            support@druaiconsulting.com
+          </a>
         </div>
 
       </main>
