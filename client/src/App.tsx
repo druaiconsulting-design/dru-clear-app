@@ -12,6 +12,7 @@ import BundlePricing from "./pages/BundlePricing";
 import TermsPage from "./pages/TermsPage";
 import ThankYouED from "./pages/ThankYouED";
 import ThankYouSD from "./pages/ThankYouSD";
+import { ThankYouDruClear, ThankYou5D, ThankYou5C, ThankYouAISales } from "./pages/ThankYouFrameworks";
 import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
@@ -44,15 +45,24 @@ function Router() {
     );
   }
 
-  if (path === "/" || path === "")                                   return <DruClearApp />;
-  if (path === "/roi" || path === "/roi/")                          return <ROI />;
-  if (path === "/affiliate" || path === "/affiliate/")              return <Affiliate />;
-  if (path === "/frameworks" || path === "/frameworks/")            return <Frameworks />;
-  if (path === "/bundle-pricing" || path === "/bundle-pricing/")    return <BundlePricing />;
-  if (path === "/terms" || path === "/terms/")                      return <TermsPage />;
-  if (path === "/thank-you-ed" || path === "/thank-you-ed/")        return <ThankYouED />;
-  if (path === "/thank-you-sd" || path === "/thank-you-sd/")        return <ThankYouSD />;
-  if (path === "/login" || path === "/login/")                      return <Login />;
+  if (path === "/" || path === "")                                           return <DruClearApp />;
+  if (path === "/roi" || path === "/roi/")                                   return <ROI />;
+  if (path === "/affiliate" || path === "/affiliate/")                       return <Affiliate />;
+  if (path === "/frameworks" || path === "/frameworks/")                     return <Frameworks />;
+  if (path === "/bundle-pricing" || path === "/bundle-pricing/")             return <BundlePricing />;
+  if (path === "/terms" || path === "/terms/")                               return <TermsPage />;
+
+  // ── Diagnostic Thank You Pages ──────────────────────────────────────────────
+  if (path === "/thank-you-ed" || path === "/thank-you-ed/")                 return <ThankYouED />;
+  if (path === "/thank-you-sd" || path === "/thank-you-sd/")                 return <ThankYouSD />;
+
+  // ── Framework Thank You Pages ───────────────────────────────────────────────
+  if (path === "/thank-you-dru-clear" || path === "/thank-you-dru-clear/")   return <ThankYouDruClear />;
+  if (path === "/thank-you-5d" || path === "/thank-you-5d/")                 return <ThankYou5D />;
+  if (path === "/thank-you-5c" || path === "/thank-you-5c/")                 return <ThankYou5C />;
+  if (path === "/thank-you-ai-sales" || path === "/thank-you-ai-sales/")     return <ThankYouAISales />;
+
+  if (path === "/login" || path === "/login/")                               return <Login />;
 
   if (path === "/admin" || path === "/admin/") {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
