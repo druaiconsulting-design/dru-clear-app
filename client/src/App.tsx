@@ -19,6 +19,7 @@ import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
+import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
 
@@ -110,6 +111,11 @@ function Router() {
   if (path === "/thank-you-full-ecosystem" || path === "/thank-you-full-ecosystem/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouFullEcosystem />;
+  }
+
+  if (path === "/reset-password" || path === "/reset-password/") {
+    setTitle("Set Your Password · DRU CLEAR™");
+    return <ResetPassword />;
   }
 
   if (path === "/login" || path === "/login/") {
