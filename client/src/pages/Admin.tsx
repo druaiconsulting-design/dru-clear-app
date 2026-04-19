@@ -23,7 +23,8 @@ const PAYMENT_LINKS = [
   { label: "5D Leadership™",         price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
   { label: "5C Cultural DNA™",       price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
   { label: "AI Sales Mastery™",      price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
-  { label: "Full Ecosystem — All 4", price: "$26,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
+  { label: "Full Ecosystem — Signing ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
+  { label: "Full Ecosystem — Final ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
 ];
 
 const PENDING_ITEMS = [
