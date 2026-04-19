@@ -1,16 +1,68 @@
+import { useState } from "react";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../contexts/AuthContext";
+
+function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+  const email = user?.email || "";
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  const firstName = fullName.split(" ")[0] || email.split("@")[0] || "Welcome";
+  const initials = fullName
+    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : email.slice(0, 2).toUpperCase();
+  return { firstName, avatarUrl, initials };
+}
+
+function PortalAvatar({ user }: { user: any }) {
+  const { avatarUrl, initials } = getUserDisplay(user);
+  const [imgError, setImgError] = useState(false);
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="Profile"
+        onError={() => setImgError(true)}
+        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }}
+      />
+    );
+  }
+
+  return (
+    <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(212,175,55,0.12)", border: "2px solid rgba(212,175,55,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#D4AF37", lineHeight: 1 }}>{initials}</span>
+    </div>
+  );
+}
 
 export default function Portal() {
+  const { user } = useAuth();
+  const userDisplay = user ? getUserDisplay(user) : { firstName: "Welcome", avatarUrl: null, initials: "" };
+
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/portal" />
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
-        {/* Welcome header */}
+        {/* Personalized welcome header */}
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your AI Transformation Hub</p>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Welcome Back</h1>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
+            {user && <PortalAvatar user={user} />}
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
+                Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span>
+              </h1>
+              {user?.email && (
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>
+                  {user.email}
+                </p>
+              )}
+            </div>
+          </div>
+
           <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", lineHeight: 1.7 }}>
             Everything you need to accelerate your AI leadership journey — in one place.
           </p>
@@ -25,16 +77,10 @@ export default function Portal() {
             { icon: "⚡", label: "Daily Connection", sub: "Today's insight", href: "/daily" },
           ].map((item) => (
             <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(212,175,55,0.2)",
-                borderRadius: 10,
-                padding: "1.25rem 1rem",
-                cursor: "pointer",
-                transition: "border-color 0.2s, background 0.2s",
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+              <div
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
               >
                 <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
@@ -50,13 +96,7 @@ export default function Portal() {
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
             {["Discover", "Diagnose", "Design", "Deploy", "Dominate"].map((stage, i) => (
               <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                <div style={{
-                  background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`,
-                  borderRadius: 6,
-                  padding: "0.4rem 0.75rem",
-                  textAlign: "center",
-                }}>
+                <div style={{ background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" }}>
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: i === 0 ? "#FFFFFF" : i === 1 ? "#D4AF37" : "rgba(255,255,255,0.35)", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" }}>{stage}</p>
                 </div>
                 {i < 4 && <span style={{ color: "rgba(212,175,55,0.4)", fontSize: "0.8rem" }}>→</span>}
@@ -68,15 +108,9 @@ export default function Portal() {
 
         {/* Explore frameworks CTA */}
         <a href="/frameworks" style={{ textDecoration: "none", display: "block" }}>
-          <div style={{
-            background: "linear-gradient(135deg, rgba(194,24,91,0.15) 0%, rgba(212,175,55,0.08) 100%)",
-            border: "1px solid rgba(194,24,91,0.3)",
-            borderRadius: 10,
-            padding: "1.25rem 1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}>
+          <div
+            style={{ background: "linear-gradient(135deg, rgba(194,24,91,0.15) 0%, rgba(212,175,55,0.08) 100%)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          >
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.25rem" }}>Explore the DRU AI Ecosystem™</p>
               <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.75rem" }}>4 flagship frameworks designed to transform your leadership</p>
