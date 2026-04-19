@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { supabase } from "../lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
-// ─── Admin Email ──────────────────────────────────────────────────────────────
 const ADMIN_EMAIL = "deanna@druaiconsulting.com";
 
 export type UserRole = "admin" | "client" | null;
@@ -63,24 +62,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = supabaseUser.email || "";
     const meta = supabaseUser.user_metadata || {};
 
-    // ── Name resolution — checks all possible fields in priority order ──────
-    // Google OAuth stores: full_name, name, given_name
-    // Email signup stores: first_name (set by registerClient)
-    const fullName =
-      meta.full_name ||        // Google: "DeAnna R Upshaw-ai"
-      meta.name ||             // Google fallback
-      "";
+    // Full name — Google stores as full_name or name — trust as-is
+    const fullName = meta.full_name || meta.name || "";
 
-    const firstName =
-      meta.given_name ||       // Google: first name only (sometimes present)
-      meta.first_name ||       // Email signup: saved by registerClient
-      (fullName ? fullName.split(" ")[0] : "") || // Extract from full name
-      "";                      // Will show "Welcome Back" without a name
+    // First name resolution — priority order:
+    // 1. given_name (Google) — trust as-is e.g. "DeAnna"
+    // 2. first_name (email signup) — trust as-is e.g. "DeAnna"
+    // 3. First word of full_name — trust as-is e.g. "DeAnna" from "DeAnna R Upshaw"
+    // 4. Email prefix — only this one gets capitalized since it's always lowercase
+    const storedFirst =
+      meta.given_name ||
+      meta.first_name ||
+      (fullName ? fullName.split(" ")[0] : "");
 
-    const picture =
-      meta.avatar_url ||       // Google: profile photo URL
-      meta.picture ||          // Google fallback
-      null;
+    // Only capitalize if falling back to email prefix — stored names are trusted as-is
+    const emailPrefix = email.split("@")[0] || "";
+    const capitalizedPrefix = emailPrefix
+      ? emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
+      : "";
+
+    const firstName = storedFirst || capitalizedPrefix || "";
+
+    const picture = meta.avatar_url || meta.picture || null;
 
     return {
       id: supabaseUser.id,
