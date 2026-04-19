@@ -12,6 +12,7 @@ interface AuthUser {
   email: string;
   role: UserRole;
   firstName?: string;
+  fullName?: string;
   picture?: string;
 }
 
@@ -42,23 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) {
-        setUser(buildUser(session.user));
-      }
+      if (session?.user) setUser(buildUser(session.user));
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user) {
-        setUser(buildUser(session.user));
-      } else {
-        setUser(null);
-      }
+      if (session?.user) setUser(buildUser(session.user));
+      else setUser(null);
       setLoading(false);
     });
 
@@ -67,12 +61,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function buildUser(supabaseUser: User): AuthUser {
     const email = supabaseUser.email || "";
+    const meta = supabaseUser.user_metadata || {};
+
+    // ── Name resolution — checks all possible fields in priority order ──────
+    // Google OAuth stores: full_name, name, given_name
+    // Email signup stores: first_name (set by registerClient)
+    const fullName =
+      meta.full_name ||        // Google: "DeAnna R Upshaw-ai"
+      meta.name ||             // Google fallback
+      "";
+
+    const firstName =
+      meta.given_name ||       // Google: first name only (sometimes present)
+      meta.first_name ||       // Email signup: saved by registerClient
+      (fullName ? fullName.split(" ")[0] : "") || // Extract from full name
+      "";                      // Will show "Welcome Back" without a name
+
+    const picture =
+      meta.avatar_url ||       // Google: profile photo URL
+      meta.picture ||          // Google fallback
+      null;
+
     return {
       id: supabaseUser.id,
       email,
       role: getRole(email),
-      firstName: supabaseUser.user_metadata?.given_name || supabaseUser.user_metadata?.first_name || email.split("@")[0],
-      picture: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture,
+      firstName: firstName || undefined,
+      fullName: fullName || undefined,
+      picture: picture || undefined,
     };
   }
 
@@ -113,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-     redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}/login`,
       },
     });
     if (error) return { success: false, error: error.message };
