@@ -17,24 +17,21 @@ const QUICK_LINKS = [
 ];
 
 const PAYMENT_LINKS = [
-  { label: "Executive Diagnostic",   price: "$4,997",  href: "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645", color: "#C2185B" },
-  { label: "Strategic Diagnostic",   price: "$3,497",  href: "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222", color: "#D4AF37" },
-  { label: "DRU CLEAR™ Framework",   price: "$7,500",  href: "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec", color: "#D4AF37" },
-  { label: "5D Leadership™",         price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
-  { label: "5C Cultural DNA™",       price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
-  { label: "AI Sales Mastery™",      price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
+  { label: "Executive Diagnostic",           price: "$4,997",  href: "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645", color: "#C2185B" },
+  { label: "Strategic Diagnostic",           price: "$3,497",  href: "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222", color: "#D4AF37" },
+  { label: "DRU CLEAR™ Framework",           price: "$7,500",  href: "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec", color: "#D4AF37" },
+  { label: "5D Leadership™",                 price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
+  { label: "5C Cultural DNA™",               price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
+  { label: "AI Sales Mastery™",              price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
   { label: "Full Ecosystem — Signing ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
-  { label: "Full Ecosystem — Final ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
+  { label: "Full Ecosystem — Final ($13K)",   price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
 ];
 
 const PENDING_ITEMS = [
-  "Flip BYPASS_PAYMENT = false in Frameworks.tsx to go live",
-  "Set GHL payment success redirect URLs for all 6 payment links",
-  "Build Full Ecosystem thank you page (/thank-you-full-ecosystem)",
-  "Build /thank-you-full-ecosystem redirect URL in GHL",
   "Add PDF assets to GHL resource sequences",
   "Provision SMS sequence (pending phone number support)",
   "Populate Resource Hub with first PDF downloads",
+  "Set NEW_THIS_WEEK in Resources.tsx when first resource drops",
 ];
 
 const SPRINTS = [
@@ -49,11 +46,8 @@ const SPRINTS = [
       { label: "Supabase backend database", sub: "Persistent accounts, RLS security, profiles table" },
       { label: "Google Sign In + email/password login", sub: "Automated password reset · admin private door" },
       { label: "Admin Command Center", sub: "Client View / Admin View toggle · private door at /admin" },
-      { label: "DRU CLEAR™ logo across all pages", sub: "NavBar, Login, AdminLogin, loading screen" },
       { label: "All 4 IP framework descriptions written", sub: "DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™" },
       { label: "Framework infographics embedded in Frameworks page", sub: "4 images live · price badge top right · brand badge bottom left" },
-      { label: "15 Things About DeAnna infographic", sub: "Branded HTML · LinkedIn ready · photo + logo + mantra" },
-      { label: "DRU Scale System™ designed", sub: "Course + Mastermind + VIP · pricing architecture drafted" },
     ],
   },
   {
@@ -61,29 +55,23 @@ const SPRINTS = [
     title: "Revenue + Polish",
     status: "inprogress",
     items: [
-      { label: "Framework pricing — LOCKED ✓", sub: "Full pricing architecture finalized · bundle logic complete" },
-      { label: "SD & ED payment links — LIVE ✓", sub: "Both payment links active · modal + terms layer wired" },
-      { label: "4 GHL framework payment links created ✓", sub: "DRU CLEAR™ · 5D · 5C · AI Sales — all live" },
-      { label: "Framework payment buttons wired — modal style ✓", sub: "Terms layer + payment iframe · no external redirects" },
-      { label: "Bundle Pricing private page built ✓", sub: "/bundle-pricing · admin copy link · Full Ecosystem CTA live" },
-      { label: "Terms of Engagement page ✓", sub: "/terms · linked from payment modal and GHL" },
-      { label: "Pricing architecture on Frameworks page ✓", sub: "3-step pathway · individual + bundles · See Detail Below" },
-      { label: "Thank you pages — all 6 built ✓", sub: "ED/SD with calendar · 4 frameworks with personal commitment card" },
-      { label: "Full Ecosystem thank you page", sub: "/thank-you-full-ecosystem · premium 3-month journey overview" },
-      { label: "Go live — flip BYPASS_PAYMENT = false", sub: "Frameworks.tsx line 8 · one change · full revenue flow active" },
-      { label: "Dynamic browser tab titles per page", sub: "document.title update per route · currently shows scorecard title everywhere" },
-      { label: "PWA install prompt inside app after login", sub: "Audience B installs from app.druaiconsulting.com · opens to portal" },
-      { label: "Free tier access — Supabase tier field", sub: "Add tier: free | paid to profiles table · RLS controls content visibility" },
-      { label: "Free tier — Portal", sub: "Show scorecard results, tier, pillar breakdown — their personal data" },
-      { label: "Free tier — Frameworks page", sub: "Full visibility · framework descriptions + pricing · natural upgrade path" },
-      { label: "Free tier — Daily Connections", sub: "One free insight per day · teaser that shows quality · rest locked" },
-      { label: "Free tier — ROI Calculator", sub: "Full access · every calculation is a conversion moment" },
-      { label: "Free tier — Resources", sub: "One free PDF (freebie lead magnet) · rest locked" },
-      { label: "Personalized app — name + photo on login", sub: "Supabase profiles + Google photo · Portal header shows their identity" },
-      { label: "Update GHL links to crm.aiforbusiness.com", sub: "Replace all old GHL links across the app" },
-      { label: "Daily Connections — automated engine", sub: "Claude API · Supabase · scheduled daily generation" },
-      { label: "ROI Calculator — GHL lead capture wired", sub: "Email capture fires into nurture sequence" },
-      { label: "Resource Hub — first freebie PDF", sub: "Lead capture → GHL monthly sequence" },
+      { label: "Full pricing architecture — LIVE ✓", sub: "SD $3,497 · ED $4,997 · 4 frameworks · bundles · Full Ecosystem $26K" },
+      { label: "All 8 payment links active ✓", sub: "Terms modal → payment iframe → branded thank you page" },
+      { label: "8 branded thank you pages — LIVE ✓", sub: "ED/SD with calendar · 4 frameworks · Full Ecosystem with payment split" },
+      { label: "Full Ecosystem payment split ✓", sub: "$13K signing + $13K final — separate GHL payment links" },
+      { label: "Dynamic browser tab titles ✓", sub: "Every page has its own DRU CLEAR™ tab title" },
+      { label: "Personalized Portal — name + avatar ✓", sub: "Google photo or initials · Welcome Back, [FirstName] · trust stored names" },
+      { label: "Portal rebuilt as personal dashboard ✓", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
+      { label: "Resources page cleaned up ✓", sub: "Email capture removed · New This Week banner · resources added weekly note" },
+      { label: "Affiliate page updated ✓", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
+      { label: "Free tier access — Supabase tier field", sub: "tier: free | paid · RLS controls · assessment auto-creates free account" },
+      { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
+      { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
+      { label: "PWA install prompt inside app after login", sub: "Fires from app.druaiconsulting.com so installed PWA opens to portal" },
+      { label: "Daily Connections notification dot", sub: "Red dot on Portal card when new content available · clears on visit" },
+      { label: "Dynamic Transformation Pathway", sub: "Supabase tier field · GHL webhook writes back · stages unlock on purchase" },
+      { label: "Daily Connections automated engine", sub: "Claude API · Supabase · scheduled daily generation" },
+      { label: "ROI Calculator", sub: "DeAnna to define scope · GHL lead capture wired" },
     ],
   },
   {
@@ -91,11 +79,10 @@ const SPRINTS = [
     title: "The AI Empire",
     status: "planned",
     items: [
-      { label: "Clean up Affiliate page", sub: "Add real affiliate links · update copy and layout" },
       { label: "Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric" },
       { label: "DRU AI Agent Team — private build", sub: "Lead · Content · Analytics · Coach · Sales agents" },
       { label: "DeAnna's AI Twin — private build", sub: "Claude API · trained on all 4 frameworks · inline course coach · 24/7" },
-      { label: "DRU CLEAR™ Scale Your AI Business Framework — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
+      { label: "DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
       { label: "White label LMS licensing", sub: "Other consultants pay monthly to use your platform" },
       { label: "Community — in-app", sub: "Launch when 20+ active clients" },
       { label: "Affiliate dashboard", sub: "Track referrals · commissions · top referrer rewards" },
@@ -217,7 +204,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Full Sprint Roadmap */}
+        {/* Sprint Roadmap */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
