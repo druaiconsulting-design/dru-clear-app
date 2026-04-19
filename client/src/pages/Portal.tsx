@@ -7,30 +7,22 @@ function getUserDisplay(user: any): { firstName: string; avatarUrl: string | nul
   const fullName = user?.fullName || firstName;
   const email = user?.email || "";
   const avatarUrl = user?.picture || null;
-
   const displayFirst = firstName || email.split("@")[0] || "";
   const initials = fullName
     ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : email.slice(0, 2).toUpperCase();
-
   return { firstName: displayFirst, avatarUrl, initials };
 }
 
 function PortalAvatar({ user }: { user: any }) {
   const { avatarUrl, initials } = getUserDisplay(user);
   const [imgError, setImgError] = useState(false);
-
   if (avatarUrl && !imgError) {
     return (
-      <img
-        src={avatarUrl}
-        alt="Profile"
-        onError={() => setImgError(true)}
-        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }}
-      />
+      <img src={avatarUrl} alt="Profile" onError={() => setImgError(true)}
+        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }} />
     );
   }
-
   return (
     <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(212,175,55,0.12)", border: "2px solid rgba(212,175,55,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
       <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#D4AF37", lineHeight: 1 }}>{initials}</span>
@@ -40,7 +32,32 @@ function PortalAvatar({ user }: { user: any }) {
 
 export default function Portal() {
   const { user } = useAuth();
-  const userDisplay = user ? getUserDisplay(user) : { firstName: "Welcome", avatarUrl: null, initials: "" };
+  const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
+
+  const QUICK_ACTIONS = [
+    {
+      icon: "📋",
+      label: "My Assessment",
+      sub: "View your scorecard results",
+      href: "/",
+      external: false,
+    },
+    {
+      icon: "⚡",
+      label: "Daily Connection",
+      sub: "Today's leadership insight",
+      href: "/daily",
+      external: false,
+      notification: true,
+    },
+    {
+      icon: "✉️",
+      label: "Need Support",
+      sub: "Send DeAnna a message",
+      href: "mailto:support@druaiconsulting.com",
+      external: true,
+    },
+  ];
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
@@ -51,7 +68,6 @@ export default function Portal() {
         {/* Personalized welcome header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
-
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
             {user && <PortalAvatar user={user} />}
             <div>
@@ -68,62 +84,53 @@ export default function Portal() {
               )}
             </div>
           </div>
-
           <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", lineHeight: 1.7 }}>
             Everything you need to accelerate your AI leadership journey — in one place.
           </p>
         </div>
 
-        {/* Quick actions */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
-          {[
-            { icon: "📋", label: "My Assessment", sub: "View your results", href: "/" },
-            { icon: "📅", label: "Book a Session", sub: "Schedule time with DeAnna", href: "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation" },
-            { icon: "📚", label: "Resources", sub: "Guides & downloads", href: "/resources" },
-            { icon: "⚡", label: "Daily Connection", sub: "Today's insight", href: "/daily" },
-          ].map((item) => (
+        {/* 3 Quick action cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
+          {QUICK_ACTIONS.map((item) => (
             <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
               <div
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s" }}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s", height: "100%", boxSizing: "border-box" as const, position: "relative" as const }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
               >
+                {/* Notification dot — Sprint 3 will make this dynamic */}
+                {item.notification && (
+                  <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342" }} />
+                )}
                 <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem" }}>{item.sub}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item.sub}</p>
               </div>
             </a>
           ))}
         </div>
 
-        {/* Transformation pathway */}
+        {/* Transformation Pathway */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your Transformation Pathway</p>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
             {["Discover", "Diagnose", "Design", "Deploy", "Dominate"].map((stage, i) => (
               <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                <div style={{ background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" }}>
+                <div style={{
+                  background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)",
+                  border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" as const,
+                }}>
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: i === 0 ? "#FFFFFF" : i === 1 ? "#D4AF37" : "rgba(255,255,255,0.35)", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" }}>{stage}</p>
                 </div>
                 {i < 4 && <span style={{ color: "rgba(212,175,55,0.4)", fontSize: "0.8rem" }}>→</span>}
               </div>
             ))}
           </div>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>You are in the Discover stage. Your diagnostic unlocks the next step.</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>
+            You are in the Discover stage. Your diagnostic unlocks the next step.
+          </p>
         </div>
-
-        {/* Explore frameworks CTA */}
-        <a href="/frameworks" style={{ textDecoration: "none", display: "block" }}>
-          <div
-            style={{ background: "linear-gradient(135deg, rgba(194,24,91,0.15) 0%, rgba(212,175,55,0.08) 100%)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-          >
-            <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.25rem" }}>Explore the DRU AI Ecosystem™</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.75rem" }}>4 flagship frameworks designed to transform your leadership</p>
-            </div>
-            <span style={{ color: "#C2185B", fontSize: "1.2rem" }}>→</span>
-          </div>
-        </a>
 
       </main>
 
