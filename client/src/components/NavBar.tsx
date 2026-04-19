@@ -12,16 +12,17 @@ const NAV_LINKS = [
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────
 function getUserDisplay(user: any): { name: string; firstName: string; avatarUrl: string | null; initials: string } {
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+  const firstName = user?.firstName || "";
+  const fullName = user?.fullName || firstName;
   const email = user?.email || "";
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  const avatarUrl = user?.picture || null;
 
-  const firstName = fullName.split(" ")[0] || email.split("@")[0] || "User";
+  const displayFirst = firstName || email.split("@")[0] || "User";
   const initials = fullName
     ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : email.slice(0, 2).toUpperCase();
 
-  return { name: fullName || email, firstName, avatarUrl, initials };
+  return { name: fullName || email, firstName: displayFirst, avatarUrl, initials };
 }
 
 function Avatar({ user, size = 30 }: { user: any; size?: number }) {
