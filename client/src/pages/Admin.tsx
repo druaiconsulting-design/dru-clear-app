@@ -9,11 +9,11 @@ const STAT_CARDS = [
 ];
 
 const QUICK_LINKS = [
-  { label: "GHL Dashboard",       href: "https://app.gohighlevel.com",                                                          icon: "🔗" },
-  { label: "Booking Calendar",    href: "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation",  icon: "📅" },
-  { label: "Live Assessment",     href: "https://assessment.druaiconsulting.com",                                                icon: "🚀" },
-  { label: "GitHub Repo",         href: "https://github.com/druaiconsulting-design/dru-clear-app",                              icon: "💻" },
-  { label: "Terms of Engagement", href: "https://app.druaiconsulting.com/terms",                                                icon: "📄" },
+  { label: "GHL Dashboard",       href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
+  { label: "Booking Calendar",    href: "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation", icon: "📅" },
+  { label: "Live Assessment",     href: "https://assessment.druaiconsulting.com", icon: "🚀" },
+  { label: "GitHub Repo",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
+  { label: "Terms of Engagement", href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
 const PAYMENT_LINKS = [
@@ -32,7 +32,6 @@ const PENDING_ITEMS = [
   "Add bundle pricing +1 and +2 payment links when ready",
   "Add PDF assets to GHL resource sequences",
   "Provision SMS sequence (pending phone number support)",
-  "Add real affiliate links to /affiliate page",
   "Populate Resource Hub with first PDF downloads",
 ];
 
@@ -60,16 +59,18 @@ const SPRINTS = [
     title: "Revenue + Polish",
     status: "inprogress",
     items: [
-      { label: "Framework pricing — LOCKED", sub: "Full pricing architecture finalized · bundle logic complete" },
-      { label: "SD & ED payment bypass fix", sub: "Other Claude session handling DruClearApp.tsx" },
-      { label: "4 GHL framework payment links created", sub: "DRU CLEAR™ · 5D · 5C · AI Sales — all live" },
-      { label: "Framework payment buttons wired — modal style", sub: "Terms layer + payment iframe · no external redirects" },
-      { label: "Bundle Pricing private page built", sub: "/bundle-pricing · admin copy link · Full Ecosystem CTA live" },
-      { label: "Terms of Engagement page", sub: "/terms · linked from payment modal and GHL" },
+      { label: "Framework pricing — LOCKED ✓", sub: "Full pricing architecture finalized · bundle logic complete" },
+      { label: "SD & ED payment links — LIVE ✓", sub: "Both payment links active · modal + terms layer wired" },
+      { label: "4 GHL framework payment links created ✓", sub: "DRU CLEAR™ · 5D · 5C · AI Sales — all live" },
+      { label: "Framework payment buttons wired — modal style ✓", sub: "Terms layer + payment iframe · no external redirects" },
+      { label: "Bundle Pricing private page built ✓", sub: "/bundle-pricing · admin copy link · Full Ecosystem CTA live" },
+      { label: "Terms of Engagement page ✓", sub: "/terms · linked from payment modal and GHL" },
+      { label: "Pricing architecture on Frameworks page ✓", sub: "3-step pathway · individual + bundles · See Detail Below" },
       { label: "Update GHL links to crm.aiforbusiness.com", sub: "Replace all old GHL links across the app" },
       { label: "Resource Hub — first freebie PDF", sub: "Lead capture → GHL monthly sequence" },
       { label: "Daily Connections — automated engine", sub: "Claude API · Supabase · scheduled daily generation" },
       { label: "ROI Calculator — GHL lead capture wired", sub: "Email capture fires into nurture sequence" },
+      { label: "Build /thank-you-ed and /thank-you-sd pages", sub: "Calendar embed · post-payment redirect from GHL" },
     ],
   },
   {
@@ -77,12 +78,13 @@ const SPRINTS = [
     title: "The AI Empire",
     status: "planned",
     items: [
-      { label: "DRU CLEAR™ Scale Your AI Business Framework — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
-      { label: "DeAnna's AI Twin — private build", sub: "Claude API · trained on all 4 frameworks · inline course coach · 24/7" },
+      { label: "Clean up Affiliate page", sub: "Add real affiliate links · update copy and layout" },
+      { label: "Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric" },
       { label: "DRU AI Agent Team — private build", sub: "Lead · Content · Analytics · Coach · Sales agents" },
+      { label: "DeAnna's AI Twin — private build", sub: "Claude API · trained on all 4 frameworks · inline course coach · 24/7" },
+      { label: "DRU CLEAR™ Scale Your AI Business Framework — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
       { label: "White label LMS licensing", sub: "Other consultants pay monthly to use your platform" },
       { label: "Community — in-app", sub: "Launch when 20+ active clients" },
-      { label: "Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric" },
       { label: "Affiliate dashboard", sub: "Track referrals · commissions · top referrer rewards" },
     ],
   },
@@ -90,7 +92,6 @@ const SPRINTS = [
 
 const BUNDLE_PRICING_URL = "https://app.druaiconsulting.com/bundle-pricing";
 
-// ─── Sprint status badge styles ───────────────────────────────────────────────
 const statusConfig = {
   completed:  { bg: "rgba(67,160,71,0.12)",  border: "rgba(67,160,71,0.35)",  dot: "#43A047", label: "✅ Completed",   headerBg: "rgba(67,160,71,0.08)"  },
   inprogress: { bg: "rgba(212,175,55,0.08)", border: "rgba(212,175,55,0.35)", dot: "#D4AF37", label: "🔄 In Progress", headerBg: "rgba(212,175,55,0.06)" },
@@ -203,7 +204,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── FULL SPRINT ROADMAP ──────────────────────────────────────────── */}
+        {/* Full Sprint Roadmap */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
@@ -216,11 +217,9 @@ export default function Admin() {
               const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
               return (
                 <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
-
-                  {/* Sprint header */}
                   <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0, boxShadow: `0 0 6px ${cfg.dot}` }} />
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
                       <div>
                         <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
                         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
@@ -228,8 +227,6 @@ export default function Admin() {
                     </div>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
                   </div>
-
-                  {/* Sprint items */}
                   <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                     {sprint.items.map((item, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -248,7 +245,6 @@ export default function Admin() {
             })}
           </div>
 
-          {/* Launch target */}
           <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
               Launch Target · app.druaiconsulting.com
