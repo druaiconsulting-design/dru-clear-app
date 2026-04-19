@@ -8,11 +8,49 @@ const NAV_LINKS = [
   { label: "Daily",       href: "/daily" },
   { label: "ROI",         href: "/roi" },
   { label: "Affiliate",   href: "/affiliate" },
+];
 
-  ];
+// ─── Avatar Helper ────────────────────────────────────────────────────────────
+function getUserDisplay(user: any): { name: string; firstName: string; avatarUrl: string | null; initials: string } {
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+  const email = user?.email || "";
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+
+  const firstName = fullName.split(" ")[0] || email.split("@")[0] || "User";
+  const initials = fullName
+    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : email.slice(0, 2).toUpperCase();
+
+  return { name: fullName || email, firstName, avatarUrl, initials };
+}
+
+function Avatar({ user, size = 30 }: { user: any; size?: number }) {
+  const { avatarUrl, initials } = getUserDisplay(user);
+  const [imgError, setImgError] = useState(false);
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="Profile"
+        onError={() => setImgError(true)}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(212,175,55,0.5)", flexShrink: 0 }}
+      />
+    );
+  }
+
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "rgba(212,175,55,0.15)", border: "1.5px solid rgba(212,175,55,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: size * 0.35, fontWeight: 700, color: "#D4AF37", lineHeight: 1 }}>{initials}</span>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function NavBar({ active }: { active?: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isLoggedIn, isAdmin, user, logout } = useAuth();
+  const userDisplay = user ? getUserDisplay(user) : null;
 
   const handleLogout = async () => {
     await logout();
@@ -64,88 +102,38 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         ))}
 
-        {/* Right side — role aware */}
+        {/* Not logged in */}
         {!isLoggedIn && (
-          <a href="/login" style={{
-            marginLeft: "0.5rem",
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "#D4AF37",
-            textDecoration: "none",
-            padding: "0.35rem 0.8rem",
-            borderRadius: 4,
-            border: "1px solid rgba(212,175,55,0.4)",
-            transition: "all 0.2s",
-          }}>
+          <a href="/login" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, border: "1px solid rgba(212,175,55,0.4)", transition: "all 0.2s" }}>
             Sign In
           </a>
         )}
 
+        {/* Admin toggle */}
         {isLoggedIn && isAdmin && active !== "/portal" && (
-          <a href="/portal" style={{
-            marginLeft: "0.5rem",
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "#D4AF37",
-            textDecoration: "none",
-            padding: "0.35rem 0.8rem",
-            borderRadius: 4,
-            background: "rgba(212,175,55,0.08)",
-            border: "1px solid rgba(212,175,55,0.3)",
-            transition: "all 0.2s",
-          }}>
+          <a href="/portal" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.3)", transition: "all 0.2s" }}>
             Client View
           </a>
         )}
         {isLoggedIn && isAdmin && active === "/portal" && (
-          <a href="/admin" style={{
-            marginLeft: "0.5rem",
-            fontFamily: "'Montserrat', sans-serif",
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "#C2185B",
-            textDecoration: "none",
-            padding: "0.35rem 0.8rem",
-            borderRadius: 4,
-            background: "rgba(194,24,91,0.08)",
-            border: "1px solid rgba(194,24,91,0.3)",
-            transition: "all 0.2s",
-          }}>
+          <a href="/admin" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", transition: "all 0.2s" }}>
             Admin View
           </a>
         )}
 
-        {isLoggedIn && (
-          <button
-            onClick={handleLogout}
-            style={{
-              marginLeft: "0.5rem",
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: "0.68rem",
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.5)",
-              background: "transparent",
-              border: "1px solid rgba(255,255,255,0.15)",
-              padding: "0.35rem 0.8rem",
-              borderRadius: 4,
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
-          >
-            Log Out
-          </button>
+        {/* User avatar + logout */}
+        {isLoggedIn && user && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "0.5rem" }}>
+            <Avatar user={user} size={30} />
+            <button
+              onClick={handleLogout}
+              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.15)", padding: "0.35rem 0.8rem", borderRadius: 4, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+            >
+              Log Out
+            </button>
+          </div>
         )}
       </div>
 
@@ -171,36 +159,21 @@ export default function NavBar({ active }: { active?: string }) {
 
       {/* Mobile dropdown */}
       {menuOpen && (
-        <div style={{
-          position: "absolute",
-          top: 56,
-          left: 0,
-          right: 0,
-          background: "#071a30",
-          borderBottom: "1px solid rgba(212,175,55,0.2)",
-          padding: "0.75rem 1.25rem 1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.25rem",
-          zIndex: 999,
-        }}>
+        <div style={{ position: "absolute", top: 56, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
+
+          {/* Mobile user identity */}
+          {isLoggedIn && user && userDisplay && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 0.5rem 0.875rem", borderBottom: "1px solid rgba(212,175,55,0.15)", marginBottom: "0.25rem" }}>
+              <Avatar user={user} size={38} />
+              <div>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", margin: "0 0 1px" }}>{userDisplay.firstName}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", margin: 0 }}>{user.email}</p>
+              </div>
+            </div>
+          )}
+
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.7)",
-                textDecoration: "none",
-                padding: "0.6rem 0.5rem",
-                borderBottom: "1px solid rgba(212,175,55,0.08)",
-              }}
-            >
+            <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               {link.label}
             </a>
           ))}
