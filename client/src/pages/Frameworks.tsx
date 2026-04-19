@@ -1,6 +1,12 @@
 import { useState } from "react";
 import NavBar from "../components/NavBar";
 
+// ─── TEST MODE ────────────────────────────────────────────────────────────────
+// Set to true to bypass payment iframe and test the full flow.
+// Set to false before going live.
+const BYPASS_PAYMENT = true;
+// ─────────────────────────────────────────────────────────────────────────────
+
 const PAYMENT_STRATEGIC_URL   = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
 const PAYMENT_EXECUTIVE_URL   = "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645";
 const PAYMENT_DRU_CLEAR_URL   = "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec";
@@ -8,6 +14,12 @@ const PAYMENT_5D_URL          = "https://link.druaiconsulting.com/payment-link/6
 const PAYMENT_5C_URL          = "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def";
 const PAYMENT_AI_SALES_URL    = "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe";
 const CALENDAR_URL            = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
+
+// Maps payment URLs to their thank you page (diagnostics only)
+const THANK_YOU_ROUTES: Record<string, string> = {
+  [PAYMENT_EXECUTIVE_URL]: "/thank-you-ed",
+  [PAYMENT_STRATEGIC_URL]: "/thank-you-sd",
+};
 
 const TERMS = [
   { title: "Services", body: "All diagnostic, framework, and ecosystem engagements are delivered virtually via Zoom unless otherwise agreed in writing. Session scheduling begins upon receipt of full or initial payment." },
@@ -106,23 +118,23 @@ const FRAMEWORKS = [
 ];
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
-const pSection   = { marginBottom: "2rem" } as const;
+const pSection    = { marginBottom: "2rem" } as const;
 const pStepHeader = { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 } as const;
-const pDivider   = { flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)" } as const;
-const pRow       = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
-const pRowGold   = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
-const pRowMag    = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
-const pName      = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
-const pSub       = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
-const pPrice     = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
-const pMeta      = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.4)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
-const pReportTag = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(230,230,230,0.5)" } as const;
-const anchorTag  = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
+const pDivider    = { flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)" } as const;
+const pRow        = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
+const pRowGold    = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
+const pRowMag     = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
+const pName       = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
+const pSub        = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
+const pPrice      = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
+const pMeta       = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.4)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
+const pReportTag  = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(230,230,230,0.5)" } as const;
+const anchorTag   = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ModalConfig = { url: string; title: string } | null;
 
-// ─── Pathway Component — no glow ─────────────────────────────────────────────
+// ─── Pathway Component ────────────────────────────────────────────────────────
 function PathwaySection() {
   const stages = [
     { label: "Discover", color: "#D4AF37" },
@@ -166,14 +178,27 @@ function StepPathwayLabel({ stages, colors }: { stages: string; colors: string[]
   );
 }
 
-// ─── Terms Modal ──────────────────────────────────────────────────────────────
+// ─── Terms + Payment Modal ────────────────────────────────────────────────────
 function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClose: () => void }) {
   const [accepted, setAccepted] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
 
+  const thankYouRoute = THANK_YOU_ROUTES[modal.url];
+
+  const handleContinue = () => {
+    if (!accepted) return;
+    if (BYPASS_PAYMENT && thankYouRoute) {
+      window.location.href = thankYouRoute;
+    } else {
+      setShowPayment(true);
+    }
+  };
+
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, height: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1.25rem", background: "#061829", borderBottom: "1px solid rgba(212,175,55,0.25)", flexShrink: 0 }}>
           <div>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", margin: "0 0 2px" }}>
@@ -185,6 +210,7 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
         </div>
 
         {!showPayment ? (
+          /* ── Terms Step ── */
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
             <div style={{ padding: "1.25rem 1.5rem 0" }}>
               <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", color: "#D4AF37", fontWeight: 600, marginBottom: 4 }}>DRU AI Consulting</p>
@@ -207,17 +233,28 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
                 </span>
               </label>
               <button
-                onClick={() => accepted && setShowPayment(true)}
+                onClick={handleContinue}
                 style={{ display: "block", width: "100%", background: accepted ? "#C2185B" : "rgba(194,24,91,0.25)", color: accepted ? "#FFFFFF" : "rgba(255,255,255,0.3)", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.875rem 1rem", borderRadius: 6, border: accepted ? "none" : "1px solid rgba(194,24,91,0.3)", cursor: accepted ? "pointer" : "not-allowed", transition: "all 0.2s ease" }}
               >
-                Continue to Payment →
+                {BYPASS_PAYMENT && thankYouRoute ? "Simulate Payment & Continue →" : "Continue to Payment →"}
               </button>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.3)", textAlign: "center", marginTop: 10 }}>
-                Full terms available at app.druaiconsulting.com/terms
-              </p>
+
+              {/* Bypass indicator — visible in test mode only */}
+              {BYPASS_PAYMENT && (
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", color: "rgba(212,175,55,0.4)", textAlign: "center", marginTop: 8, letterSpacing: "0.06em" }}>
+                  ⚠ TEST MODE — Payment bypassed
+                </p>
+              )}
+
+              {!BYPASS_PAYMENT && (
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.3)", textAlign: "center", marginTop: 10 }}>
+                  Full terms available at app.druaiconsulting.com/terms
+                </p>
+              )}
             </div>
           </div>
         ) : (
+          /* ── Payment Step ── */
           <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
         )}
       </div>
@@ -339,12 +376,11 @@ export default function Frameworks() {
             <div style={pDivider} />
           </div>
 
-          {/* Individual Frameworks label */}
+          {/* Individual Frameworks */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: 0 }}>Individual Frameworks</p>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", margin: 0 }}>See Detail Below</p>
           </div>
-
           {[
             { name: "DRU CLEAR™", sub: "Flagship · Connects all 4 frameworks", price: "$7,500", gold: true },
             { name: "5D Leadership™", sub: "5 Dimensions of leadership", price: "$6,500", gold: false },
@@ -363,12 +399,11 @@ export default function Frameworks() {
             </div>
           ))}
 
-          {/* Bundles label */}
+          {/* Bundles */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: 0 }}>Bundles</p>
             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", margin: 0 }}>Available after your diagnostic session</p>
           </div>
-
           <div style={pRowMag}>
             <div style={{ flex: 1 }}>
               <p style={pName}>Full Ecosystem — All 4 <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#C2185B", color: "#fff", marginLeft: 8, verticalAlign: "middle" }}>Best Value</span></p>
