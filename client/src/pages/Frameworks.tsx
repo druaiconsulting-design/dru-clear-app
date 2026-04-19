@@ -15,10 +15,14 @@ const PAYMENT_5C_URL          = "https://link.druaiconsulting.com/payment-link/6
 const PAYMENT_AI_SALES_URL    = "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe";
 const CALENDAR_URL            = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
 
-// Maps payment URLs to their thank you page (diagnostics only)
+// Maps payment URLs → thank you page routes (used in bypass mode)
 const THANK_YOU_ROUTES: Record<string, string> = {
-  [PAYMENT_EXECUTIVE_URL]: "/thank-you-ed",
-  [PAYMENT_STRATEGIC_URL]: "/thank-you-sd",
+  [PAYMENT_EXECUTIVE_URL]:  "/thank-you-ed",
+  [PAYMENT_STRATEGIC_URL]:  "/thank-you-sd",
+  [PAYMENT_DRU_CLEAR_URL]:  "/thank-you-dru-clear",
+  [PAYMENT_5D_URL]:         "/thank-you-5d",
+  [PAYMENT_5C_URL]:         "/thank-you-5c",
+  [PAYMENT_AI_SALES_URL]:   "/thank-you-ai-sales",
 };
 
 const TERMS = [
@@ -162,7 +166,6 @@ function PathwaySection() {
   );
 }
 
-// ─── Step pathway label ───────────────────────────────────────────────────────
 function StepPathwayLabel({ stages, colors }: { stages: string; colors: string[] }) {
   const parts = stages.split(" + ");
   return (
@@ -210,7 +213,6 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
         </div>
 
         {!showPayment ? (
-          /* ── Terms Step ── */
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
             <div style={{ padding: "1.25rem 1.5rem 0" }}>
               <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", color: "#D4AF37", fontWeight: 600, marginBottom: 4 }}>DRU AI Consulting</p>
@@ -238,14 +240,11 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
               >
                 {BYPASS_PAYMENT && thankYouRoute ? "Simulate Payment & Continue →" : "Continue to Payment →"}
               </button>
-
-              {/* Bypass indicator — visible in test mode only */}
               {BYPASS_PAYMENT && (
                 <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", color: "rgba(212,175,55,0.4)", textAlign: "center", marginTop: 8, letterSpacing: "0.06em" }}>
                   ⚠ TEST MODE — Payment bypassed
                 </p>
               )}
-
               {!BYPASS_PAYMENT && (
                 <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.3)", textAlign: "center", marginTop: 10 }}>
                   Full terms available at app.druaiconsulting.com/terms
@@ -254,7 +253,6 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
             </div>
           </div>
         ) : (
-          /* ── Payment Step ── */
           <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
         )}
       </div>
@@ -376,7 +374,6 @@ export default function Frameworks() {
             <div style={pDivider} />
           </div>
 
-          {/* Individual Frameworks */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: 0 }}>Individual Frameworks</p>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", margin: 0 }}>See Detail Below</p>
@@ -399,7 +396,6 @@ export default function Frameworks() {
             </div>
           ))}
 
-          {/* Bundles */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: 0 }}>Bundles</p>
             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", margin: 0 }}>Available after your diagnostic session</p>
