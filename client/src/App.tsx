@@ -10,6 +10,8 @@ import Portal from "./pages/Portal";
 import Frameworks from "./pages/Frameworks";
 import BundlePricing from "./pages/BundlePricing";
 import TermsPage from "./pages/TermsPage";
+import ThankYouED from "./pages/ThankYouED";
+import ThankYouSD from "./pages/ThankYouSD";
 import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
 import ROI from "./pages/ROI";
@@ -42,13 +44,15 @@ function Router() {
     );
   }
 
-  if (path === "/" || path === "")                           return <DruClearApp />;
-  if (path === "/roi" || path === "/roi/")                  return <ROI />;
-  if (path === "/affiliate" || path === "/affiliate/")      return <Affiliate />;
-  if (path === "/frameworks" || path === "/frameworks/")    return <Frameworks />;
-  if (path === "/bundle-pricing" || path === "/bundle-pricing/") return <BundlePricing />;
-  if (path === "/terms" || path === "/terms/")              return <TermsPage />;
-  if (path === "/login" || path === "/login/")              return <Login />;
+  if (path === "/" || path === "")                                   return <DruClearApp />;
+  if (path === "/roi" || path === "/roi/")                          return <ROI />;
+  if (path === "/affiliate" || path === "/affiliate/")              return <Affiliate />;
+  if (path === "/frameworks" || path === "/frameworks/")            return <Frameworks />;
+  if (path === "/bundle-pricing" || path === "/bundle-pricing/")    return <BundlePricing />;
+  if (path === "/terms" || path === "/terms/")                      return <TermsPage />;
+  if (path === "/thank-you-ed" || path === "/thank-you-ed/")        return <ThankYouED />;
+  if (path === "/thank-you-sd" || path === "/thank-you-sd/")        return <ThankYouSD />;
+  if (path === "/login" || path === "/login/")                      return <Login />;
 
   if (path === "/admin" || path === "/admin/") {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
