@@ -3,14 +3,17 @@ import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 
 function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+  const firstName = user?.firstName || "";
+  const fullName = user?.fullName || firstName;
   const email = user?.email || "";
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
-  const firstName = fullName.split(" ")[0] || email.split("@")[0] || "Welcome";
+  const avatarUrl = user?.picture || null;
+
+  const displayFirst = firstName || email.split("@")[0] || "";
   const initials = fullName
     ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : email.slice(0, 2).toUpperCase();
-  return { firstName, avatarUrl, initials };
+
+  return { firstName: displayFirst, avatarUrl, initials };
 }
 
 function PortalAvatar({ user }: { user: any }) {
@@ -53,7 +56,10 @@ export default function Portal() {
             {user && <PortalAvatar user={user} />}
             <div>
               <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
-                Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span>
+                {userDisplay.firstName
+                  ? <>Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span></>
+                  : <>Welcome Back</>
+                }
               </h1>
               {user?.email && (
                 <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>
