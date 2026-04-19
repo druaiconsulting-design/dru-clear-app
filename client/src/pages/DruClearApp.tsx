@@ -960,7 +960,7 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
         // 422 = user already exists — skip silently
         if (!signUpError) {
           await supabase.auth.resetPasswordForEmail(lead.email, {
-            redirectTo: "https://app.druaiconsulting.com/login",
+            redirectTo: "https://app.druaiconsulting.com/reset-password",
           });
         }
       } catch {
