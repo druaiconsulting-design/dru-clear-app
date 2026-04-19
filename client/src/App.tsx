@@ -36,6 +36,8 @@ function Router() {
 
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
+      // Don't redirect recovery sessions — let /reset-password handle them
+      if (hash.includes("type=recovery")) return;
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
@@ -113,6 +115,8 @@ function Router() {
     return <ThankYouFullEcosystem />;
   }
 
+  // Always show reset password page when on this route — even if logged in
+  // The recovery token in the URL hash must be handled here, not redirected away
   if (path === "/reset-password" || path === "/reset-password/") {
     setTitle("Set Your Password · DRU CLEAR™");
     return <ResetPassword />;
