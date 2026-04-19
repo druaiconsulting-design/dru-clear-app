@@ -15,14 +15,19 @@ const PAYMENT_5C_URL          = "https://link.druaiconsulting.com/payment-link/6
 const PAYMENT_AI_SALES_URL    = "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe";
 const CALENDAR_URL            = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
 
+const PAYMENT_FULL_ECOSYSTEM_SIGNING_URL = "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff";
+const PAYMENT_FULL_ECOSYSTEM_FINAL_URL   = "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6";
+
 // Maps payment URLs → thank you page routes (used in bypass mode)
 const THANK_YOU_ROUTES: Record<string, string> = {
-  [PAYMENT_EXECUTIVE_URL]:  "/thank-you-ed",
-  [PAYMENT_STRATEGIC_URL]:  "/thank-you-sd",
-  [PAYMENT_DRU_CLEAR_URL]:  "/thank-you-dru-clear",
-  [PAYMENT_5D_URL]:         "/thank-you-5d",
-  [PAYMENT_5C_URL]:         "/thank-you-5c",
-  [PAYMENT_AI_SALES_URL]:   "/thank-you-ai-sales",
+  [PAYMENT_EXECUTIVE_URL]:               "/thank-you-ed",
+  [PAYMENT_STRATEGIC_URL]:               "/thank-you-sd",
+  [PAYMENT_DRU_CLEAR_URL]:               "/thank-you-dru-clear",
+  [PAYMENT_5D_URL]:                      "/thank-you-5d",
+  [PAYMENT_5C_URL]:                      "/thank-you-5c",
+  [PAYMENT_AI_SALES_URL]:                "/thank-you-ai-sales",
+  [PAYMENT_FULL_ECOSYSTEM_SIGNING_URL]:  "/thank-you-full-ecosystem",
+  [PAYMENT_FULL_ECOSYSTEM_FINAL_URL]:    "/thank-you-full-ecosystem",
 };
 
 const TERMS = [
