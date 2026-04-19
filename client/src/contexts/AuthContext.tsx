@@ -5,11 +5,13 @@ import type { User, Session } from "@supabase/supabase-js";
 const ADMIN_EMAIL = "deanna@druaiconsulting.com";
 
 export type UserRole = "admin" | "client" | null;
+export type UserTier = "free" | "paid";
 
 interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
+  tier: UserTier;
   firstName?: string;
   fullName?: string;
   picture?: string;
@@ -21,6 +23,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isClient: boolean;
   isLoggedIn: boolean;
+  isPaid: boolean;
   loading: boolean;
   loginAdmin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginClient: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -34,6 +37,12 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 function getRole(email: string): UserRole {
   return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "client";
+}
+
+// Capitalize first letter of a name — only when falling back to email prefix
+function capitalize(str: string): string {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -61,34 +70,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function buildUser(supabaseUser: User): AuthUser {
     const email = supabaseUser.email || "";
     const meta = supabaseUser.user_metadata || {};
+    const role = getRole(email);
 
     // Full name — Google stores as full_name or name — trust as-is
     const fullName = meta.full_name || meta.name || "";
 
-    // First name resolution — priority order:
-    // 1. given_name (Google) — trust as-is e.g. "DeAnna"
-    // 2. first_name (email signup) — trust as-is e.g. "DeAnna"
-    // 3. First word of full_name — trust as-is e.g. "DeAnna" from "DeAnna R Upshaw"
-    // 4. Email prefix — only this one gets capitalized since it's always lowercase
+    // First name — priority order, trust stored names as-is
     const storedFirst =
       meta.given_name ||
       meta.first_name ||
       (fullName ? fullName.split(" ")[0] : "");
 
-    // Only capitalize if falling back to email prefix — stored names are trusted as-is
+    // Only capitalize if falling back to email prefix
     const emailPrefix = email.split("@")[0] || "";
-    const capitalizedPrefix = emailPrefix
-      ? emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
-      : "";
-
-    const firstName = storedFirst || capitalizedPrefix || "";
+    const firstName = storedFirst || capitalize(emailPrefix) || "";
 
     const picture = meta.avatar_url || meta.picture || null;
+
+    // ── Tier resolution ─────────────────────────────────────────────────────
+    // Admin is always paid (for testing and full access)
+    // Otherwise read from user metadata — defaults to free
+    const tier: UserTier = role === "admin"
+      ? "paid"
+      : (meta.tier === "paid" ? "paid" : "free");
 
     return {
       id: supabaseUser.id,
       email,
-      role: getRole(email),
+      role,
+      tier,
       firstName: firstName || undefined,
       fullName: fullName || undefined,
       picture: picture || undefined,
@@ -120,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        data: { first_name: firstName },
+        data: { first_name: firstName, tier: "free" },
       },
     });
 
@@ -161,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: user?.role === "admin",
       isClient: user?.role === "client",
       isLoggedIn: !!user,
+      isPaid: user?.tier === "paid",
       loading,
       loginAdmin,
       loginClient,
