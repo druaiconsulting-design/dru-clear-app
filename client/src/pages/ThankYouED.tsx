@@ -4,7 +4,7 @@ const CALENDAR_EXECUTIVE_URL = "https://link.druaiconsulting.com/widget/bookings
 const LOGO_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-logo-transparent_fdbc9d32.png";
 
 const NEXT_STEPS = [
-  "Book your 120-min executive briefing using the calendar below",
+  "Book your 120-min executive briefing using the button below",
   "You'll receive a confirmation email with your Zoom link",
   "Review your scorecard results before the call",
   "You'll receive a brief pre-session questionnaire to maximize our time together",
@@ -12,6 +12,10 @@ const NEXT_STEPS = [
 ];
 
 export default function ThankYouED() {
+  const handleBook = () => {
+    window.location.href = CALENDAR_EXECUTIVE_URL;
+  };
+
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/frameworks" />
@@ -32,9 +36,11 @@ export default function ThankYouED() {
           </div>
         </div>
 
-        {/* Best Value badge */}
+        {/* Badge */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
-          <span style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", padding: "3px 16px", borderRadius: 20, textTransform: "uppercase" }}>Executive Diagnostic — Best Value</span>
+          <span style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", padding: "3px 16px", borderRadius: 20, textTransform: "uppercase" }}>
+            Executive Diagnostic — Best Value
+          </span>
         </div>
 
         {/* Title */}
@@ -47,7 +53,6 @@ export default function ThankYouED() {
           You are one step closer towards your vision. Book your 120-minute executive briefing below and we'll begin to design your future.
         </p>
 
-        {/* Divider */}
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
 
         {/* What Happens Next */}
@@ -70,29 +75,30 @@ export default function ThankYouED() {
           We look forward to partnering with you and adding value.
         </p>
 
-        {/* Divider */}
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
 
-        {/* Calendar */}
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: "1rem" }}>
+        {/* Book CTA */}
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.75rem", textAlign: "center" }}>
           Book Your 120-Min Executive Briefing
         </p>
-        <iframe
-          src={CALENDAR_EXECUTIVE_URL}
-          title="Book Your Executive Diagnostic Session"
-          style={{ width: "100%", minHeight: 600, border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, background: "#FFFFFF", marginBottom: "0.75rem", display: "block" }}
-        />
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", textAlign: "center", marginBottom: "2rem", lineHeight: 1.6 }}>
-          Having trouble?{" "}
-          <a href={CALENDAR_EXECUTIVE_URL} target="_blank" rel="noopener noreferrer" style={{ color: "#D4AF37", textDecoration: "underline" }}>
-            Open booking page
-          </a>
-        </p>
 
-        {/* Divider */}
+        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: "1.5rem" }}>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.8rem", lineHeight: 1.7, marginBottom: "1.25rem" }}>
+            Tap below to select your session time. Your booking is the first step in your transformation.
+          </p>
+          <button
+            onClick={handleBook}
+            style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.88rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "1.1rem 1.5rem", borderRadius: 8, border: "none", cursor: "pointer", marginBottom: "0.75rem" }}
+          >
+            Book My Executive Session →
+          </button>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.5)", fontSize: "0.62rem", letterSpacing: "0.06em", margin: 0 }}>
+            120 min · Zoom · Use browser back to return here
+          </p>
+        </div>
+
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.1)", marginBottom: "1.5rem" }} />
 
-        {/* Support */}
         <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", textAlign: "center", lineHeight: 1.6 }}>
           Questions?{" "}
           <a href="mailto:support@druaiconsulting.com" style={{ color: "#D4AF37", textDecoration: "underline" }}>
