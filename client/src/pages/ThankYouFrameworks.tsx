@@ -2,8 +2,6 @@ import NavBar from "../components/NavBar";
 
 const LOGO_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-logo-transparent_fdbc9d32.png";
 
-// ─── Shared Thank You Layout ──────────────────────────────────────────────────
-
 interface FrameworkThankYouProps {
   badgeLabel: string;
   badgeColor: string;
@@ -24,7 +22,7 @@ function FrameworkThankYouPage({
   price,
 }: FrameworkThankYouProps) {
   const nextSteps = [
-    "DeAnna will reach out within 24 hours to schedule your first session",
+    "DeAnna will reach out within 24 hours to schedule your intake session",
     "You'll receive a confirmation email with your Zoom link once scheduled",
     "Review your scorecard results before your first session",
     "Come prepared with your top priorities — we'll build from there",
@@ -71,12 +69,23 @@ function FrameworkThankYouPage({
           {tagline}
         </p>
 
-        {/* Warm message */}
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "#E6E6E6", fontSize: "0.85rem", lineHeight: 1.75, maxWidth: 420, margin: "0 auto 1.75rem", textAlign: "center" }}>
-          You have made a powerful investment in your transformation. DeAnna will personally reach out within 24 hours to schedule your first session and begin designing your pathway forward.
-        </p>
-
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
+
+        {/* DeAnna's Personal Commitment — on top */}
+        <div style={{ background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1.1rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(194,24,91,0.15)", border: "1px solid rgba(194,24,91,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#C2185B" strokeWidth="1.75" />
+              <path d="M12 7v5.5l3 3" stroke="#C2185B" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>DeAnna's Personal Commitment</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.85)", fontSize: "0.8rem", lineHeight: 1.7, margin: 0 }}>
+              You have made a significant commitment to your transformation. DeAnna will personally contact you within 24 hours to arrange your 45-minute intake session and commence designing your future pathway.
+            </p>
+          </div>
+        </div>
 
         {/* What Happens Next */}
         <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.75rem" }}>
@@ -90,22 +99,6 @@ function FrameworkThankYouPage({
                 <span style={{ fontFamily: "'Inter', sans-serif", color: i === 0 ? "#FFFFFF" : "rgba(230,230,230,0.85)", fontSize: "0.8rem", lineHeight: 1.6, fontWeight: i === 0 ? 600 : 400 }}>{step}</span>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* 24-hour commitment card */}
-        <div style={{ background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1.1rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(194,24,91,0.15)", border: "1px solid rgba(194,24,91,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="#C2185B" strokeWidth="1.75" />
-              <path d="M12 7v5.5l3 3" stroke="#C2185B" strokeWidth="1.75" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>DeAnna's Personal Commitment</p>
-            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.8)", fontSize: "0.78rem", lineHeight: 1.65, margin: 0 }}>
-              You will hear from DeAnna personally within 24 hours. This is not an automated sequence — it is a direct conversation to begin your transformation with intention.
-            </p>
           </div>
         </div>
 
