@@ -22,19 +22,26 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const strength = getPasswordStrength(password);
 
-  // Supabase appends the token to the URL hash — getSession() picks it up automatically
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionReady(true);
-      } else {
-        setError("This link is invalid or has expired. Please request a new one.");
+    // Listen for the PASSWORD_RECOVERY auth event — this fires when Supabase
+    // processes the recovery token in the URL hash. We must handle it here
+    // before the normal auth flow redirects the user to the portal.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setReady(true);
       }
     });
+
+    // Also check if we already have a recovery session (page reload case)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async () => {
@@ -53,7 +60,7 @@ export default function ResetPassword() {
       setError(updateError.message);
     } else {
       setSuccess(true);
-      setTimeout(() => { window.location.href = "/portal"; }, 2500);
+      setTimeout(() => { window.location.href = "/portal"; }, 2000);
     }
   };
 
@@ -81,105 +88,91 @@ export default function ResetPassword() {
       <div style={{ width: "100%", maxWidth: 400 }}>
 
         {success ? (
-          /* ── Success state ── */
+          /* ── Success ── */
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid #43A047", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14L11 20L23 8" stroke="#43A047" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-              Password Set!
-            </h1>
-            <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.7, marginBottom: "1rem" }}>
-              Welcome to your DRU CLEAR™ portal. Taking you there now…
-            </p>
-            <p style={{ color: "rgba(212,175,55,0.5)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.08em" }}>
-              Redirecting…
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.75rem" }}>You're All Set!</h1>
+            <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.7 }}>
+              Your password is saved. Taking you to your portal now…
             </p>
           </div>
+
+        ) : !ready ? (
+          /* ── Loading ── */
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.06em" }}>
+              Verifying your link…
+            </p>
+          </div>
+
         ) : (
           /* ── Set password form ── */
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, textAlign: "center", marginBottom: "0.5rem" }}>
-              Set Your Password
-            </h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", textAlign: "center", marginBottom: "2rem", lineHeight: 1.6 }}>
-              Create a password to access your DRU CLEAR™ portal
-            </p>
-
-            {!sessionReady && !error && (
-              <p style={{ color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", textAlign: "center", marginBottom: "1.5rem" }}>
-                Verifying your link…
+            {/* Warm welcome at top */}
+            <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem", background: "rgba(212,175,55,0.08)" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#D4AF37"/>
+                </svg>
+              </div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+                You're In!
+              </h1>
+              <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.65 }}>
+                Set a password so you can come back to your portal anytime.
               </p>
-            )}
+            </div>
 
-            {sessionReady && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <input
-                    type="password"
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={inputStyle}
-                  />
-                  {password.length > 0 && (
-                    <div style={{ marginTop: "0.5rem" }}>
-                      <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: "0.35rem" }}>
-                        <div style={{ height: "100%", width: strength.width, background: strength.color, borderRadius: 2, transition: "all 0.3s" }} />
-                      </div>
-                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: strength.color }}>
-                        {strength.label} — min 8 chars, 1 number, 1 special character
-                      </p>
-                    </div>
-                  )}
-                </div>
-
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
                 <input
                   type="password"
-                  placeholder="Confirm your password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   style={inputStyle}
                 />
-
-                {error && (
-                  <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>{error}</p>
+                {password.length > 0 && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: "0.35rem" }}>
+                      <div style={{ height: "100%", width: strength.width, background: strength.color, borderRadius: 2, transition: "all 0.3s" }} />
+                    </div>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: strength.color }}>
+                      {strength.label} — min 8 chars, 1 number, 1 special character
+                    </p>
+                  </div>
                 )}
-
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading || !sessionReady}
-                  style={{
-                    width: "100%",
-                    background: "#D4AF37",
-                    color: "#0A2342",
-                    border: "none",
-                    borderRadius: 6,
-                    padding: "0.85rem",
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 700,
-                    fontSize: "0.82rem",
-                    letterSpacing: "0.06em",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                >
-                  {loading ? "Setting Password…" : "Set Password & Enter Portal →"}
-                </button>
               </div>
-            )}
 
-            {error && !sessionReady && (
-              <div style={{ textAlign: "center", marginTop: "1rem" }}>
-                <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "1rem" }}>{error}</p>
-                <a href="/login" style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", textDecoration: "underline" }}>
-                  Back to Sign In
-                </a>
-              </div>
-            )}
+              <input
+                type="password"
+                placeholder="Confirm your password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                style={inputStyle}
+              />
+
+              {error && (
+                <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>{error}</p>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                style={{ width: "100%", background: "#D4AF37", color: "#0A2342", border: "none", borderRadius: 6, padding: "0.85rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.06em", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? "Saving…" : "Save Password & Enter Portal →"}
+              </button>
+
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.7rem", textAlign: "center", lineHeight: 1.5 }}>
+                You can skip this and log back in anytime using "Forgot Password" — but setting one now saves time.
+              </p>
+            </div>
           </div>
         )}
 
