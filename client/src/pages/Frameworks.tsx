@@ -1,10 +1,26 @@
 import { useState } from "react";
 import NavBar from "../components/NavBar";
 
-const PAYMENT_STRATEGIC_URL = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
-const PAYMENT_EXECUTIVE_URL = "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645";
-const CALENDAR_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
+// ─── Payment URLs ─────────────────────────────────────────────────────────────
+const PAYMENT_STRATEGIC_URL   = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
+const PAYMENT_EXECUTIVE_URL   = "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645";
+const PAYMENT_DRU_CLEAR_URL   = "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec";
+const PAYMENT_5D_URL          = "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc";
+const PAYMENT_5C_URL          = "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def";
+const PAYMENT_AI_SALES_URL    = "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe";
+const CALENDAR_URL            = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
 
+// ─── Terms ───────────────────────────────────────────────────────────────────
+const TERMS = [
+  { title: "Services", body: "All diagnostic, framework, and ecosystem engagements are delivered virtually via Zoom unless otherwise agreed in writing. Session scheduling begins upon receipt of full or initial payment." },
+  { title: "Payment", body: "Full payment is required before services commence, except for the Full Ecosystem engagement which requires 50% at signing and 50% at completion. All prices are in USD." },
+  { title: "Non-Refundable Policy", body: "All payments are non-refundable. By completing your purchase you acknowledge that you have reviewed the service description, understand the scope of your selected engagement, and are committing to your transformation pathway. No refunds will be issued for any reason including unused sessions, scheduling conflicts, or change of mind." },
+  { title: "Rescheduling", body: "Sessions may be rescheduled with a minimum of 48 hours notice. Sessions cancelled with less than 48 hours notice are forfeited." },
+  { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, and AI Sales Mastery™ — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
+  { title: "Agreement", body: "Completing payment constitutes your agreement to these terms." },
+];
+
+// ─── Framework Data ───────────────────────────────────────────────────────────
 const FRAMEWORKS = [
   {
     id: "dru-clear",
@@ -15,6 +31,7 @@ const FRAMEWORKS = [
     theme: null,
     image: "/DRU%20CLEAR%20.png",
     price: "$7,500",
+    paymentUrl: PAYMENT_DRU_CLEAR_URL,
     intro: "Every organization has a starting point. DRU CLEAR™ is the framework that finds it — and builds the bridge from where you are to where AI can take you.\n\nAs the flagship framework of the DRU AI Leadership Ecosystem™, DRU CLEAR™ is the transformation pathway that connects all four frameworks into a unified, executable strategy. It is not just an assessment — it is a complete AI readiness diagnosis, strategy design, and execution alignment system built for organizations ready to lead in the AI era.",
     dimensions: [
       { label: "Clarity", desc: "Define your AI vision with precision. Where are you going, why does it matter, and what does success look like across your entire organization?" },
@@ -25,7 +42,6 @@ const FRAMEWORKS = [
     ],
     closing: "DRU CLEAR™ is where your AI transformation begins, and where all four frameworks come together.",
     whoFor: "Organizations ready for complete AI leadership transformation — executives, leadership teams, and organizations that refuse to leave their AI future to chance.",
-    cta: "executive",
   },
   {
     id: "5c-cultural-dna",
@@ -36,6 +52,7 @@ const FRAMEWORKS = [
     theme: "Learn IT. Live IT. Lead IT. Leadership Thinking with AI.",
     image: "/5C%20.png",
     price: "$6,000",
+    paymentUrl: PAYMENT_5C_URL,
     intro: "Most organizations don't have an AI problem — they have a culture problem. Before any technology can transform a business, the people, communication patterns, and leadership behaviors have to be ready to receive it.\n\nThe 5C Cultural DNA™ framework helps organizations discover and address cultural dysfunction, silos, and communication breakdowns that silently block progress. It gives leaders a structured path to use AI as a strategic thinking partner — not a decision-maker — moving through all five dimensions for greater organizational results.",
     dimensions: [
       { label: "Communication", desc: "The foundation. How leaders and teams exchange information, share vision, and create clarity around AI strategy across every level of the organization." },
@@ -46,7 +63,6 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Organizations navigating culture shifts, leadership teams experiencing silos or communication breakdowns, and executives ready to build a culture where AI and human intelligence work together.",
-    cta: "executive-only",
   },
   {
     id: "5d-leadership",
@@ -57,6 +73,7 @@ const FRAMEWORKS = [
     theme: null,
     image: "/5D%20Leadership%20visual%20model%20design.png",
     price: "$6,500",
+    paymentUrl: PAYMENT_5D_URL,
     intro: "Most leadership development programs focus on skills. 5D Leadership™ focuses on the whole leader — building from the inside out across five critical dimensions that determine whether leadership actually transforms an organization or just manages it.\n\nThis AI-infused leadership methodology ensures that personal mastery, team effectiveness, organizational strength, and strategic impact all develop together — not in isolation.",
     dimensions: [
       { label: "I. Self", desc: "Personal mastery. How a leader thinks, decides, and shows up — the foundation everything else is built on." },
@@ -67,7 +84,6 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Companies that need leadership at every level — not just at the top. Organizations ready to develop leaders from the inside out across every tier of their business.",
-    cta: "both",
   },
   {
     id: "ai-sales-mastery",
@@ -78,6 +94,7 @@ const FRAMEWORKS = [
     theme: "Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.",
     image: "/AI%20Sales%20Mastery%20framework%20infographic.png",
     price: "$6,000",
+    paymentUrl: PAYMENT_AI_SALES_URL,
     intro: "The future of sales is not louder — it's smarter. AI Sales Mastery™ combines the proven power of DISC behavioral insights with AI to create a sales approach that feels natural, builds trust, and accelerates revenue without pressure tactics or guesswork.\n\nWhen you understand how your client thinks, decides, and communicates — and you use AI to personalize that understanding at scale — selling stops feeling like selling.",
     dimensions: [
       { label: "Hyper-Personalized Outreach at Scale", desc: "Reach the right person with the right message at the right time — every time — without losing the human touch." },
@@ -88,62 +105,170 @@ const FRAMEWORKS = [
     ],
     closing: null,
     whoFor: "Sales teams ready to integrate AI into their sales strategy and leaders who want to accelerate revenue without sacrificing relationship.",
-    cta: "executive-only",
   },
 ];
 
-// ─── Shared pricing styles ────────────────────────────────────────────────────
-const pSection = { marginBottom: "2rem" } as const;
+// ─── Shared Pricing Styles ────────────────────────────────────────────────────
+const pSection   = { marginBottom: "2rem" } as const;
 const pStepHeader = { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 } as const;
-const pDivider = { flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)" } as const;
-const pRow = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
-const pRowGold = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
-const pRowMag = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
-const pName = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
-const pSub = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
-const pPrice = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
-const pMeta = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.4)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
+const pDivider   = { flex: 1, height: "0.5px", background: "rgba(255,255,255,0.1)" } as const;
+const pRow       = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
+const pRowGold   = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
+const pRowMag    = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
+const pName      = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
+const pSub       = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
+const pPrice     = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
+const pMeta      = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.4)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
 const pReportTag = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(230,230,230,0.5)" } as const;
-const pSubLabel = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: "16px 0 8px 2px" } as const;
-const anchorTag = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
+const pSubLabel  = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: "16px 0 8px 2px" } as const;
+const anchorTag  = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ModalConfig = { url: string; title: string } | null;
 
+// ─── Pathway Glow Component ───────────────────────────────────────────────────
+function PathwaySection() {
+  const stages = [
+    { label: "Discover", gold: true },
+    { label: "Diagnose", gold: true },
+    { label: "Design",   gold: true },
+    { label: "Deploy",   gold: false },
+    { label: "Dominate", gold: false },
+  ];
+  return (
+    <div style={{ textAlign: "center" }}>
+      <p style={{
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: "0.75rem", fontWeight: 700,
+        letterSpacing: "0.2em", textTransform: "uppercase",
+        color: "#D4AF37",
+        textShadow: "0 0 12px rgba(212,175,55,1), 0 0 24px rgba(212,175,55,0.7), 0 0 48px rgba(212,175,55,0.35)",
+        marginBottom: 12,
+      }}>
+        The DRU AI Transformation Pathway™
+      </p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 0 }}>
+        {stages.map((stage, i, arr) => (
+          <div key={stage.label} style={{ display: "flex", alignItems: "center" }}>
+            <span style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.92rem", fontWeight: 700,
+              letterSpacing: "0.06em",
+              color: stage.gold ? "#D4AF37" : "#E91E8C",
+              padding: "5px 10px",
+              borderBottom: `2px solid ${stage.gold ? "#D4AF37" : "#C2185B"}`,
+              textShadow: stage.gold
+                ? "0 0 8px rgba(212,175,55,0.9), 0 0 18px rgba(212,175,55,0.5)"
+                : "0 0 8px rgba(194,24,91,0.9), 0 0 18px rgba(194,24,91,0.5)",
+            }}>{stage.label}</span>
+            {i < arr.length - 1 && (
+              <span style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.8rem", padding: "0 2px" }}>›</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Terms Modal ──────────────────────────────────────────────────────────────
+function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClose: () => void }) {
+  const [accepted, setAccepted] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "flex-start", justifyContent: "center" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 520, height: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1.25rem", background: "#061829", borderBottom: "1px solid rgba(212,175,55,0.25)", flexShrink: 0 }}>
+          <div>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", margin: "0 0 2px" }}>
+              {showPayment ? "Step 2 of 2 — Payment" : "Step 1 of 2 — Review & Agree"}
+            </p>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.85rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{modal.title}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 600, padding: "0.35rem 0.75rem", cursor: "pointer", letterSpacing: "0.06em" }}>
+            ✕ Close
+          </button>
+        </div>
+
+        {!showPayment ? (
+          /* ── Terms Step ── */
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            <div style={{ padding: "1.25rem 1.5rem 0" }}>
+              <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", color: "#D4AF37", fontWeight: 600, marginBottom: 4 }}>DRU AI Consulting</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(230,230,230,0.4)", marginBottom: 16 }}>Terms of Engagement</p>
+            </div>
+
+            {/* Scrollable terms */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 1.5rem" }}>
+              {TERMS.map((section) => (
+                <div key={section.title} style={{ marginBottom: 16 }}>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.06em", marginBottom: 4 }}>{section.title}</p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.76rem", color: "rgba(230,230,230,0.7)", lineHeight: 1.7 }}>{section.body}</p>
+                </div>
+              ))}
+              <div style={{ height: 8 }} />
+            </div>
+
+            {/* Checkbox + CTA */}
+            <div style={{ padding: "1.25rem 1.5rem", borderTop: "1px solid rgba(212,175,55,0.15)", background: "#061829", flexShrink: 0 }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 16 }}>
+                <input
+                  type="checkbox"
+                  checked={accepted}
+                  onChange={e => setAccepted(e.target.checked)}
+                  style={{ marginTop: 2, accentColor: "#D4AF37", width: 16, height: 16, flexShrink: 0 }}
+                />
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(230,230,230,0.75)", lineHeight: 1.6 }}>
+                  I have read and agree to the Terms of Engagement. I understand all payments are non-refundable.
+                </span>
+              </label>
+              <button
+                onClick={() => accepted && setShowPayment(true)}
+                style={{
+                  display: "block", width: "100%",
+                  background: accepted ? "#C2185B" : "rgba(194,24,91,0.25)",
+                  color: accepted ? "#FFFFFF" : "rgba(255,255,255,0.3)",
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 700,
+                  fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase",
+                  padding: "0.875rem 1rem", borderRadius: 6,
+                  border: accepted ? "none" : "1px solid rgba(194,24,91,0.3)",
+                  cursor: accepted ? "pointer" : "not-allowed",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Continue to Payment →
+              </button>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.3)", textAlign: "center", marginTop: 10 }}>
+                Full terms available at app.druaiconsulting.com/terms
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* ── Payment Step ── */
+          <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Frameworks() {
   const [modal, setModal] = useState<ModalConfig>(null);
   const openModal = (url: string, title: string) => setModal({ url, title });
-  const closeModal = () => setModal(null);
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/frameworks" />
-
-      {/* ── MODAL ─────────────────────────────────────────────────────────── */}
-      {modal && (
-        <div
-          onClick={closeModal}
-          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "flex-start", justifyContent: "center" }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 520, height: "100dvh", background: "#FFFFFF", display: "flex", flexDirection: "column" }}
-          >
-            {/* Modal header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1.25rem", background: "#0A2342", borderBottom: "1px solid rgba(212,175,55,0.25)", flexShrink: 0 }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", margin: 0 }}>{modal.title}</p>
-              <button
-                onClick={closeModal}
-                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600, padding: "0.35rem 0.75rem", cursor: "pointer", letterSpacing: "0.06em" }}
-              >
-                ✕ Close
-              </button>
-            </div>
-            {/* iframe */}
-            <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
-          </div>
-        </div>
-      )}
+      {modal && <TermsModal modal={modal} onClose={() => setModal(null)} />}
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
@@ -163,18 +288,10 @@ export default function Frameworks() {
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your Investment in Transformation</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.85rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.875rem" }}>Every transformation begins<br />with clarity.</h1>
-          <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.8, maxWidth: 500, margin: "0 auto 1.25rem" }}>
+          <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.8, maxWidth: 500, margin: "0 auto 1.5rem" }}>
             The DRU AI Transformation Pathway™ is a proven, sequential journey that moves you from awareness to full organizational activation. Every client walks the same five stages — no shortcuts, no skipped steps.
           </p>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(230,230,230,0.35)", marginBottom: 8 }}>The DRU AI Transformation Pathway™</p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 0 }}>
-            {[{ label: "Discover", color: "#D4AF37" }, { label: "Diagnose", color: "#D4AF37" }, { label: "Design", color: "#D4AF37" }, { label: "Deploy", color: "#C2185B" }, { label: "Dominate", color: "#C2185B" }].map((stage, i, arr) => (
-              <div key={stage.label} style={{ display: "flex", alignItems: "center" }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 600, color: "#FFFFFF", padding: "4px 8px", borderBottom: `2px solid ${stage.color}`, letterSpacing: "0.04em" }}>{stage.label}</span>
-                {i < arr.length - 1 && <span style={{ color: "#D4AF37", fontSize: "0.75rem", padding: "0 3px" }}>›</span>}
-              </div>
-            ))}
-          </div>
+          <PathwaySection />
         </div>
 
         {/* STEP 1 */}
@@ -298,9 +415,12 @@ export default function Frameworks() {
             </div>
             <p style={pPrice}>$13,500</p>
           </div>
+          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", textAlign: "center", marginTop: 12 }}>
+            Available after your diagnostic session
+          </p>
         </div>
 
-        {/* App CTA */}
+        {/* CTA */}
         <div style={{ textAlign: "center", padding: "2rem 1.5rem", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(212,175,55,0.2)", marginBottom: "3rem" }}>
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#FFFFFF", fontWeight: 600, marginBottom: 8 }}>Every journey starts with the assessment.</p>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.55)", lineHeight: 1.75, marginBottom: 20 }}>Discover your gaps. See where you are.<br />Define where you are destined to be.</p>
@@ -324,7 +444,6 @@ export default function Frameworks() {
           </p>
         </div>
 
-        {/* Framework cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {FRAMEWORKS.map((fw) => (
             <div key={fw.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 12, overflow: "hidden" }}>
@@ -338,7 +457,6 @@ export default function Frameworks() {
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: fw.badgeColor, background: "rgba(10,35,66,0.85)", border: `1px solid ${fw.badgeColor}60`, borderRadius: 4, padding: "0.2rem 0.55rem" }}>{fw.badge}</span>
                 </div>
               </div>
-
               <div style={{ padding: "1.25rem 1.5rem" }}>
                 <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.35rem", fontWeight: 700, marginBottom: "0.25rem" }}>{fw.name}</h2>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.45)", fontSize: "0.7rem", letterSpacing: "0.06em", marginBottom: fw.theme ? "0.4rem" : "1rem" }}>{fw.tagline}</p>
@@ -366,36 +484,12 @@ export default function Frameworks() {
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
                   <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>{fw.whoFor}</p>
                 </div>
-
-                {/* Per-framework CTAs */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  {fw.cta === "executive-only" && (
-                    <>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(230,230,230,0.35)", letterSpacing: "0.04em", textAlign: "center", margin: "0 0 2px" }}>This framework is reviewed in the Executive Diagnostic</p>
-                      <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
-                        Get Started — Executive Diagnostic →
-                      </button>
-                    </>
-                  )}
-                  {fw.cta === "both" && (
-                    <>
-                      <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
-                        Get Started — Executive Diagnostic →
-                      </button>
-                      <button onClick={() => openModal(PAYMENT_STRATEGIC_URL, "Strategic Diagnostic — $3,497")} style={{ display: "block", width: "100%", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.65rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)", cursor: "pointer" }}>
-                        Get Started — Strategic Diagnostic →
-                      </button>
-                    </>
-                  )}
-                  {fw.cta === "executive" && (
-                    <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
-                      Get Started — Executive Diagnostic →
-                    </button>
-                  )}
-                  <button onClick={() => openModal(CALENDAR_URL, "Book a Discovery Call")} style={{ display: "block", width: "100%", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.65rem 1rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)", cursor: "pointer" }}>
-                    Book a Discovery Call
-                  </button>
-                </div>
+                <button
+                  onClick={() => openModal(fw.paymentUrl, `${fw.name} — ${fw.price}`)}
+                  style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}
+                >
+                  Get Started →
+                </button>
               </div>
             </div>
           ))}
