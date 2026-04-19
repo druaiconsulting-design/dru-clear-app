@@ -4,7 +4,7 @@ import NavBar from "../components/NavBar";
 // ─── TEST MODE ────────────────────────────────────────────────────────────────
 // Set to true to bypass payment iframe and test the full flow.
 // Set to false before going live.
-const BYPASS_PAYMENT = true;
+const BYPASS_PAYMENT = false;
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAYMENT_STRATEGIC_URL   = "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222";
