@@ -15,7 +15,7 @@ const TERMS = [
 const FRAMEWORKS = [
   {
     id: "dru-clear",
-    badge: "Flagship Framework",
+    badge: "The Connector",
     badgeColor: "#D4AF37",
     name: "DRU CLEAR™",
     tagline: "Align for AI Execution",
@@ -95,51 +95,34 @@ const FRAMEWORKS = [
   },
 ];
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
 const pRow    = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", borderRadius: 8, gap: 12, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, background: "rgba(255,255,255,0.04)" } as const;
 const pRowMag = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
 const pName   = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#FFFFFF", margin: "0 0 3px" } as const;
 const pSub    = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(230,230,230,0.55)", margin: 0, lineHeight: 1.5 } as const;
 const pPrice  = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
 const anchorTag = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", color: "#D4AF37", marginRight: 5 } as const;
-// ─────────────────────────────────────────────────────────────────────────────
 
 type ModalConfig = { url: string; title: string } | null;
 
 function PathwaySection() {
   const stages = [
-    { label: "Discover", gold: true },
-    { label: "Diagnose", gold: true },
-    { label: "Design",   gold: true },
-    { label: "Deploy",   gold: false },
-    { label: "Dominate", gold: false },
+    { label: "Discover", color: "#D4AF37" },
+    { label: "Diagnose", color: "#D4AF37" },
+    { label: "Design",   color: "#D4AF37" },
+    { label: "Deploy",   color: "#C2185B" },
+    { label: "Dominate", color: "#C2185B" },
   ];
   return (
     <div style={{ textAlign: "center" }}>
-      <p style={{
-        fontFamily: "'Montserrat', sans-serif",
-        fontSize: "0.75rem", fontWeight: 700,
-        letterSpacing: "0.2em", textTransform: "uppercase",
-        color: "#D4AF37",
-        textShadow: "0 0 12px rgba(212,175,55,1), 0 0 24px rgba(212,175,55,0.7), 0 0 48px rgba(212,175,55,0.35)",
-        marginBottom: 12,
-      }}>
+      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.92rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#D4AF37", marginBottom: 12 }}>
         The DRU AI Transformation Pathway™
       </p>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 0 }}>
         {stages.map((stage, i, arr) => (
           <div key={stage.label} style={{ display: "flex", alignItems: "center" }}>
-            <span style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: "0.92rem", fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: stage.gold ? "#D4AF37" : "#E91E8C",
-              padding: "5px 10px",
-              borderBottom: `2px solid ${stage.gold ? "#D4AF37" : "#C2185B"}`,
-              textShadow: stage.gold
-                ? "0 0 8px rgba(212,175,55,0.9), 0 0 18px rgba(212,175,55,0.5)"
-                : "0 0 8px rgba(194,24,91,0.9), 0 0 18px rgba(194,24,91,0.5)",
-            }}>{stage.label}</span>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.92rem", fontWeight: 700, letterSpacing: "0.06em", color: stage.color, padding: "5px 10px", borderBottom: `2px solid ${stage.color}` }}>
+              {stage.label}
+            </span>
             {i < arr.length - 1 && <span style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.8rem", padding: "0 2px" }}>›</span>}
           </div>
         ))}
@@ -162,9 +145,8 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
             </p>
             <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.85rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{modal.title}</p>
           </div>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 600, padding: "0.35rem 0.75rem", cursor: "pointer", letterSpacing: "0.06em" }}>✕ Close</button>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 600, padding: "0.35rem 0.75rem", cursor: "pointer" }}>✕ Close</button>
         </div>
-
         {!showPayment ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
             <div style={{ padding: "1.25rem 1.5rem 0" }}>
@@ -237,7 +219,7 @@ export default function BundlePricing() {
           <PathwaySection />
         </div>
 
-        {/* ── BUNDLE PRICING ───────────────────────────────────────────────── */}
+        {/* Bundle Pricing */}
         <div style={{ margin: "2.5rem 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
@@ -245,7 +227,7 @@ export default function BundlePricing() {
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
           </div>
 
-          {/* Full Ecosystem — Best Value — with CTA */}
+          {/* Full Ecosystem */}
           <div style={{ ...pRowMag, flexDirection: "column", alignItems: "stretch", padding: "1.25rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
@@ -266,7 +248,6 @@ export default function BundlePricing() {
             </button>
           </div>
 
-          {/* DRU CLEAR + 2 — info only */}
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>DRU CLEAR™ + 2 Frameworks</p>
@@ -274,8 +255,6 @@ export default function BundlePricing() {
             </div>
             <p style={pPrice}>$19,500</p>
           </div>
-
-          {/* DRU CLEAR + 1 — info only */}
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>DRU CLEAR™ + 1 Framework</p>
@@ -283,13 +262,9 @@ export default function BundlePricing() {
             </div>
             <p style={pPrice}>$13,500</p>
           </div>
-
-          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", textAlign: "center", marginTop: 12 }}>
-            Available after your diagnostic session
-          </p>
         </div>
 
-        {/* ── DRU AI LEADERSHIP ECOSYSTEM ─────────────────────────────────── */}
+        {/* Ecosystem reference */}
         <div style={{ marginTop: "3rem" }}>
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>DRU AI Leadership Ecosystem™</p>
@@ -297,6 +272,12 @@ export default function BundlePricing() {
             <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", lineHeight: 1.7, maxWidth: 500, margin: "0 auto" }}>
               Four proprietary frameworks. One unified ecosystem. Designed to move your organization from AI uncertainty to AI authority.
             </p>
+          </div>
+
+          {/* Framework detail label */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 12px 2px" }}>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.6)", fontWeight: 600, margin: 0 }}>Individual Frameworks</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(230,230,230,0.35)", fontStyle: "italic", margin: 0 }}>See Detail Below</p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -331,15 +312,16 @@ export default function BundlePricing() {
                     ))}
                   </div>
                   {fw.closing && (
-                    <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.875rem", marginBottom: "1rem" }}>
+                    <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.875rem" }}>
                       <p style={{ color: "rgba(230,230,230,0.75)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.65, fontStyle: "italic" }}>{fw.closing}</p>
                     </div>
                   )}
-                  <div>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
-                    <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>{fw.whoFor}</p>
-                  </div>
-                  {/* NO CTA buttons on bundle page */}
+                  {!fw.closing && (
+                    <div>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
+                      <p style={{ color: "rgba(230,230,230,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>{fw.whoFor}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
