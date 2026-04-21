@@ -87,6 +87,7 @@ const SPRINTS = [
       { label: "Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · momentum building before humans arrive" },
       { label: "DeAnna's AI Twin — private build", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · never sleeps" },
       { label: "Agent Roles to build", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
+      { label: "AI Literacy — 4 Week Course + Workbook Companion", sub: "Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
       { label: "DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
       { label: "DRU CLEAR™ Navigator — $97/mo", sub: "Tools · Content · Community · AI-assisted self-directed transformation" },
       { label: "DRU CLEAR™ Accelerator — $297/mo", sub: "Everything in Navigator + DeAnna access · group sessions · private community · advanced AI tools" },
