@@ -940,13 +940,12 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
 
     // ── Free account creation ─────────────────────────────────────────────────
     // Auto-create a free Supabase account for every assessment completer.
-    // Sends a "set your password" email pointing to app.druaiconsulting.com
-    // so they can access the portal immediately after completing the assessment.
-    // If the account already exists, we skip silently — never block the flow.
+    // Supabase sends the branded confirmation email automatically on signUp.
+    // If the account already exists, skip silently — never block the flow.
     (async () => {
       try {
         const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-        const { error: signUpError } = await supabase.auth.signUp({
+        await supabase.auth.signUp({
           email: lead.email,
           password: randomPassword,
           options: {
@@ -957,12 +956,6 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
             },
           },
         });
-        // 422 = user already exists — skip silently
-        if (!signUpError) {
-          await supabase.auth.resetPasswordForEmail(lead.email, {
-            redirectTo: "https://app.druaiconsulting.com/reset-password",
-          });
-        }
       } catch {
         // Never block the assessment flow for account creation errors
       }
