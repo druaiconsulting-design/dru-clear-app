@@ -36,8 +36,12 @@ function Router() {
 
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
-      // Don't redirect recovery sessions — let /reset-password handle them
-      if (hash.includes("type=recovery")) return;
+      // Redirect recovery sessions to /reset-password — keep hash intact
+      // so Supabase can process the recovery token on that page
+      if (hash.includes("type=recovery")) {
+        window.location.href = "/reset-password" + window.location.hash;
+        return;
+      }
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
@@ -168,3 +172,4 @@ function App() {
 }
 
 export default App;
+
