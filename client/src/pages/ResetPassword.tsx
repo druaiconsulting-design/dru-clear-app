@@ -16,9 +16,25 @@ function getPasswordStrength(p: string) {
   return { label: "Strong", color: "#43A047", width: "100%" };
 }
 
+function EyeIcon({ visible }: { visible: boolean }) {
+  return visible ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  );
+}
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -27,16 +43,12 @@ export default function ResetPassword() {
   const strength = getPasswordStrength(password);
 
   useEffect(() => {
-    // Listen for the PASSWORD_RECOVERY auth event — this fires when Supabase
-    // processes the recovery token in the URL hash. We must handle it here
-    // before the normal auth flow redirects the user to the portal.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
       }
     });
 
-    // Also check if we already have a recovery session (page reload case)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setReady(true);
     });
@@ -64,17 +76,36 @@ export default function ResetPassword() {
     }
   };
 
-  const inputStyle = {
+  const inputWrapStyle: React.CSSProperties = {
+    position: "relative",
+    width: "100%",
+  };
+
+  const inputStyle: React.CSSProperties = {
     width: "100%",
     background: "rgba(255,255,255,0.07)",
     border: "1px solid rgba(212,175,55,0.3)",
     borderRadius: 6,
-    padding: "0.75rem 1rem",
+    padding: "0.75rem 2.75rem 0.75rem 1rem",
     color: "#FFFFFF",
     fontFamily: "'Inter', sans-serif",
     fontSize: "0.85rem",
     outline: "none",
-    boxSizing: "border-box" as const,
+    boxSizing: "border-box",
+  };
+
+  const eyeButtonStyle: React.CSSProperties = {
+    position: "absolute",
+    right: "0.75rem",
+    top: "50%",
+    transform: "translateY(-50%)",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   };
 
   return (
@@ -112,7 +143,6 @@ export default function ResetPassword() {
         ) : (
           /* ── Set password form ── */
           <div>
-            {/* Warm welcome at top */}
             <div style={{ textAlign: "center", marginBottom: "2rem" }}>
               <div style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem", background: "rgba(212,175,55,0.08)" }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -128,14 +158,21 @@ export default function ResetPassword() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+              {/* Password field with show/hide */}
               <div>
-                <input
-                  type="password"
-                  placeholder="Create a password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={inputStyle}
-                />
+                <div style={inputWrapStyle}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={inputStyle}
+                  />
+                  <button style={eyeButtonStyle} onClick={() => setShowPassword(!showPassword)} tabIndex={-1} type="button">
+                    <EyeIcon visible={showPassword} />
+                  </button>
+                </div>
                 {password.length > 0 && (
                   <div style={{ marginTop: "0.5rem" }}>
                     <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: "0.35rem" }}>
@@ -148,14 +185,20 @@ export default function ResetPassword() {
                 )}
               </div>
 
-              <input
-                type="password"
-                placeholder="Confirm your password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                style={inputStyle}
-              />
+              {/* Confirm password field with show/hide */}
+              <div style={inputWrapStyle}>
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  style={inputStyle}
+                />
+                <button style={eyeButtonStyle} onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1} type="button">
+                  <EyeIcon visible={showConfirm} />
+                </button>
+              </div>
 
               {error && (
                 <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>{error}</p>
@@ -168,10 +211,6 @@ export default function ResetPassword() {
               >
                 {loading ? "Saving…" : "Save Password & Enter Portal →"}
               </button>
-
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.7rem", textAlign: "center", lineHeight: 1.5 }}>
-                You can skip this and log back in anytime using "Forgot Password" — but setting one now saves time.
-              </p>
             </div>
           </div>
         )}
