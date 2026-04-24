@@ -38,7 +38,7 @@ function Router() {
     if (hash && hash.includes("access_token")) {
       // Redirect recovery sessions to /reset-password — keep hash intact
       // so Supabase can process the recovery token on that page
-      if (hash.includes("type=recovery")) {
+      if (hash.includes("type=recovery") || hash.includes("type=signup")) {
         window.location.href = "/reset-password" + window.location.hash;
         return;
       }
@@ -172,4 +172,3 @@ function App() {
 }
 
 export default App;
-
