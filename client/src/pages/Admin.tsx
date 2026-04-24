@@ -9,11 +9,14 @@ const STAT_CARDS = [
 ];
 
 const QUICK_LINKS = [
-  { label: "GHL Dashboard",       href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
-  { label: "Booking Calendar",    href: "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation", icon: "📅" },
-  { label: "Live Assessment",     href: "https://assessment.druaiconsulting.com", icon: "🚀" },
-  { label: "GitHub Repo",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
-  { label: "Terms of Engagement", href: "https://app.druaiconsulting.com/terms", icon: "📄" },
+  { label: "GHL Dashboard",         href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
+  { label: "Live Assessment",        href: "https://assessment.druaiconsulting.com", icon: "🚀" },
+  { label: "Main Website",           href: "https://druaiconsulting.com", icon: "🌐" },
+  { label: "Frameworks Page",        href: "https://frameworks.druaiconsulting.com", icon: "📐" },
+  { label: "GitHub — App",           href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
+  { label: "GitHub — Website",       href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
+  { label: "GitHub — Frameworks",    href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
+  { label: "Terms of Engagement",    href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
 const PAYMENT_LINKS = [
@@ -25,6 +28,8 @@ const PAYMENT_LINKS = [
   { label: "AI Sales Mastery™",              price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
   { label: "Full Ecosystem — Signing ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
   { label: "Full Ecosystem — Final ($13K)",   price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
+  { label: "DRU CLEAR™ Navigator — Founder", price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
+  { label: "DRU CLEAR™ Accelerator — Founder", price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
 ];
 
 const PENDING_ITEMS = [
@@ -32,6 +37,10 @@ const PENDING_ITEMS = [
   "Provision SMS sequence (pending phone number support)",
   "Populate Resource Hub with first PDF downloads",
   "Set NEW_THIS_WEEK in Resources.tsx when first resource drops",
+  "Add YouTube coaching video URL to homepage (replace placeholder)",
+  "Add YouTube global slideshow URL to homepage (replace placeholder)",
+  "Add Clarity Call calendar link to homepage CLARITY_CALL_CALENDAR_LINK placeholder",
+  "Magazine ad — finalize design once publisher specs received (PDF, April 30 deadline)",
 ];
 
 const SPRINTS = [
@@ -64,6 +73,14 @@ const SPRINTS = [
       { label: "Portal rebuilt as personal dashboard ✓", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
       { label: "Resources page cleaned up ✓", sub: "Email capture removed · New This Week banner · resources added weekly note" },
       { label: "Affiliate page updated ✓", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
+      { label: "Reset password flow — LIVE ✓", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password · skip text removed" },
+      { label: "NavBar updated — LIVE ✓", sub: "ROI replaced with Join the Community → /community · About · Frameworks · Daily · Resources · Affiliate" },
+      { label: "Community Landing Page — LIVE ✓", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired · Best Value badge fixed" },
+      { label: "GHL Homepage Funnel — LIVE ✓", sub: "15-section branded homepage built in HTML · all real GitHub images · single CTA → assessment · QR code section · premium shield badge" },
+      { label: "frameworks.druaiconsulting.com — LIVE ✓", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy · all 4 framework Learn More buttons point here" },
+      { label: "GitHub repos organized ✓", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
+      { label: "Magazine bio — locked ✓", sub: "Universal bio for Apostolic Woman's Birthing Nations · April 30 print deadline · QR code included" },
+      { label: "ROI page → Community Landing Page ✓", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
       { label: "Free tier access — Supabase tier field", sub: "tier: free | paid · RLS controls · assessment auto-creates free account" },
       { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
       { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
@@ -71,8 +88,6 @@ const SPRINTS = [
       { label: "Daily Connections notification dot", sub: "Red dot on Portal card when new content available · clears on visit" },
       { label: "Dynamic Transformation Pathway", sub: "Supabase tier field · GHL webhook writes back · stages unlock on purchase" },
       { label: "Daily Connections automated engine", sub: "Claude API · Supabase · scheduled daily generation" },
-      { label: "ROI page → Community Landing Page", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
-      { label: "ROI Calculator", sub: "DeAnna to define scope · GHL lead capture wired · Sprint 3 or 4" },
     ],
   },
   {
@@ -255,7 +270,7 @@ export default function Admin() {
 
           <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
-              Launch Target · app.druaiconsulting.com
+              Launch Target · May 10, 2026 · app.druaiconsulting.com
             </p>
           </div>
         </div>
