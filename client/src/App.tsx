@@ -16,7 +16,7 @@ import { ThankYouDruClear, ThankYou5D, ThankYou5C, ThankYouAISales } from "./pag
 import ThankYouFullEcosystem from "./pages/ThankYouFullEcosystem";
 import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
-import ROI from "./pages/ROI";
+import Community from "./pages/Community";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
@@ -36,8 +36,8 @@ function Router() {
 
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
-      // Redirect recovery sessions to /reset-password — keep hash intact
-      // so Supabase can process the recovery token on that page
+      // Redirect recovery and signup sessions to /reset-password — keep hash intact
+      // so Supabase can process the token on that page
       if (hash.includes("type=recovery") || hash.includes("type=signup")) {
         window.location.href = "/reset-password" + window.location.hash;
         return;
@@ -64,10 +64,18 @@ function Router() {
     setTitle("DRU CLEAR™ AI Readiness Scorecard");
     return <DruClearApp />;
   }
+
+  // /roi now redirects to /community
   if (path === "/roi" || path === "/roi/") {
-    setTitle("ROI Calculator · DRU CLEAR™");
-    return <ROI />;
+    window.location.href = "/community";
+    return null;
   }
+
+  if (path === "/community" || path === "/community/") {
+    setTitle("Community · DRU CLEAR™");
+    return <Community />;
+  }
+
   if (path === "/affiliate" || path === "/affiliate/") {
     setTitle("Affiliate · DRU CLEAR™");
     return <Affiliate />;
