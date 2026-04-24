@@ -104,11 +104,16 @@ export default function Community() {
             </div>
 
             {/* Accelerator */}
-            <div style={{ background: "rgba(194,24,91,0.06)", border: "2px solid rgba(194,24,91,0.5)", borderRadius: 14, overflow: "hidden", position: "relative" as const }}>
-              <div style={{ position: "absolute" as const, top: 14, right: 14, background: "#C2185B", borderRadius: 50, padding: "0.3rem 0.75rem" }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Best Value</p>
-              </div>
+            <div style={{ background: "rgba(194,24,91,0.06)", border: "2px solid rgba(194,24,91,0.5)", borderRadius: 14, overflow: "hidden" }}>
               <div style={{ background: "rgba(194,24,91,0.1)", borderBottom: "1px solid rgba(194,24,91,0.3)", padding: "1.25rem 1.5rem" }}>
+
+                {/* Best Value badge — sits above the price row, not overlapping */}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+                  <div style={{ background: "#C2185B", borderRadius: 50, padding: "0.3rem 0.75rem", display: "inline-block" }}>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>Best Value</p>
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                   <div>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.35rem" }}>DRU CLEAR™</p>
