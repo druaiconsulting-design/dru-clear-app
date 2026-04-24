@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 const NAV_LINKS = [
-  { label: "Portal",      href: "/portal" },
-  { label: "Frameworks",  href: "/frameworks" },
-  { label: "Resources",   href: "/resources" },
-  { label: "Daily",       href: "/daily" },
-  { label: "ROI",         href: "/roi" },
-  { label: "Affiliate",   href: "/affiliate" },
+  { label: "Portal",              href: "/portal" },
+  { label: "Frameworks",          href: "/frameworks" },
+  { label: "Resources",           href: "/resources" },
+  { label: "Daily",               href: "/daily" },
+  { label: "Join the Community",  href: "/community" },
+  { label: "Affiliate",           href: "/affiliate" },
 ];
 
 // ─── Avatar Helper ────────────────────────────────────────────────────────────
