@@ -36,8 +36,6 @@ function Router() {
 
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
-      // Redirect recovery and signup sessions to /reset-password — keep hash intact
-      // so Supabase can process the token on that page
       if (hash.includes("type=recovery") || hash.includes("type=signup")) {
         window.location.href = "/reset-password" + window.location.hash;
         return;
@@ -65,7 +63,6 @@ function Router() {
     return <DruClearApp />;
   }
 
-  // /roi now redirects to /community
   if (path === "/roi" || path === "/roi/") {
     window.location.href = "/community";
     return null;
@@ -127,8 +124,6 @@ function Router() {
     return <ThankYouFullEcosystem />;
   }
 
-  // Always show reset password page when on this route — even if logged in
-  // The recovery token in the URL hash must be handled here, not redirected away
   if (path === "/reset-password" || path === "/reset-password/") {
     setTitle("Set Your Password · DRU CLEAR™");
     return <ResetPassword />;
@@ -137,6 +132,12 @@ function Router() {
   if (path === "/login" || path === "/login/") {
     setTitle("Sign In · DRU CLEAR™");
     return <Login />;
+  }
+
+  // ── Admin Launch — PWA home screen shortcut → goes straight to /admin ───────
+  if (path === "/admin-launch" || path === "/admin-launch/") {
+    window.location.replace("/admin");
+    return null;
   }
 
   if (path === "/admin" || path === "/admin/") {
