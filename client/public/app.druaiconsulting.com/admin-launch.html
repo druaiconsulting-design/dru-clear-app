@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Portal</title>
 
-  <!-- PWA Meta Tags -->
+  <!-- PWA — separate app identity from the main PWA -->
   <meta name="application-name" content="Admin Portal" />
   <meta name="apple-mobile-web-app-title" content="Admin Portal" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,12 +13,10 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#7B1A2E" />
 
-  <!-- PWA Icons — deep burgundy background with DC shield initials -->
-  <link rel="apple-touch-icon" href="#" id="apple-icon" />
+  <link rel="manifest" id="pwa-manifest" />
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       background: #7B1A2E;
       min-height: 100dvh;
@@ -26,145 +24,147 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: 'Georgia', serif;
-      overflow: hidden;
+      font-family: Georgia, serif;
     }
-
-    /* Subtle radial glow */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, transparent 70%);
+      background: radial-gradient(ellipse at center, rgba(212,175,55,0.15) 0%, transparent 65%);
       pointer-events: none;
     }
-
-    .icon-wrap {
-      width: 96px;
-      height: 96px;
-      border-radius: 22px;
-      background: linear-gradient(145deg, #7B1A2E, #5a1222);
-      border: 2px solid rgba(212,175,55,0.5);
+    .card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .icon {
+      width: 90px;
+      height: 90px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #8a1f35, #5a1222);
+      border: 2px solid rgba(212,175,55,0.55);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(212,175,55,0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,175,55,0.2);
     }
-
-    .icon-wrap svg {
-      width: 56px;
-      height: 56px;
-    }
-
-    .label {
-      font-family: 'Georgia', serif;
+    .name {
+      font-family: Georgia, serif;
       color: #D4AF37;
-      font-size: 1.1rem;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
+      font-size: 1.15rem;
+      letter-spacing: 0.06em;
     }
-
-    .sublabel {
+    .sub {
       font-family: Arial, sans-serif;
-      color: rgba(255,255,255,0.45);
-      font-size: 0.72rem;
-      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.4);
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
+      margin-top: -6px;
     }
-
     .spinner {
-      margin-top: 32px;
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border: 2px solid rgba(212,175,55,0.2);
       border-top-color: #D4AF37;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.75s linear infinite;
+      margin-top: 4px;
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div class="icon-wrap">
-    <!-- DC Shield SVG -->
-    <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M28 4L6 13v16c0 11.5 9.3 22.2 22 25 12.7-2.8 22-13.5 22-25V13L28 4z"
-            fill="rgba(212,175,55,0.15)" stroke="#D4AF37" stroke-width="1.5"/>
-      <text x="28" y="34" text-anchor="middle"
-            font-family="Georgia, serif" font-size="16" font-weight="bold"
-            fill="#D4AF37" letter-spacing="1">DC</text>
-    </svg>
+<div class="card">
+  <div class="icon">
+    <canvas id="icon-canvas" width="64" height="64"></canvas>
   </div>
-
-  <div class="label">Admin Portal</div>
-  <div class="sublabel">DRU AI Consulting</div>
+  <div class="name">Admin Portal</div>
+  <div class="sub">DRU AI Consulting</div>
   <div class="spinner"></div>
+</div>
 
-  <script>
-    // Generate and inject PWA icon as canvas-based data URL
-    const canvas = document.createElement('canvas');
-    canvas.width = 192;
-    canvas.height = 192;
-    const ctx = canvas.getContext('2d');
+<script>
+  // ── Draw small icon ────────────────────────────────────────────────────────
+  const canvas = document.getElementById('icon-canvas');
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 64, 64);
+  g.addColorStop(0, '#8a1f35');
+  g.addColorStop(1, '#5a1222');
+  ctx.fillStyle = g;
+  ctx.roundRect(0, 0, 64, 64, 10);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(32, 8); ctx.lineTo(12, 18); ctx.lineTo(12, 36);
+  ctx.quadraticCurveTo(12, 52, 32, 58);
+  ctx.quadraticCurveTo(52, 52, 52, 36);
+  ctx.lineTo(52, 18); ctx.closePath();
+  ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = 'rgba(212,175,55,0.12)'; ctx.fill();
+  ctx.fillStyle = '#D4AF37';
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('DC', 32, 34);
 
-    // Background
-    const grad = ctx.createLinearGradient(0, 0, 192, 192);
-    grad.addColorStop(0, '#7B1A2E');
-    grad.addColorStop(1, '#5a1222');
-    ctx.fillStyle = grad;
-    ctx.roundRect(0, 0, 192, 192, 36);
-    ctx.fill();
+  // ── Draw full-size PWA icon ────────────────────────────────────────────────
+  const big = document.createElement('canvas');
+  big.width = 512; big.height = 512;
+  const b = big.getContext('2d');
+  const bg = b.createLinearGradient(0, 0, 512, 512);
+  bg.addColorStop(0, '#8a1f35'); bg.addColorStop(1, '#5a1222');
+  b.fillStyle = bg;
+  b.roundRect(0, 0, 512, 512, 80); b.fill();
+  b.strokeStyle = '#D4AF37'; b.lineWidth = 8;
+  b.roundRect(8, 8, 496, 496, 72); b.stroke();
+  b.beginPath();
+  b.moveTo(256, 60); b.lineTo(90, 130); b.lineTo(90, 280);
+  b.quadraticCurveTo(90, 410, 256, 450);
+  b.quadraticCurveTo(422, 410, 422, 280);
+  b.lineTo(422, 130); b.closePath();
+  b.strokeStyle = '#D4AF37'; b.lineWidth = 6; b.stroke();
+  b.fillStyle = 'rgba(212,175,55,0.1)'; b.fill();
+  b.fillStyle = '#D4AF37';
+  b.font = 'bold 140px Georgia, serif';
+  b.textAlign = 'center'; b.textBaseline = 'middle';
+  b.fillText('DC', 256, 272);
+  const iconUrl = big.toDataURL('image/png');
 
-    // Gold border
-    ctx.strokeStyle = '#D4AF37';
-    ctx.lineWidth = 4;
-    ctx.roundRect(4, 4, 184, 184, 32);
-    ctx.stroke();
+  // ── Inject PWA manifest ────────────────────────────────────────────────────
+  const manifest = {
+    name: "Admin Portal",
+    short_name: "Admin Portal",
+    description: "DRU AI Consulting Command Center",
+    start_url: "https://app.druaiconsulting.com/admin",
+    display: "standalone",
+    background_color: "#7B1A2E",
+    theme_color: "#7B1A2E",
+    icons: [
+      { src: iconUrl, sizes: "192x192", type: "image/png" },
+      { src: iconUrl, sizes: "512x512", type: "image/png" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
 
-    // Shield shape
-    ctx.beginPath();
-    ctx.moveTo(96, 30);
-    ctx.lineTo(40, 55);
-    ctx.lineTo(40, 105);
-    ctx.quadraticCurveTo(40, 145, 96, 162);
-    ctx.quadraticCurveTo(152, 145, 152, 105);
-    ctx.lineTo(152, 55);
-    ctx.closePath();
-    ctx.strokeStyle = '#D4AF37';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(212,175,55,0.1)';
-    ctx.fill();
+  // Apple touch icon
+  const al = document.createElement('link');
+  al.rel = 'apple-touch-icon'; al.href = iconUrl;
+  document.head.appendChild(al);
 
-    // DC text
-    ctx.fillStyle = '#D4AF37';
-    ctx.font = 'bold 42px Georgia, serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('DC', 96, 100);
+  const fl = document.createElement('link');
+  fl.rel = 'icon'; fl.href = iconUrl;
+  document.head.appendChild(fl);
 
-    const dataUrl = canvas.toDataURL('image/png');
-
-    // Inject as apple-touch-icon
-    const link = document.getElementById('apple-icon');
-    link.href = dataUrl;
-
-    // Also add standard icon link
-    const iconLink = document.createElement('link');
-    iconLink.rel = 'icon';
-    iconLink.href = dataUrl;
-    document.head.appendChild(iconLink);
-
-    // Redirect to admin portal after brief splash
-    setTimeout(() => {
-      window.location.replace('https://app.druaiconsulting.com/admin');
-    }, 1200);
-  </script>
+  // ── Redirect ───────────────────────────────────────────────────────────────
+  setTimeout(() => {
+    window.location.replace('https://app.druaiconsulting.com/admin');
+  }, 1000);
+</script>
 
 </body>
 </html>
