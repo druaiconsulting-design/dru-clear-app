@@ -68,10 +68,9 @@ const PENDING_ITEMS = [
   "Provision SMS sequence (pending phone number support)",
   "Populate Resource Hub with first PDF downloads",
   "Set NEW_THIS_WEEK in Resources.tsx when first resource drops",
-  "Add YouTube coaching video URL to homepage (replace placeholder)",
-  "Add YouTube global slideshow URL to homepage (replace placeholder)",
-  "Add Clarity Call calendar link to homepage CLARITY_CALL_CALENDAR_LINK placeholder",
-  "Magazine ad — finalize design once publisher specs received (PDF, April 30 deadline)",
+  "YouTube coaching video URL — COMPLETE ✓",
+  "YouTube global slideshow URL — COMPLETE ✓",
+  "Magazine ad — final review in progress (PDF, April 30 deadline)",
 ];
 
 const SPRINTS = [
