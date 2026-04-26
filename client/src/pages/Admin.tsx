@@ -68,9 +68,14 @@ const PENDING_ITEMS = [
   "Provision SMS sequence (pending phone number support)",
   "Populate Resource Hub with first PDF downloads",
   "Set NEW_THIS_WEEK in Resources.tsx when first resource drops",
-  "YouTube coaching video URL — COMPLETE ✓",
-  "YouTube global slideshow URL — COMPLETE ✓",
   "Magazine ad — final review in progress (PDF, April 30 deadline)",
+  "Free tier access — Supabase tier field (free | paid · RLS controls · assessment auto-creates free account)",
+  "Free tier — Daily Connections (AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid)",
+  "Free tier — Resources (1 free PDF · rest locked · upgrade prompt)",
+  "PWA install prompt inside app after login",
+  "Daily Connections notification dot (red dot on Portal card · clears on visit)",
+  "Dynamic Transformation Pathway (Supabase tier field · GHL webhook writes back · stages unlock on purchase)",
+  "Daily Connections automated engine (Claude API · Supabase · scheduled daily generation)",
 ];
 
 const SPRINTS = [
@@ -107,13 +112,8 @@ const SPRINTS = [
       { label: "GitHub repos organized ✓", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
       { label: "Magazine bio — locked ✓", sub: "Universal bio for Apostolic Woman's Birthing Nations · April 30 print deadline · QR code included" },
       { label: "ROI page → Community Landing Page ✓", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
-      { label: "Free tier access — Supabase tier field", sub: "tier: free | paid · RLS controls · assessment auto-creates free account" },
-      { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
-      { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
-      { label: "PWA install prompt inside app after login", sub: "Fires from app.druaiconsulting.com so installed PWA opens to portal" },
-      { label: "Daily Connections notification dot", sub: "Red dot on Portal card when new content available · clears on visit" },
-      { label: "Dynamic Transformation Pathway", sub: "Supabase tier field · GHL webhook writes back · stages unlock on purchase" },
-      { label: "Daily Connections automated engine", sub: "Claude API · Supabase · scheduled daily generation" },
+      { label: "YouTube coaching video URL added ✓", sub: "Homepage video placeholder replaced with live URL" },
+      { label: "YouTube global slideshow URL added ✓", sub: "Homepage slideshow placeholder replaced with live URL" },
     ],
   },
   {
