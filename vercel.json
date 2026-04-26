@@ -1,9 +1,10 @@
 {
   "buildCommand": "vite build",
   "outputDirectory": "dist/public",
-"installCommand": "pnpm install --no-frozen-lockfile",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
   "rewrites": [
+    { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "redirects": [
