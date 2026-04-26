@@ -95,25 +95,25 @@ const SPRINTS = [
   {
     number: "3", title: "Revenue + Polish", status: "inprogress",
     items: [
-      { label: "Full pricing architecture — LIVE ✓", sub: "SD $3,497 · ED $4,997 · 4 frameworks · bundles · Full Ecosystem $26K" },
-      { label: "All 8 payment links active ✓", sub: "Terms modal → payment iframe → branded thank you page" },
-      { label: "8 branded thank you pages — LIVE ✓", sub: "ED/SD with calendar · 4 frameworks · Full Ecosystem with payment split" },
-      { label: "Full Ecosystem payment split ✓", sub: "$13K signing + $13K final — separate GHL payment links" },
-      { label: "Dynamic browser tab titles ✓", sub: "Every page has its own DRU CLEAR™ tab title" },
-      { label: "Personalized Portal — name + avatar ✓", sub: "Google photo or initials · Welcome Back, [FirstName] · trust stored names" },
-      { label: "Portal rebuilt as personal dashboard ✓", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
-      { label: "Resources page cleaned up ✓", sub: "Email capture removed · New This Week banner · resources added weekly note" },
-      { label: "Affiliate page updated ✓", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
-      { label: "Reset password flow — LIVE ✓", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password · skip text removed" },
-      { label: "NavBar updated — LIVE ✓", sub: "ROI replaced with Join the Community → /community · About · Frameworks · Daily · Resources · Affiliate" },
-      { label: "Community Landing Page — LIVE ✓", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired · Best Value badge fixed" },
-      { label: "GHL Homepage Funnel — LIVE ✓", sub: "15-section branded homepage built in HTML · all real GitHub images · single CTA → assessment · QR code section · premium shield badge" },
-      { label: "frameworks.druaiconsulting.com — LIVE ✓", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy · all 4 framework Learn More buttons point here" },
-      { label: "GitHub repos organized ✓", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
-      { label: "Magazine bio — locked ✓", sub: "Universal bio for Apostolic Woman's Birthing Nations · April 30 print deadline · QR code included" },
-      { label: "ROI page → Community Landing Page ✓", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
-      { label: "YouTube coaching video URL added ✓", sub: "Homepage video placeholder replaced with live URL" },
-      { label: "YouTube global slideshow URL added ✓", sub: "Homepage slideshow placeholder replaced with live URL" },
+      { label: "Full pricing architecture — LIVE", sub: "SD $3,497 · ED $4,997 · 4 frameworks · bundles · Full Ecosystem $26K" },
+      { label: "All 8 payment links active", sub: "Terms modal → payment iframe → branded thank you page" },
+      { label: "8 branded thank you pages — LIVE", sub: "ED/SD with calendar · 4 frameworks · Full Ecosystem with payment split" },
+      { label: "Full Ecosystem payment split", sub: "$13K signing + $13K final — separate GHL payment links" },
+      { label: "Dynamic browser tab titles", sub: "Every page has its own DRU CLEAR™ tab title" },
+      { label: "Personalized Portal — name + avatar", sub: "Google photo or initials · Welcome Back, [FirstName] · trust stored names" },
+      { label: "Portal rebuilt as personal dashboard", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
+      { label: "Resources page cleaned up", sub: "Email capture removed · New This Week banner · resources added weekly note" },
+      { label: "Affiliate page updated", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
+      { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password · skip text removed" },
+      { label: "NavBar updated — LIVE", sub: "ROI replaced with Join the Community → /community · About · Frameworks · Daily · Resources · Affiliate" },
+      { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired · Best Value badge fixed" },
+      { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage built in HTML · all real GitHub images · single CTA → assessment · QR code section · premium shield badge" },
+      { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy · all 4 framework Learn More buttons point here" },
+      { label: "GitHub repos organized", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
+      { label: "Magazine bio — locked", sub: "Universal bio for Apostolic Woman's Birthing Nations · April 30 print deadline · QR code included" },
+      { label: "ROI page → Community Landing Page", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
+      { label: "YouTube coaching video URL added", sub: "Homepage video placeholder replaced with live URL" },
+      { label: "YouTube global slideshow URL added", sub: "Homepage slideshow placeholder replaced with live URL" },
     ],
   },
   {
@@ -393,10 +393,10 @@ export default function Admin() {
                         {sprint.items.map((item, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                             <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                              {sprint.status === "completed" || item.label.includes("✓") ? "✓" : "→"}
+                              {sprint.status === "completed" || sprint.number === "3" ? "✓" : "→"}
                             </span>
                             <div>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" || item.label.includes("✓") ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" || sprint.number === "3" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
                               <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                             </div>
                           </div>
