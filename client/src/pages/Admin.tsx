@@ -393,10 +393,10 @@ export default function Admin() {
                         {sprint.items.map((item, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                             <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                              {sprint.status === "completed" ? "✓" : "→"}
+                              {sprint.status === "completed" || item.label.includes("✓") ? "✓" : "→"}
                             </span>
                             <div>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" || item.label.includes("✓") ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
                               <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                             </div>
                           </div>
