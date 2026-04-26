@@ -1,35 +1,66 @@
 import { useState } from "react";
 import NavBar from "../components/NavBar";
+import { useAuth } from "../contexts/AuthContext";
 
+// ── Client View imports (mirrors Portal) ──────────────────────────────────────
+function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
+  const firstName = user?.firstName || "";
+  const fullName = user?.fullName || firstName;
+  const email = user?.email || "";
+  const avatarUrl = user?.picture || null;
+  const displayFirst = firstName || email.split("@")[0] || "";
+  const initials = fullName
+    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : email.slice(0, 2).toUpperCase();
+  return { firstName: displayFirst, avatarUrl, initials };
+}
+
+function PortalAvatar({ user }: { user: any }) {
+  const { avatarUrl, initials } = getUserDisplay(user);
+  const [imgError, setImgError] = useState(false);
+  if (avatarUrl && !imgError) {
+    return (
+      <img src={avatarUrl} alt="Profile" onError={() => setImgError(true)}
+        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }} />
+    );
+  }
+  return (
+    <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(212,175,55,0.12)", border: "2px solid rgba(212,175,55,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#D4AF37", lineHeight: 1 }}>{initials}</span>
+    </div>
+  );
+}
+
+// ── Admin data ────────────────────────────────────────────────────────────────
 const STAT_CARDS = [
   { label: "Assessments Completed", value: "—", sub: "Connect GHL to see live data", icon: "📋", color: "#D4AF37" },
-  { label: "Leads Captured", value: "—", sub: "Total in funnel", icon: "👤", color: "#C2185B" },
-  { label: "Diagnostics Sold", value: "—", sub: "Strategic + Executive", icon: "💰", color: "#43A047" },
-  { label: "Sessions Booked", value: "—", sub: "Upcoming calls", icon: "📅", color: "#1E88E5" },
+  { label: "Leads Captured",         value: "—", sub: "Total in funnel",              icon: "👤", color: "#C2185B" },
+  { label: "Diagnostics Sold",       value: "—", sub: "Strategic + Executive",        icon: "💰", color: "#43A047" },
+  { label: "Sessions Booked",        value: "—", sub: "Upcoming calls",               icon: "📅", color: "#1E88E5" },
 ];
 
 const QUICK_LINKS = [
-  { label: "GHL Dashboard",         href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
-  { label: "Live Assessment",        href: "https://assessment.druaiconsulting.com", icon: "🚀" },
-  { label: "Main Website",           href: "https://druaiconsulting.com", icon: "🌐" },
-  { label: "Frameworks Page",        href: "https://frameworks.druaiconsulting.com", icon: "📐" },
-  { label: "GitHub — App",           href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
-  { label: "GitHub — Website",       href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
-  { label: "GitHub — Frameworks",    href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
-  { label: "Terms of Engagement",    href: "https://app.druaiconsulting.com/terms", icon: "📄" },
+  { label: "GHL Dashboard",      href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
+  { label: "Live Assessment",    href: "https://assessment.druaiconsulting.com", icon: "🚀" },
+  { label: "Main Website",       href: "https://druaiconsulting.com", icon: "🌐" },
+  { label: "Frameworks Page",    href: "https://frameworks.druaiconsulting.com", icon: "📐" },
+  { label: "GitHub — App",       href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
+  { label: "GitHub — Website",   href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
+  { label: "GitHub — Frameworks",href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
+  { label: "Terms of Engagement",href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
 const PAYMENT_LINKS = [
-  { label: "Executive Diagnostic",           price: "$4,997",  href: "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645", color: "#C2185B" },
-  { label: "Strategic Diagnostic",           price: "$3,497",  href: "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222", color: "#D4AF37" },
-  { label: "DRU CLEAR™ Framework",           price: "$7,500",  href: "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec", color: "#D4AF37" },
-  { label: "5D Leadership™",                 price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
-  { label: "5C Cultural DNA™",               price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
-  { label: "AI Sales Mastery™",              price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
-  { label: "Full Ecosystem — Signing ($13K)", price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
-  { label: "Full Ecosystem — Final ($13K)",   price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
-  { label: "DRU CLEAR™ Navigator — Founder", price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
-  { label: "DRU CLEAR™ Accelerator — Founder", price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
+  { label: "Executive Diagnostic",              price: "$4,997",  href: "https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645", color: "#C2185B" },
+  { label: "Strategic Diagnostic",              price: "$3,497",  href: "https://link.druaiconsulting.com/payment-link/69dc8f8d557558e89e51f222", color: "#D4AF37" },
+  { label: "DRU CLEAR™ Framework",              price: "$7,500",  href: "https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec", color: "#D4AF37" },
+  { label: "5D Leadership™",                    price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
+  { label: "5C Cultural DNA™",                  price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
+  { label: "AI Sales Mastery™",                 price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
+  { label: "Full Ecosystem — Signing ($13K)",    price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
+  { label: "Full Ecosystem — Final ($13K)",      price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
+  { label: "DRU CLEAR™ Navigator — Founder",    price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
+  { label: "DRU CLEAR™ Accelerator — Founder",  price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
 ];
 
 const PENDING_ITEMS = [
@@ -45,9 +76,7 @@ const PENDING_ITEMS = [
 
 const SPRINTS = [
   {
-    number: "1 & 2",
-    title: "Foundation",
-    status: "completed",
+    number: "1 & 2", title: "Foundation", status: "completed",
     items: [
       { label: "DRU CLEAR™ Scorecard PWA live", sub: "assessment.druaiconsulting.com redirects to app.druaiconsulting.com" },
       { label: "5 GHL automation workflows", sub: "Lead capture, completion, nurture, purchase workflows" },
@@ -60,9 +89,7 @@ const SPRINTS = [
     ],
   },
   {
-    number: "3",
-    title: "Revenue + Polish",
-    status: "inprogress",
+    number: "3", title: "Revenue + Polish", status: "inprogress",
     items: [
       { label: "Full pricing architecture — LIVE ✓", sub: "SD $3,497 · ED $4,997 · 4 frameworks · bundles · Full Ecosystem $26K" },
       { label: "All 8 payment links active ✓", sub: "Terms modal → payment iframe → branded thank you page" },
@@ -91,9 +118,7 @@ const SPRINTS = [
     ],
   },
   {
-    number: "4",
-    title: "The AI Empire",
-    status: "planned",
+    number: "4", title: "The AI Empire", status: "planned",
     items: [
       { label: "Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric" },
       { label: "DRU AI Agent Team — Full Virtual Organization", sub: "DeAnna at center · branded AI personas with names, photos, roles and taglines · 24/7 operation" },
@@ -121,7 +146,115 @@ const statusConfig = {
   planned:    { bg: "rgba(30,136,229,0.06)", border: "rgba(30,136,229,0.2)",  dot: "#1E88E5", label: "⏳ Planned",     headerBg: "rgba(30,136,229,0.04)" },
 };
 
+// ── View Toggle Component ─────────────────────────────────────────────────────
+function ViewToggle({ view, onChange }: { view: "admin" | "client"; onChange: (v: "admin" | "client") => void }) {
+  return (
+    <div style={{
+      display: "inline-flex", background: "rgba(255,255,255,0.05)",
+      border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8,
+      padding: 3, gap: 3, marginBottom: "1.5rem",
+    }}>
+      {(["admin", "client"] as const).map((mode) => {
+        const active = view === mode;
+        return (
+          <button key={mode} onClick={() => onChange(mode)} style={{
+            background: active ? (mode === "admin" ? "#C2185B" : "#D4AF37") : "transparent",
+            color: active ? "#FFFFFF" : "rgba(230,230,230,0.45)",
+            fontFamily: "'Montserrat', sans-serif", fontWeight: 700,
+            fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase",
+            border: "none", borderRadius: 6, padding: "0.45rem 1rem",
+            cursor: "pointer", transition: "all 0.2s",
+          }}>
+            {mode === "admin" ? "⚙️ Admin View" : "👤 Client View"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Client View ───────────────────────────────────────────────────────────────
+function ClientView({ user }: { user: any }) {
+  const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
+
+  const QUICK_ACTIONS = [
+    { icon: "📋", label: "My Assessment",    sub: "View your scorecard results",   href: "/",      external: false },
+    { icon: "⚡", label: "Daily Connection", sub: "Today's leadership insight",     href: "/daily", external: false, notification: true },
+    { icon: "✉️", label: "Need Support",     sub: "Send DeAnna a message",          href: "mailto:support@druaiconsulting.com", external: true },
+  ];
+
+  return (
+    <>
+      {/* Personalized welcome header */}
+      <div style={{ marginBottom: "2rem" }}>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
+          {user && <PortalAvatar user={user} />}
+          <div>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
+              {userDisplay.firstName
+                ? <>Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span></>
+                : <>Welcome Back</>}
+            </h1>
+            {user?.email && (
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>{user.email}</p>
+            )}
+          </div>
+        </div>
+        <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", lineHeight: 1.7 }}>
+          Everything you need to accelerate your AI leadership journey — in one place.
+        </p>
+      </div>
+
+      {/* 3 Quick action cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
+        {QUICK_ACTIONS.map((item) => (
+          <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
+            <div
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s", height: "100%", boxSizing: "border-box" as const, position: "relative" as const }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+            >
+              {item.notification && (
+                <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342" }} />
+              )}
+              <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item.sub}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {/* Transformation Pathway */}
+      <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your Transformation Pathway</p>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
+          {["Discover", "Diagnose", "Design", "Deploy", "Dominate"].map((stage, i) => (
+            <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+              <div style={{
+                background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`,
+                borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" as const,
+              }}>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: i === 0 ? "#FFFFFF" : i === 1 ? "#D4AF37" : "rgba(255,255,255,0.35)", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" }}>{stage}</p>
+              </div>
+              {i < 4 && <span style={{ color: "rgba(212,175,55,0.4)", fontSize: "0.8rem" }}>→</span>}
+            </div>
+          ))}
+        </div>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>
+          You are in the Discover stage. Your diagnostic unlocks the next step.
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ── Main Admin Component ──────────────────────────────────────────────────────
 export default function Admin() {
+  const { user } = useAuth();
+  const [view, setView] = useState<"admin" | "client">("admin");
   const [copied, setCopied] = useState(false);
 
   const copyBundleLink = () => {
@@ -138,142 +271,150 @@ export default function Admin() {
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 720, margin: "0 auto", width: "100%" }}>
 
         {/* Header */}
-        <div style={{ marginBottom: "2rem" }}>
+        <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
-          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
+          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", marginBottom: "1.25rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
+
+          {/* View Toggle — always visible, works on mobile + desktop */}
+          <ViewToggle view={view} onChange={setView} />
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
-          {STAT_CARDS.map((stat) => (
-            <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                <span style={{ fontSize: "1.1rem" }}>{stat.icon}</span>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem" }}>{stat.value}</p>
-              </div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>{stat.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Private Client Links */}
-        <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>🔒 Private Client Links</p>
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
-            <div style={{ marginBottom: 10 }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private · Send to client during diagnostic call · Full Ecosystem payment live</p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
-                Preview Page →
-              </a>
-              <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
-                {copied ? "✓ Copied!" : "Copy Link"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Quick Links</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-            {QUICK_LINKS.map((link) => (
-              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.15)"; }}
-              >
-                <span style={{ fontSize: "1rem" }}>{link.icon}</span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Payment Links */}
-        <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Payment Links</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {PAYMENT_LINKS.map((link) => (
-              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.12)"; }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: link.color, flexShrink: 0 }} />
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
+        {/* Conditional render */}
+        {view === "client" ? (
+          <ClientView user={user} />
+        ) : (
+          <>
+            {/* Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
+              {STAT_CARDS.map((stat) => (
+                <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <span style={{ fontSize: "1.1rem" }}>{stat.icon}</span>
+                    <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem" }}>{stat.value}</p>
+                  </div>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>{stat.sub}</p>
                 </div>
-                <span style={{ fontFamily: "'Playfair Display', serif", color: link.color, fontWeight: 700, fontSize: "0.85rem" }}>{link.price}</span>
-              </a>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
 
-        {/* Pending Items */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Pending Refinements</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {PENDING_ITEMS.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
-                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item}</p>
+            {/* Private Client Links */}
+            <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>🔒 Private Client Links</p>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
+                <div style={{ marginBottom: 10 }}>
+                  <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private · Send to client during diagnostic call · Full Ecosystem payment live</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
+                    Preview Page →
+                  </a>
+                  <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
+                    {copied ? "✓ Copied!" : "Copy Link"}
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Sprint Roadmap */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
-            <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Full Build Roadmap</p>
-            <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-          </div>
+            {/* Quick Links */}
+            <div style={{ marginBottom: "2rem" }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Quick Links</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                {QUICK_LINKS.map((link) => (
+                  <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.15)"; }}
+                  >
+                    <span style={{ fontSize: "1rem" }}>{link.icon}</span>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            {SPRINTS.map((sprint) => {
-              const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
-              return (
-                <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {/* Payment Links */}
+            <div style={{ marginBottom: "2rem" }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Payment Links</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {PAYMENT_LINKS.map((link) => (
+                  <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.12)"; }}
+                  >
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
-                      <div>
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
-                        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
+                      <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: link.color, flexShrink: 0 }} />
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
+                    </div>
+                    <span style={{ fontFamily: "'Playfair Display', serif", color: link.color, fontWeight: 700, fontSize: "0.85rem" }}>{link.price}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Pending Items */}
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Pending Refinements</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {PENDING_ITEMS.map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
+                    <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
+                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sprint Roadmap */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
+                <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Full Build Roadmap</p>
+                <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {SPRINTS.map((sprint) => {
+                  const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
+                  return (
+                    <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
+                          <div>
+                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
+                            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
+                      </div>
+                      <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {sprint.items.map((item, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                            <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
+                              {sprint.status === "completed" ? "✓" : "→"}
+                            </span>
+                            <div>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
-                  </div>
-                  <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                    {sprint.items.map((item, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                        <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                          {sprint.status === "completed" ? "✓" : "→"}
-                        </span>
-                        <div>
-                          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
-                          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
-              Launch Target · May 10, 2026 · app.druaiconsulting.com
-            </p>
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
+                  Launch Target · May 10, 2026 · app.druaiconsulting.com
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
       </main>
 
