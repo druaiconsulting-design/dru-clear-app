@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -37,12 +37,8 @@ const PATHWAY_STAGES = ["Discover", "Diagnose", "Design", "Deploy", "Dominate"];
 
 function isStageActive(stageName: string, pathwayStage: PathwayStage): boolean {
   if (stageName === "Discover") return true;
-  if (stageName === "Diagnose" || stageName === "Design") {
-    return pathwayStage === "diagnose" || pathwayStage === "deploy";
-  }
-  if (stageName === "Deploy" || stageName === "Dominate") {
-    return pathwayStage === "deploy";
-  }
+  if (stageName === "Diagnose" || stageName === "Design") return pathwayStage === "diagnose" || pathwayStage === "deploy";
+  if (stageName === "Deploy" || stageName === "Dominate") return pathwayStage === "deploy";
   return false;
 }
 
@@ -63,11 +59,7 @@ function getStageTextStyle(stageName: string, pathwayStage: PathwayStage): React
     (stageName === "Discover" && pathwayStage === "discover") ||
     ((stageName === "Diagnose" || stageName === "Design") && pathwayStage === "diagnose") ||
     ((stageName === "Deploy" || stageName === "Dominate") && pathwayStage === "deploy");
-  return {
-    fontFamily: "'Montserrat', sans-serif",
-    color: isCurrent ? "#FFFFFF" : active ? "#D4AF37" : "rgba(255,255,255,0.3)",
-    fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em",
-  };
+  return { fontFamily: "'Montserrat', sans-serif", color: isCurrent ? "#FFFFFF" : active ? "#D4AF37" : "rgba(255,255,255,0.3)", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" };
 }
 
 function getStatusText(pathwayStage: PathwayStage): string {
@@ -84,10 +76,10 @@ function getTodayCST(): string {
   return cst.toISOString().split("T")[0];
 }
 
-// ── Daily Connection State ────────────────────────────────────────────────────
+// ── Daily state type ──────────────────────────────────────────────────────────
 // unread    → red pulsing dot
-// read      → gold dot (seen but challenge not done)
-// completed → fire streak number (no dot)
+// read      → gold glowing dot
+// completed → fire streak (no dot)
 type DailyState = "unread" | "read" | "completed";
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -97,8 +89,9 @@ export default function Portal() {
   const [dailyState, setDailyState] = useState<DailyState>("unread");
   const [currentStreak, setCurrentStreak] = useState(0);
   const today = getTodayCST();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Check daily status — runs on mount AND when window is focused ─────────
+  // ── Check daily status ────────────────────────────────────────────────────
   const checkDailyStatus = useCallback(async () => {
     if (!user?.id) return;
 
@@ -124,17 +117,35 @@ export default function Portal() {
         .eq("user_id", user.id)
         .single();
 
-      if (streakData?.current_streak) {
-        setCurrentStreak(streakData.current_streak);
-      }
+      if (streakData?.current_streak) setCurrentStreak(streakData.current_streak);
     }
   }, [user?.id, today, isPaid]);
 
+  // ── Initial check + poll every 5s while page is visible ──────────────────
   useEffect(() => {
     checkDailyStatus();
+
+    // Poll every 5 seconds — stops when state reaches "completed"
+    intervalRef.current = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        checkDailyStatus();
+      }
+    }, 5000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [checkDailyStatus]);
 
-  // Re-check when user returns to this tab after visiting Daily page
+  // Stop polling once completed — no need to keep checking
+  useEffect(() => {
+    if (dailyState === "completed" && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, [dailyState]);
+
+  // Re-check on tab focus and visibility change
   useEffect(() => {
     const handleFocus = () => checkDailyStatus();
     const handleVisibility = () => { if (document.visibilityState === "visible") checkDailyStatus(); };
@@ -146,32 +157,29 @@ export default function Portal() {
     };
   }, [checkDailyStatus]);
 
-  // ── Daily Connection card indicator ───────────────────────────────────────
-  const getDailyCardIndicator = () => {
-    if (dailyState === "completed" && currentStreak > 0) {
-      // Fire streak — no dot, just the count
-      return null;
-    }
+  // ── Indicator logic ───────────────────────────────────────────────────────
+  const getDailyIndicator = () => {
     if (dailyState === "completed") return null;
+
     if (dailyState === "read") {
-      // Gold dot — seen but not completed
       return (
         <div style={{
           position: "absolute", top: 10, right: 10,
           width: 8, height: 8, borderRadius: "50%",
           background: "#D4AF37",
           border: "1.5px solid #0A2342",
-          boxShadow: "0 0 6px rgba(212,175,55,0.8)",
+          boxShadow: "0 0 6px rgba(212,175,55,0.9)",
         }} />
       );
     }
-    // Unread — red pulsing dot
+
+    // unread — pulsing red
     return (
       <>
         <style>{`
-          @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(194,24,91,0.7); }
-            70% { box-shadow: 0 0 0 6px rgba(194,24,91,0); }
+          @keyframes dru-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(194,24,91,0.8); }
+            70% { box-shadow: 0 0 0 7px rgba(194,24,91,0); }
             100% { box-shadow: 0 0 0 0 rgba(194,24,91,0); }
           }
         `}</style>
@@ -180,7 +188,7 @@ export default function Portal() {
           width: 8, height: 8, borderRadius: "50%",
           background: "#C2185B",
           border: "1.5px solid #0A2342",
-          animation: "pulse-red 1.5s ease-in-out infinite",
+          animation: "dru-pulse 1.5s ease-in-out infinite",
         }} />
       </>
     );
@@ -193,46 +201,20 @@ export default function Portal() {
     return "Today's leadership insight";
   };
 
-  // Gold border glow at 7+ day streak
-  const getDailyCardBorder = () => {
-    if (dailyState === "completed" && currentStreak >= 7) {
-      return "1px solid rgba(212,175,55,0.7)";
-    }
-    return "1px solid rgba(212,175,55,0.2)";
-  };
+  const getDailyBorder = () =>
+    dailyState === "completed" && currentStreak >= 7
+      ? "1px solid rgba(212,175,55,0.7)"
+      : "1px solid rgba(212,175,55,0.2)";
 
-  const getDailyCardGlow = () => {
-    if (dailyState === "completed" && currentStreak >= 7) {
-      return "0 0 16px rgba(212,175,55,0.2)";
-    }
-    return "none";
-  };
+  const getDailyGlow = () =>
+    dailyState === "completed" && currentStreak >= 7
+      ? "0 0 18px rgba(212,175,55,0.25)"
+      : "none";
 
   const QUICK_ACTIONS = [
-    {
-      key: "assessment",
-      icon: "📋",
-      label: "My Assessment",
-      sub: "View your scorecard results",
-      href: "/",
-    },
-    {
-      key: "daily",
-      icon: "⚡",
-      label: "Daily Connection",
-      sub: getDailySub(),
-      href: "/daily",
-      indicatorFn: getDailyCardIndicator,
-      borderFn: getDailyCardBorder,
-      glowFn: getDailyCardGlow,
-    },
-    {
-      key: "support",
-      icon: "✉️",
-      label: "Need Support",
-      sub: "Send DeAnna a message",
-      href: "mailto:support@druaiconsulting.com",
-    },
+    { key: "assessment", icon: "📋", label: "My Assessment", sub: "View your scorecard results", href: "/" },
+    { key: "daily", icon: "⚡", label: "Daily Connection", sub: getDailySub(), href: "/daily", isDaily: true },
+    { key: "support", icon: "✉️", label: "Need Support", sub: "Send DeAnna a message", href: "mailto:support@druaiconsulting.com" },
   ];
 
   return (
@@ -241,7 +223,7 @@ export default function Portal() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
-        {/* Personalized welcome header */}
+        {/* Welcome header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
@@ -250,14 +232,9 @@ export default function Portal() {
               <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
                 {userDisplay.firstName
                   ? <>Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span></>
-                  : <>Welcome Back</>
-                }
+                  : <>Welcome Back</>}
               </h1>
-              {user?.email && (
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>
-                  {user.email}
-                </p>
-              )}
+              {user?.email && <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>{user.email}</p>}
             </div>
           </div>
           <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", lineHeight: 1.7 }}>
@@ -272,26 +249,16 @@ export default function Portal() {
               <div
                 style={{
                   background: "rgba(255,255,255,0.04)",
-                  border: item.borderFn ? item.borderFn() : "1px solid rgba(212,175,55,0.2)",
-                  boxShadow: item.glowFn ? item.glowFn() : "none",
-                  borderRadius: 10,
-                  padding: "1.25rem 1rem",
-                  cursor: "pointer",
-                  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
-                  height: "100%",
-                  boxSizing: "border-box" as const,
-                  position: "relative" as const,
+                  border: item.isDaily ? getDailyBorder() : "1px solid rgba(212,175,55,0.2)",
+                  boxShadow: item.isDaily ? getDailyGlow() : "none",
+                  borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer",
+                  transition: "border-color 0.2s, background 0.2s, box-shadow 0.3s",
+                  height: "100%", boxSizing: "border-box" as const, position: "relative" as const,
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)";
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = item.borderFn ? item.borderFn().replace("border: ", "") : "rgba(212,175,55,0.2)";
-                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
-                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = item.isDaily ? getDailyBorder().replace("border: ", "") : "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
               >
-                {item.indicatorFn && item.indicatorFn()}
+                {item.isDaily && getDailyIndicator()}
                 <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
                 <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item.sub}</p>
@@ -326,9 +293,7 @@ export default function Portal() {
                 <div style={getStageStyle(stage, pathwayStage)}>
                   <p style={getStageTextStyle(stage, pathwayStage)}>{stage}</p>
                 </div>
-                {i < 4 && (
-                  <span style={{ color: isStageActive(PATHWAY_STAGES[i + 1], pathwayStage) ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)", fontSize: "0.8rem" }}>→</span>
-                )}
+                {i < 4 && <span style={{ color: isStageActive(PATHWAY_STAGES[i + 1], pathwayStage) ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)", fontSize: "0.8rem" }}>→</span>}
               </div>
             ))}
           </div>
