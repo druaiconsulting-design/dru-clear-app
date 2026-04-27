@@ -124,7 +124,6 @@ export default function Daily() {
           .eq("user_id", user!.id)
           .eq("read_date", today)
           .maybeSingle();
-
         if (readData?.completed_at) setCompleted(true);
 
         const { data: streakData } = await supabase
@@ -132,14 +131,13 @@ export default function Daily() {
           .select("current_streak, longest_streak, total_completions")
           .eq("user_id", user!.id)
           .maybeSingle();
-
         if (streakData) setStreak(streakData);
       } catch {}
     }
     fetchStatus();
   }, [user?.id, today]);
 
-  // ── Mark as read directly via Supabase ───────────────────────────────────
+  // ── Mark as read ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.id) return;
     supabase
@@ -156,31 +154,21 @@ export default function Daily() {
     if (completed || completing || !user?.id) return;
     setCompleting(true);
     const now = new Date().toISOString();
-
     try {
-      // Write completed_at directly — this is what Portal reads
       await supabase
         .from("user_daily_reads")
         .upsert(
           { user_id: user.id, read_date: today, completed_at: now, read_at: now },
           { onConflict: "user_id,read_date" }
         );
-
       setCompleted(true);
-
-      // Call edge function for streak math (non-blocking)
       supabase.functions.invoke("handle-daily-action", {
         body: { action: "complete_challenge", user_id: user.id, read_date: today },
       }).then(({ data }) => {
         if (data?.current_streak !== undefined) {
-          setStreak({
-            current_streak: data.current_streak,
-            longest_streak: data.longest_streak,
-            total_completions: data.total_completions,
-          });
+          setStreak({ current_streak: data.current_streak, longest_streak: data.longest_streak, total_completions: data.total_completions });
         }
       }).catch(() => {});
-
     } catch {
       setCompleted(true);
     } finally {
@@ -224,7 +212,7 @@ export default function Daily() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-            {/* AI Leadership Insight — always free */}
+            {/* AI Leadership Insight */}
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.3)", borderLeft: "3px solid #D4AF37", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
                 <span style={{ fontSize: "1.1rem" }}>⚡</span>
@@ -233,7 +221,7 @@ export default function Daily() {
               <p style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{displayContent.insight}</p>
             </div>
 
-            {/* Framework Micro-Lesson — paid only */}
+            {/* Framework Micro-Lesson */}
             {isPaid ? (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(194,24,91,0.3)", borderLeft: "3px solid #C2185B", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
@@ -249,7 +237,7 @@ export default function Daily() {
               <LockedCard title="Framework Micro-Lesson" icon="🧠" color="#C2185B" teaser={displayContent.lesson} />
             )}
 
-            {/* Action Challenge — paid only */}
+            {/* Action Challenge */}
             {isPaid ? (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(30,136,229,0.3)", borderLeft: "3px solid #1E88E5", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
@@ -278,7 +266,7 @@ export default function Daily() {
                     boxShadow: completed ? "0 0 18px rgba(212,175,55,0.45)" : "none",
                   }}
                 >
-                  {completed ? "✓  Completed" : completing ? "Saving..." : "I Completed This Challenge"}
+                  {completed ? "✓  Completed" : completing ? "Saving..." : "Mark Completed"}
                 </button>
 
                 {completed && streak.current_streak > 0 && (
@@ -300,7 +288,7 @@ export default function Daily() {
           <p style={{ color: "rgba(230,230,230,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>
             Know a leader who needs this? Share the DRU CLEAR™ Scorecard and start the conversation.
           </p>
-          <a href="/" style={{ display: "inline-block", marginTop: "0.6rem", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none" }}>
+          <a href="https://assessment.druaiconsulting.com" style={{ display: "inline-block", marginTop: "0.6rem", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none" }}>
             Share the Assessment →
           </a>
         </div>
