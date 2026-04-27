@@ -58,8 +58,6 @@ const PAYMENT_LINKS = [
 ];
 
 const PENDING_ITEMS = [
-  "Magazine ad — complete · final personal review before submission · April 30 deadline",
-  "Daily Connections automated engine — IN PROGRESS · API key set up · SQL + Edge Functions + Daily.tsx next",
   "SMS sequences — pending GHL phone number provisioning",
   "Add 2 PDFs to app for user access — delegated to AI Agents (Sprint 4)",
 ];
@@ -79,7 +77,7 @@ const SPRINTS = [
     ],
   },
   {
-    number: "3", title: "Revenue + Polish", status: "inprogress",
+    number: "3", title: "Revenue + Polish", status: "completed",
     items: [
       { label: "Full pricing architecture — LIVE", sub: "SD $3,497 · ED $4,997 · 4 frameworks · bundles · Full Ecosystem $26K" },
       { label: "All 8 payment links active", sub: "Terms modal → payment iframe → branded thank you page" },
@@ -91,7 +89,7 @@ const SPRINTS = [
       { label: "Resources page cleaned up", sub: "Email capture removed · New This Week banner · resources added weekly note" },
       { label: "Affiliate page updated", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
       { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password · skip text removed" },
-      { label: "NavBar updated — LIVE", sub: "ROI replaced with Join the Community → /community · About · Frameworks · Daily · Resources · Affiliate" },
+      { label: "NavBar updated — LIVE", sub: "ROI replaced with Join the Community · duplicate CLIENT VIEW/ADMIN VIEW removed · clean nav for all users" },
       { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired · Best Value badge fixed" },
       { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage built in HTML · all real GitHub images · single CTA → assessment · QR code section · premium shield badge" },
       { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy · all 4 framework Learn More buttons point here" },
@@ -103,34 +101,39 @@ const SPRINTS = [
       { label: "Add PDF assets to Supabase resource sequences", sub: "DRU CLEAR™ AI Leadership Manual 101 uploaded to Supabase Storage · public URLs live" },
       { label: "Populate Resource Hub with first PDF downloads", sub: "Manual 101 live in Resources.tsx · direct download from Supabase" },
       { label: "Set NEW_THIS_WEEK in Resources.tsx", sub: "Banner live · DRU CLEAR™ AI Leadership Manual 101 featured" },
-      { label: "Daily Connections notification dot", sub: "Red dot on Portal card · clears on visit" },
       { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired · real-time counts" },
       { label: "Free tier access — Supabase tier field", sub: "free | paid · RLS controls · assessment auto-creates free account" },
       { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
       { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
       { label: "PWA favicon updated — DC shield icon", sub: "icon-192x192.png and icon-512x512.png added to public folder · index.html updated · CDN links replaced" },
       { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com · navy loading screen · no flash" },
-      { label: "Route Security — protected routes locked down", sub: "/frameworks · /community · /affiliate require login · redirects to /login · public routes clearly organized" },
-      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · update_pathway_stage RPC · Edge Function auto-updates on purchase · AuthContext + Portal live · 3 values map to 5 visual stages with paired unlocks" },
+      { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login · public routes clearly organized · no bypass possible" },
+      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · paired unlocks · Edge Function auto-updates on purchase · zero manual work" },
+      { label: "GHL tags created — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy · unlocks Deploy + Dominate stages" },
+      { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware (discover/diagnose/deploy) · leadership WITH AI blend · stored in Supabase · fallback content if generation hasn't run" },
+      { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing dot · Read: gold glow dot · Completed: 🔥 streak number · 7-day streak: gold card border glow + milestone banner" },
+      { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions · shown on both Daily page and Portal card · resets if day missed" },
+      { label: "Mark Completed button — gold on completion", sub: "Blue → gold with glow + checkmark · streak fires after completion · Portal dot updates on tab return" },
+      { label: "Need Support card — mailto with pre-filled subject", sub: "Opens email client with support@druaiconsulting.com + Subject: Support Request — DRU CLEAR™ Member" },
+      { label: "My Assessment card — routes to assessment site", sub: "https://assessment.druaiconsulting.com · fixes auth loop for logged-in users" },
     ],
   },
   {
     number: "4", title: "The AI Empire", status: "planned",
     items: [
-      { label: "Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric" },
-      { label: "DRU AI Agent Team — Full Virtual Organization", sub: "DeAnna at center · branded AI personas with names, photos, roles and taglines · 24/7 operation" },
-      { label: "Agent Architecture — 3 layers", sub: "Layer 1: Brand presence (Augusta model) · Layer 2: Org structure with workflows (Compliance model) · Layer 3: Operational departments (Marketing model)" },
-      { label: "Framework Agent Teams", sub: "Each of the 4 frameworks gets its own dedicated AI agent · DRU CLEAR™ · 5D · 5C · AI Sales" },
-      { label: "Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · momentum building before humans arrive" },
-      { label: "DeAnna's AI Twin — private build", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · never sleeps" },
-      { label: "Agent Roles to build", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
-      { label: "AI Literacy — 4 Week Course + Workbook Companion", sub: "Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
-      { label: "DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
-      { label: "DRU CLEAR™ Navigator — $97/mo", sub: "Tools · Content · Community · AI-assisted self-directed transformation" },
-      { label: "DRU CLEAR™ Accelerator — $297/mo", sub: "Everything in Navigator + DeAnna access · group sessions · private community · advanced AI tools" },
-      { label: "White label LMS licensing", sub: "Other consultants pay monthly to use your platform" },
-      { label: "Community — in-app", sub: "Launch when 20+ active clients" },
-      { label: "Affiliate dashboard", sub: "Track referrals · commissions · top referrer rewards" },
+      { label: "Phase 1 — DeAnna's AI Twin (private build)", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · powers all other agents · build first — everything depends on it" },
+      { label: "Phase 1 — Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric · secure the ecosystem before scale" },
+      { label: "Phase 2 — Agent Architecture — 3 layers", sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design org chart before building departments" },
+      { label: "Phase 2 — Framework Agent Teams", sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
+      { label: "Phase 2 — Agent Roles", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
+      { label: "Phase 3 — Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
+      { label: "Phase 3 — Community — in-app", sub: "Launch when 20+ active clients · agents already running by this point" },
+      { label: "Phase 3 — Affiliate dashboard", sub: "Track referrals · commissions · top referrer rewards" },
+      { label: "Phase 4 — Daily Connections tier upgrade", sub: "Add 'accelerator' as 3rd Supabase tier value · Free: Insight only · Navigator: all 3 cards · Accelerator: all 3 + 4th exclusive card (weekly DeAnna strategic prompt or Accelerator-only challenge) · foundation already built" },
+      { label: "Phase 4 — AI Literacy — From Confusion to Confident with AI™", sub: "4-week course · Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
+      { label: "Phase 4 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
+      { label: "Phase 4 — Navigator $97/mo + Accelerator $297/mo", sub: "Price increase from founder pricing · Navigator: full Daily Connection (all 3 cards) · Accelerator: all 3 + exclusive 4th card · locked in memory" },
+      { label: "Phase 4 — White label LMS licensing", sub: "Other consultants pay monthly to use your platform · requires everything above to be proven first" },
     ],
   },
 ];
@@ -225,9 +228,9 @@ function ClientView({ user }: { user: any }) {
   const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
 
   const QUICK_ACTIONS = [
-    { icon: "📋", label: "My Assessment",    sub: "View your scorecard results",   href: "/",      external: false },
+    { icon: "📋", label: "My Assessment",    sub: "View your scorecard results",   href: "https://assessment.druaiconsulting.com", external: false },
     { icon: "⚡", label: "Daily Connection", sub: "Today's leadership insight",     href: "/daily", external: false, notification: true },
-    { icon: "✉️", label: "Need Support",     sub: "Send DeAnna a message",          href: "mailto:support@druaiconsulting.com", external: true },
+    { icon: "✉️", label: "Need Support",     sub: "Email us anytime",              href: "mailto:support@druaiconsulting.com?subject=Support%20Request%20%E2%80%94%20DRU%20CLEAR%E2%84%A2%20Member", external: true },
   ];
 
   return (
@@ -272,7 +275,7 @@ function ClientView({ user }: { user: any }) {
       </div>
 
       <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your Transformation Pathway</p>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your DRU AI Transformation Pathway™</p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
           {["Discover", "Diagnose", "Design", "Deploy", "Dominate"].map((stage, i) => (
             <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
@@ -442,10 +445,10 @@ export default function Admin() {
                         {sprint.items.map((item, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                             <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                              {sprint.status === "completed" || sprint.number === "3" ? "✓" : "→"}
+                              {sprint.status === "completed" ? "✓" : "→"}
                             </span>
                             <div>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" || sprint.number === "3" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
                               <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                             </div>
                           </div>
