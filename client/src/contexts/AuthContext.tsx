@@ -39,7 +39,6 @@ function getRole(email: string): UserRole {
   return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "client";
 }
 
-// Capitalize first letter of a name — only when falling back to email prefix
 function capitalize(str: string): string {
   if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -50,49 +49,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) setUser(buildUser(session.user));
-      setLoading(false);
-    });
+  // ── Fetch tier from profiles table ────────────────────────────────────────
+  // This ensures tier is always accurate — GHL writes to profiles via Edge Function
+  // User metadata alone can lag behind until next login
+  async function fetchTierFromProfile(userId: string): Promise<UserTier> {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("tier")
+        .eq("id", userId)
+        .single();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) setUser(buildUser(session.user));
-      else setUser(null);
-      setLoading(false);
-    });
+      if (error || !data) return "free";
+      return (data.tier === "paid") ? "paid" : "free";
+    } catch {
+      return "free";
+    }
+  }
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  function buildUser(supabaseUser: User): AuthUser {
+  async function buildUser(supabaseUser: User): Promise<AuthUser> {
     const email = supabaseUser.email || "";
     const meta = supabaseUser.user_metadata || {};
     const role = getRole(email);
 
-    // Full name — Google stores as full_name or name — trust as-is
     const fullName = meta.full_name || meta.name || "";
-
-    // First name — priority order, trust stored names as-is
     const storedFirst =
       meta.given_name ||
       meta.first_name ||
       (fullName ? fullName.split(" ")[0] : "");
 
-    // Only capitalize if falling back to email prefix
     const emailPrefix = email.split("@")[0] || "";
     const firstName = storedFirst || capitalize(emailPrefix) || "";
-
     const picture = meta.avatar_url || meta.picture || null;
 
-    // ── Tier resolution ─────────────────────────────────────────────────────
-    // Admin is always paid (for testing and full access)
-    // Otherwise read from user metadata — defaults to free
+    // Admin always gets paid — fetch from profiles for all other users
     const tier: UserTier = role === "admin"
       ? "paid"
-      : (meta.tier === "paid" ? "paid" : "free");
+      : await fetchTierFromProfile(supabaseUser.id);
 
     return {
       id: supabaseUser.id,
@@ -104,6 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       picture: picture || undefined,
     };
   }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) setUser(await buildUser(session.user));
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session?.user) setUser(await buildUser(session.user));
+      else setUser(null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loginAdmin = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
