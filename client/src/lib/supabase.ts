@@ -25,6 +25,7 @@ export type Database = {
           first_name: string | null;
           last_name: string | null;
           role: string;
+          tier: "free" | "paid";
           picture: string | null;
           google_auth: boolean;
           assessment_score: number | null;
