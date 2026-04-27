@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 import type { PathwayStage } from "../contexts/AuthContext";
 
 function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
@@ -31,12 +32,7 @@ function PortalAvatar({ user }: { user: any }) {
   );
 }
 
-// ─── Pathway Stage Logic ──────────────────────────────────────────────────────
-// 3 stored values map to 5 visual stages with paired unlocks:
-//   discover  → Discover active only
-//   diagnose  → Discover + Diagnose + Design active (purchased diagnostic)
-//   deploy    → All 5 active (purchased framework or bundle)
-
+// ── Pathway Stage Logic ───────────────────────────────────────────────────────
 const PATHWAY_STAGES = ["Discover", "Diagnose", "Design", "Deploy", "Dominate"];
 
 function isStageActive(stageName: string, pathwayStage: PathwayStage): boolean {
@@ -58,30 +54,12 @@ function getStageStyle(stageName: string, pathwayStage: PathwayStage): React.CSS
     ((stageName === "Deploy" || stageName === "Dominate") && pathwayStage === "deploy");
 
   if (isCurrent) {
-    return {
-      background: "#C2185B",
-      border: "1px solid #C2185B",
-      borderRadius: 6,
-      padding: "0.4rem 0.75rem",
-      textAlign: "center",
-    };
+    return { background: "#C2185B", border: "1px solid #C2185B", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
   }
   if (active) {
-    return {
-      background: "rgba(212,175,55,0.15)",
-      border: "1px solid rgba(212,175,55,0.5)",
-      borderRadius: 6,
-      padding: "0.4rem 0.75rem",
-      textAlign: "center",
-    };
+    return { background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.5)", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
   }
-  return {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 6,
-    padding: "0.4rem 0.75rem",
-    textAlign: "center",
-  };
+  return { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
 }
 
 function getStageTextStyle(stageName: string, pathwayStage: PathwayStage): React.CSSProperties {
@@ -90,33 +68,64 @@ function getStageTextStyle(stageName: string, pathwayStage: PathwayStage): React
     (stageName === "Discover" && pathwayStage === "discover") ||
     ((stageName === "Diagnose" || stageName === "Design") && pathwayStage === "diagnose") ||
     ((stageName === "Deploy" || stageName === "Dominate") && pathwayStage === "deploy");
-
   return {
     fontFamily: "'Montserrat', sans-serif",
     color: isCurrent ? "#FFFFFF" : active ? "#D4AF37" : "rgba(255,255,255,0.3)",
-    fontWeight: 700,
-    fontSize: "0.72rem",
-    letterSpacing: "0.06em",
+    fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em",
   };
 }
 
 function getStatusText(pathwayStage: PathwayStage): string {
-  if (pathwayStage === "discover") {
-    return "You are in the Discover stage. Your diagnostic purchase unlocks Diagnose + Design.";
-  }
-  if (pathwayStage === "diagnose") {
-    return "Diagnose + Design are unlocked. A framework or bundle purchase unlocks Deploy + Dominate.";
-  }
-  if (pathwayStage === "deploy") {
-    return "Your full transformation pathway is unlocked. Your AI leadership journey is underway.";
-  }
+  if (pathwayStage === "discover") return "You are in the Discover stage. Your diagnostic purchase unlocks Diagnose + Design.";
+  if (pathwayStage === "diagnose") return "Diagnose + Design are unlocked. A framework or bundle purchase unlocks Deploy + Dominate.";
+  if (pathwayStage === "deploy") return "Your full transformation pathway is unlocked. Your AI leadership journey is underway.";
   return "";
+}
+
+function getTodayCST(): string {
+  const now = new Date();
+  const cstOffset = -6 * 60;
+  const cst = new Date(now.getTime() + cstOffset * 60 * 1000);
+  return cst.toISOString().split("T")[0];
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Portal() {
-  const { user, pathwayStage } = useAuth();
+  const { user, pathwayStage, isPaid } = useAuth();
   const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
+  const [hasNewDaily, setHasNewDaily] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const today = getTodayCST();
+
+  // ── Check unread daily + fetch streak ────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+
+    async function checkDailyStatus() {
+      const { data: readData } = await supabase
+        .from("user_daily_reads")
+        .select("read_at")
+        .eq("user_id", user!.id)
+        .eq("read_date", today)
+        .single();
+
+      setHasNewDaily(!readData);
+
+      if (isPaid) {
+        const { data: streakData } = await supabase
+          .from("user_streaks")
+          .select("current_streak")
+          .eq("user_id", user!.id)
+          .single();
+
+        if (streakData?.current_streak) {
+          setCurrentStreak(streakData.current_streak);
+        }
+      }
+    }
+
+    checkDailyStatus();
+  }, [user?.id, today, isPaid]);
 
   const QUICK_ACTIONS = [
     {
@@ -124,22 +133,21 @@ export default function Portal() {
       label: "My Assessment",
       sub: "View your scorecard results",
       href: "/",
-      external: false,
+      notification: false,
     },
     {
       icon: "⚡",
       label: "Daily Connection",
-      sub: "Today's leadership insight",
+      sub: currentStreak > 0 ? `🔥 ${currentStreak}-day streak` : "Today's leadership insight",
       href: "/daily",
-      external: false,
-      notification: true,
+      notification: hasNewDaily,
     },
     {
       icon: "✉️",
       label: "Need Support",
       sub: "Send DeAnna a message",
       href: "mailto:support@druaiconsulting.com",
-      external: true,
+      notification: false,
     },
   ];
 
@@ -182,7 +190,6 @@ export default function Portal() {
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
               >
-                {/* Notification dot */}
                 {item.notification && (
                   <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342" }} />
                 )}
@@ -194,7 +201,7 @@ export default function Portal() {
           ))}
         </div>
 
-        {/* ── Dynamic Transformation Pathway ────────────────────────────────── */}
+        {/* Dynamic Transformation Pathway */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>
             Your DRU AI Transformation Pathway™
@@ -215,7 +222,6 @@ export default function Portal() {
             {getStatusText(pathwayStage)}
           </p>
         </div>
-        {/* ──────────────────────────────────────────────────────────────────── */}
 
       </main>
 
