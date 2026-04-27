@@ -58,7 +58,7 @@ const PAYMENT_LINKS = [
 ];
 
 const PENDING_ITEMS = [
-  "⚠️ Magazine ad — April 30 deadline — PDF final review in progress",
+  "Magazine ad — complete · final personal review before submission · April 30 deadline",
   "Daily Connections automated engine — IN PROGRESS · API key set up · SQL + Edge Functions + Daily.tsx next",
   "SMS sequences — pending GHL phone number provisioning",
   "Add 2 PDFs to app for user access — delegated to AI Agents (Sprint 4)",
