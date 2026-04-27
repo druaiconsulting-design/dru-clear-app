@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -44,77 +44,77 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+async function fetchTierFromProfile(userId: string): Promise<UserTier> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", userId)
+      .single();
+    if (error || !data) return "free";
+    return data.tier === "paid" ? "paid" : "free";
+  } catch {
+    return "free";
+  }
+}
+
+async function buildUser(supabaseUser: User): Promise<AuthUser> {
+  const email = supabaseUser.email || "";
+  const meta = supabaseUser.user_metadata || {};
+  const role = getRole(email);
+
+  const fullName = meta.full_name || meta.name || "";
+  const storedFirst =
+    meta.given_name ||
+    meta.first_name ||
+    (fullName ? fullName.split(" ")[0] : "");
+
+  const emailPrefix = email.split("@")[0] || "";
+  const firstName = storedFirst || capitalize(emailPrefix) || "";
+  const picture = meta.avatar_url || meta.picture || null;
+
+  const tier: UserTier = role === "admin"
+    ? "paid"
+    : await fetchTierFromProfile(supabaseUser.id);
+
+  return {
+    id: supabaseUser.id,
+    email,
+    role,
+    tier,
+    firstName: firstName || undefined,
+    fullName: fullName || undefined,
+    picture: picture || undefined,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch tier from profiles table ────────────────────────────────────────
-  // This ensures tier is always accurate — GHL writes to profiles via Edge Function
-  // User metadata alone can lag behind until next login
-  async function fetchTierFromProfile(userId: string): Promise<UserTier> {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("tier")
-        .eq("id", userId)
-        .single();
-
-      if (error || !data) return "free";
-      return (data.tier === "paid") ? "paid" : "free";
-    } catch {
-      return "free";
+  const handleSession = useCallback(async (session: Session | null) => {
+    setSession(session);
+    if (session?.user) {
+      const builtUser = await buildUser(session.user);
+      setUser(builtUser);
+    } else {
+      setUser(null);
     }
-  }
-
-  async function buildUser(supabaseUser: User): Promise<AuthUser> {
-    const email = supabaseUser.email || "";
-    const meta = supabaseUser.user_metadata || {};
-    const role = getRole(email);
-
-    const fullName = meta.full_name || meta.name || "";
-    const storedFirst =
-      meta.given_name ||
-      meta.first_name ||
-      (fullName ? fullName.split(" ")[0] : "");
-
-    const emailPrefix = email.split("@")[0] || "";
-    const firstName = storedFirst || capitalize(emailPrefix) || "";
-    const picture = meta.avatar_url || meta.picture || null;
-
-    // Admin always gets paid — fetch from profiles for all other users
-    const tier: UserTier = role === "admin"
-      ? "paid"
-      : await fetchTierFromProfile(supabaseUser.id);
-
-    return {
-      id: supabaseUser.id,
-      email,
-      role,
-      tier,
-      firstName: firstName || undefined,
-      fullName: fullName || undefined,
-      picture: picture || undefined,
-    };
-  }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) setUser(await buildUser(session.user));
-      setLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user) setUser(await buildUser(session.user));
-      else setUser(null);
-      setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
     });
 
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleSession]);
 
   const loginAdmin = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
