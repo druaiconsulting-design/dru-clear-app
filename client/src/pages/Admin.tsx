@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 // ── Client View imports (mirrors Portal) ──────────────────────────────────────
 function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
@@ -32,13 +33,6 @@ function PortalAvatar({ user }: { user: any }) {
 }
 
 // ── Admin data ────────────────────────────────────────────────────────────────
-const STAT_CARDS = [
-  { label: "Assessments Completed", value: "—", sub: "Connect GHL to see live data", icon: "📋", color: "#D4AF37" },
-  { label: "Leads Captured",         value: "—", sub: "Total in funnel",              icon: "👤", color: "#C2185B" },
-  { label: "Diagnostics Sold",       value: "—", sub: "Strategic + Executive",        icon: "💰", color: "#43A047" },
-  { label: "Sessions Booked",        value: "—", sub: "Upcoming calls",               icon: "📅", color: "#1E88E5" },
-];
-
 const QUICK_LINKS = [
   { label: "GHL Dashboard",      href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
   { label: "Live Assessment",    href: "https://assessment.druaiconsulting.com", icon: "🚀" },
@@ -64,16 +58,11 @@ const PAYMENT_LINKS = [
 ];
 
 const PENDING_ITEMS = [
-  "Add PDF assets to GHL resource sequences",
-  "Provision SMS sequence (pending phone number support)",
-  "Populate Resource Hub with first PDF downloads",
-  "Set NEW_THIS_WEEK in Resources.tsx when first resource drops",
   "Magazine ad — final review in progress (PDF, April 30 deadline)",
   "Free tier access — Supabase tier field (free | paid · RLS controls · assessment auto-creates free account)",
   "Free tier — Daily Connections (AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid)",
   "Free tier — Resources (1 free PDF · rest locked · upgrade prompt)",
   "PWA install prompt inside app after login",
-  "Daily Connections notification dot (red dot on Portal card · clears on visit)",
   "Dynamic Transformation Pathway (Supabase tier field · GHL webhook writes back · stages unlock on purchase)",
   "Daily Connections automated engine (Claude API · Supabase · scheduled daily generation)",
 ];
@@ -114,6 +103,12 @@ const SPRINTS = [
       { label: "ROI page → Community Landing Page", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
       { label: "YouTube coaching video URL added", sub: "Homepage video placeholder replaced with live URL" },
       { label: "YouTube global slideshow URL added", sub: "Homepage slideshow placeholder replaced with live URL" },
+      { label: "Add PDF assets to Supabase resource sequences", sub: "DRU CLEAR™ AI Leadership Manual 101 uploaded to Supabase Storage · public URLs live" },
+      { label: "Provision SMS sequence", sub: "Pending phone number support" },
+      { label: "Populate Resource Hub with first PDF downloads", sub: "Manual 101 live in Resources.tsx · direct download from Supabase" },
+      { label: "Set NEW_THIS_WEEK in Resources.tsx", sub: "Banner live · DRU CLEAR™ AI Leadership Manual 101 featured" },
+      { label: "Daily Connections notification dot", sub: "Red dot on Portal card · clears on visit" },
+      { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired · real-time counts" },
     ],
   },
   {
@@ -144,6 +139,56 @@ const statusConfig = {
   inprogress: { bg: "rgba(212,175,55,0.08)", border: "rgba(212,175,55,0.35)", dot: "#D4AF37", label: "🔄 In Progress", headerBg: "rgba(212,175,55,0.06)" },
   planned:    { bg: "rgba(30,136,229,0.06)", border: "rgba(30,136,229,0.2)",  dot: "#1E88E5", label: "⏳ Planned",     headerBg: "rgba(30,136,229,0.04)" },
 };
+
+// ── Stats Hook ────────────────────────────────────────────────────────────────
+interface Stats {
+  assessments_completed: number;
+  leads_captured: number;
+  diagnostics_sold: number;
+  sessions_booked: number;
+}
+
+function useStats() {
+  const [stats, setStats] = useState<Stats>({
+    assessments_completed: 0,
+    leads_captured: 0,
+    diagnostics_sold: 0,
+    sessions_booked: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const { data, error } = await supabase
+          .from("stats")
+          .select("id, value");
+
+        if (error) throw error;
+
+        const map: Record<string, number> = {};
+        data?.forEach((row: { id: string; value: number }) => {
+          map[row.id] = row.value;
+        });
+
+        setStats({
+          assessments_completed: map["assessments_completed"] || 0,
+          leads_captured: map["leads_captured"] || 0,
+          diagnostics_sold: map["diagnostics_sold"] || 0,
+          sessions_booked: map["sessions_booked"] || 0,
+        });
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
+  return { stats, loading };
+}
 
 // ── View Toggle Component ─────────────────────────────────────────────────────
 function ViewToggle({ view, onChange }: { view: "admin" | "client"; onChange: (v: "admin" | "client") => void }) {
@@ -184,7 +229,6 @@ function ClientView({ user }: { user: any }) {
 
   return (
     <>
-      {/* Personalized welcome header */}
       <div style={{ marginBottom: "2rem" }}>
         <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
@@ -205,7 +249,6 @@ function ClientView({ user }: { user: any }) {
         </p>
       </div>
 
-      {/* 3 Quick action cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
         {QUICK_ACTIONS.map((item) => (
           <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
@@ -225,7 +268,6 @@ function ClientView({ user }: { user: any }) {
         ))}
       </div>
 
-      {/* Transformation Pathway */}
       <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
         <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your Transformation Pathway</p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
@@ -255,6 +297,14 @@ export default function Admin() {
   const { user } = useAuth();
   const [view, setView] = useState<"admin" | "client">("admin");
   const [copied, setCopied] = useState(false);
+  const { stats, loading } = useStats();
+
+  const STAT_CARDS = [
+    { label: "Assessments Completed", value: loading ? "…" : String(stats.assessments_completed), sub: "Total completed assessments", icon: "📋", color: "#D4AF37" },
+    { label: "Leads Captured",         value: loading ? "…" : String(stats.leads_captured),         sub: "Total in funnel",           icon: "👤", color: "#C2185B" },
+    { label: "Diagnostics Sold",       value: loading ? "…" : String(stats.diagnostics_sold),       sub: "Strategic + Executive",     icon: "💰", color: "#43A047" },
+    { label: "Sessions Booked",        value: loading ? "…" : String(stats.sessions_booked),        sub: "Upcoming calls",            icon: "📅", color: "#1E88E5" },
+  ];
 
   const copyBundleLink = () => {
     navigator.clipboard.writeText(BUNDLE_PRICING_URL).then(() => {
@@ -269,17 +319,13 @@ export default function Admin() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 720, margin: "0 auto", width: "100%" }}>
 
-        {/* Header */}
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", marginBottom: "1.25rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
-
-          {/* View Toggle — always visible, works on mobile + desktop */}
           <ViewToggle view={view} onChange={setView} />
         </div>
 
-        {/* Conditional render */}
         {view === "client" ? (
           <ClientView user={user} />
         ) : (
