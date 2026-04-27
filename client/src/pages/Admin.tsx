@@ -65,6 +65,8 @@ const PENDING_ITEMS = [
   "PWA install prompt inside app after login",
   "Dynamic Transformation Pathway (Supabase tier field · GHL webhook writes back · stages unlock on purchase)",
   "Daily Connections automated engine (Claude API · Supabase · scheduled daily generation)",
+  "SMS sequences — pending GHL phone number provisioning",
+  "Add 2 PDFs to app for user access (screen TBD)",
 ];
 
 const SPRINTS = [
@@ -104,11 +106,23 @@ const SPRINTS = [
       { label: "YouTube coaching video URL added", sub: "Homepage video placeholder replaced with live URL" },
       { label: "YouTube global slideshow URL added", sub: "Homepage slideshow placeholder replaced with live URL" },
       { label: "Add PDF assets to Supabase resource sequences", sub: "DRU CLEAR™ AI Leadership Manual 101 uploaded to Supabase Storage · public URLs live" },
-      { label: "Provision SMS sequence", sub: "Pending phone number support" },
       { label: "Populate Resource Hub with first PDF downloads", sub: "Manual 101 live in Resources.tsx · direct download from Supabase" },
       { label: "Set NEW_THIS_WEEK in Resources.tsx", sub: "Banner live · DRU CLEAR™ AI Leadership Manual 101 featured" },
       { label: "Daily Connections notification dot", sub: "Red dot on Portal card · clears on visit" },
       { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired · real-time counts" },
+      { label: "GHL funnel architecture — fully rebuilt", sub: "Double email bug diagnosed and resolved · two separate webhook URLs confirmed · event_type filters added" },
+      { label: "GHL custom fields created & mapped — 4 fields", sub: "Total Score · Score Category · Top Gaps · Tier — all mapped from webhook payload in Create Contact step" },
+      { label: "Completed Assessment workflow — rebuilt", sub: "Check Event Type If/Else · Create Contact · Add Tag · Internal Notification · Tier Branch with 5 paths" },
+      { label: "4 tier-specific results emails — LIVE", sub: "Emerging · Developing · Advancing · Leading · None fallback — all with personalized copy and both payment links" },
+      { label: "DRU CLEAR™ Nurture Sequence workflow — LIVE", sub: "Wait 24hrs · Check If Purchased · 2nd Nudge Email · Wait 72hrs · Check If Purchased 2 · 3rd Email · purchase protection on both emails" },
+      { label: "ED Purchase workflow — LIVE", sub: "Order Submitted trigger · Global Product filter · Add Tag ed-purchased · Welcome Email · Remove from Workflows" },
+      { label: "SD Purchase workflow — LIVE", sub: "Order Submitted trigger · Global Product filter · Add Tag sd-purchased · Welcome Email · Remove from Workflows" },
+      { label: "Abandoned Recovery workflow — rebuilt", sub: "Create Contact · Add Tag assessment-started · Wait 24hrs · Check Assessment Completed If/Else · Recovery Email" },
+      { label: "Click tracking added to all emails", sub: "clicked-assessment-email-2 · clicked-assessment-email-3 tags applied on click · UTM tracking on" },
+      { label: "Go To Workflow connected on all tier branches", sub: "All 5 tier branches route to DRU CLEAR™ Nurture Sequence after tier email · Pass Input Trigger Parameters ON" },
+      { label: "DruClearApp.tsx updated — top_gaps field added", sub: "top_gaps: topGaps.map((g) => g.name).join(', ') added to mergedPayload · GHL custom field now populates correctly" },
+      { label: "PWA favicon updated — DC shield icon", sub: "CDN favicon links replaced with local icon-192x192.png and icon-512x512.png · apple-touch-icon 180x180 updated · index.html deployed" },
+      { label: "Provision SMS sequence", sub: "Pending phone number support" },
     ],
   },
   {
