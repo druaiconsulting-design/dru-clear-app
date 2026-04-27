@@ -6,12 +6,14 @@ const ADMIN_EMAIL = "deanna@druaiconsulting.com";
 
 export type UserRole = "admin" | "client" | null;
 export type UserTier = "free" | "paid";
+export type PathwayStage = "discover" | "diagnose" | "deploy";
 
 interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
   tier: UserTier;
+  pathwayStage: PathwayStage;
   firstName?: string;
   fullName?: string;
   picture?: string;
@@ -24,6 +26,7 @@ interface AuthContextType {
   isClient: boolean;
   isLoggedIn: boolean;
   isPaid: boolean;
+  pathwayStage: PathwayStage;
   loading: boolean;
   loginAdmin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginClient: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -49,21 +52,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch tier from profiles table ────────────────────────────────────────
-  // This ensures tier is always accurate — GHL writes to profiles via Edge Function
-  // User metadata alone can lag behind until next login
-  async function fetchTierFromProfile(userId: string): Promise<UserTier> {
+  // ── Fetch tier and pathway_stage from profiles table ──────────────────────
+  // Both are always read from profiles so GHL Edge Function writes are
+  // reflected in real time without requiring a new login.
+  async function fetchProfileData(userId: string): Promise<{ tier: UserTier; pathwayStage: PathwayStage }> {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("tier")
+        .select("tier, pathway_stage")
         .eq("id", userId)
         .single();
 
-      if (error || !data) return "free";
-      return (data.tier === "paid") ? "paid" : "free";
+      if (error || !data) return { tier: "free", pathwayStage: "discover" };
+
+      const tier: UserTier = data.tier === "paid" ? "paid" : "free";
+      const pathwayStage: PathwayStage =
+        data.pathway_stage === "deploy" ? "deploy" :
+        data.pathway_stage === "diagnose" ? "diagnose" :
+        "discover";
+
+      return { tier, pathwayStage };
     } catch {
-      return "free";
+      return { tier: "free", pathwayStage: "discover" };
     }
   }
 
@@ -82,16 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const firstName = storedFirst || capitalize(emailPrefix) || "";
     const picture = meta.avatar_url || meta.picture || null;
 
-    // Admin always gets paid — fetch from profiles for all other users
-    const tier: UserTier = role === "admin"
-      ? "paid"
-      : await fetchTierFromProfile(supabaseUser.id);
+    // Admin always gets paid + deploy — fetch from profiles for all other users
+    const { tier, pathwayStage } = role === "admin"
+      ? { tier: "paid" as UserTier, pathwayStage: "deploy" as PathwayStage }
+      : await fetchProfileData(supabaseUser.id);
 
     return {
       id: supabaseUser.id,
       email,
       role,
       tier,
+      pathwayStage,
       firstName: firstName || undefined,
       fullName: fullName || undefined,
       picture: picture || undefined,
@@ -183,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isClient: user?.role === "client",
       isLoggedIn: !!user,
       isPaid: user?.tier === "paid",
+      pathwayStage: user?.pathwayStage ?? "discover",
       loading,
       loginAdmin,
       loginClient,
