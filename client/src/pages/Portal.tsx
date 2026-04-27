@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -52,13 +52,8 @@ function getStageStyle(stageName: string, pathwayStage: PathwayStage): React.CSS
     (stageName === "Discover" && pathwayStage === "discover") ||
     ((stageName === "Diagnose" || stageName === "Design") && pathwayStage === "diagnose") ||
     ((stageName === "Deploy" || stageName === "Dominate") && pathwayStage === "deploy");
-
-  if (isCurrent) {
-    return { background: "#C2185B", border: "1px solid #C2185B", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
-  }
-  if (active) {
-    return { background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.5)", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
-  }
+  if (isCurrent) return { background: "#C2185B", border: "1px solid #C2185B", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
+  if (active) return { background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.5)", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
   return { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" };
 }
 
@@ -88,66 +83,155 @@ function getTodayCST(): string {
   const cst = new Date(now.getTime() + cstOffset * 60 * 1000);
   return cst.toISOString().split("T")[0];
 }
+
+// ── Daily Connection State ────────────────────────────────────────────────────
+// unread    → red pulsing dot
+// read      → gold dot (seen but challenge not done)
+// completed → fire streak number (no dot)
+type DailyState = "unread" | "read" | "completed";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Portal() {
   const { user, pathwayStage, isPaid } = useAuth();
   const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
-  const [hasNewDaily, setHasNewDaily] = useState(false);
+  const [dailyState, setDailyState] = useState<DailyState>("unread");
   const [currentStreak, setCurrentStreak] = useState(0);
   const today = getTodayCST();
 
-  // ── Check unread daily + fetch streak ────────────────────────────────────
-  useEffect(() => {
+  // ── Check daily status — runs on mount AND when window is focused ─────────
+  const checkDailyStatus = useCallback(async () => {
     if (!user?.id) return;
 
-    async function checkDailyStatus() {
-      const { data: readData } = await supabase
-        .from("user_daily_reads")
-        .select("read_at")
-        .eq("user_id", user!.id)
-        .eq("read_date", today)
-        .single();
+    const { data: readData } = await supabase
+      .from("user_daily_reads")
+      .select("read_at, completed_at")
+      .eq("user_id", user.id)
+      .eq("read_date", today)
+      .single();
 
-      setHasNewDaily(!readData);
-
-      if (isPaid) {
-        const { data: streakData } = await supabase
-          .from("user_streaks")
-          .select("current_streak")
-          .eq("user_id", user!.id)
-          .single();
-
-        if (streakData?.current_streak) {
-          setCurrentStreak(streakData.current_streak);
-        }
-      }
+    if (!readData) {
+      setDailyState("unread");
+    } else if (readData.completed_at) {
+      setDailyState("completed");
+    } else {
+      setDailyState("read");
     }
 
-    checkDailyStatus();
+    if (isPaid) {
+      const { data: streakData } = await supabase
+        .from("user_streaks")
+        .select("current_streak")
+        .eq("user_id", user.id)
+        .single();
+
+      if (streakData?.current_streak) {
+        setCurrentStreak(streakData.current_streak);
+      }
+    }
   }, [user?.id, today, isPaid]);
+
+  useEffect(() => {
+    checkDailyStatus();
+  }, [checkDailyStatus]);
+
+  // Re-check when user returns to this tab after visiting Daily page
+  useEffect(() => {
+    const handleFocus = () => checkDailyStatus();
+    const handleVisibility = () => { if (document.visibilityState === "visible") checkDailyStatus(); };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [checkDailyStatus]);
+
+  // ── Daily Connection card indicator ───────────────────────────────────────
+  const getDailyCardIndicator = () => {
+    if (dailyState === "completed" && currentStreak > 0) {
+      // Fire streak — no dot, just the count
+      return null;
+    }
+    if (dailyState === "completed") return null;
+    if (dailyState === "read") {
+      // Gold dot — seen but not completed
+      return (
+        <div style={{
+          position: "absolute", top: 10, right: 10,
+          width: 8, height: 8, borderRadius: "50%",
+          background: "#D4AF37",
+          border: "1.5px solid #0A2342",
+          boxShadow: "0 0 6px rgba(212,175,55,0.8)",
+        }} />
+      );
+    }
+    // Unread — red pulsing dot
+    return (
+      <>
+        <style>{`
+          @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(194,24,91,0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(194,24,91,0); }
+            100% { box-shadow: 0 0 0 0 rgba(194,24,91,0); }
+          }
+        `}</style>
+        <div style={{
+          position: "absolute", top: 10, right: 10,
+          width: 8, height: 8, borderRadius: "50%",
+          background: "#C2185B",
+          border: "1.5px solid #0A2342",
+          animation: "pulse-red 1.5s ease-in-out infinite",
+        }} />
+      </>
+    );
+  };
+
+  const getDailySub = () => {
+    if (dailyState === "completed" && currentStreak > 0) return `🔥 ${currentStreak}-day streak`;
+    if (dailyState === "completed") return "✓ Challenge complete";
+    if (dailyState === "read") return "Challenge waiting for you";
+    return "Today's leadership insight";
+  };
+
+  // Gold border glow at 7+ day streak
+  const getDailyCardBorder = () => {
+    if (dailyState === "completed" && currentStreak >= 7) {
+      return "1px solid rgba(212,175,55,0.7)";
+    }
+    return "1px solid rgba(212,175,55,0.2)";
+  };
+
+  const getDailyCardGlow = () => {
+    if (dailyState === "completed" && currentStreak >= 7) {
+      return "0 0 16px rgba(212,175,55,0.2)";
+    }
+    return "none";
+  };
 
   const QUICK_ACTIONS = [
     {
+      key: "assessment",
       icon: "📋",
       label: "My Assessment",
       sub: "View your scorecard results",
       href: "/",
-      notification: false,
     },
     {
+      key: "daily",
       icon: "⚡",
       label: "Daily Connection",
-      sub: currentStreak > 0 ? `🔥 ${currentStreak}-day streak` : "Today's leadership insight",
+      sub: getDailySub(),
       href: "/daily",
-      notification: hasNewDaily,
+      indicatorFn: getDailyCardIndicator,
+      borderFn: getDailyCardBorder,
+      glowFn: getDailyCardGlow,
     },
     {
+      key: "support",
       icon: "✉️",
       label: "Need Support",
       sub: "Send DeAnna a message",
       href: "mailto:support@druaiconsulting.com",
-      notification: false,
     },
   ];
 
@@ -184,15 +268,30 @@ export default function Portal() {
         {/* 3 Quick action cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
           {QUICK_ACTIONS.map((item) => (
-            <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
+            <a key={item.key} href={item.href} style={{ textDecoration: "none" }}>
               <div
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s", height: "100%", boxSizing: "border-box" as const, position: "relative" as const }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: item.borderFn ? item.borderFn() : "1px solid rgba(212,175,55,0.2)",
+                  boxShadow: item.glowFn ? item.glowFn() : "none",
+                  borderRadius: 10,
+                  padding: "1.25rem 1rem",
+                  cursor: "pointer",
+                  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+                  height: "100%",
+                  boxSizing: "border-box" as const,
+                  position: "relative" as const,
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)";
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = item.borderFn ? item.borderFn().replace("border: ", "") : "rgba(212,175,55,0.2)";
+                  (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
+                }}
               >
-                {item.notification && (
-                  <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342" }} />
-                )}
+                {item.indicatorFn && item.indicatorFn()}
                 <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
                 <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item.sub}</p>
@@ -200,6 +299,21 @@ export default function Portal() {
             </a>
           ))}
         </div>
+
+        {/* 7-day streak milestone banner */}
+        {dailyState === "completed" && currentStreak >= 7 && (
+          <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <span style={{ fontSize: "1.4rem" }}>🔥</span>
+            <div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontWeight: 700, fontSize: "0.78rem", margin: 0 }}>
+                {currentStreak}-Day Streak — You're building real leadership muscle.
+              </p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", margin: 0, marginTop: 2 }}>
+                Consistency is the compounding advantage most leaders never unlock.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Transformation Pathway */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
