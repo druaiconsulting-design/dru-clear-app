@@ -59,11 +59,8 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
   },
 ];
 
-// ─── New This Week ─────────────────────────────────────────────────────────────
 const NEW_THIS_WEEK: string | null = "DRU CLEAR™ AI Leadership Manual 101 — The AI Revolution & Why Leaders Can't Afford to Wait";
-// ──────────────────────────────────────────────────────────────────────────────
 
-// ─── Locked Resource Card ─────────────────────────────────────────────────────
 function LockedResource({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "0.75rem 1rem", opacity: 0.6 }}>
@@ -91,7 +88,6 @@ export default function Resources() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
-        {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Knowledge Vault</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Resource Hub</h1>
@@ -100,7 +96,6 @@ export default function Resources() {
           </p>
         </div>
 
-        {/* Free tier banner */}
         {!isPaid && (
           <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.875rem 1.1rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" as const }}>
             <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.65)", fontSize: "0.78rem", lineHeight: 1.6, margin: 0 }}>
@@ -112,7 +107,6 @@ export default function Resources() {
           </div>
         )}
 
-        {/* New This Week banner */}
         {NEW_THIS_WEEK && (
           <div style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.875rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", gap: "0.875rem" }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#D4AF37", flexShrink: 0 }} />
@@ -123,7 +117,6 @@ export default function Resources() {
           </div>
         )}
 
-        {/* Resource categories */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
           {RESOURCE_CATEGORIES.map((cat) => (
             <div key={cat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
@@ -134,30 +127,30 @@ export default function Resources() {
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.3rem" }}>{cat.label}</p>
                     <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: cat.resources && cat.resources.length > 0 ? "0.875rem" : 0 }}>{cat.description}</p>
 
-                    {/* Resource items */}
                     {cat.resources && cat.resources.length > 0 && (
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         {cat.resources.map((resource, idx) => {
                           const isAccessible = isPaid || (resource.free && idx < cat.freeLimit);
-                          return isAccessible ? (
-                            
-                              key={resource.title}
-                              href={resource.url}
-                              download
-                              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                            >
-                              <div>
-                                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.03em", marginBottom: "0.2rem" }}>{resource.title}</p>
-                                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.7rem", lineHeight: 1.5 }}>{resource.subtitle}</p>
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
-                                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              </div>
-                            </a>
-                          ) : (
-                            <LockedResource key={resource.title} title={resource.title} subtitle={resource.subtitle} />
-                          );
+                          if (isAccessible) {
+                            return (
+                              <a
+                                key={resource.title}
+                                href={resource.url}
+                                download
+                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                              >
+                                <div>
+                                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.03em", marginBottom: "0.2rem" }}>{resource.title}</p>
+                                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.7rem", lineHeight: 1.5 }}>{resource.subtitle}</p>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+                                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
+                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </div>
+                              </a>
+                            );
+                          }
+                          return <LockedResource key={resource.title} title={resource.title} subtitle={resource.subtitle} />;
                         })}
                       </div>
                     )}
@@ -173,14 +166,12 @@ export default function Resources() {
           ))}
         </div>
 
-        {/* Resources added weekly note */}
         <div style={{ textAlign: "center", padding: "1rem 0", marginBottom: "1rem" }}>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.75rem", fontStyle: "italic" }}>
             New resources are added weekly. Check back often.
           </p>
         </div>
 
-        {/* Assessment CTA */}
         <div style={{ textAlign: "center" }}>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.75rem" }}>Haven't taken the assessment yet?</p>
           <a href="/" style={{ display: "inline-block", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 6, padding: "0.65rem 1.25rem" }}>
