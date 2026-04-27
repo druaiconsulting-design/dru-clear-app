@@ -939,9 +939,6 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
     sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
 
     // ── Free account creation ─────────────────────────────────────────────────
-    // Auto-create a free Supabase account for every assessment completer.
-    // Supabase sends the branded confirmation email automatically on signUp.
-    // If the account already exists, skip silently — never block the flow.
     (async () => {
       try {
         const randomPassword = crypto.randomUUID() + crypto.randomUUID();
@@ -1448,6 +1445,22 @@ export default function DruClearApp() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const expiryStatus = getExpiryStatus();
 
+  // ─── Auth Check: Redirect returning app users to app.druaiconsulting.com ───
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        window.location.href = "https://app.druaiconsulting.com";
+      } else {
+        setAuthChecked(true);
+      }
+    }).catch(() => {
+      setAuthChecked(true);
+    });
+  }, []);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const ua = navigator.userAgent;
   const isInStandaloneMode = (window.navigator as any).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   const isIos = /iphone|ipad|ipod/i.test(ua);
@@ -1557,6 +1570,12 @@ export default function DruClearApp() {
       topAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
     }, 50);
   };
+
+  // ─── Auth gate: show blank navy screen while checking session ───────────────
+  if (!authChecked) {
+    return <div style={{ minHeight: "100dvh", background: "#0A2342" }} />;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <div ref={appRef} style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
