@@ -5,32 +5,42 @@ const RESOURCE_CATEGORIES = [
     label: "AI Leadership Guides",
     icon: "🧠",
     description: "Strategic frameworks and playbooks for leading with AI",
-    comingSoon: true,
+    comingSoon: false,
+    resources: [
+      {
+        title: "DRU CLEAR™ AI Leadership Manual 101",
+        subtitle: "The AI Revolution & Why Leaders Can't Afford to Wait",
+        url: "https://dsflijqygsegonwxauce.supabase.co/storage/v1/object/public/resources/DRU-CLEAR-AI-Leadership-Manual-101.pdf",
+      },
+    ],
   },
   {
     label: "White Papers",
     icon: "📄",
     description: "In-depth research and thought leadership from DRU AI Consulting",
     comingSoon: true,
+    resources: [],
   },
   {
     label: "Notion Templates",
     icon: "📐",
     description: "Ready-to-use planning and strategy templates",
     comingSoon: true,
+    resources: [],
   },
   {
     label: "Case Studies",
     icon: "📊",
     description: "Real transformation stories from clients in the DRU ecosystem",
     comingSoon: true,
+    resources: [],
   },
 ];
 
 // ─── New This Week ─────────────────────────────────────────────────────────────
 // Set to null when nothing is new — banner will be hidden automatically
 // Set to a string to show the banner: "AI Leadership Playbook — The 5-Step Framework..."
-const NEW_THIS_WEEK: string | null = null;
+const NEW_THIS_WEEK: string | null = "DRU CLEAR™ AI Leadership Manual 101 — The AI Revolution & Why Leaders Can't Afford to Wait";
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default function Resources() {
@@ -65,11 +75,44 @@ export default function Resources() {
           {RESOURCE_CATEGORIES.map((cat) => (
             <div key={cat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem", flex: 1 }}>
                   <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{cat.icon}</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.3rem" }}>{cat.label}</p>
-                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6 }}>{cat.description}</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: cat.resources && cat.resources.length > 0 ? "0.875rem" : 0 }}>{cat.description}</p>
+
+                    {/* Resource download links */}
+                    {cat.resources && cat.resources.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                        {cat.resources.map((resource) => (
+                          <a
+                            key={resource.title}
+                            href={resource.url}
+                            download
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "0.75rem",
+                              background: "rgba(212,175,55,0.06)",
+                              border: "1px solid rgba(212,175,55,0.2)",
+                              borderRadius: 8,
+                              padding: "0.75rem 1rem",
+                              textDecoration: "none",
+                            }}
+                          >
+                            <div>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.03em", marginBottom: "0.2rem" }}>{resource.title}</p>
+                              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.7rem", lineHeight: 1.5 }}>{resource.subtitle}</p>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+                              <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {cat.comingSoon && (
