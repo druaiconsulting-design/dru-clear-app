@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -76,12 +76,7 @@ function getTodayCST(): string {
   return cst.toISOString().split("T")[0];
 }
 
-// ── Daily state type ──────────────────────────────────────────────────────────
-// unread    → red pulsing dot
-// read      → gold glowing dot
-// completed → fire streak (no dot)
 type DailyState = "unread" | "read" | "completed";
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Portal() {
   const { user, pathwayStage, isPaid } = useAuth();
@@ -89,107 +84,77 @@ export default function Portal() {
   const [dailyState, setDailyState] = useState<DailyState>("unread");
   const [currentStreak, setCurrentStreak] = useState(0);
   const today = getTodayCST();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isFetching = useRef(false);
 
-  // ── Check daily status ────────────────────────────────────────────────────
-  const checkDailyStatus = useCallback(async () => {
-    if (!user?.id) return;
+  // ── Check daily status — uses maybeSingle to avoid 406 errors ────────────
+  async function checkDailyStatus() {
+    if (!user?.id || isFetching.current) return;
+    isFetching.current = true;
 
-    const { data: readData } = await supabase
-      .from("user_daily_reads")
-      .select("read_at, completed_at")
-      .eq("user_id", user.id)
-      .eq("read_date", today)
-      .single();
-
-    if (!readData) {
-      setDailyState("unread");
-    } else if (readData.completed_at) {
-      setDailyState("completed");
-    } else {
-      setDailyState("read");
-    }
-
-    if (isPaid) {
-      const { data: streakData } = await supabase
-        .from("user_streaks")
-        .select("current_streak")
+    try {
+      // maybeSingle returns null instead of error when no row exists
+      const { data: readData } = await supabase
+        .from("user_daily_reads")
+        .select("read_at, completed_at")
         .eq("user_id", user.id)
-        .single();
+        .eq("read_date", today)
+        .maybeSingle();
 
-      if (streakData?.current_streak) setCurrentStreak(streakData.current_streak);
-    }
-  }, [user?.id, today, isPaid]);
-
-  // ── Initial check + poll every 5s while page is visible ──────────────────
-  useEffect(() => {
-    checkDailyStatus();
-
-    // Poll every 5 seconds — stops when state reaches "completed"
-    intervalRef.current = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        checkDailyStatus();
+      if (!readData) {
+        setDailyState("unread");
+      } else if (readData.completed_at) {
+        setDailyState("completed");
+      } else {
+        setDailyState("read");
       }
-    }, 5000);
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [checkDailyStatus]);
+      if (isPaid) {
+        const { data: streakData } = await supabase
+          .from("user_streaks")
+          .select("current_streak")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-  // Stop polling once completed — no need to keep checking
-  useEffect(() => {
-    if (dailyState === "completed" && intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+        if (streakData?.current_streak) setCurrentStreak(streakData.current_streak);
+      }
+    } catch {
+      // fail silently — never block the UI
+    } finally {
+      isFetching.current = false;
     }
-  }, [dailyState]);
+  }
 
-  // Re-check on tab focus and visibility change
+  // ── Run once on mount ─────────────────────────────────────────────────────
   useEffect(() => {
-    const handleFocus = () => checkDailyStatus();
-    const handleVisibility = () => { if (document.visibilityState === "visible") checkDailyStatus(); };
+    if (user?.id) checkDailyStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // ── Re-check when user returns to this tab ────────────────────────────────
+  useEffect(() => {
+    const handleFocus = () => { if (user?.id) checkDailyStatus(); };
+    const handleVisibility = () => { if (document.visibilityState === "visible" && user?.id) checkDailyStatus(); };
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [checkDailyStatus]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
-  // ── Indicator logic ───────────────────────────────────────────────────────
+  // ── Indicator ─────────────────────────────────────────────────────────────
   const getDailyIndicator = () => {
     if (dailyState === "completed") return null;
-
     if (dailyState === "read") {
       return (
-        <div style={{
-          position: "absolute", top: 10, right: 10,
-          width: 8, height: 8, borderRadius: "50%",
-          background: "#D4AF37",
-          border: "1.5px solid #0A2342",
-          boxShadow: "0 0 6px rgba(212,175,55,0.9)",
-        }} />
+        <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#D4AF37", border: "1.5px solid #0A2342", boxShadow: "0 0 6px rgba(212,175,55,0.9)" }} />
       );
     }
-
-    // unread — pulsing red
     return (
       <>
-        <style>{`
-          @keyframes dru-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(194,24,91,0.8); }
-            70% { box-shadow: 0 0 0 7px rgba(194,24,91,0); }
-            100% { box-shadow: 0 0 0 0 rgba(194,24,91,0); }
-          }
-        `}</style>
-        <div style={{
-          position: "absolute", top: 10, right: 10,
-          width: 8, height: 8, borderRadius: "50%",
-          background: "#C2185B",
-          border: "1.5px solid #0A2342",
-          animation: "dru-pulse 1.5s ease-in-out infinite",
-        }} />
+        <style>{`@keyframes dru-pulse { 0%{box-shadow:0 0 0 0 rgba(194,24,91,0.8)} 70%{box-shadow:0 0 0 7px rgba(194,24,91,0)} 100%{box-shadow:0 0 0 0 rgba(194,24,91,0)} }`}</style>
+        <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342", animation: "dru-pulse 1.5s ease-in-out infinite" }} />
       </>
     );
   };
@@ -202,14 +167,10 @@ export default function Portal() {
   };
 
   const getDailyBorder = () =>
-    dailyState === "completed" && currentStreak >= 7
-      ? "1px solid rgba(212,175,55,0.7)"
-      : "1px solid rgba(212,175,55,0.2)";
+    dailyState === "completed" && currentStreak >= 7 ? "1px solid rgba(212,175,55,0.7)" : "1px solid rgba(212,175,55,0.2)";
 
   const getDailyGlow = () =>
-    dailyState === "completed" && currentStreak >= 7
-      ? "0 0 18px rgba(212,175,55,0.25)"
-      : "none";
+    dailyState === "completed" && currentStreak >= 7 ? "0 0 18px rgba(212,175,55,0.25)" : "none";
 
   const QUICK_ACTIONS = [
     { key: "assessment", icon: "📋", label: "My Assessment", sub: "View your scorecard results", href: "/" },
@@ -223,7 +184,6 @@ export default function Portal() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
-        {/* Welcome header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
@@ -242,21 +202,13 @@ export default function Portal() {
           </p>
         </div>
 
-        {/* 3 Quick action cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
           {QUICK_ACTIONS.map((item) => (
             <a key={item.key} href={item.href} style={{ textDecoration: "none" }}>
               <div
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: item.isDaily ? getDailyBorder() : "1px solid rgba(212,175,55,0.2)",
-                  boxShadow: item.isDaily ? getDailyGlow() : "none",
-                  borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer",
-                  transition: "border-color 0.2s, background 0.2s, box-shadow 0.3s",
-                  height: "100%", boxSizing: "border-box" as const, position: "relative" as const,
-                }}
+                style={{ background: "rgba(255,255,255,0.04)", border: item.isDaily ? getDailyBorder() : "1px solid rgba(212,175,55,0.2)", boxShadow: item.isDaily ? getDailyGlow() : "none", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s", height: "100%", boxSizing: "border-box" as const, position: "relative" as const }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = item.isDaily ? getDailyBorder().replace("border: ", "") : "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = item.isDaily ? getDailyBorder() : "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
               >
                 {item.isDaily && getDailyIndicator()}
                 <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
@@ -267,26 +219,18 @@ export default function Portal() {
           ))}
         </div>
 
-        {/* 7-day streak milestone banner */}
         {dailyState === "completed" && currentStreak >= 7 && (
           <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <span style={{ fontSize: "1.4rem" }}>🔥</span>
             <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontWeight: 700, fontSize: "0.78rem", margin: 0 }}>
-                {currentStreak}-Day Streak — You're building real leadership muscle.
-              </p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", margin: 0, marginTop: 2 }}>
-                Consistency is the compounding advantage most leaders never unlock.
-              </p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontWeight: 700, fontSize: "0.78rem", margin: 0 }}>{currentStreak}-Day Streak — You're building real leadership muscle.</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", margin: 0, marginTop: 2 }}>Consistency is the compounding advantage most leaders never unlock.</p>
             </div>
           </div>
         )}
 
-        {/* Dynamic Transformation Pathway */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>
-            Your DRU AI Transformation Pathway™
-          </p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your DRU AI Transformation Pathway™</p>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
             {PATHWAY_STAGES.map((stage, i) => (
               <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
@@ -297,9 +241,7 @@ export default function Portal() {
               </div>
             ))}
           </div>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>
-            {getStatusText(pathwayStage)}
-          </p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>{getStatusText(pathwayStage)}</p>
         </div>
 
       </main>
