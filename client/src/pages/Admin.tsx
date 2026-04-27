@@ -58,12 +58,10 @@ const PAYMENT_LINKS = [
 ];
 
 const PENDING_ITEMS = [
-  "Magazine ad — final review in progress (PDF, April 30 deadline)",
-  "PWA install prompt inside app after login",
-  "Dynamic Transformation Pathway (Supabase tier field · GHL webhook writes back · stages unlock on purchase)",
-  "Daily Connections automated engine (Claude API · Supabase · scheduled daily generation)",
+  "⚠️ Magazine ad — April 30 deadline — PDF final review in progress",
+  "Daily Connections automated engine — IN PROGRESS · API key set up · SQL + Edge Functions + Daily.tsx next",
   "SMS sequences — pending GHL phone number provisioning",
-  "Add 2 PDFs to app for user access (screen TBD)",
+  "Add 2 PDFs to app for user access — delegated to AI Agents (Sprint 4)",
 ];
 
 const SPRINTS = [
@@ -111,6 +109,9 @@ const SPRINTS = [
       { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
       { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
       { label: "PWA favicon updated — DC shield icon", sub: "icon-192x192.png and icon-512x512.png added to public folder · index.html updated · CDN links replaced" },
+      { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com · navy loading screen · no flash" },
+      { label: "Route Security — protected routes locked down", sub: "/frameworks · /community · /affiliate require login · redirects to /login · public routes clearly organized" },
+      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · update_pathway_stage RPC · Edge Function auto-updates on purchase · AuthContext + Portal live · 3 values map to 5 visual stages with paired unlocks" },
     ],
   },
   {
