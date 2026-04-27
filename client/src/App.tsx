@@ -68,19 +68,8 @@ function Router() {
     return null;
   }
 
-  if (path === "/community" || path === "/community/") {
-    setTitle("Community · DRU CLEAR™");
-    return <Community />;
-  }
+  // ── Public Routes ───────────────────────────────────────────────────────────
 
-  if (path === "/affiliate" || path === "/affiliate/") {
-    setTitle("Affiliate · DRU CLEAR™");
-    return <Affiliate />;
-  }
-  if (path === "/frameworks" || path === "/frameworks/") {
-    setTitle("Frameworks · DRU CLEAR™");
-    return <Frameworks />;
-  }
   if (path === "/bundle-pricing" || path === "/bundle-pricing/") {
     setTitle("Bundle Pricing · DRU CLEAR™");
     return <BundlePricing />;
@@ -90,7 +79,7 @@ function Router() {
     return <TermsPage />;
   }
 
-  // ── Diagnostic Thank You Pages ──────────────────────────────────────────────
+  // ── Diagnostic Thank You Pages (public — post-purchase redirect) ────────────
   if (path === "/thank-you-ed" || path === "/thank-you-ed/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouED />;
@@ -100,7 +89,7 @@ function Router() {
     return <ThankYouSD />;
   }
 
-  // ── Framework Thank You Pages ───────────────────────────────────────────────
+  // ── Framework Thank You Pages (public — post-purchase redirect) ─────────────
   if (path === "/thank-you-dru-clear" || path === "/thank-you-dru-clear/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouDruClear />;
@@ -118,7 +107,7 @@ function Router() {
     return <ThankYouAISales />;
   }
 
-  // ── Bundle Thank You Page ───────────────────────────────────────────────────
+  // ── Bundle Thank You Page (public — post-purchase redirect) ────────────────
   if (path === "/thank-you-full-ecosystem" || path === "/thank-you-full-ecosystem/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouFullEcosystem />;
@@ -145,6 +134,9 @@ function Router() {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
   }
+
+  // ── Protected Routes — login required ──────────────────────────────────────
+
   if (path === "/portal" || path === "/portal/") {
     setTitle("My Portal · DRU CLEAR™");
     if (!isLoggedIn) { window.location.href = "/login"; return null; }
@@ -160,7 +152,23 @@ function Router() {
     if (!isLoggedIn) { window.location.href = "/login"; return null; }
     return <Daily />;
   }
+  if (path === "/frameworks" || path === "/frameworks/") {
+    setTitle("Frameworks · DRU CLEAR™");
+    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    return <Frameworks />;
+  }
+  if (path === "/community" || path === "/community/") {
+    setTitle("Community · DRU CLEAR™");
+    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    return <Community />;
+  }
+  if (path === "/affiliate" || path === "/affiliate/") {
+    setTitle("Affiliate · DRU CLEAR™");
+    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    return <Affiliate />;
+  }
 
+  // ── Fallback ────────────────────────────────────────────────────────────────
   setTitle("DRU CLEAR™");
   return <DruClearApp />;
 }
