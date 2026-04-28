@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -55,54 +55,49 @@ const SPRINTS = [
       { label: "8 branded thank you pages — LIVE", sub: "ED/SD with calendar · 4 frameworks · Full Ecosystem with payment split" },
       { label: "Full Ecosystem payment split", sub: "$13K signing + $13K final — separate GHL payment links" },
       { label: "Dynamic browser tab titles", sub: "Every page has its own DRU CLEAR™ tab title" },
-      { label: "Personalized Portal — name + avatar", sub: "Google photo or initials · Welcome Back, [FirstName] · trust stored names" },
+      { label: "Personalized Portal — name + avatar", sub: "Google photo or initials · Welcome Back, [FirstName]" },
       { label: "Portal rebuilt as personal dashboard", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
-      { label: "Resources page cleaned up", sub: "Email capture removed · New This Week banner · resources added weekly note" },
-      { label: "Affiliate page updated", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
-      { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password" },
-      { label: "NavBar restored — CLIENT VIEW / ADMIN VIEW", sub: "Toggle follows admin across all pages · Client View → /portal · Admin View → /admin" },
-      { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired" },
-      { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage · single CTA → assessment · QR code section" },
-      { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy" },
-      { label: "GitHub repos organized", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
-      { label: "Magazine bio — locked", sub: "Universal bio · April 30 print deadline · QR code included" },
-      { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired · real-time counts" },
+      { label: "Resources page cleaned up", sub: "Email capture removed · New This Week banner" },
+      { label: "Affiliate page updated", sub: "New copy · real links · GHL note" },
+      { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page" },
+      { label: "NavBar restored — CLIENT VIEW / ADMIN VIEW", sub: "Toggle follows admin across all pages" },
+      { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo" },
+      { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage · single CTA → assessment" },
+      { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel" },
+      { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired" },
       { label: "Free tier access — Supabase tier field", sub: "free | paid · RLS controls · assessment auto-creates free account" },
-      { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
-      { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
-      { label: "PWA favicon updated — DC shield icon", sub: "icon-192x192.png and icon-512x512.png · CDN links replaced" },
+      { label: "Free tier — Daily Connections + Resources", sub: "Insight free · Micro-Lesson + Challenge locked · 1 free PDF" },
       { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com" },
-      { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login · no bypass possible" },
-      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · paired unlocks · Edge Function auto-updates on purchase" },
-      { label: "GHL tags — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy · unlocks Deploy + Dominate" },
-      { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware · leadership WITH AI · stored in Supabase" },
-      { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing · Read: gold glow · Completed: 🔥 streak · 7-day: gold card border glow + milestone banner" },
-      { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions · shown on Portal card and Daily page" },
-      { label: "Mark Completed button — gold on completion", sub: "Blue → gold with glow + checkmark · streak fires · Portal dot updates on tab return" },
-      { label: "Need Support — mailto with pre-filled subject", sub: "Opens email client · support@druaiconsulting.com · Subject: Support Request — DRU CLEAR™ Member" },
-      { label: "My Assessment — routes to assessment site", sub: "https://assessment.druaiconsulting.com · fixes auth loop for logged-in users" },
+      { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login" },
+      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · Edge Function auto-updates on purchase" },
+      { label: "GHL tags — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy" },
+      { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware · leadership WITH AI" },
+      { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing · Read: gold glow · Completed: 🔥 streak · 7-day: gold border glow" },
+      { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions" },
+      { label: "Mark Completed button — gold on completion", sub: "Blue → gold with glow + checkmark · streak fires" },
+      { label: "Need Support — mailto with pre-filled subject", sub: "Opens email client · support@druaiconsulting.com" },
+      { label: "Client Intelligence Dashboard — LIVE", sub: "submissions table · pillar scores stored · 6 stat cards · filter bar · 13-col table · color-coded heat map · CSV export" },
     ],
   },
   {
-    number: "4", title: "The AI Empire", status: "planned",
+    number: "4", title: "The AI Empire", status: "inprogress",
     items: [
-      { label: "Phase 1 — DeAnna's AI Twin (private build)", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · powers every other agent · BUILD FIRST — everything depends on this" },
-      { label: "Phase 1 — Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric · secure the ecosystem before scale" },
-      { label: "Phase 3a — Director of Compliance · Legal · Tax · Chief of Staff · Executive Assistant", sub: "Protect the empire before it grows · governance and operational agents in place before scale" },
-      { label: "Phase 3b — Revenue & Growth Agents", sub: "Sales Support · Affiliate Manager · Lead Nurture · Onboarding Coach · Start generating before fully public" },
-      { label: "Phase 3c — Content & Brand Agents", sub: "Content Creator · LinkedIn Authority Engine · Daily Connections Engine · Social Scheduler · Feed the authority engine" },
-      { label: "Phase 3d — Client Delivery Agents + Creative Director", sub: "Framework Advisor · Feedback Coach · Community Manager · Creative Director · Ready for clients at launch" },
-      { label: "Phase 3e — Daily Connections Upgrade · Community · Courses", sub: "Add 'accelerator' Supabase tier · Free: 1 card · Navigator: 3 cards · Accelerator: 3 + exclusive 4th · Community in-app at 20+ clients · Full ecosystem live" },
-      { label: "Phase 4 — Agent Architecture — 3 Layers", sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design the org chart before building departments" },
-      { label: "Phase 4 — Framework Agent Teams", sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
-      { label: "Phase 4 — Agent Roles", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
+      { label: "Phase 1 — Twin: DeAnna's AI Twin (private build)", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · powers every other agent · BUILD FIRST" },
+      { label: "Phase 2 — Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric · secure before scale" },
+      { label: "Phase 3 — Director of Compliance · Legal · Tax · Chief of Staff · Executive Assistant agents", sub: "Protect the empire before it grows · governance in place before scale" },
+      { label: "Phase 3a — Revenue & Growth Agents", sub: "Sales Support · Affiliate Manager · Lead Nurture · Onboarding Coach · start generating before fully public" },
+      { label: "Phase 3b — Content & Brand Agents", sub: "Content Creator · LinkedIn Authority Engine · Daily Connections Engine · Social Scheduler · feed the authority engine" },
+      { label: "Phase 3c — Client Delivery Agents + Creative Director", sub: "Framework Advisor · Feedback Coach · Community Manager · Creative Director · ready for clients at launch" },
+      { label: "Phase 3d — Daily Connections Upgrade · Community · Courses", sub: "Add 'accelerator' Supabase tier · Free: 1 card · Navigator: 3 cards · Accelerator: 3 + exclusive 4th · full ecosystem live" },
+      { label: "Phase 4 — Agent Architecture — 3 Layers", sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design before building" },
+      { label: "Phase 4a — Framework Agent Teams", sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
+      { label: "Phase 4b — Agent Roles", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
       { label: "Phase 5 — Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
-      { label: "Phase 5 — Community — in-app", sub: "Launch when 20+ active clients · agents already running by this point" },
-      { label: "Phase 5 — Affiliate Dashboard", sub: "Track referrals · commissions · top referrer rewards" },
-      { label: "Phase 6 — Daily Connections Tier Upgrade", sub: "Add 'accelerator' as 3rd Supabase tier value · Free: 1 card · Navigator: 3 cards · Accelerator: 3 cards + exclusive 4th (weekly DeAnna strategic prompt) · foundation already built" },
-      { label: "Phase 6 — From Confusion to Confident with AI™", sub: "4-week course · Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
-      { label: "Phase 7 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking · built on proven client results" },
-      { label: "Phase 7 — Navigator $97/mo + Accelerator $297/mo", sub: "Price increase from founder pricing when ready · Navigator: full 3-card Daily · Accelerator: 3 cards + exclusive 4th · locked in memory" },
+      { label: "Phase 5a — Community — in-app", sub: "Launch when 20+ active clients · agents already running by this point" },
+      { label: "Phase 5b — Affiliate Dashboard", sub: "Track referrals · commissions · top referrer rewards" },
+      { label: "Phase 6 — Daily Connections Tier Upgrade", sub: "Add 'accelerator' as 3rd Supabase tier · Free: 1 card · Navigator: 3 cards · Accelerator: 3 cards + exclusive 4th (weekly DeAnna strategic prompt) · foundation already built" },
+      { label: "Phase 7 — Navigator $97/mo + Accelerator $297/mo", sub: "Price increase from founder pricing · Navigator: full 3-card Daily · Accelerator: 3 cards + exclusive 4th · locked in memory" },
+      { label: "Phase 8 — From Confusion to Confident with AI™", sub: "4-week course · Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
       { label: "🚀 LAUNCH", sub: "app.druaiconsulting.com · full AI empire live · all agents operational" },
     ],
   },
@@ -111,7 +106,7 @@ const SPRINTS = [
     items: [
       { label: "Phase 1 — 90-Day Live Run", sub: "Real clients · real data · agent refinement · case studies building · Sprint 5 readiness gate — do not proceed until proven" },
       { label: "Phase 2 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Full course platform · 8 modules · video + workbooks · progress tracking · built on proven 90-day results" },
-      { label: "Phase 3 — White Label LMS Licensing", sub: "Other consultants pay monthly to use your platform · Licensed to the World" },
+      { label: "Phase 3 — White Label LMS Licensing → Licensed to the World", sub: "Other consultants pay monthly to use your platform · the final frontier" },
     ],
   },
 ];
@@ -124,6 +119,21 @@ const statusConfig = {
   planned:    { bg: "rgba(30,136,229,0.06)", border: "rgba(30,136,229,0.2)",  dot: "#1E88E5", label: "⏳ Planned",     headerBg: "rgba(30,136,229,0.04)" },
 };
 
+// ── Tier colors ───────────────────────────────────────────────────────────────
+const TIER_COLORS: Record<string, string> = {
+  EMERGING:   "#E53935",
+  DEVELOPING: "#D4AF37",
+  ADVANCING:  "#1E88E5",
+  LEADING:    "#43A047",
+};
+
+// ── Pillar score color heat map ───────────────────────────────────────────────
+function getPillarColor(score: number): string {
+  if (score <= 6)  return "#E53935"; // red — low
+  if (score <= 10) return "#D4AF37"; // gold — medium
+  return "#43A047";                  // green — strong
+}
+
 // ── Stats Hook ────────────────────────────────────────────────────────────────
 interface Stats {
   assessments_completed: number;
@@ -133,12 +143,7 @@ interface Stats {
 }
 
 function useStats() {
-  const [stats, setStats] = useState<Stats>({
-    assessments_completed: 0,
-    leads_captured: 0,
-    diagnostics_sold: 0,
-    sessions_booked: 0,
-  });
+  const [stats, setStats] = useState<Stats>({ assessments_completed: 0, leads_captured: 0, diagnostics_sold: 0, sessions_booked: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -154,16 +159,246 @@ function useStats() {
           diagnostics_sold: map["diagnostics_sold"] || 0,
           sessions_booked: map["sessions_booked"] || 0,
         });
-      } catch (err) {
-        console.error("Failed to fetch stats:", err);
-      } finally {
-        setLoading(false);
-      }
+      } catch (err) { console.error("Failed to fetch stats:", err); }
+      finally { setLoading(false); }
     }
     fetchStats();
   }, []);
 
   return { stats, loading };
+}
+
+// ── Submission type ───────────────────────────────────────────────────────────
+interface Submission {
+  id: string;
+  created_at: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  company: string;
+  role: string;
+  country_name: string;
+  total_score: number;
+  tier: string;
+  top_gaps: string;
+  clarity_score: number;
+  leadership_score: number;
+  execution_score: number;
+  alignment_score: number;
+  results_score: number;
+}
+
+// ── Client Intelligence Dashboard ─────────────────────────────────────────────
+function ClientIntelligenceDashboard() {
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [tierFilter, setTierFilter] = useState("ALL");
+
+  useEffect(() => {
+    async function fetchSubmissions() {
+      try {
+        const { data, error } = await supabase
+          .from("submissions")
+          .select("id, created_at, first_name, last_name, email, company, role, country_name, total_score, tier, top_gaps, clarity_score, leadership_score, execution_score, alignment_score, results_score")
+          .order("created_at", { ascending: false });
+        if (!error && data) setSubmissions(data);
+      } catch (err) { console.error("Failed to fetch submissions:", err); }
+      finally { setLoading(false); }
+    }
+    fetchSubmissions();
+  }, []);
+
+  // ── Summary stats ───────────────────────────────────────────────────────────
+  const totalSubmissions = submissions.length;
+  const avgScore = totalSubmissions > 0
+    ? Math.round(submissions.reduce((sum, s) => sum + (s.total_score || 0), 0) / totalSubmissions)
+    : 0;
+  const tierCounts = useMemo(() => {
+    const counts: Record<string, number> = { EMERGING: 0, DEVELOPING: 0, ADVANCING: 0, LEADING: 0 };
+    submissions.forEach((s) => { if (s.tier && counts[s.tier] !== undefined) counts[s.tier]++; });
+    return counts;
+  }, [submissions]);
+
+  // ── Filtered rows ───────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    return submissions.filter((s) => {
+      const matchesTier = tierFilter === "ALL" || s.tier === tierFilter;
+      const q = search.toLowerCase();
+      const matchesSearch = !q ||
+        (s.first_name || "").toLowerCase().includes(q) ||
+        (s.last_name || "").toLowerCase().includes(q) ||
+        (s.email || "").toLowerCase().includes(q) ||
+        (s.company || "").toLowerCase().includes(q) ||
+        (s.role || "").toLowerCase().includes(q);
+      return matchesTier && matchesSearch;
+    });
+  }, [submissions, search, tierFilter]);
+
+  // ── CSV Export ──────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const headers = ["Date", "First Name", "Last Name", "Email", "Company", "Role", "Country", "Score", "Tier", "Top Gaps", "Clarity", "Leadership", "Execution", "Alignment", "Results"];
+    const rows = filtered.map((s) => [
+      new Date(s.created_at).toLocaleDateString("en-US"),
+      s.first_name, s.last_name, s.email, s.company, s.role, s.country_name,
+      s.total_score, s.tier, s.top_gaps,
+      s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell ?? ""}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dru-clear-submissions-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const SUMMARY_CARDS = [
+    { label: "Total Submissions", value: totalSubmissions, color: "#D4AF37", icon: "📋" },
+    { label: "Avg Score", value: avgScore ? `${avgScore}/100` : "—", color: "#1E88E5", icon: "📊" },
+    { label: "Emerging", value: tierCounts.EMERGING, color: "#E53935", icon: "🔴" },
+    { label: "Developing", value: tierCounts.DEVELOPING, color: "#D4AF37", icon: "🟡" },
+    { label: "Advancing", value: tierCounts.ADVANCING, color: "#1E88E5", icon: "🔵" },
+    { label: "Leading", value: tierCounts.LEADING, color: "#43A047", icon: "🟢" },
+  ];
+
+  return (
+    <div style={{ marginBottom: "2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Client Intelligence</p>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+      </div>
+
+      {/* 6 Summary Stat Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
+        {SUMMARY_CARDS.map((card) => (
+          <div key={card.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "0.875rem 1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
+              <span style={{ fontSize: "0.9rem" }}>{card.icon}</span>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: card.color, fontWeight: 700, fontSize: "1.3rem", margin: 0 }}>{card.value}</p>
+            </div>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", margin: 0 }}>{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Bar */}
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
+        <input
+          type="text"
+          placeholder="Search name, email, company..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: 1, minWidth: 200, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none" }}
+        />
+        <select
+          value={tierFilter}
+          onChange={(e) => setTierFilter(e.target.value)}
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", outline: "none" }}
+        >
+          <option value="ALL" style={{ background: "#0A2342" }}>All Tiers</option>
+          <option value="EMERGING" style={{ background: "#0A2342" }}>Emerging</option>
+          <option value="DEVELOPING" style={{ background: "#0A2342" }}>Developing</option>
+          <option value="ADVANCING" style={{ background: "#0A2342" }}>Advancing</option>
+          <option value="LEADING" style={{ background: "#0A2342" }}>Leading</option>
+        </select>
+        <button
+          onClick={handleExport}
+          disabled={filtered.length === 0}
+          style={{ background: filtered.length > 0 ? "#D4AF37" : "rgba(212,175,55,0.2)", color: filtered.length > 0 ? "#0A2342" : "rgba(212,175,55,0.4)", border: "none", borderRadius: 6, padding: "0.55rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: filtered.length > 0 ? "pointer" : "default", transition: "all 0.2s", whiteSpace: "nowrap" as const }}
+        >
+          ↓ Export CSV
+        </button>
+      </div>
+
+      {/* Results count */}
+      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
+        {loading ? "Loading..." : `${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}`}
+      </p>
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" }}>
+          <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" }}>
+          <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
+            {submissions.length === 0 ? "No submissions yet — data will appear here when clients complete the assessment." : "No results match your filter."}
+          </p>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid rgba(212,175,55,0.15)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+            <thead>
+              <tr style={{ background: "rgba(212,175,55,0.08)", borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
+                {["Date", "Name", "Email", "Company", "Role", "Score", "Tier", "C", "L", "E", "A", "R", "Top Gaps"].map((h) => (
+                  <th key={h} style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "0.6rem 0.75rem", textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s, i) => (
+                <tr key={s.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+                    {new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {s.first_name} {s.last_name}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem" }}>
+                    {s.email}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+                    {s.company || "—"}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                    {s.role || "—"}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {s.total_score ?? "—"}
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem" }}>
+                    {s.tier ? (
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                        {s.tier}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  {/* Pillar heat map — C L E A R */}
+                  {[s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score].map((score, pi) => (
+                    <td key={pi} style={{ padding: "0.6rem 0.5rem", textAlign: "center" }}>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: getPillarColor(score), fontSize: "0.72rem", fontWeight: 700 }}>
+                        {score ?? "—"}
+                      </span>
+                    </td>
+                  ))}
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {s.top_gaps || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pillar key */}
+      <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" as const }}>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.62rem", margin: 0 }}>Pillar columns: C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          {[{ label: "Low (1–6)", color: "#E53935" }, { label: "Mid (7–10)", color: "#D4AF37" }, { label: "Strong (11–15)", color: "#43A047" }].map((item) => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
+              <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.62rem" }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main Admin Component ──────────────────────────────────────────────────────
@@ -189,7 +424,7 @@ export default function Admin() {
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/admin" />
 
-      <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 720, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Admin Access Only</p>
@@ -210,6 +445,9 @@ export default function Admin() {
             </div>
           ))}
         </div>
+
+        {/* Client Intelligence Dashboard */}
+        <ClientIntelligenceDashboard />
 
         {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
@@ -321,7 +559,7 @@ export default function Admin() {
           </div>
           <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
-              Launch Target · May 10, 2026 · app.druaiconsulting.com · Sprint 5 → Licensed to the World
+              Launch Target · May 10, 2026 · app.druaiconsulting.com
             </p>
           </div>
         </div>
