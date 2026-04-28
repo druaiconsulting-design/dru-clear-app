@@ -129,9 +129,9 @@ const TIER_COLORS: Record<string, string> = {
 
 // ── Pillar score color heat map ───────────────────────────────────────────────
 function getPillarColor(score: number): string {
-  if (score <= 6)  return "#E53935"; // red — low
-  if (score <= 10) return "#D4AF37"; // gold — medium
-  return "#43A047";                  // green — strong
+  if (score <= 6)  return "#E53935";
+  if (score <= 10) return "#D4AF37";
+  return "#43A047";
 }
 
 // ── Stats Hook ────────────────────────────────────────────────────────────────
@@ -209,7 +209,6 @@ function ClientIntelligenceDashboard() {
     fetchSubmissions();
   }, []);
 
-  // ── Summary stats ───────────────────────────────────────────────────────────
   const totalSubmissions = submissions.length;
   const avgScore = totalSubmissions > 0
     ? Math.round(submissions.reduce((sum, s) => sum + (s.total_score || 0), 0) / totalSubmissions)
@@ -220,7 +219,6 @@ function ClientIntelligenceDashboard() {
     return counts;
   }, [submissions]);
 
-  // ── Filtered rows ───────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return submissions.filter((s) => {
       const matchesTier = tierFilter === "ALL" || s.tier === tierFilter;
@@ -235,7 +233,6 @@ function ClientIntelligenceDashboard() {
     });
   }, [submissions, search, tierFilter]);
 
-  // ── CSV Export ──────────────────────────────────────────────────────────────
   const handleExport = () => {
     const headers = ["Date", "First Name", "Last Name", "Email", "Company", "Role", "Country", "Score", "Tier", "Top Gaps", "Clarity", "Leadership", "Execution", "Alignment", "Results"];
     const rows = filtered.map((s) => [
@@ -267,11 +264,10 @@ function ClientIntelligenceDashboard() {
     <div style={{ marginBottom: "2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
         <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Client Intelligence</p>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Client Intelligence</p>
         <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
       </div>
 
-      {/* 6 Summary Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
         {SUMMARY_CARDS.map((card) => (
           <div key={card.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "0.875rem 1rem" }}>
@@ -279,12 +275,11 @@ function ClientIntelligenceDashboard() {
               <span style={{ fontSize: "0.9rem" }}>{card.icon}</span>
               <p style={{ fontFamily: "'Playfair Display', serif", color: card.color, fontWeight: 700, fontSize: "1.3rem", margin: 0 }}>{card.value}</p>
             </div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", margin: 0 }}>{card.label}</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase" as const, margin: 0 }}>{card.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Filter Bar */}
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
         <input
           type="text"
@@ -313,69 +308,66 @@ function ClientIntelligenceDashboard() {
         </button>
       </div>
 
-      {/* Results count */}
       <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
         {loading ? "Loading..." : `${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}`}
       </p>
 
-      {/* Table */}
       {loading ? (
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" }}>
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
           <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" }}>
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
           <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
             {submissions.length === 0 ? "No submissions yet — data will appear here when clients complete the assessment." : "No results match your filter."}
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid rgba(212,175,55,0.15)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+        <div style={{ overflowX: "auto" as const, borderRadius: 8, border: "1px solid rgba(212,175,55,0.15)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 900 }}>
             <thead>
               <tr style={{ background: "rgba(212,175,55,0.08)", borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
                 {["Date", "Name", "Email", "Company", "Role", "Score", "Tier", "C", "L", "E", "A", "R", "Top Gaps"].map((h) => (
-                  <th key={h} style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "0.6rem 0.75rem", textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, padding: "0.6rem 0.75rem", textAlign: "left" as const, whiteSpace: "nowrap" as const }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((s, i) => (
                 <tr key={s.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>
                     {new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>
                     {s.first_name} {s.last_name}
                   </td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem" }}>
                     {s.email}
                   </td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>
                     {s.company || "—"}
                   </td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.65rem", whiteSpace: "nowrap" as const }}>
                     {s.role || "—"}
                   </td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" as const }}>
                     {s.total_score ?? "—"}
                   </td>
                   <td style={{ padding: "0.6rem 0.75rem" }}>
                     {s.tier ? (
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>
                         {s.tier}
                       </span>
                     ) : "—"}
                   </td>
-                  {/* Pillar heat map — C L E A R */}
                   {[s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score].map((score, pi) => (
-                    <td key={pi} style={{ padding: "0.6rem 0.5rem", textAlign: "center" }}>
+                    <td key={pi} style={{ padding: "0.6rem 0.5rem", textAlign: "center" as const }}>
                       <span style={{ fontFamily: "'Montserrat', sans-serif", color: getPillarColor(score), fontSize: "0.72rem", fontWeight: 700 }}>
                         {score ?? "—"}
                       </span>
                     </td>
                   ))}
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
                     {s.top_gaps || "—"}
                   </td>
                 </tr>
@@ -385,7 +377,6 @@ function ClientIntelligenceDashboard() {
         </div>
       )}
 
-      {/* Pillar key */}
       <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" as const }}>
         <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.62rem", margin: 0 }}>Pillar columns: C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
         <div style={{ display: "flex", gap: "0.75rem" }}>
@@ -396,6 +387,217 @@ function ClientIntelligenceDashboard() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Agent Empire Architecture ──────────────────────────────────────────────────
+function AgentEmpireArchitecture() {
+  type DivisionType = "internal" | "client" | "both" | "gov";
+
+  interface AgentDivision {
+    name: string;
+    tag: string;
+    type: DivisionType;
+    agents: string[];
+    fullWidth?: boolean;
+    hookAgents?: string[];
+    creative?: { orchestrator: string; sub: string[] };
+    columns?: number;
+  }
+
+  const divisionHeaderBg: Record<DivisionType, string> = {
+    internal: "#0A2342",
+    client:   "#C2185B",
+    both:     "#6B4F0A",
+    gov:      "#112D4A",
+  };
+
+  const divisionBorder: Record<DivisionType, string> = {
+    internal: "rgba(212,175,55,0.2)",
+    client:   "rgba(194,24,91,0.3)",
+    both:     "rgba(212,175,55,0.35)",
+    gov:      "rgba(212,175,55,0.3)",
+  };
+
+  const divisionBg: Record<DivisionType, string> = {
+    internal: "rgba(10,35,66,0.35)",
+    client:   "rgba(194,24,91,0.07)",
+    both:     "rgba(212,175,55,0.06)",
+    gov:      "rgba(17,45,74,0.45)",
+  };
+
+  const agentDotColor: Record<DivisionType, string> = {
+    internal: "#D4AF37",
+    client:   "#C2185B",
+    both:     "#D4AF37",
+    gov:      "#D4AF37",
+  };
+
+  const divisions: AgentDivision[] = [
+    {
+      name: "C-Suite / Operations", tag: "Internal", type: "internal",
+      agents: ["Chief of Staff", "Executive Assistant", "Director of Compliance ★", "Tax Strategist"],
+    },
+    {
+      name: "Legal & Finance", tag: "Internal", type: "internal",
+      agents: ["Legal Team", "Expense Manager", "Financial Reporting"],
+    },
+    {
+      name: "AI Governance", tag: "Internal", type: "gov",
+      agents: ["Disclaimer Writer", "Privacy Policy", "Contract Writer", "Brand Protection", "Continuous Learning Monitor"],
+    },
+    {
+      name: "HR Division", tag: "Internal → Both", type: "both",
+      agents: ["Recruiting", "Onboarding (Internal)", "Internal Helpdesk"],
+    },
+    {
+      name: "Revenue & Growth + Sales", tag: "Internal", type: "internal", fullWidth: true,
+      agents: ["Business Coach", "Sales Support", "Product Launch Specialist", "Email Marketing", "Copy Writer", "Lead Scoring & Qualification", "Personalized Outreach", "CRM Management (GHL)", "Product Knowledge", "Proposal Writer"],
+    },
+    {
+      name: "Marketing", tag: "Internal", type: "internal",
+      agents: ["Content Creation", "Digital Marketing", "Analytics & ROI Tracking", "SEO/SEM Brand Mgmt"],
+    },
+    {
+      name: "Content & Brand", tag: "Internal", type: "internal",
+      hookAgents: ["Social Media Strategist", "Viral Scripter"],
+      agents: ["Press Release", "Graphic Designer", "Translator / Localization"],
+    },
+    {
+      name: "Client Delivery", tag: "Client-Facing", type: "client", fullWidth: true,
+      agents: ["Onboarding Coach", "Community Manager", "Feedback Coach"],
+      creative: { orchestrator: "Creative Director (Orchestrator)", sub: ["Course Architect", "Presentation Designer", "Training Video Producer"] },
+    },
+    {
+      name: "Customer Support", tag: "Client-Facing", type: "client", fullWidth: true,
+      agents: ["Issue Resolution & Troubleshooting", "Multi-Channel Communication"],
+    },
+  ];
+
+  const agentRowStyle = (type: DivisionType): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 5,
+    padding: "4px 8px",
+    fontSize: "0.7rem",
+    fontFamily: "'Inter', sans-serif",
+    color: "rgba(230,230,230,0.85)",
+  });
+
+  const agentDot = (type: DivisionType) => (
+    <div style={{ width: 5, height: 5, borderRadius: "50%", background: agentDotColor[type], flexShrink: 0 }} />
+  );
+
+  return (
+    <div style={{ marginBottom: "2rem" }}>
+
+      {/* Section divider */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>AI Empire Architecture</p>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+      </div>
+
+      {/* Twin Master Block */}
+      <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "14px 20px", textAlign: "center" as const, marginBottom: 14 }}>
+        <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 4px" }}>
+          ✦ DeAnna's AI Twin — Master Orchestrator ✦
+        </p>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.68rem", margin: "0 0 10px" }}>
+          DeAnna's voice · Reviews all outputs · Persistent memory · Routes all agents
+        </p>
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" as const }}>
+          {["Master Orchestrator", "Workflow + Conversational", "Persistent Memory", "Guards Classes 35 · 41 · 42"].map((badge) => (
+            <span key={badge} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.35)", color: "#D4AF37" }}>
+              {badge}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" as const }}>
+        {[
+          { color: "#D4AF37", label: "Internal → White Label" },
+          { color: "#C2185B", label: "Client-Facing" },
+          { color: "#8B6914", label: "Both" },
+        ].map((item) => (
+          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.5)" }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color }} />
+            {item.label}
+          </div>
+        ))}
+      </div>
+
+      {/* Divisions Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {divisions.map((div) => (
+          <div
+            key={div.name}
+            style={{
+              gridColumn: div.fullWidth ? "1 / -1" : "auto",
+              borderRadius: 10,
+              overflow: "hidden",
+              border: `1px solid ${divisionBorder[div.type]}`,
+              background: divisionBg[div.type],
+            }}
+          >
+            {/* Division Header */}
+            <div style={{ background: divisionHeaderBg[div.type], padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 700 }}>{div.name}</span>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}>{div.tag}</span>
+            </div>
+
+            {/* Agents */}
+            <div style={{ padding: "8px 10px", display: "flex", flexDirection: div.fullWidth ? "row" : "column", flexWrap: div.fullWidth ? "wrap" as const : undefined, gap: 4 }}>
+
+              {/* Hook pipeline agents */}
+              {div.hookAgents?.map((agent) => (
+                <div key={agent} style={{ ...agentRowStyle(div.type), flex: div.fullWidth ? "1 1 160px" : undefined }}>
+                  {agentDot(div.type)}
+                  <span>{agent}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.58rem", color: "#C2185B", fontStyle: "italic", marginLeft: 2 }}>⟷ hook pipeline</span>
+                </div>
+              ))}
+
+              {/* Regular agents */}
+              {div.agents.map((agent) => (
+                <div key={agent} style={{ ...agentRowStyle(div.type), flex: div.fullWidth ? "1 1 160px" : undefined }}>
+                  {agentDot(div.type)}
+                  <span>{agent}</span>
+                </div>
+              ))}
+
+              {/* Creative Director sub-group */}
+              {div.creative && (
+                <div style={{ flex: "1 1 220px", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.25)", borderLeft: "3px solid #D4AF37", borderRadius: 7, padding: "7px 10px", marginTop: div.fullWidth ? 0 : 2 }}>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, color: "#D4AF37", margin: "0 0 5px", letterSpacing: "0.04em" }}>
+                    {div.creative.orchestrator}
+                  </p>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
+                    {div.creative.sub.map((sub) => (
+                      <span key={sub} style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", padding: "2px 7px", background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4, color: "rgba(230,230,230,0.8)" }}>
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", textAlign: "center" as const }}>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0, letterSpacing: "0.04em" }}>
+          ★ Director of Compliance auto-blocks outputs violating Trademark Classes 35 · 41 · 42 · All 38 agents report to AI Twin · Persistent memory across sessions
+        </p>
       </div>
     </div>
   );
@@ -427,7 +629,7 @@ export default function Admin() {
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Admin Access Only</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
         </div>
@@ -449,19 +651,22 @@ export default function Admin() {
         {/* Client Intelligence Dashboard */}
         <ClientIntelligenceDashboard />
 
+        {/* AI Empire Architecture */}
+        <AgentEmpireArchitecture />
+
         {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>🔒 Private Client Links</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>🔒 Private Client Links</p>
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
             <div style={{ marginBottom: 10 }}>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
               <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private · Send to client during diagnostic call · Full Ecosystem payment live</p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
+              <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none", textAlign: "center" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
                 Preview Page →
               </a>
-              <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
+              <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
                 {copied ? "✓ Copied!" : "Copy Link"}
               </button>
             </div>
@@ -470,7 +675,7 @@ export default function Admin() {
 
         {/* Quick Links */}
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Quick Links</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Quick Links</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
             {QUICK_LINKS.map((link) => (
               <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
@@ -487,7 +692,7 @@ export default function Admin() {
 
         {/* Payment Links */}
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Payment Links</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Payment Links</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {PAYMENT_LINKS.map((link) => (
               <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
@@ -507,7 +712,7 @@ export default function Admin() {
 
         {/* Pending Items */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Pending Refinements</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Pending Refinements</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {PENDING_ITEMS.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
@@ -522,7 +727,7 @@ export default function Admin() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Full Build Roadmap</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Full Build Roadmap</p>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -534,7 +739,7 @@ export default function Admin() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
                       <div>
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
                         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
                       </div>
                     </div>
@@ -557,8 +762,8 @@ export default function Admin() {
               );
             })}
           </div>
-          <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
+          <div style={{ marginTop: "1.25rem", textAlign: "center" as const, padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#D4AF37" }}>
               Launch Target · May 10, 2026 · app.druaiconsulting.com
             </p>
           </div>
@@ -566,7 +771,7 @@ export default function Admin() {
 
       </main>
 
-      <footer style={{ textAlign: "center", padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
+      <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
     </div>
