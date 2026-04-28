@@ -16,6 +16,7 @@ function getUserDisplay(user: any): { name: string; firstName: string; avatarUrl
   const fullName = user?.fullName || firstName;
   const email = user?.email || "";
   const avatarUrl = user?.picture || null;
+
   const displayFirst = firstName || email.split("@")[0] || "User";
   const initials = fullName
     ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -109,6 +110,27 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         )}
 
+        {/* ── Admin toggle — follows you across every page ────────────────────
+            On any page except /portal → CLIENT VIEW button → goes to /portal
+            On /portal → ADMIN VIEW button → goes to /admin
+        ─────────────────────────────────────────────────────────────────── */}
+        {isLoggedIn && isAdmin && active !== "/portal" && (
+          <a href="/portal" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.3)", transition: "all 0.2s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.15)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}
+          >
+            👤 Client View
+          </a>
+        )}
+        {isLoggedIn && isAdmin && active === "/portal" && (
+          <a href="/admin" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", transition: "all 0.2s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(194,24,91,0.15)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(194,24,91,0.08)"; }}
+          >
+            ⚙️ Admin View
+          </a>
+        )}
+
         {/* User avatar + logout */}
         {isLoggedIn && user && (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "0.5rem" }}>
@@ -166,9 +188,16 @@ export default function NavBar({ active }: { active?: string }) {
             </a>
           ))}
 
-          {/* Mobile admin link — only shown if admin */}
-          {isLoggedIn && isAdmin && (
-            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>Command Center</a>
+          {/* Mobile admin toggle */}
+          {isLoggedIn && isAdmin && active !== "/portal" && (
+            <a href="/portal" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+              👤 Client View
+            </a>
+          )}
+          {isLoggedIn && isAdmin && active === "/portal" && (
+            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+              ⚙️ Admin View
+            </a>
           )}
 
           {isLoggedIn ? (
