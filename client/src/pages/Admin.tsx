@@ -3,35 +3,6 @@ import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 
-// ── Client View imports (mirrors Portal) ──────────────────────────────────────
-function getUserDisplay(user: any): { firstName: string; avatarUrl: string | null; initials: string } {
-  const firstName = user?.firstName || "";
-  const fullName = user?.fullName || firstName;
-  const email = user?.email || "";
-  const avatarUrl = user?.picture || null;
-  const displayFirst = firstName || email.split("@")[0] || "";
-  const initials = fullName
-    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
-    : email.slice(0, 2).toUpperCase();
-  return { firstName: displayFirst, avatarUrl, initials };
-}
-
-function PortalAvatar({ user }: { user: any }) {
-  const { avatarUrl, initials } = getUserDisplay(user);
-  const [imgError, setImgError] = useState(false);
-  if (avatarUrl && !imgError) {
-    return (
-      <img src={avatarUrl} alt="Profile" onError={() => setImgError(true)}
-        style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }} />
-    );
-  }
-  return (
-    <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(212,175,55,0.12)", border: "2px solid rgba(212,175,55,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#D4AF37", lineHeight: 1 }}>{initials}</span>
-    </div>
-  );
-}
-
 // ── Admin data ────────────────────────────────────────────────────────────────
 const QUICK_LINKS = [
   { label: "GHL Dashboard",      href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
@@ -71,7 +42,7 @@ const SPRINTS = [
       { label: "React Router architecture — 7 pages live", sub: "Portal, Frameworks, Resources, Daily, ROI, Affiliate, Admin" },
       { label: "Supabase backend database", sub: "Persistent accounts, RLS security, profiles table" },
       { label: "Google Sign In + email/password login", sub: "Automated password reset · admin private door" },
-      { label: "Admin Command Center", sub: "Client View / Admin View toggle · private door at /admin" },
+      { label: "Admin Command Center", sub: "CLIENT VIEW / ADMIN VIEW toggle in navbar · private door at /admin" },
       { label: "All 4 IP framework descriptions written", sub: "DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™" },
       { label: "Framework infographics embedded in Frameworks page", sub: "4 images live · price badge top right · brand badge bottom left" },
     ],
@@ -88,52 +59,59 @@ const SPRINTS = [
       { label: "Portal rebuilt as personal dashboard", sub: "3 cards: My Assessment · Daily Connection · Need Support" },
       { label: "Resources page cleaned up", sub: "Email capture removed · New This Week banner · resources added weekly note" },
       { label: "Affiliate page updated", sub: "New copy · real links · GHL note · Suggest a Tool → info@druaiconsulting.com" },
-      { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password · skip text removed" },
-      { label: "NavBar updated — LIVE", sub: "ROI replaced with Join the Community · duplicate CLIENT VIEW/ADMIN VIEW removed · clean nav for all users" },
-      { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired · Best Value badge fixed" },
-      { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage built in HTML · all real GitHub images · single CTA → assessment · QR code section · premium shield badge" },
-      { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy · all 4 framework Learn More buttons point here" },
+      { label: "Reset password flow — LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page · show/hide password" },
+      { label: "NavBar restored — CLIENT VIEW / ADMIN VIEW", sub: "Toggle follows admin across all pages · Client View → /portal · Admin View → /admin" },
+      { label: "Community Landing Page — LIVE", sub: "Founders Special · Navigator $47/mo · Accelerator $147/mo · real GHL payment links wired" },
+      { label: "GHL Homepage Funnel — LIVE", sub: "15-section branded homepage · single CTA → assessment · QR code section" },
+      { label: "frameworks.druaiconsulting.com — LIVE", sub: "Standalone frameworks page deployed on Vercel · connected to GoDaddy" },
       { label: "GitHub repos organized", sub: "druaiconsulting-website · druaiconsulting-frameworks · all brand assets hosted" },
-      { label: "Magazine bio — locked", sub: "Universal bio for Apostolic Woman's Birthing Nations · April 30 print deadline · QR code included" },
-      { label: "ROI page → Community Landing Page", sub: "Founders Special pricing · Navigator $47/mo · Accelerator $147/mo · AI agents hold community until humans arrive" },
-      { label: "YouTube coaching video URL added", sub: "Homepage video placeholder replaced with live URL" },
-      { label: "YouTube global slideshow URL added", sub: "Homepage slideshow placeholder replaced with live URL" },
-      { label: "Add PDF assets to Supabase resource sequences", sub: "DRU CLEAR™ AI Leadership Manual 101 uploaded to Supabase Storage · public URLs live" },
-      { label: "Populate Resource Hub with first PDF downloads", sub: "Manual 101 live in Resources.tsx · direct download from Supabase" },
-      { label: "Set NEW_THIS_WEEK in Resources.tsx", sub: "Banner live · DRU CLEAR™ AI Leadership Manual 101 featured" },
+      { label: "Magazine bio — locked", sub: "Universal bio · April 30 print deadline · QR code included" },
       { label: "Admin Command Center live stats", sub: "Supabase stats table · Edge Function · GHL webhooks wired · real-time counts" },
       { label: "Free tier access — Supabase tier field", sub: "free | paid · RLS controls · assessment auto-creates free account" },
       { label: "Free tier — Daily Connections", sub: "AI Leadership Insight free · Micro-Lesson + Action Challenge locked for paid" },
       { label: "Free tier — Resources", sub: "1 free PDF · rest locked · upgrade prompt" },
-      { label: "PWA favicon updated — DC shield icon", sub: "icon-192x192.png and icon-512x512.png added to public folder · index.html updated · CDN links replaced" },
-      { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com · navy loading screen · no flash" },
-      { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login · public routes clearly organized · no bypass possible" },
-      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · paired unlocks · Edge Function auto-updates on purchase · zero manual work" },
-      { label: "GHL tags created — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy · unlocks Deploy + Dominate stages" },
-      { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware (discover/diagnose/deploy) · leadership WITH AI blend · stored in Supabase · fallback content if generation hasn't run" },
-      { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing dot · Read: gold glow dot · Completed: 🔥 streak number · 7-day streak: gold card border glow + milestone banner" },
-      { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions · shown on both Daily page and Portal card · resets if day missed" },
-      { label: "Mark Completed button — gold on completion", sub: "Blue → gold with glow + checkmark · streak fires after completion · Portal dot updates on tab return" },
-      { label: "Need Support card — mailto with pre-filled subject", sub: "Opens email client with support@druaiconsulting.com + Subject: Support Request — DRU CLEAR™ Member" },
-      { label: "My Assessment card — routes to assessment site", sub: "https://assessment.druaiconsulting.com · fixes auth loop for logged-in users" },
+      { label: "PWA favicon updated — DC shield icon", sub: "icon-192x192.png and icon-512x512.png · CDN links replaced" },
+      { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com" },
+      { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login · no bypass possible" },
+      { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · paired unlocks · Edge Function auto-updates on purchase" },
+      { label: "GHL tags — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy · unlocks Deploy + Dominate" },
+      { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware · leadership WITH AI · stored in Supabase" },
+      { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing · Read: gold glow · Completed: 🔥 streak · 7-day: gold card border glow + milestone banner" },
+      { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions · shown on Portal card and Daily page" },
+      { label: "Mark Completed button — gold on completion", sub: "Blue → gold with glow + checkmark · streak fires · Portal dot updates on tab return" },
+      { label: "Need Support — mailto with pre-filled subject", sub: "Opens email client · support@druaiconsulting.com · Subject: Support Request — DRU CLEAR™ Member" },
+      { label: "My Assessment — routes to assessment site", sub: "https://assessment.druaiconsulting.com · fixes auth loop for logged-in users" },
     ],
   },
   {
     number: "4", title: "The AI Empire", status: "planned",
     items: [
-      { label: "Phase 1 — DeAnna's AI Twin (private build)", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · powers all other agents · build first — everything depends on it" },
+      { label: "Phase 1 — DeAnna's AI Twin (private build)", sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · powers every other agent · BUILD FIRST — everything depends on this" },
       { label: "Phase 1 — Passkeys / Face ID login", sub: "Proper backend auth · device-based biometric · secure the ecosystem before scale" },
-      { label: "Phase 2 — Agent Architecture — 3 layers", sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design org chart before building departments" },
-      { label: "Phase 2 — Framework Agent Teams", sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
-      { label: "Phase 2 — Agent Roles", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
-      { label: "Phase 3 — Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
-      { label: "Phase 3 — Community — in-app", sub: "Launch when 20+ active clients · agents already running by this point" },
-      { label: "Phase 3 — Affiliate dashboard", sub: "Track referrals · commissions · top referrer rewards" },
-      { label: "Phase 4 — Daily Connections tier upgrade", sub: "Add 'accelerator' as 3rd Supabase tier value · Free: Insight only · Navigator: all 3 cards · Accelerator: all 3 + 4th exclusive card (weekly DeAnna strategic prompt or Accelerator-only challenge) · foundation already built" },
-      { label: "Phase 4 — AI Literacy — From Confusion to Confident with AI™", sub: "4-week course · Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
-      { label: "Phase 4 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking" },
-      { label: "Phase 4 — Navigator $97/mo + Accelerator $297/mo", sub: "Price increase from founder pricing · Navigator: full Daily Connection (all 3 cards) · Accelerator: all 3 + exclusive 4th card · locked in memory" },
-      { label: "Phase 4 — White label LMS licensing", sub: "Other consultants pay monthly to use your platform · requires everything above to be proven first" },
+      { label: "Phase 3a — Director of Compliance · Legal · Tax · Chief of Staff · Executive Assistant", sub: "Protect the empire before it grows · governance and operational agents in place before scale" },
+      { label: "Phase 3b — Revenue & Growth Agents", sub: "Sales Support · Affiliate Manager · Lead Nurture · Onboarding Coach · Start generating before fully public" },
+      { label: "Phase 3c — Content & Brand Agents", sub: "Content Creator · LinkedIn Authority Engine · Daily Connections Engine · Social Scheduler · Feed the authority engine" },
+      { label: "Phase 3d — Client Delivery Agents + Creative Director", sub: "Framework Advisor · Feedback Coach · Community Manager · Creative Director · Ready for clients at launch" },
+      { label: "Phase 3e — Daily Connections Upgrade · Community · Courses", sub: "Add 'accelerator' Supabase tier · Free: 1 card · Navigator: 3 cards · Accelerator: 3 + exclusive 4th · Community in-app at 20+ clients · Full ecosystem live" },
+      { label: "Phase 4 — Agent Architecture — 3 Layers", sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design the org chart before building departments" },
+      { label: "Phase 4 — Framework Agent Teams", sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
+      { label: "Phase 4 — Agent Roles", sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach" },
+      { label: "Phase 5 — Community AI Agents", sub: "Navigator + Accelerator communities managed by agents · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
+      { label: "Phase 5 — Community — in-app", sub: "Launch when 20+ active clients · agents already running by this point" },
+      { label: "Phase 5 — Affiliate Dashboard", sub: "Track referrals · commissions · top referrer rewards" },
+      { label: "Phase 6 — Daily Connections Tier Upgrade", sub: "Add 'accelerator' as 3rd Supabase tier value · Free: 1 card · Navigator: 3 cards · Accelerator: 3 cards + exclusive 4th (weekly DeAnna strategic prompt) · foundation already built" },
+      { label: "Phase 6 — From Confusion to Confident with AI™", sub: "4-week course · Self-paced $497 · Cohort with live sessions $997 · Cohort + 1:1 with DeAnna $1,497 · AI agents automate delivery" },
+      { label: "Phase 7 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Course platform · 8 modules · video + workbooks · progress tracking · built on proven client results" },
+      { label: "Phase 7 — Navigator $97/mo + Accelerator $297/mo", sub: "Price increase from founder pricing when ready · Navigator: full 3-card Daily · Accelerator: 3 cards + exclusive 4th · locked in memory" },
+      { label: "🚀 LAUNCH", sub: "app.druaiconsulting.com · full AI empire live · all agents operational" },
+    ],
+  },
+  {
+    number: "5", title: "Scale & License", status: "planned",
+    items: [
+      { label: "Phase 1 — 90-Day Live Run", sub: "Real clients · real data · agent refinement · case studies building · Sprint 5 readiness gate — do not proceed until proven" },
+      { label: "Phase 2 — DRU CLEAR™ Scale Your AI Business — LMS", sub: "Full course platform · 8 modules · video + workbooks · progress tracking · built on proven 90-day results" },
+      { label: "Phase 3 — White Label LMS Licensing", sub: "Other consultants pay monthly to use your platform · Licensed to the World" },
     ],
   },
 ];
@@ -166,17 +144,10 @@ function useStats() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const { data, error } = await supabase
-          .from("stats")
-          .select("id, value");
-
+        const { data, error } = await supabase.from("stats").select("id, value");
         if (error) throw error;
-
         const map: Record<string, number> = {};
-        data?.forEach((row: { id: string; value: number }) => {
-          map[row.id] = row.value;
-        });
-
+        data?.forEach((row: { id: string; value: number }) => { map[row.id] = row.value; });
         setStats({
           assessments_completed: map["assessments_completed"] || 0,
           leads_captured: map["leads_captured"] || 0,
@@ -189,119 +160,14 @@ function useStats() {
         setLoading(false);
       }
     }
-
     fetchStats();
   }, []);
 
   return { stats, loading };
 }
 
-// ── View Toggle Component ─────────────────────────────────────────────────────
-function ViewToggle({ view, onChange }: { view: "admin" | "client"; onChange: (v: "admin" | "client") => void }) {
-  return (
-    <div style={{
-      display: "inline-flex", background: "rgba(255,255,255,0.05)",
-      border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8,
-      padding: 3, gap: 3, marginBottom: "1.5rem",
-    }}>
-      {(["admin", "client"] as const).map((mode) => {
-        const active = view === mode;
-        return (
-          <button key={mode} onClick={() => onChange(mode)} style={{
-            background: active ? (mode === "admin" ? "#C2185B" : "#D4AF37") : "transparent",
-            color: active ? "#FFFFFF" : "rgba(230,230,230,0.45)",
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 700,
-            fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase",
-            border: "none", borderRadius: 6, padding: "0.45rem 1rem",
-            cursor: "pointer", transition: "all 0.2s",
-          }}>
-            {mode === "admin" ? "⚙️ Admin View" : "👤 Client View"}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Client View ───────────────────────────────────────────────────────────────
-function ClientView({ user }: { user: any }) {
-  const userDisplay = user ? getUserDisplay(user) : { firstName: "", avatarUrl: null, initials: "" };
-
-  const QUICK_ACTIONS = [
-    { icon: "📋", label: "My Assessment",    sub: "View your scorecard results",   href: "https://assessment.druaiconsulting.com", external: false },
-    { icon: "⚡", label: "Daily Connection", sub: "Today's leadership insight",     href: "/daily", external: false, notification: true },
-    { icon: "✉️", label: "Need Support",     sub: "Email us anytime",              href: "mailto:support@druaiconsulting.com?subject=Support%20Request%20%E2%80%94%20DRU%20CLEAR%E2%84%A2%20Member", external: true },
-  ];
-
-  return (
-    <>
-      <div style={{ marginBottom: "2rem" }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your AI Transformation Hub</p>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
-          {user && <PortalAvatar user={user} />}
-          <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
-              {userDisplay.firstName
-                ? <>Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span></>
-                : <>Welcome Back</>}
-            </h1>
-            {user?.email && (
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.72rem", margin: 0 }}>{user.email}</p>
-            )}
-          </div>
-        </div>
-        <p style={{ color: "rgba(230,230,230,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", lineHeight: 1.7 }}>
-          Everything you need to accelerate your AI leadership journey — in one place.
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
-        {QUICK_ACTIONS.map((item) => (
-          <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
-            <div
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "1.25rem 1rem", cursor: "pointer", transition: "border-color 0.2s, background 0.2s", height: "100%", boxSizing: "border-box" as const, position: "relative" as const }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.5)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(212,175,55,0.06)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.2)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
-            >
-              {item.notification && (
-                <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342" }} />
-              )}
-              <div style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{item.icon}</div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{item.label}</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", lineHeight: 1.5 }}>{item.sub}</p>
-            </div>
-          </a>
-        ))}
-      </div>
-
-      <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your DRU AI Transformation Pathway™</p>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.5rem" }}>
-          {["Discover", "Diagnose", "Design", "Deploy", "Dominate"].map((stage, i) => (
-            <div key={stage} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-              <div style={{
-                background: i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.05)",
-                border: `1px solid ${i === 0 ? "#C2185B" : i === 1 ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`,
-                borderRadius: 6, padding: "0.4rem 0.75rem", textAlign: "center" as const,
-              }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: i === 0 ? "#FFFFFF" : i === 1 ? "#D4AF37" : "rgba(255,255,255,0.35)", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em" }}>{stage}</p>
-              </div>
-              {i < 4 && <span style={{ color: "rgba(212,175,55,0.4)", fontSize: "0.8rem" }}>→</span>}
-            </div>
-          ))}
-        </div>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.7rem", marginTop: "0.75rem", fontStyle: "italic" }}>
-          You are in the Discover stage. Your diagnostic unlocks the next step.
-        </p>
-      </div>
-    </>
-  );
-}
-
 // ── Main Admin Component ──────────────────────────────────────────────────────
 export default function Admin() {
-  const { user } = useAuth();
-  const [view, setView] = useState<"admin" | "client">("admin");
   const [copied, setCopied] = useState(false);
   const { stats, loading } = useStats();
 
@@ -325,147 +191,140 @@ export default function Admin() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 720, margin: "0 auto", width: "100%" }}>
 
-        <div style={{ marginBottom: "1.5rem" }}>
+        <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
-          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", marginBottom: "1.25rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
-          <ViewToggle view={view} onChange={setView} />
+          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
         </div>
 
-        {view === "client" ? (
-          <ClientView user={user} />
-        ) : (
-          <>
-            {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
-              {STAT_CARDS.map((stat) => (
-                <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <span style={{ fontSize: "1.1rem" }}>{stat.icon}</span>
-                    <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem" }}>{stat.value}</p>
-                  </div>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
-                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>{stat.sub}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Private Client Links */}
-            <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>🔒 Private Client Links</p>
-              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
-                <div style={{ marginBottom: 10 }}>
-                  <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
-                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private · Send to client during diagnostic call · Full Ecosystem payment live</p>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
-                    Preview Page →
-                  </a>
-                  <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
-                    {copied ? "✓ Copied!" : "Copy Link"}
-                  </button>
-                </div>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
+          {STAT_CARDS.map((stat) => (
+            <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                <span style={{ fontSize: "1.1rem" }}>{stat.icon}</span>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem" }}>{stat.value}</p>
               </div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>{stat.sub}</p>
             </div>
+          ))}
+        </div>
 
-            {/* Quick Links */}
-            <div style={{ marginBottom: "2rem" }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Quick Links</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-                {QUICK_LINKS.map((link) => (
-                  <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.15)"; }}
-                  >
-                    <span style={{ fontSize: "1rem" }}>{link.icon}</span>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
-                  </a>
-                ))}
+        {/* Private Client Links */}
+        <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>🔒 Private Client Links</p>
+          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
+            <div style={{ marginBottom: 10 }}>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private · Send to client during diagnostic call · Full Ecosystem payment live</p>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>
+                Preview Page →
+              </a>
+              <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
+                {copied ? "✓ Copied!" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div style={{ marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Quick Links</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            {QUICK_LINKS.map((link) => (
+              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.15)"; }}
+              >
+                <span style={{ fontSize: "1rem" }}>{link.icon}</span>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Payment Links */}
+        <div style={{ marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Payment Links</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {PAYMENT_LINKS.map((link) => (
+              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.12)"; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: link.color, flexShrink: 0 }} />
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
+                </div>
+                <span style={{ fontFamily: "'Playfair Display', serif", color: link.color, fontWeight: 700, fontSize: "0.85rem" }}>{link.price}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Pending Items */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Pending Refinements</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {PENDING_ITEMS.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
+                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item}</p>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Payment Links */}
-            <div style={{ marginBottom: "2rem" }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Payment Links</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {PAYMENT_LINKS.map((link) => (
-                  <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.12)"; }}
-                  >
+        {/* Sprint Roadmap */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
+            <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Full Build Roadmap</p>
+            <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {SPRINTS.map((sprint) => {
+              const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
+              return (
+                <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: link.color, flexShrink: 0 }} />
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
+                        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
+                      </div>
                     </div>
-                    <span style={{ fontFamily: "'Playfair Display', serif", color: link.color, fontWeight: 700, fontSize: "0.85rem" }}>{link.price}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Pending Items */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Pending Refinements</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {PENDING_ITEMS.map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
-                    <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
-                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item}</p>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Sprint Roadmap */}
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
-                <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#D4AF37", whiteSpace: "nowrap" }}>Full Build Roadmap</p>
-                <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                {SPRINTS.map((sprint) => {
-                  const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
-                  return (
-                    <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
-                          <div>
-                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
-                            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
-                          </div>
+                  <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    {sprint.items.map((item, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
+                          {sprint.status === "completed" ? "✓" : "→"}
+                        </span>
+                        <div>
+                          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                         </div>
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
                       </div>
-                      <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                        {sprint.items.map((item, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                            <span style={{ color: cfg.dot, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                              {sprint.status === "completed" ? "✓" : "→"}
-                            </span>
-                            <div>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: sprint.status === "completed" ? "rgba(230,230,230,0.7)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
-                              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
-                  Launch Target · May 10, 2026 · app.druaiconsulting.com
-                </p>
-              </div>
-            </div>
-          </>
-        )}
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: "1.25rem", textAlign: "center", padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#D4AF37" }}>
+              Launch Target · May 10, 2026 · app.druaiconsulting.com · Sprint 5 → Licensed to the World
+            </p>
+          </div>
+        </div>
 
       </main>
 
