@@ -23,11 +23,9 @@ import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
 
-// ─── Dynamic Tab Title ────────────────────────────────────────────────────────
 function setTitle(title: string) {
   document.title = title;
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 function Router() {
   const { isLoggedIn, isAdmin, loading } = useAuth();
@@ -58,18 +56,23 @@ function Router() {
     );
   }
 
+  // ── Root ────────────────────────────────────────────────────────────────────
   if (path === "/" || path === "") {
     setTitle("DRU CLEAR™ AI Readiness Scorecard");
     return <DruClearApp />;
   }
 
+  // ── Redirects ───────────────────────────────────────────────────────────────
   if (path === "/roi" || path === "/roi/") {
-    window.location.href = "/community";
+    window.location.replace("/community");
+    return null;
+  }
+  if (path === "/admin-launch" || path === "/admin-launch/") {
+    window.location.replace("/admin");
     return null;
   }
 
   // ── Public Routes ───────────────────────────────────────────────────────────
-
   if (path === "/bundle-pricing" || path === "/bundle-pricing/") {
     setTitle("Bundle Pricing · DRU CLEAR™");
     return <BundlePricing />;
@@ -78,8 +81,16 @@ function Router() {
     setTitle("Terms of Engagement · DRU CLEAR™");
     return <TermsPage />;
   }
+  if (path === "/reset-password" || path === "/reset-password/") {
+    setTitle("Set Your Password · DRU CLEAR™");
+    return <ResetPassword />;
+  }
+  if (path === "/login" || path === "/login/") {
+    setTitle("Sign In · DRU CLEAR™");
+    return <Login />;
+  }
 
-  // ── Diagnostic Thank You Pages (public — post-purchase redirect) ────────────
+  // ── Thank You Pages ─────────────────────────────────────────────────────────
   if (path === "/thank-you-ed" || path === "/thank-you-ed/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouED />;
@@ -88,8 +99,6 @@ function Router() {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouSD />;
   }
-
-  // ── Framework Thank You Pages (public — post-purchase redirect) ─────────────
   if (path === "/thank-you-dru-clear" || path === "/thank-you-dru-clear/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouDruClear />;
@@ -106,65 +115,51 @@ function Router() {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouAISales />;
   }
-
-  // ── Bundle Thank You Page (public — post-purchase redirect) ────────────────
   if (path === "/thank-you-full-ecosystem" || path === "/thank-you-full-ecosystem/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouFullEcosystem />;
   }
 
-  if (path === "/reset-password" || path === "/reset-password/") {
-    setTitle("Set Your Password · DRU CLEAR™");
-    return <ResetPassword />;
-  }
-
-  if (path === "/login" || path === "/login/") {
-    setTitle("Sign In · DRU CLEAR™");
-    return <Login />;
-  }
-
-  // ── Admin Launch — PWA home screen shortcut → goes straight to /admin ───────
-  if (path === "/admin-launch" || path === "/admin-launch/") {
-    window.location.replace("/admin");
-    return null;
-  }
-
+  // ── Admin Route ─────────────────────────────────────────────────────────────
   if (path === "/admin" || path === "/admin/") {
     setTitle("Command Center · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
   }
 
-  // ── Protected Routes — login required ──────────────────────────────────────
+  // ── Protected Routes ────────────────────────────────────────────────────────
+  // FIXED: Replaced window.location.href redirects with component renders.
+  // window.location.href triggers a full page reload which restarts the auth
+  // cycle and causes flicker. Rendering <Login /> directly is instant.
 
   if (path === "/portal" || path === "/portal/") {
     setTitle("My Portal · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Portal />;
   }
   if (path === "/resources" || path === "/resources/") {
     setTitle("Resource Hub · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Resources />;
   }
   if (path === "/daily" || path === "/daily/") {
     setTitle("Daily Connections · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Daily />;
   }
   if (path === "/frameworks" || path === "/frameworks/") {
     setTitle("Frameworks · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Frameworks />;
   }
   if (path === "/community" || path === "/community/") {
     setTitle("Community · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Community />;
   }
   if (path === "/affiliate" || path === "/affiliate/") {
     setTitle("Affiliate · DRU CLEAR™");
-    if (!isLoggedIn) { window.location.href = "/login"; return null; }
+    if (!isLoggedIn) return <Login />;
     return <Affiliate />;
   }
 
