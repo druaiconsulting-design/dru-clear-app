@@ -17,7 +17,7 @@
         }
       ],
       "destination": "https://app.druaiconsulting.com/$1",
-      "permanent": true
+      "permanent": false
     }
   ]
 }
