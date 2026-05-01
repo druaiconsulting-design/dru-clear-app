@@ -396,15 +396,14 @@ function ClientIntelligenceDashboard() {
 function AgentEmpireArchitecture() {
   type DivisionType = "internal" | "client" | "both" | "gov";
 
+  interface AgentEntry { role: string; name: string; hook?: boolean; }
   interface AgentDivision {
     name: string;
     tag: string;
     type: DivisionType;
-    agents: string[];
+    agents: AgentEntry[];
     fullWidth?: boolean;
-    hookAgents?: string[];
-    creative?: { orchestrator: string; sub: string[] };
-    columns?: number;
+    creative?: { orchestrator: string; orchestratorName: string; sub: AgentEntry[] };
   }
 
   const divisionHeaderBg: Record<DivisionType, string> = {
@@ -438,45 +437,99 @@ function AgentEmpireArchitecture() {
   const divisions: AgentDivision[] = [
     {
       name: "C-Suite / Operations", tag: "Internal", type: "internal",
-      agents: ["Chief of Staff", "Executive Assistant", "Director of Compliance ★", "Tax Strategist"],
+      agents: [
+        { role: "Executive Assistant",    name: "Priya Sharma"    },
+        { role: "Director of Compliance ★", name: "Isabella Moreno" },
+        { role: "Tax Strategist",          name: "Marcus Chen"     },
+      ],
     },
     {
       name: "Legal & Finance", tag: "Internal", type: "internal",
-      agents: ["Legal Team", "Expense Manager", "Financial Reporting"],
+      agents: [
+        { role: "Legal Team",          name: "Amara Okafor"  },
+        { role: "Expense Manager",     name: "Diego Reyes"   },
+        { role: "Financial Reporting", name: "Yuki Tanaka"   },
+      ],
     },
     {
       name: "AI Governance", tag: "Internal", type: "gov",
-      agents: ["Disclaimer Writer", "Privacy Policy", "Contract Writer", "Brand Protection", "Continuous Learning Monitor"],
+      agents: [
+        { role: "Disclaimer Writer",           name: "Khalid Hassan"   },
+        { role: "Privacy Policy",              name: "Sofia Petrov"    },
+        { role: "Contract Writer",             name: "James Osei"      },
+        { role: "Brand Protection",            name: "Mei Lin"         },
+        { role: "Continuous Learning Monitor", name: "Rafael Torres"   },
+      ],
     },
     {
       name: "HR Division", tag: "Internal → Both", type: "both",
-      agents: ["Recruiting", "Onboarding (Internal)", "Internal Helpdesk"],
+      agents: [
+        { role: "Recruiting",           name: "Naomi Williams"  },
+        { role: "Onboarding (Internal)",name: "Aiden Park"      },
+        { role: "Internal Helpdesk",    name: "Fatima Al-Rashid"},
+      ],
     },
     {
       name: "Revenue & Growth + Sales", tag: "Internal", type: "internal", fullWidth: true,
-      agents: ["Business Coach", "Sales Support", "Product Launch Specialist", "Email Marketing", "Copy Writer", "Lead Scoring & Qualification", "Personalized Outreach", "CRM Management (GHL)", "Product Knowledge", "Proposal Writer"],
+      agents: [
+        { role: "Business Coach",              name: "Serena Jackson"  },
+        { role: "Sales Support",               name: "Mateo Gonzalez"  },
+        { role: "Product Launch Specialist",   name: "Zara Ahmed"      },
+        { role: "Email Marketing",             name: "Jaylen Brooks"   },
+        { role: "Copy Writer",                 name: "Chloe Dubois"    },
+        { role: "Lead Scoring & Qualification",name: "Omar Patel"      },
+        { role: "Personalized Outreach",       name: "Aaliyah Foster"  },
+        { role: "CRM Management (GHL)",        name: "Ryan Nakamura"   },
+        { role: "Product Knowledge",           name: "Elena Vasquez"   },
+        { role: "Proposal Writer",             name: "Kwame Asante"    },
+      ],
     },
     {
       name: "Marketing", tag: "Internal", type: "internal",
-      agents: ["Content Creation", "Digital Marketing", "Analytics & ROI Tracking", "SEO/SEM Brand Mgmt"],
+      agents: [
+        { role: "Content Creation",      name: "Nia Robinson"  },
+        { role: "Digital Marketing",     name: "Luca Romano"   },
+        { role: "Analytics & ROI Tracking", name: "Hyun-Ji Kim" },
+        { role: "SEO/SEM Brand Mgmt",    name: "Andre Mitchell" },
+      ],
     },
     {
       name: "Content & Brand", tag: "Internal", type: "internal",
-      hookAgents: ["Social Media Strategist", "Viral Scripter"],
-      agents: ["Press Release", "Graphic Designer", "Translator / Localization"],
+      agents: [
+        { role: "Social Media Strategist", name: "Camila Flores",  hook: true },
+        { role: "Viral Scripter",          name: "Darius King",    hook: true },
+        { role: "Press Release",           name: "Ingrid Larsen"  },
+        { role: "Graphic Designer",        name: "Ravi Gupta"     },
+        { role: "Translator / Localization", name: "Yara Mansour" },
+      ],
     },
     {
       name: "Client Delivery", tag: "Client-Facing", type: "client", fullWidth: true,
-      agents: ["Onboarding Coach", "Community Manager", "Feedback Coach"],
-      creative: { orchestrator: "Creative Director (Orchestrator)", sub: ["Course Architect", "Presentation Designer", "Training Video Producer"] },
+      agents: [
+        { role: "Onboarding Coach",   name: "Keisha Thompson" },
+        { role: "Community Manager",  name: "Marco Silva"     },
+        { role: "Feedback Coach",     name: "Leila Nasser"    },
+      ],
+      creative: {
+        orchestrator: "Creative Director",
+        orchestratorName: "Jordan Hayes",
+        sub: [
+          { role: "Course Architect",           name: "Simone Laurent" },
+          { role: "Presentation Designer",      name: "Theo Nguyen"    },
+          { role: "Training Video Producer",    name: "Amelia Santos"  },
+        ],
+      },
     },
     {
       name: "Customer Support", tag: "Client-Facing", type: "client", fullWidth: true,
-      agents: ["Issue Resolution & Troubleshooting", "Multi-Channel Communication"],
+      agents: [
+        { role: "Issue Resolution & Troubleshooting", name: "Isaiah Carter"    },
+        { role: "Multi-Channel Communication",         name: "Priscilla Okonkwo" },
+      ],
     },
   ];
 
-  const agentRowStyle = (type: DivisionType): React.CSSProperties => ({
+  const agentRowStyle = (): React.CSSProperties => ({
     display: "flex",
     alignItems: "center",
     gap: 6,
@@ -503,8 +556,18 @@ function AgentEmpireArchitecture() {
         <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
       </div>
 
+      {/* DeAnna Block */}
+      <div style={{ background: "#C2185B", borderRadius: 10, padding: "10px 20px", textAlign: "center" as const, marginBottom: 8 }}>
+        <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>
+          👑 DeAnna R. Upshaw — CEO & Founder
+        </p>
+      </div>
+
+      {/* Connector */}
+      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
+
       {/* Twin Master Block */}
-      <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "14px 20px", textAlign: "center" as const, marginBottom: 14 }}>
+      <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "14px 20px", textAlign: "center" as const, marginBottom: 8 }}>
         <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 4px" }}>
           ✦ DeAnna's AI Twin — Master Orchestrator ✦
         </p>
@@ -520,8 +583,27 @@ function AgentEmpireArchitecture() {
         </div>
       </div>
 
+      {/* Connector */}
+      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
+
+      {/* Travis — Chief of Staff */}
+      <div style={{ background: "rgba(10,35,66,0.7)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "10px 20px", textAlign: "center" as const, marginBottom: 8 }}>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.72rem", fontWeight: 700, margin: "0 0 2px", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>
+          Operations Layer
+        </p>
+        <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: "0 0 2px" }}>
+          Travis — Chief of Staff
+        </p>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.63rem", margin: 0 }}>
+          Routes tasks · Manages all divisions · Escalates to Twin · Tracks completion
+        </p>
+      </div>
+
+      {/* Connector */}
+      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
+
       {/* Legend */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" as const }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" as const }}>
         {[
           { color: "#D4AF37", label: "Internal → White Label" },
           { color: "#C2185B", label: "Client-Facing" },
@@ -556,34 +638,33 @@ function AgentEmpireArchitecture() {
             {/* Agents */}
             <div style={{ padding: "8px 10px", display: "flex", flexDirection: div.fullWidth ? "row" : "column", flexWrap: div.fullWidth ? "wrap" as const : undefined, gap: 4 }}>
 
-              {/* Hook pipeline agents */}
-              {div.hookAgents?.map((agent) => (
-                <div key={agent} style={{ ...agentRowStyle(div.type), flex: div.fullWidth ? "1 1 160px" : undefined }}>
-                  {agentDot(div.type)}
-                  <span>{agent}</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.58rem", color: "#C2185B", fontStyle: "italic", marginLeft: 2 }}>⟷ hook pipeline</span>
-                </div>
-              ))}
-
-              {/* Regular agents */}
               {div.agents.map((agent) => (
-                <div key={agent} style={{ ...agentRowStyle(div.type), flex: div.fullWidth ? "1 1 160px" : undefined }}>
+                <div key={agent.role} style={{ ...agentRowStyle(), flex: div.fullWidth ? "1 1 180px" : undefined }}>
                   {agentDot(div.type)}
-                  <span>{agent}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "rgba(230,230,230,0.9)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</span>
+                    <span style={{ fontSize: "0.6rem", color: "rgba(230,230,230,0.45)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {agent.role}{agent.hook ? " · ⟷ hook pipeline" : ""}
+                    </span>
+                  </div>
                 </div>
               ))}
 
               {/* Creative Director sub-group */}
               {div.creative && (
                 <div style={{ flex: "1 1 220px", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.25)", borderLeft: "3px solid #D4AF37", borderRadius: 7, padding: "7px 10px", marginTop: div.fullWidth ? 0 : 2 }}>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, color: "#D4AF37", margin: "0 0 5px", letterSpacing: "0.04em" }}>
-                    {div.creative.orchestrator}
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", margin: "0 0 1px" }}>
+                    {div.creative.orchestratorName}
+                  </p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.58rem", color: "rgba(230,230,230,0.4)", margin: "0 0 6px" }}>
+                    {div.creative.orchestrator} (Orchestrator)
                   </p>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
                     {div.creative.sub.map((sub) => (
-                      <span key={sub} style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", padding: "2px 7px", background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4, color: "rgba(230,230,230,0.8)" }}>
-                        {sub}
-                      </span>
+                      <div key={sub.role} style={{ display: "flex", flexDirection: "column", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 4, padding: "3px 7px" }}>
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 600, color: "rgba(230,230,230,0.85)" }}>{sub.name}</span>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.56rem", color: "rgba(230,230,230,0.4)" }}>{sub.role}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -596,7 +677,7 @@ function AgentEmpireArchitecture() {
       {/* Footer note */}
       <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", textAlign: "center" as const }}>
         <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0, letterSpacing: "0.04em" }}>
-          ★ Director of Compliance auto-blocks outputs violating Trademark Classes 35 · 41 · 42 · All 38 agents report to AI Twin · Persistent memory across sessions
+          ★ Isabella Moreno (Compliance) auto-blocks outputs violating Trademark Classes 35 · 41 · 42 · Travis routes all 38 agents · Persistent memory across sessions
         </p>
       </div>
     </div>
