@@ -88,7 +88,7 @@ export default function NavBar({ active }: { active?: string }) {
               fontSize: "0.72rem",
               fontWeight: active === link.href ? 700 : 500,
               letterSpacing: "0.08em",
-              textTransform: "uppercase",
+              textTransform: "uppercase" as const,
               color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.55)",
               textDecoration: "none",
               padding: "0.4rem 0.75rem",
@@ -103,19 +103,41 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         ))}
 
+        {/* Admin-only Twin link */}
+        {isLoggedIn && isAdmin && (
+          <a
+            href="/twin"
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: "0.72rem",
+              fontWeight: active === "/twin" ? 700 : 500,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase" as const,
+              color: active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)",
+              textDecoration: "none",
+              padding: "0.4rem 0.75rem",
+              borderRadius: 4,
+              borderBottom: active === "/twin" ? "2px solid #D4AF37" : "2px solid transparent",
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#D4AF37"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)"; }}
+          >
+            ✦ Twin
+          </a>
+        )}
+
         {/* Not logged in */}
         {!isLoggedIn && (
-          <a href="/login" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, border: "1px solid rgba(212,175,55,0.4)", transition: "all 0.2s" }}>
+          <a href="/login" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, border: "1px solid rgba(212,175,55,0.4)", transition: "all 0.2s" }}>
             Sign In
           </a>
         )}
 
-        {/* ── Admin toggle — follows you across every page ────────────────────
-            On any page except /portal → CLIENT VIEW button → goes to /portal
-            On /portal → ADMIN VIEW button → goes to /admin
-        ─────────────────────────────────────────────────────────────────── */}
+        {/* Admin toggle */}
         {isLoggedIn && isAdmin && active !== "/portal" && (
-          <a href="/portal" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.3)", transition: "all 0.2s" }}
+          <a href="/portal"
+            style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.3)", transition: "all 0.2s" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.15)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}
           >
@@ -123,7 +145,8 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         )}
         {isLoggedIn && isAdmin && active === "/portal" && (
-          <a href="/admin" style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", transition: "all 0.2s" }}
+          <a href="/admin"
+            style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#C2185B", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", transition: "all 0.2s" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(194,24,91,0.15)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(194,24,91,0.08)"; }}
           >
@@ -137,7 +160,7 @@ export default function NavBar({ active }: { active?: string }) {
             <Avatar user={user} size={30} />
             <button
               onClick={handleLogout}
-              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.15)", padding: "0.35rem 0.8rem", borderRadius: 4, cursor: "pointer", transition: "all 0.2s" }}
+              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.15)", padding: "0.35rem 0.8rem", borderRadius: 4, cursor: "pointer", transition: "all 0.2s" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
             >
@@ -183,27 +206,34 @@ export default function NavBar({ active }: { active?: string }) {
           )}
 
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+            <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: active === link.href ? "#D4AF37" : "rgba(255,255,255,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               {link.label}
             </a>
           ))}
 
+          {/* Mobile admin-only Twin link */}
+          {isLoggedIn && isAdmin && (
+            <a href="/twin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+              ✦ Twin
+            </a>
+          )}
+
           {/* Mobile admin toggle */}
           {isLoggedIn && isAdmin && active !== "/portal" && (
-            <a href="/portal" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+            <a href="/portal" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               👤 Client View
             </a>
           )}
           {isLoggedIn && isAdmin && active === "/portal" && (
-            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+            <a href="/admin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#C2185B", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               ⚙️ Admin View
             </a>
           )}
 
           {isLoggedIn ? (
-            <button onClick={() => { setMenuOpen(false); handleLogout(); }} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", background: "none", border: "none", padding: "0.6rem 0.5rem", textAlign: "left", cursor: "pointer" }}>Log Out</button>
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.5)", background: "none", border: "none", padding: "0.6rem 0.5rem", textAlign: "left" as const, cursor: "pointer" }}>Log Out</button>
           ) : (
-            <a href="/login" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem" }}>Sign In</a>
+            <a href="/login" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem" }}>Sign In</a>
           )}
         </div>
       )}
