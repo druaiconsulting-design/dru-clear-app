@@ -19,6 +19,7 @@ import Daily from "./pages/Daily";
 import Community from "./pages/Community";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
+import Twin from "./pages/Twin";
 import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
@@ -128,10 +129,6 @@ function Router() {
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
-  // FIXED: Replaced window.location.href redirects with component renders.
-  // window.location.href triggers a full page reload which restarts the auth
-  // cycle and causes flicker. Rendering <Login /> directly is instant.
-
   if (path === "/portal" || path === "/portal/") {
     setTitle("My Portal · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
@@ -161,6 +158,11 @@ function Router() {
     setTitle("Affiliate · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
     return <Affiliate />;
+  }
+  if (path === "/twin" || path === "/twin/") {
+    setTitle("DeAnna's AI Twin · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Twin />;
   }
 
   // ── Fallback ────────────────────────────────────────────────────────────────
