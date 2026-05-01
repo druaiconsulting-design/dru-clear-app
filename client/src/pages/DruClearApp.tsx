@@ -938,7 +938,7 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
     saveToLocalStorage("assessment_completed", mergedPayload);
     sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
 
-    // ── Free account creation ─────────────────────────────────────────────────
+    // ── Free account creation — unchanged, fires exactly as before ────────────
     (async () => {
       try {
         const randomPassword = crypto.randomUUID() + crypto.randomUUID();
@@ -1445,13 +1445,16 @@ export default function DruClearApp() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const expiryStatus = getExpiryStatus();
 
-  // ─── Auth Check: Redirect returning app users to app.druaiconsulting.com ───
+  // ─── Auth Check: Only redirect on app.druaiconsulting.com ─────────────────
+  // On assessment.druaiconsulting.com, logged-in users can still take the
+  // assessment freely. On app.druaiconsulting.com, they go straight to /portal.
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        window.location.href = "https://app.druaiconsulting.com";
+      const onAppDomain = window.location.hostname === "app.druaiconsulting.com";
+      if (session?.user && onAppDomain) {
+        window.location.href = "/portal";
       } else {
         setAuthChecked(true);
       }
