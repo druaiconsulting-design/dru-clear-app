@@ -5,7 +5,7 @@ import type { User, Session } from "@supabase/supabase-js";
 const ADMIN_EMAIL = "deanna@druaiconsulting.com";
 
 export type UserRole = "admin" | "client" | null;
-export type UserTier = "free" | "paid";
+export type UserTier = "free" | "paid" | "navigator" | "accelerator";
 export type PathwayStage = "discover" | "diagnose" | "deploy";
 
 interface AuthUser {
@@ -26,6 +26,9 @@ interface AuthContextType {
   isClient: boolean;
   isLoggedIn: boolean;
   isPaid: boolean;
+  isNavigator: boolean;
+  isAccelerator: boolean;
+  hasStrategicEdge: boolean;
   pathwayStage: PathwayStage;
   loading: boolean;
   loginAdmin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -62,9 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) return { tier: "free", pathwayStage: "discover" };
 
-      const tier: UserTier = data.tier === "paid" ? "paid" : "free";
+      const tier: UserTier =
+        data.tier === "accelerator" ? "accelerator" :
+        data.tier === "navigator"   ? "navigator"   :
+        data.tier === "paid"        ? "paid"         :
+        "free";
+
       const pathwayStage: PathwayStage =
-        data.pathway_stage === "deploy" ? "deploy" :
+        data.pathway_stage === "deploy"   ? "deploy"   :
         data.pathway_stage === "diagnose" ? "diagnose" :
         "discover";
 
@@ -90,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const picture = meta.avatar_url || meta.picture || null;
 
     const { tier, pathwayStage } = role === "admin"
-      ? { tier: "paid" as UserTier, pathwayStage: "deploy" as PathwayStage }
+      ? { tier: "accelerator" as UserTier, pathwayStage: "deploy" as PathwayStage }
       : await fetchProfileData(supabaseUser.id);
 
     return {
@@ -105,9 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }
 
-  // ── FIXED: Removed duplicate getSession() call.
-  // onAuthStateChange fires INITIAL_SESSION on mount in Supabase v2,
-  // so getSession() is redundant and causes double renders + flicker.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
@@ -182,6 +187,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/login";
   };
 
+  const tier = user?.tier;
+  const isPaid         = tier === "paid" || tier === "navigator" || tier === "accelerator";
+  const isNavigator    = tier === "navigator";
+  const isAccelerator  = tier === "accelerator";
+  const hasStrategicEdge = isNavigator || isAccelerator;
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -189,7 +200,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: user?.role === "admin",
       isClient: user?.role === "client",
       isLoggedIn: !!user,
-      isPaid: user?.tier === "paid",
+      isPaid,
+      isNavigator,
+      isAccelerator,
+      hasStrategicEdge,
       pathwayStage: user?.pathwayStage ?? "discover",
       loading,
       loginAdmin,
