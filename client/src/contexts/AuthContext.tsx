@@ -52,9 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch tier and pathway_stage from profiles table ──────────────────────
-  // Both are always read from profiles so GHL Edge Function writes are
-  // reflected in real time without requiring a new login.
   async function fetchProfileData(userId: string): Promise<{ tier: UserTier; pathwayStage: PathwayStage }> {
     try {
       const { data, error } = await supabase
@@ -92,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const firstName = storedFirst || capitalize(emailPrefix) || "";
     const picture = meta.avatar_url || meta.picture || null;
 
-    // Admin always gets paid + deploy — fetch from profiles for all other users
     const { tier, pathwayStage } = role === "admin"
       ? { tier: "paid" as UserTier, pathwayStage: "deploy" as PathwayStage }
       : await fetchProfileData(supabaseUser.id);
@@ -109,17 +105,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }
 
+  // ── FIXED: Removed duplicate getSession() call.
+  // onAuthStateChange fires INITIAL_SESSION on mount in Supabase v2,
+  // so getSession() is redundant and causes double renders + flicker.
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) setUser(await buildUser(session.user));
-      setLoading(false);
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      if (session?.user) setUser(await buildUser(session.user));
-      else setUser(null);
+      if (session?.user) {
+        setUser(await buildUser(session.user));
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
