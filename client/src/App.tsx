@@ -32,6 +32,8 @@ function Router() {
   const { isLoggedIn, isAdmin, loading } = useAuth();
   const path = window.location.pathname;
   const hash = window.location.hash;
+  const hostname = window.location.hostname;
+  const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
 
   useEffect(() => {
     if (hash && hash.includes("access_token")) {
@@ -58,9 +60,19 @@ function Router() {
   }
 
   // ── Root ────────────────────────────────────────────────────────────────────
+  // assessment.druaiconsulting.com  → always show the scorecard
+  // app.druaiconsulting.com         → logged in → portal/admin  |  logged out → login
   if (path === "/" || path === "") {
-    setTitle("DRU CLEAR™ AI Readiness Scorecard");
-    return <DruClearApp />;
+    if (isAssessmentDomain) {
+      setTitle("DRU CLEAR™ AI Readiness Scorecard");
+      return <DruClearApp />;
+    }
+    if (isLoggedIn) {
+      window.location.replace(isAdmin ? "/admin" : "/portal");
+      return null;
+    }
+    setTitle("Sign In · DRU CLEAR™");
+    return <Login />;
   }
 
   // ── Redirects ───────────────────────────────────────────────────────────────
@@ -167,7 +179,12 @@ function Router() {
 
   // ── Fallback ────────────────────────────────────────────────────────────────
   setTitle("DRU CLEAR™");
-  return <DruClearApp />;
+  if (isAssessmentDomain) return <DruClearApp />;
+  if (isLoggedIn) {
+    window.location.replace(isAdmin ? "/admin" : "/portal");
+    return null;
+  }
+  return <Login />;
 }
 
 function App() {
