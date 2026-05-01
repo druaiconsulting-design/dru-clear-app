@@ -6,18 +6,5 @@
   "rewrites": [
     { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "assessment.druaiconsulting.com"
-        }
-      ],
-      "destination": "https://app.druaiconsulting.com/$1",
-      "permanent": false
-    }
   ]
 }
