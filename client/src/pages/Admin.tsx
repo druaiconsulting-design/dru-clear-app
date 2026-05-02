@@ -40,7 +40,6 @@ const PENDING_ITEMS = [
   "course.druaiconsulting.com — repo create + Vercel deploy",
 ];
 
-// ── Sprint 4 items use done:true to render like completed sprint items ────────
 interface SprintItem { label: string; sub: string; done?: boolean; }
 
 const SPRINTS: { number: string; title: string; status: string; items: SprintItem[] }[] = [
@@ -92,32 +91,23 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
   {
     number: "4", title: "The AI Empire", status: "inprogress",
     items: [
-      // ── COMPLETED ────────────────────────────────────────────────────────
       { done: true,  label: "DeAnna's AI Twin — LIVE",                       sub: "Claude API · trained on all 4 frameworks · answers questions 24/7 · coaches members · master orchestrator · app.druaiconsulting.com/twin" },
       { done: true,  label: "Daily Connections Accelerator Tier — LIVE",     sub: "navigator + accelerator tiers in Supabase · DeAnna's Strategic Edge 4th card · AI-generated in DeAnna's voice · daily · founder pricing active" },
       { done: true,  label: "Auth Loading Fix — LIVE",                       sub: "Two-phase loading · instant session resolve · profile fetches in background · 3s safety timeout · no more splash screen hang" },
       { done: true,  label: "New Logo — LIVE",                               sub: "DRU CLEAR™ enhanced logo · transparent background · deployed across app" },
-      // ── REVENUE — BUILD NEXT ─────────────────────────────────────────────
       { done: false, label: "From Confusion to Confident with AI™ — Course", sub: "Waitlist form built · 3 payment links live · Self-Paced $1,497 · Live Cohort $7,997 · Mastermind $12,997 · course.druaiconsulting.com deploy next · opens May 10" },
       { done: false, label: "Revenue & Growth Agents",                       sub: "Sales Support · Proposal Writer · Copywriter · Lead Scoring · Personalized Outreach · CRM Management (GHL) · Email Marketing" },
       { done: false, label: "Affiliate Dashboard",                           sub: "Track referrals · commissions · top referrer leaderboard · Supabase referrals table · unique referral links · Stripe payout integration" },
       { done: false, label: "Navigator $97/mo + Accelerator $297/mo",        sub: "Price increase from founder pricing after launch · lock in founding members now · higher tier value justified by full agent stack" },
-      // ── CONTENT & AUTHORITY ──────────────────────────────────────────────
       { done: false, label: "Content & Brand Agents",                        sub: "Content Creator · Social Media Strategist · Viral Scripter · Press Release · Graphic Designer · Translator · LinkedIn Authority Engine · Social Scheduler" },
-      // ── CLIENT DELIVERY ──────────────────────────────────────────────────
       { done: false, label: "Client Delivery Agents + Creative Director",    sub: "Onboarding Coach · Community Manager · Feedback Coach · Creative Director (Jordan Hayes) orchestrating Course Architect · Presentation Designer · Training Video Producer" },
-      // ── COMMUNITY ────────────────────────────────────────────────────────
       { done: false, label: "Community AI Agents",                           sub: "Navigator + Accelerator communities · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
       { done: false, label: "Community — in-app",                            sub: "Launch when 20+ active clients · Supabase Realtime · Navigator + Accelerator separate spaces · agents already running" },
-      // ── SECURITY ─────────────────────────────────────────────────────────
       { done: false, label: "Passkeys / Face ID Login",                      sub: "WebAuthn · device-based biometric · @simplewebauthn/browser + server · Edge Function challenge/verify · post-launch security upgrade" },
-      // ── GOVERNANCE ───────────────────────────────────────────────────────
       { done: false, label: "Governance Agents — Compliance · Legal · Tax · Chief of Staff · EA", sub: "Isabella Moreno auto-blocks trademark violations · Travis routes all 38 agents · protect the empire before full scale" },
-      // ── AGENT ARCHITECTURE ───────────────────────────────────────────────
       { done: false, label: "Agent Architecture — 3 Layers",                 sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design before building" },
       { done: false, label: "Framework Agent Teams",                         sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
       { done: false, label: "All 38 Agents — Full Build",                    sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach · all operational" },
-      // ── LAUNCH ───────────────────────────────────────────────────────────
       { done: false, label: "🚀 LAUNCH",                                     sub: "app.druaiconsulting.com · course.druaiconsulting.com · full AI empire live · all agents operational · May 10, 2026" },
     ],
   },
@@ -459,7 +449,7 @@ export default function Admin() {
 
         {/* ── Header with logo ── */}
         <div style={{ marginBottom: "2rem" }}>
-          <img src="/dru-clear-logo.png" alt="DRU CLEAR™" style={{ height: 48, width: "auto", marginBottom: "1.25rem", display: "block" }} />
+          <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™" style={{ height: 48, width: "auto", marginBottom: "1.25rem", display: "block" }} />
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
