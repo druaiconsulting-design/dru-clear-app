@@ -53,15 +53,23 @@ function Router() {
   if (loading) {
     setTitle("DRU CLEAR™");
     return (
-      <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR" style={{ height: 48, width: "auto", opacity: 0.8 }} />
+      <div style={{
+        minHeight: "100dvh",
+        background: "#0A2342",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <img
+          src="/dru-clear-logo.png"
+          alt="DRU CLEAR™"
+          style={{ height: 56, width: "auto", opacity: 0.9 }}
+        />
       </div>
     );
   }
 
   // ── Root ────────────────────────────────────────────────────────────────────
-  // assessment.druaiconsulting.com  → always show the scorecard
-  // app.druaiconsulting.com         → logged in → portal/admin  |  logged out → login
   if (path === "/" || path === "") {
     if (isAssessmentDomain) {
       setTitle("DRU CLEAR™ AI Readiness Scorecard");
