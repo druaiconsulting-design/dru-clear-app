@@ -61,7 +61,7 @@ function Router() {
         justifyContent: "center",
       }}>
         <img
-          src="/dru-clear-logo.png"
+          src="/new-dru-clear-transparent-logo.png"
           alt="DRU CLEAR™"
           style={{ height: 56, width: "auto", opacity: 0.9 }}
         />
