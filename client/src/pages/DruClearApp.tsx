@@ -742,7 +742,7 @@ function ExpiredScreen({ onRetake }: { onRetake: () => void }) {
       <p style={{ color: "#E6E6E6", fontSize: "0.85rem", lineHeight: 1.7, maxWidth: 320, marginBottom: "0.75rem" }}>Your AI Readiness score is only valid for 48 hours to ensure accuracy and relevance.</p>
       <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.78rem", lineHeight: 1.6, maxWidth: 300, marginBottom: "2rem", fontStyle: "italic" }}>To get your most accurate and current results, take the assessment again — it only takes 3 minutes.</p>
       <button className="btn-gold" onClick={onRetake} style={{ maxWidth: 320 }}>Retake My Assessment →</button>
-      <div style={{ marginTop: "2rem" }}><DruLogo className="w-36" /></div>
+      <div style={{ marginTop: "2rem" }}><DruLogo height={64} /></div>
     </div>
   );
 }
@@ -964,7 +964,7 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", overflowX: "hidden", padding: "clamp(1rem, 4vw, 1.5rem) clamp(0.875rem, 4vw, 1.25rem) 2rem", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
       <canvas ref={confettiCanvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 9999 }} />
       <div className="flex justify-between items-center mb-3">
-        <DruLogo className="w-28" />
+        <DruLogo height={52} />
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 7 of 9</span>
       </div>
       <div className="flex flex-col items-center mb-4" style={{ gap: "0.75rem" }}>
@@ -1056,7 +1056,7 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
       </button>
       <p className="text-center mb-4" style={{ color: "#E6E6E6", fontSize: "0.65rem", lineHeight: 1.6, opacity: 0.6, maxWidth: 400, margin: "0 auto 1rem" }}>This assessment is for informational purposes only and does not constitute professional consulting advice. Results are based on your self-reported responses. For a personalized strategy, book a consultation with DRU AI Consulting.</p>
       <div className="flex items-center justify-center gap-3">
-        <DruLogo className="w-24" />
+        <DruLogo height={52} />
         <div>
           <p className="text-xs" style={{ color: "rgba(230,230,230,0.5)" }}>DRU AI Consulting</p>
           <p className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>DeAnna R. Upshaw — AI Authority</p>
@@ -1078,7 +1078,7 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
   return (
     <div ref={topRef} className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-        <DruLogo className="w-36 max-w-full mb-4" />
+        <DruLogo height={64} className="mb-4" />
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", fontWeight: 700, color: "#D4AF37", marginBottom: "0.5rem", lineHeight: 1.2 }}>Your Results Are In.</h2>
         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#FFFFFF", marginBottom: "0.75rem" }}>Now It's Time to Turn Insight Into Action.</p>
         <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.78rem", lineHeight: 1.65, maxWidth: 360, margin: "0 auto" }}>Your scorecard revealed important signals across leadership, alignment, execution, and AI readiness. The next step is to go deeper, identify what is slowing progress, and build the right path forward.</p>
@@ -1162,7 +1162,7 @@ function PaymentScreen({ tier, price, paymentUrl, onBack }: { tier: "strategic" 
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.7)", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, textAlign: "left", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>← Back to Options</button>
-      <DruLogo className="w-32 max-w-full mb-4" />
+      <DruLogo height={60} className="mb-4" />
       <div style={{ background: "rgba(255,255,255,0.04)", border: `1.5px solid ${isExecutive ? "#D4AF37" : "rgba(212,175,55,0.3)"}`, borderRadius: 8, padding: "1rem", marginBottom: "1.25rem" }}>
         {isExecutive && <div style={{ background: "#C2185B", color: "#FFFFFF", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", padding: "3px 10px", borderRadius: 20, fontFamily: "'Montserrat', sans-serif", display: "inline-block", marginBottom: "0.5rem" }}>BEST VALUE</div>}
         <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.95rem", fontFamily: "'Montserrat', sans-serif", marginBottom: "0.25rem" }}>{isExecutive ? "Executive Diagnostic + 90-Day AI Roadmap" : "Strategic Diagnostic"}</p>
@@ -1203,7 +1203,7 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
 
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
-      <div style={{ marginBottom: "1.75rem" }}><DruLogo className="w-32" /></div>
+      <div style={{ marginBottom: "1.75rem" }}><DruLogo height={60} /></div>
       <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.25rem" }}>
         <div style={{ width: 72, height: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(212,175,55,0.08)", boxShadow: "0 0 0 4px rgba(212,175,55,0.08)" }}>
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 16L13 23L26 9" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1307,7 +1307,7 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   return (
     <div className="screen-enter flex flex-col items-center" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", textAlign: "center" }}>
       <div className="flex justify-between items-center w-full mb-4" style={{ maxWidth: 360 }}>
-        <DruLogo className="w-28" />
+        <DruLogo height={52} />
         <span className="text-xs" style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif" }}>Page 9 of 9</span>
       </div>
       <div style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, borderRadius: "50%", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem", background: "rgba(212,175,55,0.08)", flexShrink: 0 }}>
