@@ -307,7 +307,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
     <div className="screen-enter flex flex-col items-center justify-between" style={{ height: "100%", background: "#0A2342", padding: "3rem 2rem" }}>
       <div />
       <div className="flex flex-col items-center gap-6">
-        <DruLogo className="w-72 max-w-full" />
+        <DruLogo height={80} />
         <p className="text-base font-medium tracking-wide text-center" style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif" }}>DRU AI Consulting</p>
       </div>
       <p className="text-sm text-center tracking-widest uppercase" style={{ color: "rgba(230,230,230,0.55)", letterSpacing: "0.12em" }}>Leading with Intelligence and Impact</p>
@@ -321,8 +321,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2.5rem 1.5rem 2rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div className="flex flex-col items-center mb-6">
-        <DruLogo className="w-48 max-w-full mb-4" />
-        <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
+        <DruLogo />height={64} className="mb-4"        <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
           <img src={HEADSHOT_CDN} alt="DeAnna R. Upshaw" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }} />
         </div>
         <h1 className="text-3xl font-bold text-center mb-1" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}>DeAnna R. Upshaw</h1>
