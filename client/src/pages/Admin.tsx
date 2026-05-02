@@ -3,7 +3,6 @@ import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 
-// ── Admin data ────────────────────────────────────────────────────────────────
 const QUICK_LINKS = [
   { label: "GHL Dashboard",        href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
   { label: "Live Assessment",      href: "https://assessment.druaiconsulting.com", icon: "🚀" },
@@ -24,13 +23,13 @@ const PAYMENT_LINKS = [
   { label: "5D Leadership™",                                 price: "$6,500",  href: "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc", color: "#1E88E5" },
   { label: "5C Cultural DNA™",                               price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def", color: "#C2185B" },
   { label: "AI Sales Mastery™",                              price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
-  { label: "Full Ecosystem — Signing ($13K)",                 price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
-  { label: "Full Ecosystem — Final ($13K)",                   price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
-  { label: "DRU CLEAR™ Navigator — Founder",                 price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
-  { label: "DRU CLEAR™ Accelerator — Founder",               price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
-  { label: "From Confusion to Confident™ — Self-Paced",      price: "$1,497",  href: "https://link.druaiconsulting.com/payment-link/69f55d0cb615f70a8a33b5fd", color: "#D4AF37" },
-  { label: "From Confusion to Confident™ — Live Cohort",     price: "$7,997",  href: "https://link.druaiconsulting.com/payment-link/69f55e7bb18c99dd72d3c0e5", color: "#C2185B" },
-  { label: "From Confusion to Confident™ — Mastermind",      price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
+  { label: "Full Ecosystem — Signing ($13K)",                price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
+  { label: "Full Ecosystem — Final ($13K)",                  price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
+  { label: "DRU CLEAR™ Navigator — Founder",                price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
+  { label: "DRU CLEAR™ Accelerator — Founder",              price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
+  { label: "From Confusion to Confident™ — Self-Paced",     price: "$1,497",  href: "https://link.druaiconsulting.com/payment-link/69f55d0cb615f70a8a33b5fd", color: "#D4AF37" },
+  { label: "From Confusion to Confident™ — Live Cohort",    price: "$7,997",  href: "https://link.druaiconsulting.com/payment-link/69f55e7bb18c99dd72d3c0e5", color: "#C2185B" },
+  { label: "From Confusion to Confident™ — Mastermind",     price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
 ];
 
 const PENDING_ITEMS = [
@@ -447,9 +446,8 @@ export default function Admin() {
       <NavBar active="/admin" />
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
-        {/* ── Header with logo ── */}
+        {/* ── Header ── */}
         <div style={{ marginBottom: "2rem" }}>
-          <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™" style={{ height: 48, width: "auto", marginBottom: "1.25rem", display: "block" }} />
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
@@ -566,9 +564,7 @@ export default function Admin() {
                       const textColor  = isDone ? "rgba(230,230,230,0.5)" : "#FFFFFF";
                       return (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <span style={{ color: checkColor, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>
-                            {isDone ? "✓" : "→"}
-                          </span>
+                          <span style={{ color: checkColor, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
                           <div>
                             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
                             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
@@ -595,3 +591,4 @@ export default function Admin() {
     </div>
   );
 }
+
