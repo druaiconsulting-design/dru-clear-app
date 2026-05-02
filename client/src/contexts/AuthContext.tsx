@@ -50,81 +50,108 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+// ── Phase 1: Build user instantly from session — no network call ──────────────
+function buildBasicUser(supabaseUser: User): AuthUser {
+  const email = supabaseUser.email || "";
+  const meta = supabaseUser.user_metadata || {};
+  const role = getRole(email);
+
+  const fullName = meta.full_name || meta.name || "";
+  const storedFirst =
+    meta.given_name ||
+    meta.first_name ||
+    (fullName ? fullName.split(" ")[0] : "");
+  const emailPrefix = email.split("@")[0] || "";
+  const firstName = storedFirst || capitalize(emailPrefix) || "";
+  const picture = meta.avatar_url || meta.picture || null;
+
+  const tier: UserTier = role === "admin" ? "accelerator" : "free";
+  const pathwayStage: PathwayStage = role === "admin" ? "deploy" : "discover";
+
+  return {
+    id: supabaseUser.id,
+    email,
+    role,
+    tier,
+    pathwayStage,
+    firstName: firstName || undefined,
+    fullName: fullName || undefined,
+    picture: picture || undefined,
+  };
+}
+
+// ── Phase 2: Fetch real profile from Supabase — runs silently in background ───
+async function fetchProfileData(userId: string): Promise<{ tier: UserTier; pathwayStage: PathwayStage }> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("tier, pathway_stage")
+      .eq("id", userId)
+      .single();
+
+    if (error || !data) return { tier: "free", pathwayStage: "discover" };
+
+    const tier: UserTier =
+      data.tier === "accelerator" ? "accelerator" :
+      data.tier === "navigator"   ? "navigator"   :
+      data.tier === "paid"        ? "paid"         :
+      "free";
+
+    const pathwayStage: PathwayStage =
+      data.pathway_stage === "deploy"   ? "deploy"   :
+      data.pathway_stage === "diagnose" ? "diagnose" :
+      "discover";
+
+    return { tier, pathwayStage };
+  } catch {
+    return { tier: "free", pathwayStage: "discover" };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function fetchProfileData(userId: string): Promise<{ tier: UserTier; pathwayStage: PathwayStage }> {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("tier, pathway_stage")
-        .eq("id", userId)
-        .single();
-
-      if (error || !data) return { tier: "free", pathwayStage: "discover" };
-
-      const tier: UserTier =
-        data.tier === "accelerator" ? "accelerator" :
-        data.tier === "navigator"   ? "navigator"   :
-        data.tier === "paid"        ? "paid"         :
-        "free";
-
-      const pathwayStage: PathwayStage =
-        data.pathway_stage === "deploy"   ? "deploy"   :
-        data.pathway_stage === "diagnose" ? "diagnose" :
-        "discover";
-
-      return { tier, pathwayStage };
-    } catch {
-      return { tier: "free", pathwayStage: "discover" };
-    }
-  }
-
-  async function buildUser(supabaseUser: User): Promise<AuthUser> {
-    const email = supabaseUser.email || "";
-    const meta = supabaseUser.user_metadata || {};
-    const role = getRole(email);
-
-    const fullName = meta.full_name || meta.name || "";
-    const storedFirst =
-      meta.given_name ||
-      meta.first_name ||
-      (fullName ? fullName.split(" ")[0] : "");
-
-    const emailPrefix = email.split("@")[0] || "";
-    const firstName = storedFirst || capitalize(emailPrefix) || "";
-    const picture = meta.avatar_url || meta.picture || null;
-
-    const { tier, pathwayStage } = role === "admin"
-      ? { tier: "accelerator" as UserTier, pathwayStage: "deploy" as PathwayStage }
-      : await fetchProfileData(supabaseUser.id);
-
-    return {
-      id: supabaseUser.id,
-      email,
-      role,
-      tier,
-      pathwayStage,
-      firstName: firstName || undefined,
-      fullName: fullName || undefined,
-      picture: picture || undefined,
-    };
-  }
-
   useEffect(() => {
+    // ── Safety timeout: if onAuthStateChange never fires, unblock the app ────
+    // Prevents the splash screen from hanging indefinitely under any condition.
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      clearTimeout(safetyTimeout); // fired successfully — cancel the timeout
+
       setSession(session);
+
       if (session?.user) {
-        setUser(await buildUser(session.user));
+        try {
+          // Phase 1: resolve loading immediately from session data
+          const basicUser = buildBasicUser(session.user);
+          setUser(basicUser);
+          setLoading(false);
+
+          // Phase 2: update with real profile data silently in background
+          if (basicUser.role !== "admin") {
+            fetchProfileData(session.user.id).then(({ tier, pathwayStage }) => {
+              setUser((prev) => prev ? { ...prev, tier, pathwayStage } : null);
+            });
+          }
+        } catch {
+          // Even if something goes wrong, never stay stuck on splash
+          setLoading(false);
+        }
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -164,9 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/login`,
-      },
+      options: { redirectTo: `${window.location.origin}/login` },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -188,9 +213,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const tier = user?.tier;
-  const isPaid         = tier === "paid" || tier === "navigator" || tier === "accelerator";
-  const isNavigator    = tier === "navigator";
-  const isAccelerator  = tier === "accelerator";
+  const isPaid           = tier === "paid" || tier === "navigator" || tier === "accelerator";
+  const isNavigator      = tier === "navigator";
+  const isAccelerator    = tier === "accelerator";
   const hasStrategicEdge = isNavigator || isAccelerator;
 
   return (
