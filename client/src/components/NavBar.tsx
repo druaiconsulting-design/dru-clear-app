@@ -62,7 +62,7 @@ export default function NavBar({ active }: { active?: string }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      height: 56,
+      height: 72,
       position: "sticky",
       top: 0,
       zIndex: 1000,
@@ -74,7 +74,7 @@ export default function NavBar({ active }: { active?: string }) {
         <img
           src="/new-dru-clear-transparent-logo.png"
           alt="DRU CLEAR™"
-          style={{ height: 44, width: "auto" }}
+          style={{ height: 68, width: "auto" }}
         />
       </a>
 
@@ -193,7 +193,7 @@ export default function NavBar({ active }: { active?: string }) {
 
       {/* ── Mobile dropdown ── */}
       {menuOpen && (
-        <div style={{ position: "absolute", top: 56, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
+        <div style={{ position: "absolute", top: 72, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
 
           {/* Mobile user identity */}
           {isLoggedIn && user && userDisplay && (
