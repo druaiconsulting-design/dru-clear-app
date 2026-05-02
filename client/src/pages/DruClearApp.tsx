@@ -271,13 +271,12 @@ function buildBookingUrl(lead: LeadData): string {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-const LOGO_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-logo-transparent_fdbc9d32.png";
+const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
 const HEADSHOT_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
 
-function DruLogo({ className = "" }: { className?: string }) {
-  return <img src={LOGO_CDN} alt="DRU CLEAR™ Logo" className={className} style={{ objectFit: "contain" }} />;
+function DruLogo({ height = 64, className = "" }: { height?: number; className?: string }) {
+  return <img src={LOGO_CDN} alt="DRU CLEAR™ Logo" className={className} style={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", flexShrink: 0, display: "block" }} />;
 }
-
 // ─── Score Button Row ─────────────────────────────────────────────────────────
 
 const LIKERT_LABELS = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"];
