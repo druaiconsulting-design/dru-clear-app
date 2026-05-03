@@ -275,8 +275,16 @@ const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
 const HEADSHOT_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
 
 function DruLogo({ height = 64, className = "" }: { height?: number; className?: string }) {
-  return <img src={LOGO_CDN} alt="DRU CLEAR™ Logo" className={className} style={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", flexShrink: 0, display: "block" }} />;
+  return (
+    <img
+      src={LOGO_CDN}
+      alt="DRU CLEAR™ Logo"
+      className={className}
+      style={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", flexShrink: 0, display: "block" }}
+    />
+  );
 }
+
 // ─── Score Button Row ─────────────────────────────────────────────────────────
 
 const LIKERT_LABELS = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"];
@@ -321,8 +329,9 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2.5rem 1.5rem 2rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div className="flex flex-col items-center mb-6">
-       <DruLogo height={64} className="mb-4" />
-          <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
+        <DruLogo height={64} className="mb-4" />
+        <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
+          <img src={HEADSHOT_CDN} alt="DeAnna R. Upshaw" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }} />
         </div>
         <h1 className="text-3xl font-bold text-center mb-1" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}>DeAnna R. Upshaw</h1>
         <p className="text-lg font-medium text-center mb-1" style={{ color: "#FFFFFF" }}>AI Authority</p>
@@ -507,18 +516,14 @@ function CountryCodeSelector({ value, onChange }: { value: CountryCode; onChange
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-
   const filtered = search.trim() ? COUNTRY_CODES.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search)) : COUNTRY_CODES;
-
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) { setOpen(false); setSearch(""); } };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
-
   useEffect(() => { if (open) setTimeout(() => searchRef.current?.focus(), 50); }, [open]);
-
   return (
     <div ref={containerRef} style={{ position: "relative", flexShrink: 0 }}>
       <button type="button" onClick={() => { setOpen((o) => !o); setSearch(""); }} style={{ display: "flex", alignItems: "center", gap: "0.35rem", height: "100%", padding: "0 0.65rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4, color: "#FFFFFF", cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap", transition: "border-color 0.2s", minWidth: 72 }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#D4AF37"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,55,0.3)"; }}>
@@ -560,7 +565,6 @@ function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => voi
   const [emailSuggestion, setEmailSuggestion] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
   const emailVerifyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleEmailBlur = async () => {
     if (!form.email) return;
     setEmailVerifying(true); setEmailError(""); setEmailSuggestion(""); setEmailVerified(false);
@@ -569,12 +573,10 @@ function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => voi
     if (result.valid) { setEmailVerified(true); setEmailError(""); }
     else { setEmailError(result.error); setEmailSuggestion(result.suggestion || ""); setEmailVerified(false); }
   };
-
   const handleEmailChange = (val: string) => {
     setForm({ ...form, email: val }); setEmailVerified(false); setEmailError(""); setEmailSuggestion("");
     if (emailVerifyTimeout.current) clearTimeout(emailVerifyTimeout.current);
   };
-
   const getPhoneError = (): string => {
     const digits = form.phone.replace(/\D/g, "");
     if (!digits) return "Required";
@@ -582,7 +584,6 @@ function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => voi
     if (digits.length > countryCode.maxLen) return `A valid ${countryCode.name} number has at most ${countryCode.maxLen} digits`;
     return "";
   };
-
   const handleSubmit = async () => {
     setSubmitted(true);
     const phoneErr = getPhoneError();
@@ -598,7 +599,6 @@ function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => voi
     setLoading(false);
     onContinue({ ...form, phone: normalizePhone(countryCode.code + (form.phone || "")), country_name: countryCode.name, country_iso: countryCode.iso });
   };
-
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2.5rem 1.5rem 2rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div className="mb-8">
@@ -799,7 +799,6 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
 
   const BENCHMARK_PERCENTILES: Record<string, number> = { EMERGING: 25, DEVELOPING: 52, ADVANCING: 74, LEADING: 93 };
   const percentile = BENCHMARK_PERCENTILES[tier.label];
-
   const [displayScore, setDisplayScore] = useState(0);
   const [badgeVisible, setBadgeVisible] = useState(false);
   const [oneLineVisible, setOneLineVisible] = useState(false);
@@ -881,50 +880,36 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── Merged webhook + free account creation — fires once on results screen ──
   const sentRef = useRef(false);
   useEffect(() => {
     if (sentRef.current) return;
     sentRef.current = true;
-
     const LIKERT_MAP: Record<number, string> = { 1: "Strongly Disagree", 2: "Disagree", 3: "Neutral", 4: "Agree", 5: "Strongly Agree" };
     const answerLabel = (qIndex: number): string => LIKERT_MAP[scores[qIndex]] || "Not answered";
     const scorePct = (total / 75) * 100;
     const scoreCategory = scorePct <= 33 ? "Low" : scorePct <= 66 ? "Medium" : "High";
-
     const formatTimestamp = (date: Date, tz: string, label: string): string => {
       const datePart = date.toLocaleDateString("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
       const timePart = date.toLocaleTimeString("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
       const [mo, dy, yr] = datePart.split("/");
       return `${yr}-${mo}-${dy} ${timePart} ${label}`;
     };
-
     const now = new Date();
     const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     const offsetMin = -now.getTimezoneOffset();
     const offsetHr = Math.floor(Math.abs(offsetMin) / 60);
     const offsetMn = Math.abs(offsetMin) % 60;
     const offsetLabel = `UTC${offsetMin >= 0 ? "+" : "-"}${String(offsetHr).padStart(2, "0")}${offsetMn ? ":" + String(offsetMn).padStart(2, "0") : ""}`;
-
     const mergedPayload = {
-      event_type: "assessment_completed",
-      tags: "Assessment-Completed",
-      first_name: lead.firstName,
-      last_name: lead.lastName,
-      email: lead.email,
-      phone: normalizePhone(lead.phone || ""),
-      company: lead.company,
-      role: lead.role,
-      ai_country_name: lead.country_name || "",
-      ai_country_iso: lead.country_iso || "",
-      total_score: scaledScore,
-      score_category: scoreCategory,
-      tier: tier.label,
+      event_type: "assessment_completed", tags: "Assessment-Completed",
+      first_name: lead.firstName, last_name: lead.lastName, email: lead.email,
+      phone: normalizePhone(lead.phone || ""), company: lead.company, role: lead.role,
+      ai_country_name: lead.country_name || "", ai_country_iso: lead.country_iso || "",
+      total_score: scaledScore, score_category: scoreCategory, tier: tier.label,
       assessment_status: "completed",
       completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
       completed_at_user: formatTimestamp(now, userTz, offsetLabel),
-      user_timezone: userTz,
-      ...UTM_PARAMS,
+      user_timezone: userTz, ...UTM_PARAMS,
       question_1: answerLabel(0), question_2: answerLabel(1), question_3: answerLabel(2),
       question_4: answerLabel(3), question_5: answerLabel(4), question_6: answerLabel(5),
       question_7: answerLabel(6), question_8: answerLabel(7), question_9: answerLabel(8),
@@ -932,31 +917,14 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
       question_13: answerLabel(12), question_14: answerLabel(13), question_15: answerLabel(14),
       timestamp: now.toISOString(),
     };
-
     saveToLocalStorage("assessment_completed", mergedPayload);
     sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
-
-    // ── Free account creation — unchanged, fires exactly as before ────────────
     (async () => {
       try {
         const randomPassword = crypto.randomUUID() + crypto.randomUUID();
-        await supabase.auth.signUp({
-          email: lead.email,
-          password: randomPassword,
-          options: {
-            data: {
-              first_name: lead.firstName,
-              full_name: `${lead.firstName} ${lead.lastName}`.trim(),
-              tier: "free",
-            },
-          },
-        });
-      } catch {
-        // Never block the assessment flow for account creation errors
-      }
+        await supabase.auth.signUp({ email: lead.email, password: randomPassword, options: { data: { first_name: lead.firstName, full_name: `${lead.firstName} ${lead.lastName}`.trim(), tier: "free" } } });
+      } catch {}
     })();
-    // ─────────────────────────────────────────────────────────────────────────
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1074,11 +1042,10 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
   const scaledScore = Math.round((total / 75) * 100);
   const [selected, setSelected] = useState<"strategic" | "executive" | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
-
   return (
     <div ref={topRef} className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-       <DruLogo height={64} className="mb-4" />
+        <DruLogo height={64} className="mb-4" />
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", fontWeight: 700, color: "#D4AF37", marginBottom: "0.5rem", lineHeight: 1.2 }}>Your Results Are In.</h2>
         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#FFFFFF", marginBottom: "0.75rem" }}>Now It's Time to Turn Insight Into Action.</p>
         <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.78rem", lineHeight: 1.65, maxWidth: 360, margin: "0 auto" }}>Your scorecard revealed important signals across leadership, alignment, execution, and AI readiness. The next step is to go deeper, identify what is slowing progress, and build the right path forward.</p>
@@ -1104,8 +1071,6 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
       <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.35rem", fontFamily: "'Montserrat', sans-serif" }}>Choose Your Next Step</p>
       <p style={{ color: "rgba(230,230,230,0.6)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "1rem" }}>Both options help you move beyond general insight into strategic clarity.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}>
-
-        {/* Executive Card */}
         <div onClick={() => setSelected("executive")} style={{ background: selected === "executive" ? "rgba(212,175,55,0.08)" : "rgba(255,255,255,0.04)", border: `2px solid ${selected === "executive" ? "#D4AF37" : "rgba(212,175,55,0.3)"}`, borderRadius: 10, padding: "1.25rem", cursor: "pointer", position: "relative", transition: "all 0.2s" }}>
           <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: "#C2185B", color: "#FFFFFF", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", padding: "3px 14px", borderRadius: 20, fontFamily: "'Montserrat', sans-serif", whiteSpace: "nowrap" }}>BEST VALUE</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", marginTop: "0.25rem" }}>
@@ -1123,8 +1088,6 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
           </div>
           <button className="btn-magenta" onClick={(e) => { e.stopPropagation(); onSelectExecutive(); }} style={{ fontSize: "0.82rem" }}>Choose Executive Diagnostic →</button>
         </div>
-
-        {/* Strategic Card */}
         <div onClick={() => setSelected("strategic")} style={{ background: selected === "strategic" ? "rgba(212,175,55,0.06)" : "rgba(255,255,255,0.03)", border: `1.5px solid ${selected === "strategic" ? "rgba(212,175,55,0.6)" : "rgba(212,175,55,0.2)"}`, borderRadius: 10, padding: "1.25rem", cursor: "pointer", transition: "all 0.2s" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
             <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif" }}>Strategic Diagnostic</p>
@@ -1142,12 +1105,10 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
           <button className="btn-magenta" onClick={(e) => { e.stopPropagation(); onSelectStrategic(); }} style={{ fontSize: "0.82rem" }}>Choose Strategic Diagnostic →</button>
         </div>
       </div>
-
       <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.875rem", marginBottom: "1.25rem" }}>
         <p style={{ color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.4rem", fontFamily: "'Montserrat', sans-serif" }}>Why Upgrade From the Free Scorecard?</p>
         <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.65 }}>The free scorecard highlights <em>what</em> may be happening. The diagnostic identifies <em>why</em> it is happening, what it is costing you, and what to do next.</p>
       </div>
-
       <div style={{ textAlign: "center", marginBottom: "1rem" }}>
         <button onClick={onSkipToTransformation} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.65)", fontSize: "0.75rem", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>→ Not ready yet? Continue to Share Your Results</button>
       </div>
@@ -1200,7 +1161,6 @@ function ThankYouPurchaseScreen({ lead, tier, calendarUrl, onContinue }: { lead:
     "You'll receive a brief pre-session questionnaire to maximize on our time together",
     "Receive your Strategic Insight Report within 48 hours after your session",
   ];
-
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ marginBottom: "1.75rem" }}><DruLogo height={60} /></div>
@@ -1246,7 +1206,6 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   const total = Object.values(scores).reduce((a, b) => a + b, 0);
   const tier = getTier(total);
   const scaledScore = Math.round((total / 75) * 100);
-
   const refParam = lead.email ? `?ref=${encodeURIComponent(lead.email)}` : "";
   const assessmentUrl = `https://assessment.druaiconsulting.com${refParam}`;
   const shareText = `I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`;
@@ -1254,7 +1213,6 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIf you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time.\n\nTake it here: ${assessmentUrl}\n\n#AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
   const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
-
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [colleagueEmail, setColleagueEmail] = useState("");
@@ -1264,30 +1222,25 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   const shareConfirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedCaption, setExpandedCaption] = useState<string | null>(null);
   const badgeUrl = BADGE_URLS[tier.label];
-
   const showShareConfirm = (channel: string) => {
     if (shareConfirmTimer.current) clearTimeout(shareConfirmTimer.current);
     setShareConfirmChannel(channel);
     shareConfirmTimer.current = setTimeout(() => setShareConfirmChannel(null), 3500);
   };
-
   const fireShareWebhook = (channel: string) => {
     showShareConfirm(channel);
     sendWebhook({ event_type: "share_click", channel, first_name: lead.firstName, last_name: lead.lastName, email: lead.email, score: scaledScore, result: tier.label, ai_country_name: lead.country_name || "", ai_country_iso: lead.country_iso || "", ...UTM_PARAMS, timestamp: new Date().toISOString() });
   };
-
   const handleCopyLink = async () => {
     try { await navigator.clipboard.writeText(shareText); } catch { const el = document.createElement("textarea"); el.value = shareText; document.body.appendChild(el); el.select(); document.execCommand("copy"); document.body.removeChild(el); }
     setCopied(true); setTimeout(() => setCopied(false), 2500);
     sendWebhook({ event_type: "link_copied", channel: "clipboard", first_name: lead.firstName, last_name: lead.lastName, email: lead.email, score: scaledScore, result: tier.label, ...UTM_PARAMS, timestamp: new Date().toISOString() });
     fireShareWebhook("clipboard");
   };
-
   const handleCopyCaption = async (text: string, channel: string) => {
     try { await navigator.clipboard.writeText(text); } catch { const el = document.createElement("textarea"); el.value = text; document.body.appendChild(el); el.select(); document.execCommand("copy"); document.body.removeChild(el); }
     sendWebhook({ event_type: "caption_copied", channel, first_name: lead.firstName, last_name: lead.lastName, email: lead.email, score: scaledScore, result: tier.label, ...UTM_PARAMS, timestamp: new Date().toISOString() });
   };
-
   const handleColleagueSend = () => {
     if (!colleagueEmail.trim()) { setColleagueError("Please enter an email address."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(colleagueEmail.trim())) { setColleagueError("Please enter a valid email address."); return; }
@@ -1295,15 +1248,12 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
     sendWebhook({ event_type: "referral_email_sent", referrer_email: lead.email, referrer_name: `${lead.firstName} ${lead.lastName}`, referred_email: colleagueEmail.trim(), referral_link: assessmentUrl, score: scaledScore, result: tier.label, ...UTM_PARAMS, timestamp: new Date().toISOString() });
     setColleagueSent(true);
   };
-
   const handleFeedback = (rating: "up" | "down") => {
     if (feedback) return;
     setFeedback(rating);
     sendWebhook({ event_type: "feedback", rating, first_name: lead.firstName, last_name: lead.lastName, email: lead.email, score: scaledScore, result: tier.label, ai_country_name: lead.country_name || "", ai_country_iso: lead.country_iso || "", ...UTM_PARAMS, timestamp: new Date().toISOString() });
   };
-
   const shareBtnStyle = (color: string): React.CSSProperties => ({ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", width: "100%", padding: "0.75rem 1rem", background: `${color}14`, color: color, border: `1.5px solid ${color}50`, borderRadius: 6, fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.05em", cursor: "pointer", transition: "background 0.2s, border-color 0.2s", textDecoration: "none" });
-
   return (
     <div className="screen-enter flex flex-col items-center" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", textAlign: "center" }}>
       <div className="flex justify-between items-center w-full mb-4" style={{ maxWidth: 360 }}>
@@ -1442,10 +1392,6 @@ export default function DruClearApp() {
   const [scores, setScores] = useState<Scores>(saved?.scores ?? {});
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const expiryStatus = getExpiryStatus();
-
-  // ─── Auth Check: Only redirect on app.druaiconsulting.com ─────────────────
-  // On assessment.druaiconsulting.com, logged-in users can still take the
-  // assessment freely. On app.druaiconsulting.com, they go straight to /portal.
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
@@ -1456,11 +1402,8 @@ export default function DruClearApp() {
       } else {
         setAuthChecked(true);
       }
-    }).catch(() => {
-      setAuthChecked(true);
-    });
+    }).catch(() => { setAuthChecked(true); });
   }, []);
-  // ──────────────────────────────────────────────────────────────────────────
 
   const ua = navigator.userAgent;
   const isInStandaloneMode = (window.navigator as any).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
@@ -1507,7 +1450,6 @@ export default function DruClearApp() {
   const [installDismissed, setInstallDismissed] = useState(() => { try { return localStorage.getItem("dru_install_dismissed") === "1"; } catch { return false; } });
   const [showManualBanner, setShowManualBanner] = useState(false);
   const [manualBannerDismissed] = useState(() => { try { return localStorage.getItem("dru_manual_install_dismissed") === "1"; } catch { return false; } });
-
   const dismissManualBanner = () => { setShowManualBanner(false); try { localStorage.setItem("dru_manual_install_dismissed", "1"); } catch {} };
 
   useEffect(() => {
@@ -1567,56 +1509,48 @@ export default function DruClearApp() {
   const topAnchorRef = useRef<HTMLDivElement>(null);
   const goTo = (s: Screen) => {
     setScreen(s);
-    setTimeout(() => {
-      topAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
-    }, 50);
+    setTimeout(() => { topAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "start" }); }, 50);
   };
 
-  // ─── Auth gate: show blank navy screen while checking session ───────────────
   if (!authChecked) {
     return <div style={{ minHeight: "100dvh", background: "#0A2342" }} />;
   }
-  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <div ref={appRef} style={{ minHeight: "100dvh", width: "100%", background: "#0A2342", display: "flex", flexDirection: "column", overflowX: "hidden", position: "relative" }}>
       <div ref={topAnchorRef} style={{ height: 0, overflow: "hidden", position: "absolute", top: 0, left: 0 }} aria-hidden="true" />
       <div key={screen} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-      {screen === "splash" && <SplashScreen onDone={() => goTo("welcome")} />}
-      {screen === "welcome" && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
-      {screen === "lead-capture" && <LeadCaptureScreen onContinue={(data) => { setLead(data); goTo("clarity"); }} />}
-      {screen === "clarity" && <PillarScreen pillarLetter="C" pillarName="CLARITY" subtitle="AI Vision & Strategic Direction" progress={20} progressLabel="Pillar 1 of 5" questions={["Our organization has a clearly defined AI vision that connects to our overall business strategy.","Leaders and teams across the organization understand why we are pursuing AI and what success looks like.","We have identified specific strategic priorities where AI will have the greatest business impact."]} questionStartIndex={0} scores={scores} onScoreChange={updateScore} onNext={() => goTo("leadership")} />}
-      {screen === "leadership" && <PillarScreen pillarLetter="L" pillarName="LEADERSHIP" subtitle="Executive AI Fluency & Sponsorship" progress={40} progressLabel="Pillar 2 of 5" questions={["Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.","There is a designated executive sponsor who is accountable for driving AI transformation.","Our leadership team actively participates in AI learning, development, and decision-making."]} questionStartIndex={3} scores={scores} onScoreChange={updateScore} onNext={() => goTo("execution")} />}
-      {screen === "execution" && <PillarScreen pillarLetter="E" pillarName="EXECUTION" subtitle="Operational AI Implementation Capacity" progress={60} progressLabel="Pillar 3 of 5" questions={["We have identified specific business processes where AI can deliver measurable impact.","Our teams have the skills, tools, and resources needed to implement AI solutions today.","We have completed at least one AI pilot or proof of concept in the past 12 months."]} questionStartIndex={6} scores={scores} onScoreChange={updateScore} onNext={() => goTo("alignment")} />}
-      {screen === "alignment" && <PillarScreen pillarLetter="A" pillarName="ALIGNMENT" subtitle="Cross-Functional Strategic Coherence" progress={80} progressLabel="Pillar 4 of 5" questions={["Our AI initiatives are aligned with our overall business goals and strategic plan.","There is clear and consistent communication between departments about AI priorities and progress.","Our AI efforts are coordinated across teams and business units rather than operating in silos."]} questionStartIndex={9} scores={scores} onScoreChange={updateScore} onNext={() => goTo("results-pillar")} />}
-      {screen === "results-pillar" && <PillarScreen pillarLetter="R" pillarName="RESULTS" subtitle="Measurement, Tracking & Return on Investment" progress={100} progressLabel="Pillar 5 of 5" questions={["We have defined clear Key Performance Indicators to measure the success of our AI initiatives.","We can demonstrate measurable return on investment from at least one AI-related initiative.","We have a system in place to regularly track and report AI progress to leadership."]} questionStartIndex={12} scores={scores} onScoreChange={updateScore} onNext={() => goTo("calculating")} nextLabel="See My Results →" />}
-      {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
-
-      {screen === "results" && expiryStatus === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
-      {screen === "results" && expiryStatus !== "expired" && (
-        <>
-          {expiryStatus === "nudge" && !nudgeDismissed && <NudgeBanner onDismiss={() => setNudgeDismissed(true)} onBookNow={() => goTo("diagnose")} />}
-          <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("diagnose")} />
-        </>
-      )}
-
-      {screen === "diagnose" && expiryStatus === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
-      {screen === "diagnose" && expiryStatus !== "expired" && (
-        <>
-          {expiryStatus === "nudge" && !nudgeDismissed && <NudgeBanner onDismiss={() => setNudgeDismissed(true)} onBookNow={() => goTo("diagnose")} />}
-          <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => goTo("share-your-excitement")} />
-        </>
-      )}
-
-      {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
-      {screen === "payment-executive" && <PaymentScreen tier="executive" price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL} onBack={() => goTo("diagnose")} />}
-      {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
-      {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
-      {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
-      {screen === "share-your-excitement" && <ShareYourExcitementScreen lead={lead} scores={scores} onRevisit={() => goTo("diagnose")} />}
+        {screen === "splash" && <SplashScreen onDone={() => goTo("welcome")} />}
+        {screen === "welcome" && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
+        {screen === "lead-capture" && <LeadCaptureScreen onContinue={(data) => { setLead(data); goTo("clarity"); }} />}
+        {screen === "clarity" && <PillarScreen pillarLetter="C" pillarName="CLARITY" subtitle="AI Vision & Strategic Direction" progress={20} progressLabel="Pillar 1 of 5" questions={["Our organization has a clearly defined AI vision that connects to our overall business strategy.","Leaders and teams across the organization understand why we are pursuing AI and what success looks like.","We have identified specific strategic priorities where AI will have the greatest business impact."]} questionStartIndex={0} scores={scores} onScoreChange={updateScore} onNext={() => goTo("leadership")} />}
+        {screen === "leadership" && <PillarScreen pillarLetter="L" pillarName="LEADERSHIP" subtitle="Executive AI Fluency & Sponsorship" progress={40} progressLabel="Pillar 2 of 5" questions={["Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.","There is a designated executive sponsor who is accountable for driving AI transformation.","Our leadership team actively participates in AI learning, development, and decision-making."]} questionStartIndex={3} scores={scores} onScoreChange={updateScore} onNext={() => goTo("execution")} />}
+        {screen === "execution" && <PillarScreen pillarLetter="E" pillarName="EXECUTION" subtitle="Operational AI Implementation Capacity" progress={60} progressLabel="Pillar 3 of 5" questions={["We have identified specific business processes where AI can deliver measurable impact.","Our teams have the skills, tools, and resources needed to implement AI solutions today.","We have completed at least one AI pilot or proof of concept in the past 12 months."]} questionStartIndex={6} scores={scores} onScoreChange={updateScore} onNext={() => goTo("alignment")} />}
+        {screen === "alignment" && <PillarScreen pillarLetter="A" pillarName="ALIGNMENT" subtitle="Cross-Functional Strategic Coherence" progress={80} progressLabel="Pillar 4 of 5" questions={["Our AI initiatives are aligned with our overall business goals and strategic plan.","There is clear and consistent communication between departments about AI priorities and progress.","Our AI efforts are coordinated across teams and business units rather than operating in silos."]} questionStartIndex={9} scores={scores} onScoreChange={updateScore} onNext={() => goTo("results-pillar")} />}
+        {screen === "results-pillar" && <PillarScreen pillarLetter="R" pillarName="RESULTS" subtitle="Measurement, Tracking & Return on Investment" progress={100} progressLabel="Pillar 5 of 5" questions={["We have defined clear Key Performance Indicators to measure the success of our AI initiatives.","We can demonstrate measurable return on investment from at least one AI-related initiative.","We have a system in place to regularly track and report AI progress to leadership."]} questionStartIndex={12} scores={scores} onScoreChange={updateScore} onNext={() => goTo("calculating")} nextLabel="See My Results →" />}
+        {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
+        {screen === "results" && expiryStatus === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
+        {screen === "results" && expiryStatus !== "expired" && (
+          <>
+            {expiryStatus === "nudge" && !nudgeDismissed && <NudgeBanner onDismiss={() => setNudgeDismissed(true)} onBookNow={() => goTo("diagnose")} />}
+            <ResultsScreen lead={lead} scores={scores} onBookCall={() => goTo("diagnose")} />
+          </>
+        )}
+        {screen === "diagnose" && expiryStatus === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
+        {screen === "diagnose" && expiryStatus !== "expired" && (
+          <>
+            {expiryStatus === "nudge" && !nudgeDismissed && <NudgeBanner onDismiss={() => setNudgeDismissed(true)} onBookNow={() => goTo("diagnose")} />}
+            <DiagnoseScreen lead={lead} scores={scores} onSelectStrategic={() => goTo("payment-strategic")} onSelectExecutive={() => goTo("payment-executive")} onSkipToTransformation={() => goTo("share-your-excitement")} />
+          </>
+        )}
+        {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
+        {screen === "payment-executive" && <PaymentScreen tier="executive" price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL} onBack={() => goTo("diagnose")} />}
+        {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
+        {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL} onContinue={() => goTo("share-your-excitement")} />}
+        {screen === "expired" && <ExpiredScreen onRetake={() => { clearExpiryTimestamp(); clearProgress(); setScores({}); setLead({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" }); goTo("welcome"); }} />}
+        {screen === "share-your-excitement" && <ShareYourExcitementScreen lead={lead} scores={scores} onRevisit={() => goTo("diagnose")} />}
       </div>
 
-      {/* PWA Update Banner */}
       {showUpdateAvailable && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 99999, background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)", borderBottom: "1px solid rgba(212,175,55,0.4)", padding: "0.75rem 1.25rem", display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 4px 24px rgba(0,0,0,0.5)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1628,7 +1562,6 @@ export default function DruClearApp() {
         </div>
       )}
 
-      {/* PWA Install Banner */}
       {showInstallBanner && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)", borderTop: "1px solid rgba(212,175,55,0.4)", padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}>
           <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
@@ -1641,7 +1574,6 @@ export default function DruClearApp() {
         </div>
       )}
 
-      {/* Manual Install Banner */}
       {showManualBanner && browserInstallInfo && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)", borderTop: "1px solid rgba(212,175,55,0.4)", padding: "1rem 1.25rem 1.5rem", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
