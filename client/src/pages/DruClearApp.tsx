@@ -321,8 +321,8 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2.5rem 1.5rem 2rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div className="flex flex-col items-center mb-6">
-        <DruLogo />height={64} className="mb-4"        <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
-          <img src={HEADSHOT_CDN} alt="DeAnna R. Upshaw" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }} />
+       <DruLogo height={64} className="mb-4" />
+          <div style={{ width: 120, height: 120, borderRadius: "50%", border: "2.5px solid #D4AF37", boxShadow: "0 0 0 4px rgba(212,175,55,0.15), 0 4px 20px rgba(0,0,0,0.4)", overflow: "hidden", marginBottom: "1.25rem", flexShrink: 0 }}>
         </div>
         <h1 className="text-3xl font-bold text-center mb-1" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}>DeAnna R. Upshaw</h1>
         <p className="text-lg font-medium text-center mb-1" style={{ color: "#FFFFFF" }}>AI Authority</p>
@@ -1078,7 +1078,7 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
   return (
     <div ref={topRef} className="screen-enter flex flex-col" style={{ minHeight: "100dvh", background: "#0A2342", padding: "2rem 1.5rem 3rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-        <DruLogo height={64} className="mb-4" />
+       <DruLogo height={64} className="mb-4" />
         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", fontWeight: 700, color: "#D4AF37", marginBottom: "0.5rem", lineHeight: 1.2 }}>Your Results Are In.</h2>
         <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#FFFFFF", marginBottom: "0.75rem" }}>Now It's Time to Turn Insight Into Action.</p>
         <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.78rem", lineHeight: 1.65, maxWidth: 360, margin: "0 auto" }}>Your scorecard revealed important signals across leadership, alignment, execution, and AI readiness. The next step is to go deeper, identify what is slowing progress, and build the right path forward.</p>
