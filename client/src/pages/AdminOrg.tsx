@@ -5,7 +5,7 @@ function photo(gender: "men" | "women", num: number) {
   return `https://randomuser.me/api/portraits/${gender}/${num}.jpg`;
 }
 
-const TRAVIS_PHOTO = photo("men", 36);
+const TRAVIS_PHOTO = photo("men", 83);
 
 const DIVISIONS = [
   {
@@ -173,7 +173,7 @@ export default function AdminOrg() {
 
           {/* Travis */}
           <div style={{ background: "rgba(10,35,66,0.9)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            <img src={TRAVIS_PHOTO} alt="Travis" style={{ ...circleStyle(46), border: "1px solid rgba(212,175,55,0.5)" }} />
+            <img src={TRAVIS_PHOTO} alt="Travis" style={{ ...circleStyle(52), border: "1px solid rgba(212,175,55,0.5)" }} />
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Operations Layer</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis — Chief of Staff</p>
@@ -198,7 +198,7 @@ export default function AdminOrg() {
                   <div key={agent.name}
                     style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7, padding: "5px 9px", flex: (div as any).fullWidth ? "1 1 160px" : "1 1 100%" }}>
                     <img src={agent.src} alt={agent.name}
-                      style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
+                      style={{ width: 54, height: 54, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</p>
                       <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.58rem", margin: 0, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.role}</p>
