@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -37,6 +38,7 @@ const PENDING_ITEMS = [
   "Add 2 PDFs to app for user access — delegated to AI Agents (Sprint 4)",
   "GHL webhook URL — wire into course waitlist form",
   "course.druaiconsulting.com — repo create + Vercel deploy",
+  "Twin streaming fix — route via Vercel serverless or Claude Code",
 ];
 
 interface SprintItem { label: string; sub: string; done?: boolean; }
@@ -78,7 +80,6 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { label: "PWA Auth Redirect — returning users routed to app", sub: "Supabase session check on mount · valid session → app.druaiconsulting.com" },
       { label: "Route Security — all protected routes locked", sub: "/frameworks · /community · /affiliate require login" },
       { label: "Dynamic Transformation Pathway™ — fully automated", sub: "pathway_stage in Supabase · 3 values map to 5 visual stages · Edge Function auto-updates on purchase" },
-      { label: "GHL tags — framework-purchased · bundle-purchased", sub: "Fires Edge Function to update pathway_stage to deploy" },
       { label: "Daily Connections automated engine — LIVE", sub: "Claude API generates 3 content sets daily at 6am CST · stage-aware · leadership WITH AI" },
       { label: "Smart notification dot — full state sequence", sub: "Unread: red pulsing · Read: gold glow · Completed: 🔥 streak · 7-day: gold border glow" },
       { label: "Streak tracking — Supabase persistent", sub: "current_streak · longest_streak · total_completions" },
@@ -94,27 +95,28 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Daily Connections Accelerator Tier — LIVE",     sub: "navigator + accelerator tiers in Supabase · DeAnna's Strategic Edge 4th card · AI-generated in DeAnna's voice · daily · founder pricing active" },
       { done: true,  label: "Auth Loading Fix — LIVE",                       sub: "Two-phase loading · instant session resolve · profile fetches in background · 3s safety timeout · no more splash screen hang" },
       { done: true,  label: "New Logo — LIVE",                               sub: "DRU CLEAR™ enhanced logo · transparent background · deployed across app" },
-      { done: false, label: "From Confusion to Confident with AI™ — Course", sub: "Waitlist form built · 3 payment links live · Self-Paced $1,497 · Live Cohort $7,997 · Mastermind $12,997 · course.druaiconsulting.com deploy next · opens May 10" },
-      { done: false, label: "Revenue & Growth Agents",                       sub: "Sales Support · Proposal Writer · Copywriter · Lead Scoring · Personalized Outreach · CRM Management (GHL) · Email Marketing" },
+      { done: true,  label: "Revenue & Growth Agents — BUILT",               sub: "10 agents · Serena · Mateo · Zara · Jaylen · Chloe · Omar · Aaliyah · Ryan · Elena · Kwame · Supabase edge function deployed" },
+      { done: true,  label: "Content & Brand Agents — BUILT",                sub: "5 agents · Camila · Darius · Ingrid · Ravi · Yara · Supabase edge function deployed" },
+      { done: true,  label: "Client Delivery Agents + Creative Director — BUILT", sub: "7 agents · Keisha · Marco · Leila · Jordan Hayes (Creative Director) · Simone · Theo · Amelia · deployed" },
+      { done: true,  label: "Governance Agents — BUILT",                     sub: "C-Suite/Ops · Legal & Finance · AI Governance · HR Division · 14 agents · all 4 edge functions deployed" },
+      { done: true,  label: "Travis — Chief of Staff — BUILT",               sub: "Pure deterministic router · routes all 37 agents across 9 divisions · reports to Twin" },
+      { done: true,  label: "All 39 Agents — Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 10 divisions · all system prompts · all edge functions · Genius Mode default" },
+      { done: false, label: "Twin Streaming Fix",                             sub: "WallClockTime timeout on OPTIONS preflight · route via Vercel serverless function · Claude Code recommended" },
+      { done: false, label: "From Confusion to Confident with AI™ — Course", sub: "Waitlist form built · 3 payment links live · Self-Paced $1,497 · Live Cohort $7,997 · Mastermind $12,997 · course.druaiconsulting.com deploy next" },
       { done: false, label: "Affiliate Dashboard",                           sub: "Track referrals · commissions · top referrer leaderboard · Supabase referrals table · unique referral links · Stripe payout integration" },
-      { done: false, label: "Navigator $97/mo + Accelerator $297/mo",        sub: "Price increase from founder pricing after launch · lock in founding members now · higher tier value justified by full agent stack" },
-      { done: false, label: "Content & Brand Agents",                        sub: "Content Creator · Social Media Strategist · Viral Scripter · Press Release · Graphic Designer · Translator · LinkedIn Authority Engine · Social Scheduler" },
-      { done: false, label: "Client Delivery Agents + Creative Director",    sub: "Onboarding Coach · Community Manager · Feedback Coach · Creative Director (Jordan Hayes) orchestrating Course Architect · Presentation Designer · Training Video Producer" },
-      { done: false, label: "Community AI Agents",                           sub: "Navigator + Accelerator communities · daily prompts · Q&A · member spotlights · agents hold community before humans arrive" },
-      { done: false, label: "Community — in-app",                            sub: "Launch when 20+ active clients · Supabase Realtime · Navigator + Accelerator separate spaces · agents already running" },
-      { done: false, label: "Passkeys / Face ID Login",                      sub: "WebAuthn · device-based biometric · @simplewebauthn/browser + server · Edge Function challenge/verify · post-launch security upgrade" },
-      { done: false, label: "Governance Agents — Compliance · Legal · Tax · Chief of Staff · EA", sub: "Isabella Moreno auto-blocks trademark violations · Travis routes all 38 agents · protect the empire before full scale" },
-      { done: false, label: "Agent Architecture — 3 Layers",                 sub: "Layer 1: Brand presence · Layer 2: Org structure with workflows · Layer 3: Operational departments · design before building" },
+      { done: false, label: "Navigator $97/mo + Accelerator $297/mo",        sub: "Price increase from founder pricing after launch · lock in founding members now" },
+      { done: false, label: "Community AI Agents",                           sub: "Navigator + Accelerator communities · daily prompts · Q&A · member spotlights" },
+      { done: false, label: "Community — in-app",                            sub: "Launch when 20+ active clients · Supabase Realtime · Navigator + Accelerator separate spaces" },
+      { done: false, label: "Passkeys / Face ID Login",                      sub: "WebAuthn · device-based biometric · post-launch security upgrade" },
       { done: false, label: "Framework Agent Teams",                         sub: "One dedicated AI agent per framework · DRU CLEAR™ · 5D Leadership™ · 5C Cultural DNA™ · AI Sales Mastery™" },
-      { done: false, label: "All 38 Agents — Full Build",                    sub: "Community Manager · Content Creator · Sales Support · Onboarding Coach · Daily Connections Engine · Framework Advisor · Feedback Coach · all operational" },
       { done: false, label: "🚀 LAUNCH",                                     sub: "app.druaiconsulting.com · course.druaiconsulting.com · full AI empire live · all agents operational · May 10, 2026" },
     ],
   },
   {
     number: "5", title: "Scale & License", status: "planned",
     items: [
-      { label: "90-Day Live Run", sub: "Real clients · real data · agent refinement · case studies building · Sprint 5 readiness gate — do not proceed until proven" },
-      { label: "DRU CLEAR™ Scale Your AI Business — LMS", sub: "Full course platform · 8 modules · video + workbooks · progress tracking · built on proven 90-day results" },
+      { label: "90-Day Live Run", sub: "Real clients · real data · agent refinement · case studies building · Sprint 5 readiness gate" },
+      { label: "DRU CLEAR™ Scale Your AI Business — LMS", sub: "Full course platform · 8 modules · video + workbooks · progress tracking" },
       { label: "White Label LMS Licensing → Licensed to the World", sub: "Other consultants pay monthly to use your platform · the final frontier" },
     ],
   },
@@ -311,7 +313,7 @@ function ClientIntelligenceDashboard() {
         </div>
       )}
       <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" as const }}>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.62rem", margin: 0 }}>Pillar columns: C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.62rem", margin: 0 }}>C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
         <div style={{ display: "flex", gap: "0.75rem" }}>
           {[{ label: "Low (1–6)", color: "#E53935" }, { label: "Mid (7–10)", color: "#D4AF37" }, { label: "Strong (11–15)", color: "#43A047" }].map((item) => (
             <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
@@ -320,107 +322,6 @@ function ClientIntelligenceDashboard() {
             </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AgentEmpireArchitecture() {
-  type DivisionType = "internal" | "client" | "both" | "gov";
-  interface AgentEntry { role: string; name: string; hook?: boolean; }
-  interface AgentDivision { name: string; tag: string; type: DivisionType; agents: AgentEntry[]; fullWidth?: boolean; creative?: { orchestrator: string; orchestratorName: string; sub: AgentEntry[] }; }
-
-  const divisionHeaderBg: Record<DivisionType, string> = { internal: "#0A2342", client: "#C2185B", both: "#6B4F0A", gov: "#112D4A" };
-  const divisionBorder: Record<DivisionType, string>   = { internal: "rgba(212,175,55,0.2)", client: "rgba(194,24,91,0.3)", both: "rgba(212,175,55,0.35)", gov: "rgba(212,175,55,0.3)" };
-  const divisionBg: Record<DivisionType, string>       = { internal: "rgba(10,35,66,0.35)", client: "rgba(194,24,91,0.07)", both: "rgba(212,175,55,0.06)", gov: "rgba(17,45,74,0.45)" };
-  const agentDotColor: Record<DivisionType, string>    = { internal: "#D4AF37", client: "#C2185B", both: "#D4AF37", gov: "#D4AF37" };
-
-  const divisions: AgentDivision[] = [
-    { name: "C-Suite / Operations", tag: "Internal", type: "internal", agents: [{ role: "Executive Assistant", name: "Priya Sharma" }, { role: "Director of Compliance ★", name: "Isabella Moreno" }, { role: "Tax Strategist", name: "Marcus Chen" }] },
-    { name: "Legal & Finance", tag: "Internal", type: "internal", agents: [{ role: "Legal Team", name: "Amara Okafor" }, { role: "Expense Manager", name: "Diego Reyes" }, { role: "Financial Reporting", name: "Yuki Tanaka" }] },
-    { name: "AI Governance", tag: "Internal", type: "gov", agents: [{ role: "Disclaimer Writer", name: "Khalid Hassan" }, { role: "Privacy Policy", name: "Sofia Petrov" }, { role: "Contract Writer", name: "James Osei" }, { role: "Brand Protection", name: "Mei Lin" }, { role: "Continuous Learning Monitor", name: "Rafael Torres" }] },
-    { name: "HR Division", tag: "Internal → Both", type: "both", agents: [{ role: "Recruiting", name: "Naomi Williams" }, { role: "Onboarding (Internal)", name: "Aiden Park" }, { role: "Internal Helpdesk", name: "Fatima Al-Rashid" }] },
-    { name: "Revenue & Growth + Sales", tag: "Internal", type: "internal", fullWidth: true, agents: [{ role: "Business Coach", name: "Serena Jackson" }, { role: "Sales Support", name: "Mateo Gonzalez" }, { role: "Product Launch Specialist", name: "Zara Ahmed" }, { role: "Email Marketing", name: "Jaylen Brooks" }, { role: "Copy Writer", name: "Chloe Dubois" }, { role: "Lead Scoring & Qualification", name: "Omar Patel" }, { role: "Personalized Outreach", name: "Aaliyah Foster" }, { role: "CRM Management (GHL)", name: "Ryan Nakamura" }, { role: "Product Knowledge", name: "Elena Vasquez" }, { role: "Proposal Writer", name: "Kwame Asante" }] },
-    { name: "Marketing", tag: "Internal", type: "internal", agents: [{ role: "Content Creation", name: "Nia Robinson" }, { role: "Digital Marketing", name: "Luca Romano" }, { role: "Analytics & ROI Tracking", name: "Hyun-Ji Kim" }, { role: "SEO/SEM Brand Mgmt", name: "Andre Mitchell" }] },
-    { name: "Content & Brand", tag: "Internal", type: "internal", agents: [{ role: "Social Media Strategist", name: "Camila Flores", hook: true }, { role: "Viral Scripter", name: "Darius King", hook: true }, { role: "Press Release", name: "Ingrid Larsen" }, { role: "Graphic Designer", name: "Ravi Gupta" }, { role: "Translator / Localization", name: "Yara Mansour" }] },
-    { name: "Client Delivery", tag: "Client-Facing", type: "client", fullWidth: true, agents: [{ role: "Onboarding Coach", name: "Keisha Thompson" }, { role: "Community Manager", name: "Marco Silva" }, { role: "Feedback Coach", name: "Leila Nasser" }], creative: { orchestrator: "Creative Director", orchestratorName: "Jordan Hayes", sub: [{ role: "Course Architect", name: "Simone Laurent" }, { role: "Presentation Designer", name: "Theo Nguyen" }, { role: "Training Video Producer", name: "Amelia Santos" }] } },
-    { name: "Customer Support", tag: "Client-Facing", type: "client", fullWidth: true, agents: [{ role: "Issue Resolution & Troubleshooting", name: "Isaiah Carter" }, { role: "Multi-Channel Communication", name: "Priscilla Okonkwo" }] },
-  ];
-
-  const agentRowStyle = (): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 5, padding: "4px 8px", fontSize: "0.7rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.85)" });
-  const agentDot = (type: DivisionType) => <div style={{ width: 5, height: 5, borderRadius: "50%", background: agentDotColor[type], flexShrink: 0 }} />;
-
-  return (
-    <div style={{ marginBottom: "2rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
-        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>AI Empire Architecture</p>
-        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
-      </div>
-      <div style={{ background: "#C2185B", borderRadius: 10, padding: "10px 20px", textAlign: "center" as const, marginBottom: 8 }}>
-        <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>👑 DeAnna R. Upshaw — CEO & Founder</p>
-      </div>
-      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
-      <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "14px 20px", textAlign: "center" as const, marginBottom: 8 }}>
-        <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 4px" }}>✦ DeAnna's AI Twin — Master Orchestrator ✦</p>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.68rem", margin: "0 0 10px" }}>DeAnna's voice · Reviews all outputs · Persistent memory · Routes all agents</p>
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" as const }}>
-          {["Master Orchestrator", "Workflow + Conversational", "Persistent Memory", "Guards Classes 35 · 41 · 42"].map((badge) => (
-            <span key={badge} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.35)", color: "#D4AF37" }}>{badge}</span>
-          ))}
-        </div>
-      </div>
-      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
-      <div style={{ background: "rgba(10,35,66,0.7)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "10px 20px", textAlign: "center" as const, marginBottom: 8 }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.72rem", fontWeight: 700, margin: "0 0 2px", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Operations Layer</p>
-        <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: "0 0 2px" }}>Travis — Chief of Staff</p>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.63rem", margin: 0 }}>Routes tasks · Manages all divisions · Escalates to Twin · Tracks completion</p>
-      </div>
-      <div style={{ textAlign: "center" as const, color: "rgba(212,175,55,0.5)", fontSize: "1rem", lineHeight: 1, margin: "4px 0" }}>↓</div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" as const }}>
-        {[{ color: "#D4AF37", label: "Internal → White Label" }, { color: "#C2185B", label: "Client-Facing" }, { color: "#8B6914", label: "Both" }].map((item) => (
-          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.5)" }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color }} />{item.label}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {divisions.map((div) => (
-          <div key={div.name} style={{ gridColumn: div.fullWidth ? "1 / -1" : "auto", borderRadius: 10, overflow: "hidden", border: `1px solid ${divisionBorder[div.type]}`, background: divisionBg[div.type] }}>
-            <div style={{ background: divisionHeaderBg[div.type], padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 700 }}>{div.name}</span>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}>{div.tag}</span>
-            </div>
-            <div style={{ padding: "8px 10px", display: "flex", flexDirection: div.fullWidth ? "row" : "column", flexWrap: div.fullWidth ? "wrap" as const : undefined, gap: 4 }}>
-              {div.agents.map((agent) => (
-                <div key={agent.role} style={{ ...agentRowStyle(), flex: div.fullWidth ? "1 1 180px" : undefined }}>
-                  {agentDot(div.type)}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "rgba(230,230,230,0.9)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</span>
-                    <span style={{ fontSize: "0.6rem", color: "rgba(230,230,230,0.45)", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.role}{agent.hook ? " · ⟷ hook pipeline" : ""}</span>
-                  </div>
-                </div>
-              ))}
-              {div.creative && (
-                <div style={{ flex: "1 1 220px", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.25)", borderLeft: "3px solid #D4AF37", borderRadius: 7, padding: "7px 10px", marginTop: div.fullWidth ? 0 : 2 }}>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", margin: "0 0 1px" }}>{div.creative.orchestratorName}</p>
-                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.58rem", color: "rgba(230,230,230,0.4)", margin: "0 0 6px" }}>{div.creative.orchestrator} (Orchestrator)</p>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
-                    {div.creative.sub.map((sub) => (
-                      <div key={sub.role} style={{ display: "flex", flexDirection: "column", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 4, padding: "3px 7px" }}>
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 600, color: "rgba(230,230,230,0.85)" }}>{sub.name}</span>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.56rem", color: "rgba(230,230,230,0.4)" }}>{sub.role}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", textAlign: "center" as const }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0, letterSpacing: "0.04em" }}>★ Isabella Moreno (Compliance) auto-blocks outputs violating Trademark Classes 35 · 41 · 42 · Travis routes all 38 agents · Persistent memory across sessions</p>
       </div>
     </div>
   );
@@ -446,12 +347,25 @@ export default function Admin() {
       <NavBar active="/admin" />
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only · Page 1</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting · DeAnna R. Upshaw</p>
         </div>
+
+        {/* AI Empire Link — Page 2 */}
+        <Link to="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
+          <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
+            <div>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>✦ AI Empire Org Chart →</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>39 agents · 10 divisions · Full hierarchy with illustrated avatars · Page 2</p>
+            </div>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW →</span>
+          </div>
+        </Link>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
@@ -468,7 +382,6 @@ export default function Admin() {
         </div>
 
         <ClientIntelligenceDashboard />
-        <AgentEmpireArchitecture />
 
         {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
@@ -561,13 +474,14 @@ export default function Admin() {
                     {sprint.items.map((item, i) => {
                       const isDone = sprint.status === "completed" || (item as SprintItem).done === true;
                       const checkColor = isDone ? "#43A047" : cfg.dot;
-                      const textColor  = isDone ? "rgba(230,230,230,0.5)" : "#FFFFFF";
+                      const textColor  = isDone ? "rgba(230,230,230,0.35)" : "#FFFFFF";
+                      const subColor   = isDone ? "rgba(230,230,230,0.2)" : "rgba(230,230,230,0.35)";
                       return (
-                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <span style={{ color: checkColor, fontSize: "0.6rem", marginTop: 3, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
+                          <span style={{ color: checkColor, fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
                           <div>
-                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
-                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(230,230,230,0.35)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
+                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4, textDecoration: isDone && sprint.status !== "completed" ? "line-through" : "none" }}>{item.label}</p>
+                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: subColor, margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                           </div>
                         </div>
                       );
