@@ -354,7 +354,7 @@ export default function Admin() {
         </div>
 
         {/* AI Empire Link — Page 2 */}
-        <div onClick={() => window.location.href = "/admin-org"} style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem", cursor: "pointer" }}>
+        <a href="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
           <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
@@ -364,7 +364,7 @@ export default function Admin() {
             </div>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW →</span>
           </div>
-        </div>
+        </a>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
