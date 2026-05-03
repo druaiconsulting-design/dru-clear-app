@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 
 interface Message {
   role: "user" | "assistant";
@@ -17,6 +16,9 @@ const SUGGESTED_PROMPTS = [
   "What makes a leader truly transformational?",
   "How do I start my AI readiness journey?",
 ];
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export default function Twin() {
   const { user } = useAuth();
@@ -53,15 +55,44 @@ export default function Twin() {
     setShowSuggested(false);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("twin-chat", {
-        body: {
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/twin-chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
         },
+        body: JSON.stringify({
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+        }),
       });
 
-      if (fnError) throw fnError;
-      const reply = data?.reply || "I'm here — try sending your message again.";
-      setMessages(prev => [...prev, { role: "assistant", content: reply, timestamp: new Date() }]);
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+      if (!response.body) throw new Error("No response body");
+
+      // Add empty assistant message — will fill as stream arrives
+      const assistantMsg: Message = { role: "assistant", content: "", timestamp: new Date() };
+      setMessages(prev => [...prev, assistantMsg]);
+      setLoading(false);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: fullText,
+          };
+          return updated;
+        });
+      }
+
     } catch (err) {
       setError("Something went wrong. Please try again.");
       console.error("Twin error:", err);
@@ -179,7 +210,7 @@ export default function Twin() {
             </div>
           ))}
 
-          {/* Loading dots */}
+          {/* Loading dots — only show while waiting for first token */}
           {loading && (
             <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
               <AvatarImg size={30} fallbackSize="0.8rem" />
