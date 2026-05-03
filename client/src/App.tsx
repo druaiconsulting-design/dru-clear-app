@@ -19,6 +19,7 @@ import Daily from "./pages/Daily";
 import Community from "./pages/Community";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
+import AdminOrg from "./pages/AdminOrg";
 import Twin from "./pages/Twin";
 import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
@@ -141,11 +142,16 @@ function Router() {
     return <ThankYouFullEcosystem />;
   }
 
-  // ── Admin Route ─────────────────────────────────────────────────────────────
+  // ── Admin Routes ────────────────────────────────────────────────────────────
   if (path === "/admin" || path === "/admin/") {
     setTitle("Command Center · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
+  }
+  if (path === "/admin-org" || path === "/admin-org/") {
+    setTitle("AI Empire Org Chart · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminOrg />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
