@@ -5,7 +5,11 @@ function photo(gender: "men" | "women", num: number) {
   return `https://randomuser.me/api/portraits/${gender}/${num}.jpg`;
 }
 
-const TRAVIS_PHOTO = photo("men", 83);
+// NOTE: Swap these URLs with custom headshots when available
+// Raymond Holloway: Black male, 40–55, bald, close-cut beard
+// Travis Weston: Black male, early 20s
+const RAYMOND_PHOTO = photo("men", 83); // bald with close-cut beard — original Travis photo
+const TRAVIS_PHOTO  = photo("men", 22); // younger look for Travis Weston
 
 const DIVISIONS = [
   {
@@ -107,7 +111,9 @@ const DIVISIONS = [
 ];
 
 export default function AdminOrg() {
-  const [deAnnaErr, setDeAnnaErr] = useState(false);
+  const [deAnnaErr, setDeAnnaErr]     = useState(false);
+  const [raymondErr, setRaymondErr]   = useState(false);
+  const [travisErr,  setTravisErr]    = useState(false);
 
   const circleStyle = (size: number, border = "#D4AF37"): React.CSSProperties => ({
     width: size, height: size, borderRadius: "50%",
@@ -115,6 +121,12 @@ export default function AdminOrg() {
     objectFit: "cover" as const,
     flexShrink: 0,
     background: "rgba(10,35,66,0.5)",
+  });
+
+  const fallback = (label: string, size: number, bg = "#0A2342"): React.CSSProperties => ({
+    ...circleStyle(size),
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: size * 0.35, background: bg,
   });
 
   return (
@@ -128,7 +140,7 @@ export default function AdminOrg() {
           <div>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 2 · Confidential</p>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>39 agents · 10 divisions · DeAnna → AI Twin → Travis → 37 agents · All agents operate in Genius Mode</p>
+            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>39 agents · 10 divisions · DeAnna → AI Twin → Raymond → Travis → 37 agents · All agents operate in Genius Mode</p>
           </div>
           <div onClick={() => window.location.href = "/admin"}
             style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>
@@ -144,7 +156,7 @@ export default function AdminOrg() {
             {!deAnnaErr ? (
               <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} />
             ) : (
-              <div style={{ ...circleStyle(56), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", background: "#0A2342" }}>👑</div>
+              <div style={fallback("👑", 56, "#0A2342")}>👑</div>
             )}
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>DeAnna R. Upshaw</p>
@@ -154,10 +166,9 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* AI Twin — uses deanna-professional.png */}
+          {/* AI Twin */}
           <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
-            <img src="/deanna-professional.png" alt="DeAnna's AI Twin"
-              style={circleStyle(52)} />
+            <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice</p>
@@ -171,13 +182,42 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Travis */}
-          <div style={{ background: "rgba(10,35,66,0.9)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            <img src={TRAVIS_PHOTO} alt="Travis" style={{ ...circleStyle(52), border: "1px solid rgba(212,175,55,0.5)" }} />
+          {/* Raymond Holloway — Chief of Staff */}
+          <div style={{ background: "rgba(10,35,66,0.95)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
+            {!raymondErr ? (
+              <img src={RAYMOND_PHOTO} alt="Raymond Holloway"
+                onError={() => setRaymondErr(true)}
+                style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} />
+            ) : (
+              <div style={fallback("RH", 54)}>RH</div>
+            )}
             <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Operations Layer</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis — Chief of Staff</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Routes all 37 agents · 9 divisions</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Oversees all operations · 9 divisions · 37 agents</p>
+              <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
+                {["Strategic Oversight", "Final Authority", "Operations Command"].map(b => (
+                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.5rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#D4AF37" }}>{b}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
+
+          {/* Travis Weston — Assistant Chief of Staff */}
+          <div style={{ background: "rgba(10,35,66,0.75)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+            {!travisErr ? (
+              <img src={TRAVIS_PHOTO} alt="Travis Weston"
+                onError={() => setTravisErr(true)}
+                style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} />
+            ) : (
+              <div style={fallback("TW", 48)}>TW</div>
+            )}
+            <div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Assistant Chief of Staff</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Weston</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Assistant to Raymond Holloway · 9 divisions · 37 agents</p>
             </div>
           </div>
 
@@ -212,7 +252,7 @@ export default function AdminOrg() {
 
         {/* Footer */}
         <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,75,0.7)", margin: 0 }}>
             ★ Isabella Moreno auto-blocks all outputs violating Trademark Classes 35 · 41 · 42 · All agents operate in Genius Mode · Confidential · DRU AI Consulting © 2026
           </p>
         </div>
