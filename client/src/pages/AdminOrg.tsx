@@ -9,7 +9,7 @@ function photo(gender: "men" | "women", num: number) {
 // Raymond Holloway: Black male, 40–55, bald, close-cut beard
 // Travis Weston: Black male, early 20s
 const RAYMOND_PHOTO = photo("men", 83); // bald with close-cut beard — original Travis photo
-const TRAVIS_PHOTO  = photo("men", 22); // younger look for Travis Weston
+const TRAVIS_PHOTO  = photo("men", 16);
 
 const DIVISIONS = [
   {
