@@ -279,6 +279,13 @@ export default function Twin() {
                   <span className="thinking-dot" />
                 </span>
               )}
+              {msg.role === "assistant" && msg.content !== "" && isStreaming && i === messages.length - 1 && (
+                <span style={{ display: "inline-flex", alignItems: "center", marginLeft: 6, verticalAlign: "middle" }}>
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                </span>
+              )}
             </div>
           </div>
         ))}
