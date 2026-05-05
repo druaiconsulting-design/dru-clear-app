@@ -1,262 +1,298 @@
-import { useState, useEffect, useRef } from "react";
-import NavBar from "../components/NavBar";
-import { useAuth } from "../contexts/AuthContext";
+// client/src/pages/Twin.tsx
+// Updated to call Vercel API route instead of Supabase edge function
+// Fixes WallClockTime 546 timeout permanently
+
+import { useState, useRef, useEffect } from "react";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
 }
 
-const SUGGESTED_PROMPTS = [
-  "Help me understand the DRU CLEAR™ framework",
-  "Which framework is right for my organization?",
-  "Walk me through the Transformation Pathway™",
-  "How does AI Sales Mastery™ work with DISC?",
-  "What makes a leader truly transformational?",
-  "How do I start my AI readiness journey?",
-];
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-
 export default function Twin() {
-  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showSuggested, setShowSuggested] = useState(true);
-  const [avatarError, setAvatarError] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages]);
 
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 140) + "px";
-    }
-  }, [input]);
+  const sendMessage = async () => {
+    const userText = input.trim();
+    if (!userText || isStreaming) return;
 
-  const sendMessage = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || loading) return;
-
-    const userMsg: Message = { role: "user", content: trimmed, timestamp: new Date() };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
+    const newMessages: Message[] = [
+      ...messages,
+      { role: "user", content: userText },
+    ];
+    setMessages(newMessages);
     setInput("");
-    setLoading(true);
-    setError(null);
-    setShowSuggested(false);
+    setIsStreaming(true);
+
+    // Add empty assistant message to stream into
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/twin-chat`, {
+      // Calls Vercel API route — no wall clock limit
+      const response = await fetch("/api/twin", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          
-        },
-        body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages }),
       });
 
-      if (!response.ok) throw new Error(`Error ${response.status}`);
-      if (!response.body) throw new Error("No response body");
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
 
-      // Add empty assistant message — will fill as stream arrives
-      const assistantMsg: Message = { role: "assistant", content: "", timestamp: new Date() };
-      setMessages(prev => [...prev, assistantMsg]);
-      setLoading(false);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
 
-      const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let fullText = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: fullText,
-          };
-          return updated;
-        });
-      }
 
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-      console.error("Twin error:", err);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (
+              parsed.type === "content_block_delta" &&
+              parsed.delta?.type === "text_delta" &&
+              parsed.delta?.text
+            ) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === "assistant") {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: last.content + parsed.delta.text,
+                  };
+                }
+                return updated;
+              });
+            }
+          } catch {
+            // Non-JSON SSE line — skip
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Stream error:", error);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last.role === "assistant" && last.content === "") {
+          updated[updated.length - 1] = {
+            ...last,
+            content: "I encountered an error. Please try again.",
+          };
+        }
+        return updated;
+      });
     } finally {
-      setLoading(false);
+      setIsStreaming(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      sendMessage();
     }
   };
 
-  const firstName = user?.user_metadata?.full_name?.split(" ")[0]
-    || user?.email?.split("@")[0]
-    || "Friend";
-
-  const AvatarImg = ({ size = 56, fallbackSize = "1.4rem" }: { size?: number; fallbackSize?: string }) =>
-    !avatarError ? (
-      <img
-        src="/deanna-avatar.jpg"
-        alt="DeAnna R. Upshaw"
-        onError={() => setAvatarError(true)}
-        style={{ width: size, height: size, borderRadius: "50%", border: `${size > 40 ? 2 : 1}px solid #D4AF37`, objectFit: "cover" as const, flexShrink: 0 }}
-      />
-    ) : (
-      <div style={{ width: size, height: size, borderRadius: "50%", border: `${size > 40 ? 2 : 1}px solid #D4AF37`, background: "linear-gradient(135deg,#0A2342,#1a3a5c)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: fallbackSize }}>
-        👑
-      </div>
-    );
-
-  const canSend = input.trim() && !loading;
-
   return (
-    <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/twin" />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        maxWidth: "800px",
+        margin: "0 auto",
+        padding: "1rem",
+        fontFamily: "Inter, sans-serif",
+        backgroundColor: "#0A2342",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "1rem 1.25rem",
+          backgroundColor: "#071A2E",
+          borderRadius: "12px 12px 0 0",
+          border: "1px solid rgba(212,175,55,0.3)",
+          borderBottom: "none",
+        }}
+      >
+        <h1
+          style={{
+            color: "#D4AF37",
+            fontFamily: "Cinzel, serif",
+            fontSize: "1.1rem",
+            margin: 0,
+            fontWeight: 700,
+          }}
+        >
+          ✦ DeAnna's AI Twin
+        </h1>
+        <p
+          style={{
+            color: "rgba(255,255,255,0.4)",
+            fontSize: "0.72rem",
+            margin: "4px 0 0",
+            fontFamily: "Montserrat, sans-serif",
+            letterSpacing: "0.06em",
+          }}
+        >
+          MASTER ORCHESTRATOR · DRU AI CONSULTING
+        </p>
+      </div>
 
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 800, margin: "0 auto", width: "100%", padding: "1.5rem 1rem 0" }}>
-
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", padding: "1rem 1.25rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 14 }}>
-          <AvatarImg size={56} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-              <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#43A047", boxShadow: "0 0 6px #43A047", display: "inline-block" }} />
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
-                DeAnna's AI Twin
-              </p>
-            </div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 2px" }}>
-              AI Authority · DRU AI Consulting
+      {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "1.25rem",
+          backgroundColor: "#071A2E",
+          border: "1px solid rgba(212,175,55,0.3)",
+          borderTop: "1px solid rgba(212,175,55,0.15)",
+          borderBottom: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+        }}
+      >
+        {messages.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              color: "rgba(255,255,255,0.25)",
+              marginTop: "3rem",
+              fontSize: "0.85rem",
+              fontFamily: "Inter, sans-serif",
+              lineHeight: 1.8,
+            }}
+          >
+            <p style={{ color: "#D4AF37", fontFamily: "Cinzel, serif", fontSize: "1rem", marginBottom: "0.5rem" }}>
+              AI Mastery. Leadership Clarity. Measurable Results.
             </p>
-            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.62rem", margin: 0 }}>
-              AI Mastery · Leadership Clarity · Measurable Results
-            </p>
+            Ask your Twin anything about AI strategy, leadership, or your business.
           </div>
-          <div style={{ textAlign: "right" as const }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.58rem", margin: "0 0 2px" }}>Powered by</p>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.6)", fontSize: "0.62rem", fontWeight: 700, margin: 0 }}>DRU CLEAR™</p>
-          </div>
-        </div>
+        )}
 
-        {/* Messages area */}
-        <div style={{ flex: 1, overflowY: "auto" as const, display: "flex", flexDirection: "column" as const, gap: "1rem", paddingBottom: "1rem", minHeight: 0 }}>
-
-          {/* Welcome */}
-          {messages.length === 0 && (
-            <div style={{ textAlign: "center" as const, padding: "1.5rem 1rem 0.5rem" }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.4rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-                Hello, {firstName}. 👑
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+              maxWidth: "80%",
+            }}
+          >
+            {msg.role === "assistant" && (
+              <p style={{
+                fontFamily: "Montserrat, sans-serif",
+                fontSize: "0.58rem",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                color: "#D4AF37",
+                margin: "0 0 4px 4px",
+                textTransform: "uppercase",
+              }}>
+                ✦ AI Twin
               </p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.82rem", lineHeight: 1.65, maxWidth: 480, margin: "0 auto 1.5rem" }}>
-                I am here to stretch you, encourage you, and lead you toward clarity. Ask me anything about AI leadership, transformation, or where to start your journey.
-              </p>
-            </div>
-          )}
-
-          {/* Suggested prompts */}
-          {showSuggested && messages.length === 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.5rem" }}>
-              {SUGGESTED_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => sendMessage(prompt)}
-                  style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "0.75rem 0.875rem", textAlign: "left" as const, cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.12)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.06)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,55,0.2)"; }}
-                >
-                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.8)", fontSize: "0.72rem", lineHeight: 1.4, margin: 0 }}>{prompt}</p>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Message bubbles */}
-          {messages.map((msg, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: "0.5rem", alignItems: "flex-end" }}>
-
-              {msg.role === "assistant" && <AvatarImg size={30} fallbackSize="0.8rem" />}
-
-              <div style={{ maxWidth: "72%", padding: "0.75rem 1rem", borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: msg.role === "user" ? "linear-gradient(135deg,#C2185B,#a01549)" : "rgba(255,255,255,0.06)", border: msg.role === "user" ? "none" : "1px solid rgba(212,175,55,0.15)" }}>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "#FFFFFF", fontSize: "0.84rem", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" as const }}>{msg.content}</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.58rem", margin: "0.375rem 0 0", textAlign: "right" as const }}>
-                  {msg.timestamp.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                </p>
-              </div>
-
-              {msg.role === "user" && (
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(194,24,91,0.3)", border: "1px solid rgba(194,24,91,0.5)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", color: "#FFFFFF" }}>
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
+            )}
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderRadius: msg.role === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                backgroundColor:
+                  msg.role === "user"
+                    ? "#C2185B"
+                    : "rgba(255,255,255,0.05)",
+                border: msg.role === "assistant" ? "1px solid rgba(212,175,55,0.2)" : "none",
+                color: "#FFFFFF",
+                fontFamily: "Inter, sans-serif",
+                fontSize: "0.85rem",
+                lineHeight: 1.7,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {msg.content}
+              {msg.role === "assistant" && msg.content === "" && isStreaming && (
+                <span style={{ opacity: 0.5, animation: "pulse 1s infinite" }}>●</span>
               )}
             </div>
-          ))}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
 
-          {/* Loading dots — only show while waiting for first token */}
-          {loading && (
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
-              <AvatarImg size={30} fallbackSize="0.8rem" />
-              <div style={{ padding: "0.875rem 1rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: "14px 14px 14px 4px", display: "flex", gap: 5, alignItems: "center" }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#D4AF37", animation: "twinPulse 1.2s ease-in-out infinite", animationDelay: `${i * 0.2}s` }} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ background: "rgba(194,24,91,0.1)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 8, padding: "0.75rem 1rem" }}>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "#C2185B", fontSize: "0.78rem", margin: 0 }}>{error}</p>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input bar */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.75rem", padding: "0.875rem 1rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 14, margin: "0.75rem 0 1rem" }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask DeAnna's Twin anything..."
-            rows={1}
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", lineHeight: 1.5, resize: "none" as const, minHeight: 24, maxHeight: 140 }}
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={!canSend}
-            style={{ width: 40, height: 40, borderRadius: "50%", border: "none", cursor: canSend ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: "1.1rem", background: canSend ? "#D4AF37" : "rgba(212,175,55,0.15)", color: canSend ? "#0A2342" : "rgba(212,175,55,0.3)", transition: "all 0.2s" }}
-          >
-            ↑
-          </button>
-        </div>
-
-      </main>
-
-      <style>{`@keyframes twinPulse{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-5px);opacity:1}}`}</style>
-
-      <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(255,255,255,0.15)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", letterSpacing: "0.04em" }}>
-        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
-      </footer>
+      {/* Input */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0.75rem",
+          padding: "0.875rem 1rem",
+          backgroundColor: "#071A2E",
+          border: "1px solid rgba(212,175,55,0.3)",
+          borderTop: "1px solid rgba(212,175,55,0.15)",
+          borderRadius: "0 0 12px 12px",
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask your Twin..."
+          disabled={isStreaming}
+          style={{
+            flex: 1,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(212,175,55,0.25)",
+            borderRadius: 8,
+            padding: "0.65rem 1rem",
+            color: "#FFFFFF",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "0.85rem",
+            outline: "none",
+          }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={isStreaming || !input.trim()}
+          style={{
+            background: isStreaming ? "rgba(212,175,55,0.3)" : "#D4AF37",
+            border: "none",
+            borderRadius: 8,
+            padding: "0.65rem 1.25rem",
+            color: "#0A2342",
+            fontFamily: "Montserrat, sans-serif",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            cursor: isStreaming ? "not-allowed" : "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          {isStreaming ? "..." : "SEND"}
+        </button>
+      </div>
     </div>
   );
 }
