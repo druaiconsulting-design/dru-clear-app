@@ -1,8 +1,6 @@
 // api/ghl-agent-trigger.ts
 // Vercel Edge Function — Autonomous Entry Point
-// Receives GHL webhooks + Make.com triggers
-// Routes to correct agent, executes, writes to Supabase approvals table
-// On Vercel edge — no WallClockTime limit
+// Handles GHL webhook format — auto-builds task from contact data
 
 export const config = {
   runtime: "edge",
@@ -14,30 +12,71 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const AGENT_ROSTER = `
-C-Suite / Operations: Priya Sharma (Executive Assistant), Isabella Moreno (Director of Compliance), Marcus Chen (Tax Strategist)
-Legal & Finance: Amara Okafor (Legal Team), Diego Reyes (Expense Manager), Yuki Tanaka (Financial Reporting)
-AI Governance: Khalid Hassan (Disclaimer Writer), Sofia Petrov (Privacy Policy), James Osei (Contract Writer), Mei Lin (Brand Protection), Rafael Torres (Continuous Learning)
-HR Division: Naomi Williams (Recruiting), Aiden Park (Internal Onboarding), Fatima Al-Rashid (Internal Helpdesk)
-Revenue & Growth + Sales: Serena Jackson (Business Coach), Mateo Gonzalez (Sales Support), Zara Ahmed (Product Launch), Jaylen Brooks (Email Marketing), Chloe Dubois (Copy Writer), Omar Patel (Lead Scoring), Aaliyah Foster (Personalized Outreach), Ryan Nakamura (CRM Management GHL), Elena Vasquez (Product Knowledge), Kwame Asante (Proposal Writer)
-Marketing: Nia Robinson (Content Creation), Luca Romano (Digital Marketing), Hyun-Ji Kim (Analytics & ROI), Andre Mitchell (SEO/SEM)
-Content & Brand: Camila Flores (Social Media Strategist), Darius King (Viral Scripter), Ingrid Larsen (Press Release), Ravi Gupta (Graphic Designer), Yara Mansour (Translator/Localization)
-Client Delivery: Keisha Thompson (Onboarding Coach), Marco Silva (Community Manager), Leila Nasser (Feedback Coach), Jordan Hayes (Creative Director), Simone Laurent (Course Architect), Theo Nguyen (Presentation Designer), Amelia Santos (Training Video Producer)
-Customer Support: Isaiah Carter (Issue Resolution), Priscilla Okonkwo (Multi-Channel Communication)
-`;
-
 const AGENT_VOICES: Record<string, string> = {
   "Camila Flores":   "You are Camila Flores, Social Media Strategist at DRU AI Consulting. You manage DeAnna's social presence across LinkedIn, Instagram, and Facebook. You draft responses in DeAnna's voice and create content that builds her authority as an AI Leader.",
   "Omar Patel":      "You are Omar Patel, Lead Scoring specialist at DRU AI Consulting. You analyze inbound leads, score them against DeAnna's ICP, and assign tiers: Emerging / Developing / Advancing / Leading.",
   "Ryan Nakamura":   "You are Ryan Nakamura, CRM Management specialist at DRU AI Consulting. You manage GHL operations — contacts, tags, pipelines, and automations. GHL Location ID: gl07I4JnbkGgW8zJprSz.",
-  "Kwame Asante":    "You are Kwame Asante, Proposal Writer at DRU AI Consulting. You craft compelling, executive-level proposals that clearly communicate ROI and position DeAnna's engagements as strategic investments.",
-  "Jaylen Brooks":   "You are Jaylen Brooks, Email Marketing specialist at DRU AI Consulting. You craft high-converting email sequences in DeAnna's voice that move leads through the DRU AI Transformation Pathway™.",
-  "Chloe Dubois":    "You are Chloe Dubois, Copy Writer at DRU AI Consulting. You write compelling, conversion-focused copy in DeAnna's voice. Brand principle: AI Mastery. Leadership Clarity. Measurable Results.",
-  "Nia Robinson":    "You are Nia Robinson, Content Creation specialist at DRU AI Consulting. You create authority-building content in DeAnna's voice that demonstrates AI expertise and leadership.",
-  "Aaliyah Foster":  "You are Aaliyah Foster, Personalized Outreach specialist at DRU AI Consulting. You craft personalized outreach messages that speak to each prospect's pain points and position DeAnna's solutions.",
-  "Serena Jackson":  "You are Serena Jackson, Business Coach at DRU AI Consulting. You provide strategic business coaching aligned with DeAnna's DRU AI Transformation Pathway™: Discover → Diagnose → Design → Deploy → Dominate.",
-  "Mateo Gonzalez":  "You are Mateo Gonzalez, Sales Support specialist at DRU AI Consulting. You support the sales process with materials, follow-up sequences, and pipeline management.",
+  "Kwame Asante":    "You are Kwame Asante, Proposal Writer at DRU AI Consulting. You craft compelling, executive-level proposals that clearly communicate ROI.",
+  "Jaylen Brooks":   "You are Jaylen Brooks, Email Marketing specialist at DRU AI Consulting. You craft high-converting email sequences in DeAnna's voice.",
+  "Chloe Dubois":    "You are Chloe Dubois, Copy Writer at DRU AI Consulting. You write compelling, conversion-focused copy in DeAnna's voice.",
+  "Nia Robinson":    "You are Nia Robinson, Content Creation specialist at DRU AI Consulting. You create authority-building content in DeAnna's voice.",
+  "Aaliyah Foster":  "You are Aaliyah Foster, Personalized Outreach specialist at DRU AI Consulting. You craft personalized outreach messages that speak to each prospect's pain points.",
+  "Serena Jackson":  "You are Serena Jackson, Business Coach at DRU AI Consulting. You provide strategic business coaching aligned with DeAnna's DRU AI Transformation Pathway™.",
+  "Mateo Gonzalez":  "You are Mateo Gonzalez, Sales Support specialist at DRU AI Consulting. You support the sales process with materials and pipeline management.",
 };
+
+const AGENT_ROSTER = `
+C-Suite / Operations: Priya Sharma (Executive Assistant), Isabella Moreno (Compliance), Marcus Chen (Tax Strategist)
+Legal & Finance: Amara Okafor (Legal), Diego Reyes (Expense Manager), Yuki Tanaka (Financial Reporting)
+Revenue & Growth + Sales: Serena Jackson (Business Coach), Mateo Gonzalez (Sales Support), Zara Ahmed (Product Launch), Jaylen Brooks (Email Marketing), Chloe Dubois (Copy Writer), Omar Patel (Lead Scoring), Aaliyah Foster (Personalized Outreach), Ryan Nakamura (CRM Management), Elena Vasquez (Product Knowledge), Kwame Asante (Proposal Writer)
+Marketing: Nia Robinson (Content Creation), Luca Romano (Digital Marketing), Hyun-Ji Kim (Analytics), Andre Mitchell (SEO/SEM)
+Content & Brand: Camila Flores (Social Media Strategist), Darius King (Viral Scripter), Ingrid Larsen (Press Release), Ravi Gupta (Graphic Designer)
+Client Delivery: Keisha Thompson (Onboarding Coach), Marco Silva (Community Manager), Simone Laurent (Course Architect)
+Customer Support: Isaiah Carter (Issue Resolution), Priscilla Okonkwo (Multi-Channel Communication)
+`;
+
+// Build task automatically from GHL contact data + trigger type
+function buildTask(triggerType: string, body: any): { task: string; context: string; category: string } {
+  const name    = body.full_name || body.firstName || body.first_name || body.name || "Unknown Contact";
+  const email   = body.email || "";
+  const phone   = body.phone || body.phone_number || "";
+  const tier    = body.tier || body["Tier"] || body.contact?.tier || "";
+  const score   = body.total_score || body["Total Score"] || body.contact?.total_score || "";
+  const topGaps = body.top_gaps || body["Top Gaps"] || body.contact?.top_gaps || "";
+
+  switch (triggerType) {
+    case "assessment_completed":
+      return {
+        task: `Score this lead and recommend next steps. Contact ${name} (${email}) completed the DRU CLEAR™ AI Readiness Assessment. Tier: ${tier}. Score: ${score}. Top Gaps: ${topGaps}. Determine their readiness level, identify the best offer to present, and draft a personalized follow-up recommendation.`,
+        context: `Assessment completion. Tier: ${tier}. Score: ${score}. Top Gaps: ${topGaps}.`,
+        category: "other",
+      };
+    case "contact_created":
+      return {
+        task: `A new lead just entered the system. Score ${name} (${email}, ${phone}) against DeAnna's ICP and recommend the best next action.`,
+        context: `New contact created in GHL.`,
+        category: "other",
+      };
+    case "purchase_ed":
+      return {
+        task: `${name} just purchased the Executive Diagnostic ($4,997). Draft a personalized welcome message and onboarding next steps.`,
+        context: `ED purchase completed.`,
+        category: "email",
+      };
+    case "purchase_sd":
+      return {
+        task: `${name} just purchased the Standard Diagnostic ($3,497). Draft a personalized welcome message and onboarding next steps.`,
+        context: `SD purchase completed.`,
+        category: "email",
+      };
+    default:
+      return {
+        task: `New GHL trigger: ${triggerType}. Contact: ${name} (${email}). Analyze and recommend the best agent action.`,
+        context: `GHL trigger: ${triggerType}`,
+        category: "other",
+      };
+  }
+}
 
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
@@ -45,25 +84,20 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const body = await req.json();
+    // Parse body — handle both JSON and GHL's various formats
+    let body: any = {};
+    const contentType = req.headers.get("content-type") || "";
 
-    const {
-      source            = "unknown",
-      trigger_type      = "unknown",
-      task,
-      context           = "",
-      original_content  = "",
-      platform          = "General",
-      category          = "other",
-      ghl_contact_id    = null,
-      priority_override = null,
-    } = body;
-
-    if (!task) {
-      return new Response(
-        JSON.stringify({ error: "task is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (contentType.includes("application/json")) {
+      body = await req.json();
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      const text = await req.text();
+      const params = new URLSearchParams(text);
+      params.forEach((v, k) => { body[k] = v; });
+    } else {
+      // Try JSON first, fall back to text
+      const text = await req.text();
+      try { body = JSON.parse(text); } catch { body = { raw: text }; }
     }
 
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -72,42 +106,56 @@ export default async function handler(req: Request) {
 
     if (!anthropicApiKey || !supabaseUrl || !supabaseKey) {
       return new Response(
-        JSON.stringify({
-          error:            "Missing environment variables",
-          has_anthropic:    !!anthropicApiKey,
-          has_supabase_url: !!supabaseUrl,
-          has_supabase_key: !!supabaseKey,
-        }),
+        JSON.stringify({ error: "Missing environment variables" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── Step 1: Route — identify the right agent ─────────────────────────────
+    // Extract fields — works whether GHL sends custom data at root or nested
+    const source           = body.source || "ghl";
+    const trigger_type     = body.trigger_type || "unknown";
+    const platform         = body.platform || "General";
+    const original_content = body.original_content || "";
+    const priority_override = body.priority_override || null;
+    const ghl_contact_id   = body.ghl_contact_id || body.contactId || body.id || null;
+
+    // If task wasn't sent by GHL, build it automatically from contact data
+    let task    = body.task || "";
+    let context = body.context || "";
+    let category = body.category || "other";
+
+    if (!task) {
+      const built = buildTask(trigger_type, body);
+      task     = built.task;
+      context  = built.context;
+      category = built.category;
+    }
+
+    // ── Step 1: Route to correct agent ──────────────────────────────────────
     const routerRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Content-Type":    "application/json",
-        "x-api-key":       anthropicApiKey,
+        "Content-Type":      "application/json",
+        "x-api-key":         anthropicApiKey,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model:      "claude-haiku-4-5-20251001",
         max_tokens: 300,
-        system: `You are Raymond Holloway and Travis Weston — Chief of Staff command team for DRU AI Consulting under DeAnna R. Upshaw's AI Twin.
+        system: `You are Raymond Holloway and Travis Weston — Chief of Staff command team for DRU AI Consulting.
 
-Analyze the task and pick the SINGLE best agent from this roster:
+Pick the SINGLE best agent from this roster:
 ${AGENT_ROSTER}
 
 ROUTING RULES:
-- Social media posts, DMs, comments, mentions → Camila Flores
-- New leads, lead scoring → Omar Patel
-- CRM, GHL, contact updates → Ryan Nakamura
+- Assessment scoring, lead scoring → Omar Patel
+- CRM updates, contact management → Ryan Nakamura
+- Social media → Camila Flores
 - Proposals → Kwame Asante
 - Email sequences → Jaylen Brooks
-- Copy, ad copy, web copy → Chloe Dubois
-- General content, articles → Nia Robinson
-- Outreach messages → Aaliyah Foster
-- Sales support, pipeline → Mateo Gonzalez
+- Copy writing → Chloe Dubois
+- Onboarding → Keisha Thompson
+- Outreach → Aaliyah Foster
 
 Respond ONLY with valid JSON, no markdown:
 {
@@ -120,15 +168,15 @@ Respond ONLY with valid JSON, no markdown:
 }`,
         messages: [{
           role:    "user",
-          content: `TASK: ${task}\nCONTEXT: ${context}\nORIGINAL CONTENT: ${original_content}\nPRIORITY OVERRIDE: ${priority_override || "none"}`,
+          content: `TASK: ${task}\nCONTEXT: ${context}\nTRIGGER: ${trigger_type}`,
         }],
       }),
     });
 
     if (!routerRes.ok) {
-      const errText = await routerRes.text();
+      const err = await routerRes.text();
       return new Response(
-        JSON.stringify({ error: "Router call failed", detail: errText }),
+        JSON.stringify({ error: "Router failed", detail: err }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -153,7 +201,7 @@ Respond ONLY with valid JSON, no markdown:
     const taskBrief = routing.task_brief || task;
     const priority  = priority_override || routing.priority || "NORMAL";
 
-    // ── Step 2: Execute — agent does the work ────────────────────────────────
+    // ── Step 2: Agent executes ───────────────────────────────────────────────
     const agentVoice = AGENT_VOICES[agentName] ||
       `You are ${agentName}, ${agentRole} in the ${division} division at DRU AI Consulting.`;
 
@@ -173,21 +221,21 @@ You operate within DRU AI Consulting, founded by DeAnna R. Upshaw — CEO, AI Au
 Brand principle: AI Mastery. Leadership Clarity. Measurable Results.
 Framework: DRU CLEAR™ (Clarity, Leadership, Execution, Alignment, Results)
 Transformation Pathway: Discover → Diagnose → Design → Deploy → Dominate
+Products: DRU CLEAR™ AI Readiness Scorecard (free), Executive Diagnostic ($4,997 BEST VALUE), Standard Diagnostic ($3,497), From Confusion to Confident with AI™ ($497/$997/$1,497), Daily Connections (Free/Navigator $47/mo/Accelerator $147/mo)
 
-All outputs must be immediately deployable — no editing required.
-Write in DeAnna's voice: authoritative, clear, warm, purpose-driven.
-Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.`,
+All outputs must be immediately deployable. Write in DeAnna's voice: authoritative, clear, warm, purpose-driven.
+Always include ™ on: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.`,
         messages: [{
           role:    "user",
-          content: `TASK: ${taskBrief}\nCONTEXT: ${context}\nORIGINAL CONTENT: ${original_content}\nGHL CONTACT ID: ${ghl_contact_id || "N/A"}`,
+          content: `TASK: ${taskBrief}\nCONTEXT: ${context}\nORIGINAL: ${original_content}\nGHL CONTACT ID: ${ghl_contact_id || "N/A"}`,
         }],
       }),
     });
 
     if (!agentRes.ok) {
-      const errText = await agentRes.text();
+      const err = await agentRes.text();
       return new Response(
-        JSON.stringify({ error: "Agent execution failed", detail: errText }),
+        JSON.stringify({ error: "Agent execution failed", detail: err }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -206,7 +254,7 @@ Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transfo
       original_content: original_content || null,
       output:           agentOutput,
       status:           "pending",
-      ghl_contact_id:   ghl_contact_id  || null,
+      ghl_contact_id:   ghl_contact_id || null,
       notify_deanna:    routing.notify_deanna ?? true,
       priority,
       category,
@@ -226,9 +274,9 @@ Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transfo
     });
 
     if (!insertRes.ok) {
-      const insertErr = await insertRes.text();
+      const err = await insertRes.text();
       return new Response(
-        JSON.stringify({ error: "Approvals insert failed", detail: insertErr }),
+        JSON.stringify({ error: "Insert failed", detail: err }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
