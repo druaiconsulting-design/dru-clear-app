@@ -145,7 +145,9 @@ export default async function handler(req: Request) {
 
     // Extract fields
     const source           = body.source || "ghl";
-    const trigger_type     = body.trigger_type || "unknown";
+    // Read trigger_type from URL query param first, fall back to body
+    const url          = new URL(req.url);
+    const trigger_type = url.searchParams.get("trigger_type") || body.trigger_type || "unknown";
     const platform         = body.platform || "General";
     const original_content = body.original_content || "";
     const priority_override = body.priority_override || null;
