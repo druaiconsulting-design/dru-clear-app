@@ -128,6 +128,23 @@ export default function Twin() {
         backgroundColor: "#0A2342",
       }}
     >
+      <style>{`
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        .thinking-dot {
+          display: inline-block;
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          background: #D4AF37;
+          margin: 0 2px;
+        }
+        .thinking-dot:nth-child(1) { animation: twinkle 1.2s infinite 0s; }
+        .thinking-dot:nth-child(2) { animation: twinkle 1.2s infinite 0.2s; }
+        .thinking-dot:nth-child(3) { animation: twinkle 1.2s infinite 0.4s; }
+      `}</style>
+
       {/* Header */}
       <div
         style={{
@@ -136,30 +153,52 @@ export default function Twin() {
           borderRadius: "12px 12px 0 0",
           border: "1px solid rgba(212,175,55,0.3)",
           borderBottom: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <h1
+        <div>
+          <h1
+            style={{
+              color: "#D4AF37",
+              fontFamily: "Cinzel, serif",
+              fontSize: "1.1rem",
+              margin: 0,
+              fontWeight: 700,
+            }}
+          >
+            ✦ DeAnna's AI Twin
+          </h1>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.4)",
+              fontSize: "0.72rem",
+              margin: "4px 0 0",
+              fontFamily: "Montserrat, sans-serif",
+              letterSpacing: "0.06em",
+            }}
+          >
+            MASTER ORCHESTRATOR · DRU AI CONSULTING
+          </p>
+        </div>
+        <div
+          onClick={() => window.location.href = "/admin"}
           style={{
-            color: "#D4AF37",
-            fontFamily: "Cinzel, serif",
-            fontSize: "1.1rem",
-            margin: 0,
-            fontWeight: 700,
-          }}
-        >
-          ✦ DeAnna's AI Twin
-        </h1>
-        <p
-          style={{
-            color: "rgba(255,255,255,0.4)",
+            fontFamily: "'Montserrat', sans-serif",
             fontSize: "0.72rem",
-            margin: "4px 0 0",
-            fontFamily: "Montserrat, sans-serif",
+            fontWeight: 700,
+            color: "#D4AF37",
+            border: "1px solid rgba(212,175,55,0.35)",
+            borderRadius: 8,
+            padding: "0.6rem 1.25rem",
             letterSpacing: "0.06em",
+            cursor: "pointer",
+            whiteSpace: "nowrap" as const,
           }}
         >
-          MASTER ORCHESTRATOR · DRU AI CONSULTING
-        </p>
+          ← Command Center
+        </div>
       </div>
 
       {/* Messages */}
@@ -234,7 +273,11 @@ export default function Twin() {
             >
               {msg.content}
               {msg.role === "assistant" && msg.content === "" && isStreaming && (
-                <span style={{ opacity: 0.5, animation: "pulse 1s infinite" }}>●</span>
+                <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 0" }}>
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                </span>
               )}
             </div>
           </div>
