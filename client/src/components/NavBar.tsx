@@ -53,6 +53,20 @@ export default function NavBar({ active }: { active?: string }) {
     await logout();
   };
 
+  const adminLinkStyle = (href: string): React.CSSProperties => ({
+    fontFamily: "'Montserrat', sans-serif",
+    fontSize: "0.72rem",
+    fontWeight: active === href ? 700 : 500,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: active === href ? "#D4AF37" : "rgba(212,175,55,0.7)",
+    textDecoration: "none",
+    padding: "0.4rem 0.75rem",
+    borderRadius: 4,
+    borderBottom: active === href ? "2px solid #D4AF37" : "2px solid transparent",
+    transition: "color 0.2s",
+  });
+
   return (
     <nav style={{
       width: "100%",
@@ -106,25 +120,21 @@ export default function NavBar({ active }: { active?: string }) {
 
         {/* Admin-only Twin link */}
         {isLoggedIn && isAdmin && (
-          <a
-            href="/twin"
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: "0.72rem",
-              fontWeight: active === "/twin" ? 700 : 500,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase" as const,
-              color: active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)",
-              textDecoration: "none",
-              padding: "0.4rem 0.75rem",
-              borderRadius: 4,
-              borderBottom: active === "/twin" ? "2px solid #D4AF37" : "2px solid transparent",
-              transition: "color 0.2s",
-            }}
+          <a href="/twin" style={adminLinkStyle("/twin")}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#D4AF37"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)"; }}
           >
             ✦ Twin
+          </a>
+        )}
+
+        {/* Admin-only Approvals link */}
+        {isLoggedIn && isAdmin && (
+          <a href="/admin-approvals" style={adminLinkStyle("/admin-approvals")}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#D4AF37"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active === "/admin-approvals" ? "#D4AF37" : "rgba(212,175,55,0.7)"; }}
+          >
+            ✦ Approvals
           </a>
         )}
 
@@ -216,6 +226,13 @@ export default function NavBar({ active }: { active?: string }) {
           {isLoggedIn && isAdmin && (
             <a href="/twin" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: active === "/twin" ? "#D4AF37" : "rgba(212,175,55,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               ✦ Twin
+            </a>
+          )}
+
+          {/* Mobile admin-only Approvals link */}
+          {isLoggedIn && isAdmin && (
+            <a href="/admin-approvals" onClick={() => setMenuOpen(false)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: active === "/admin-approvals" ? "#D4AF37" : "rgba(212,175,55,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
+              ✦ Approvals
             </a>
           )}
 
