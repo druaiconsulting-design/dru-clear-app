@@ -20,6 +20,7 @@ import Community from "./pages/Community";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
+import AdminApprovals from "./pages/AdminApprovals";
 import Twin from "./pages/Twin";
 import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
@@ -152,6 +153,11 @@ function Router() {
     setTitle("AI Empire Org Chart · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminOrg />;
+  }
+  if (path === "/admin-approvals" || path === "/admin-approvals/") {
+    setTitle("Approval Queue · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminApprovals />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
