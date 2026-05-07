@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { loginWithPasskey } from "../lib/passkey";
 
 type Mode = "choose" | "client-email" | "client-login" | "client-register" | "forgot-password" | "forgot-sent";
 
@@ -60,6 +61,14 @@ export default function Login() {
     if (!result.success) { setError(result.error || "Google sign in failed."); setLoading(false); }
   };
 
+  const handlePasskeyLogin = async () => {
+    setError(""); setLoading(true);
+    const result = await loginWithPasskey();
+    setLoading(false);
+    if (!result.success) setError(result.error || "Passkey login failed.");
+    else window.location.href = "/portal";
+  };
+
   const handleClientLogin = async () => {
     setError(""); setLoading(true);
     const result = await loginClient(email, password);
@@ -105,7 +114,7 @@ export default function Login() {
             <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", textAlign: "center", marginBottom: "2rem" }}>Sign in to your DRU AI ecosystem</p>
 
             {/* Google */}
-            <button onClick={handleGoogleLogin} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", background: "#FFFFFF", color: "#1a1a1a", border: "none", borderRadius: 8, padding: "0.85rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", cursor: "pointer", marginBottom: "0.875rem" }}>
+            <button onClick={handleGoogleLogin} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", background: "#FFFFFF", color: "#1a1a1a", border: "none", borderRadius: 8, padding: "0.85rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", cursor: "pointer", marginBottom: "0.75rem" }}>
               <svg width="18" height="18" viewBox="0 0 18 18">
                 <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/>
                 <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/>
@@ -113,6 +122,20 @@ export default function Login() {
                 <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/>
               </svg>
               {loading ? "Redirecting..." : "Continue with Google"}
+            </button>
+
+            {/* Passkey */}
+            <button onClick={handlePasskeyLogin} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", background: "rgba(212,175,55,0.12)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.85rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", cursor: "pointer", marginBottom: "0.875rem" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 10V4a2 2 0 1 1 4 0v1"/>
+                <path d="M15.5 8H12a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V9.5"/>
+                <path d="M12 15a7 7 0 1 0 0-1 7 7 0 0 0 0 1z"/>
+                <circle cx="12" cy="15" r="1"/>
+                <path d="M12 16v2"/>
+                <path d="M9.17 17.5l-1 1.73"/>
+                <path d="M14.83 17.5l1 1.73"/>
+              </svg>
+              {loading ? "Verifying..." : "Sign in with Passkey"}
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.875rem" }}>
