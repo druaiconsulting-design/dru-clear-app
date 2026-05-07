@@ -12,9 +12,16 @@ const TERMS = [
 export default function TermsPage() {
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="" />
-
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 620, margin: "0 auto", width: "100%" }}>
+
+        {/* Brand logo */}
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <img
+            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
+            alt="DRU CLEAR™"
+            style={{ height: 120, width: "auto", display: "inline-block" }}
+          />
+        </div>
 
         <div style={{ marginBottom: "2.5rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>DRU AI Consulting</p>
