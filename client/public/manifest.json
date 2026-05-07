@@ -1,8 +1,8 @@
 {
-  "name": "DRU CLEAR™ AI Readiness Scorecard",
+  "name": "DRU CLEAR™",
   "short_name": "DRU CLEAR™",
-  "description": "AI Mastery. Leadership Clarity. Measurable Results. — The DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting.",
-  "start_url": "/",
+  "description": "AI Mastery. Leadership Clarity. Measurable Results. — The DRU CLEAR™ AI Readiness Assessment by DRU AI Consulting.",
+  "start_url": "https://app.druaiconsulting.com/",
   "display": "standalone",
   "background_color": "#0A2342",
   "theme_color": "#D4AF37",
@@ -12,48 +12,24 @@
   "categories": ["business", "productivity", "education"],
   "icons": [
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-favicon-16_f4f1f4e4.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-favicon-32_ee112fde.png",
+      "src": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/OLjcHasTSfYFbcAR.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-favicon-48_59ace90b.png",
-      "sizes": "48x48",
-      "type": "image/png"
-    },
-    {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-apple-120_a2986123.png",
-      "sizes": "120x120",
-      "type": "image/png"
-    },
-    {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-apple-152_3e1f36ef.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
-    {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-apple-167_20eb657a.png",
-      "sizes": "167x167",
-      "type": "image/png"
-    },
-    {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-apple-180_f7e4d1c8.png",
+      "src": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/YLxIzuKVzcFkXPED.png",
       "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png",
+      "src": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/sfpunIuAeAhfMzji.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-512_de9b6b35.png",
+      "src": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/ozFfPxdKyrlnCrmQ.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
