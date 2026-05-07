@@ -271,7 +271,7 @@ function buildBookingUrl(lead: LeadData): string {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/zeVxAcKWVgIOCRRw.png";
+const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
 const HEADSHOT_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
 
 function DruLogo({ height = 64, className = "" }: { height?: number; className?: string }) {
