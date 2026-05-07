@@ -335,13 +335,13 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         </div>
         <h1 className="text-3xl font-bold text-center mb-1" style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37" }}>DeAnna R. Upshaw</h1>
         <p className="text-lg font-medium text-center mb-1" style={{ color: "#FFFFFF" }}>AI Authority</p>
-        <p className="text-sm text-center" style={{ color: "#E6E6E6" }}>CEO, DRU AI Consulting</p>
+        <p className="text-sm text-center" style={{ color: "#E6E6E6" }}>CEO DRU AI Consulting</p>
       </div>
       <div className="gold-divider mb-6" />
-      <p className="text-center text-sm mb-6 italic" style={{ color: "#E6E6E6", fontFamily: "'Playfair Display', serif" }}>Your Trusted Advisor &amp; Strategist</p>
+      <p className="text-center text-sm mb-6 italic" style={{ color: "#E6E6E6", fontFamily: "'Playfair Display', serif" }}>Your Trusted Strategist &amp; Partner</p>
       <p className="text-sm leading-relaxed mb-8" style={{ color: "#E6E6E6" }}>
         How ready is your organization for the AI era? Take the free{" "}
-        <strong style={{ color: "#D4AF37" }}>DRU CLEAR™ AI Readiness Scorecard</strong> and find out in 3 minutes.
+        <strong style={{ color: "#D4AF37" }}>DRU CLEAR™ AI Readiness Assessment</strong> and find out in 3 minutes.
       </p>
       <button className="btn-gold" onClick={onStart}>Start Your Assessment →</button>
     </div>
