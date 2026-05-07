@@ -93,7 +93,7 @@ export default function Login() {
 
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <img src="https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png" alt="DRU CLEAR™" style={{ height: 52, width: "auto", margin: "0 auto" }} />
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png" alt="DRU CLEAR™" style={{ height: 120, width: "auto", margin: "0 auto" }} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 400 }}>

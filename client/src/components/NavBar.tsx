@@ -76,7 +76,7 @@ export default function NavBar({ active }: { active?: string }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      height: 100,
+      height: 120,
       position: "sticky",
       top: 0,
       zIndex: 1000,
@@ -88,7 +88,7 @@ export default function NavBar({ active }: { active?: string }) {
         <img
           src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
           alt="DRU CLEAR™"
-          style={{ height: 80, width: "auto" }}
+          style={{ height: 120, width: "auto" }}
         />
       </a>
 
@@ -203,7 +203,7 @@ export default function NavBar({ active }: { active?: string }) {
 
       {/* ── Mobile dropdown ── */}
       {menuOpen && (
-        <div style={{ position: "absolute", top: 100, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
+        <div style={{ position: "absolute", top: 120, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
 
           {/* Mobile user identity */}
           {isLoggedIn && user && userDisplay && (
