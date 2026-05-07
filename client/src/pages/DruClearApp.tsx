@@ -250,10 +250,10 @@ const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = {
 };
 
 const BADGE_URLS: Record<string, string> = {
-  EMERGING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-emerging_6233aed6.png",
-  DEVELOPING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-developing_226a8643.png",
-  ADVANCING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-advancing_d5ded127.png",
-  LEADING: "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-leading_3fa87f71.png",
+  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/yaqCBQPMBKWEeKWp.png",
+  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/ztmhQIErpjrEOXUR.png",
+  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/zMlXMkpUuFxhITau.png",
+  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/LsTpSUXFQUZdfeIO.png",
 };
 
 function buildBookingUrl(lead: LeadData): string {
