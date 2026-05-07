@@ -250,10 +250,10 @@ const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = {
 };
 
 const BADGE_URLS: Record<string, string> = {
-  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/yaqCBQPMBKWEeKWp.png",
-  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/ztmhQIErpjrEOXUR.png",
-  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/zMlXMkpUuFxhITau.png",
-  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/LsTpSUXFQUZdfeIO.png",
+  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/kOtwAuULsXPXkaGB.png",
+  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/fWXAJkZaBbdHEhOn.png",
+  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/amcdeQtIckHTNLhd.png",
+  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/BcciWNCYnCPbYcGB.png",
 };
 
 function buildBookingUrl(lead: LeadData): string {
