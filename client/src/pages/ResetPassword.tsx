@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-const LOGO_CDN = "https://assets.cdn.filesafe.space/gl07I4JnbkGgW8zJprSz/media/69d1a1c384c045c2744d50f6.png";
+const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
 
 function getPasswordStrength(p: string) {
   let score = 0;
@@ -113,7 +113,7 @@ export default function ResetPassword() {
 
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 52, width: "auto", margin: "0 auto" }} />
+        <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 120, width: "auto", margin: "0 auto" }} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 400 }}>

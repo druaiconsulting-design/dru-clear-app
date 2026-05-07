@@ -1,7 +1,7 @@
 import NavBar from "../components/NavBar";
 
 const CALENDAR_EXECUTIVE_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation8yxwmy?embed=1";
-const LOGO_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-clear-logo-transparent_fdbc9d32.png";
+const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
 
 const NEXT_STEPS = [
   "Book your 120-min executive briefing using the calendar below",
@@ -20,7 +20,7 @@ export default function ThankYouED() {
 
         {/* Logo */}
         <div style={{ marginBottom: "1.75rem" }}>
-          <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+          <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
         </div>
 
         {/* Gold checkmark */}
