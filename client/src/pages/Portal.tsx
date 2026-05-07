@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { registerPasskey } from "../lib/passkey";
 import type { PathwayStage } from "../contexts/AuthContext";
 
 // ── Global pulse animation injected once ─────────────────────────────────────
@@ -78,7 +79,6 @@ function SupportModal({ onClose, userEmail }: { onClose: () => void; userEmail?:
           Have a question or need assistance? Email us directly and we'll get back to you within 1 business day.
         </p>
 
-        {/* Primary CTA — opens email client with pre-filled subject */}
         <a
           href={mailtoHref}
           style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", textAlign: "center", padding: "0.85rem 1rem", borderRadius: 6, marginBottom: "0.75rem", boxSizing: "border-box" }}
@@ -86,7 +86,6 @@ function SupportModal({ onClose, userEmail }: { onClose: () => void; userEmail?:
           ✉️  Send Us an Email
         </a>
 
-        {/* Email address + copy fallback */}
         <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.72rem", margin: 0 }}>{supportEmail}</p>
           <button
@@ -156,6 +155,39 @@ export default function Portal() {
   const today = getTodayCST();
   const isFetching = useRef(false);
 
+  // ── Passkey state ─────────────────────────────────────────────────────────
+  const [hasPasskey, setHasPasskey] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyMessage, setPasskeyMessage] = useState("");
+  const [passkeyDismissed, setPasskeyDismissed] = useState(false);
+
+  // ── Check if user already has a passkey ───────────────────────────────────
+  useEffect(() => {
+    async function checkPasskey() {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from("passkey_credentials")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+      if (data && data.length > 0) setHasPasskey(true);
+    }
+    checkPasskey();
+  }, [user?.id]);
+
+  const handleSetupPasskey = async () => {
+    setPasskeyLoading(true);
+    setPasskeyMessage("");
+    const result = await registerPasskey();
+    setPasskeyLoading(false);
+    if (result.success) {
+      setHasPasskey(true);
+      setPasskeyMessage("Passkey saved — you can now sign in with biometrics.");
+    } else {
+      setPasskeyMessage(result.error || "Something went wrong.");
+    }
+  };
+
   // ── Check daily status ────────────────────────────────────────────────────
   async function checkDailyStatus() {
     if (!user?.id || isFetching.current) return;
@@ -207,7 +239,6 @@ export default function Portal() {
     if (dailyState === "read") {
       return <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#D4AF37", border: "1.5px solid #0A2342", boxShadow: "0 0 6px rgba(212,175,55,0.9)" }} />;
     }
-    // unread — pulsing red
     return <div style={{ position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: "50%", background: "#C2185B", border: "1.5px solid #0A2342", animation: "dru-pulse 1.5s ease-in-out infinite" }} />;
   };
 
@@ -254,7 +285,6 @@ export default function Portal() {
 
   return (
     <>
-      {/* Global pulse animation */}
       <style>{PULSE_STYLE}</style>
 
       {showSupport && <SupportModal onClose={() => setShowSupport(false)} userEmail={user?.email} />}
@@ -283,7 +313,7 @@ export default function Portal() {
           </div>
 
           {/* 3 Quick action cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
             {QUICK_ACTIONS.map((item) => {
               const isDaily = item.key === "daily";
               const cardStyle: React.CSSProperties = {
@@ -327,6 +357,117 @@ export default function Portal() {
               );
             })}
           </div>
+
+          {/* ── Passkey Setup Card ──────────────────────────────────────────── */}
+          {!passkeyDismissed && (
+            <div style={{
+              background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(212,175,55,0.04)",
+              border: hasPasskey ? "1px solid rgba(67,160,71,0.3)" : "1px solid rgba(212,175,55,0.2)",
+              borderRadius: 10,
+              padding: "1rem 1.25rem",
+              marginBottom: "1.25rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flex: 1, minWidth: 0 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: hasPasskey ? "rgba(67,160,71,0.12)" : "rgba(212,175,55,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke={hasPasskey ? "#43A047" : "#D4AF37"}
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                    {hasPasskey && <path d="M9 16l2 2 4-4" />}
+                  </svg>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    color: hasPasskey ? "#43A047" : "#FFFFFF",
+                    fontWeight: 700,
+                    fontSize: "0.78rem",
+                    letterSpacing: "0.04em",
+                    margin: 0,
+                    marginBottom: "0.1rem",
+                  }}>
+                    {hasPasskey ? "Passkey Active" : "Speed Up Your Login"}
+                  </p>
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    color: "rgba(230,230,230,0.45)",
+                    fontSize: "0.68rem",
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}>
+                    {hasPasskey
+                      ? "Face ID or fingerprint sign-in is enabled."
+                      : "Set up Face ID or fingerprint to sign in instantly."}
+                  </p>
+                  {passkeyMessage && (
+                    <p style={{
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.68rem",
+                      margin: "0.35rem 0 0",
+                      color: hasPasskey ? "#43A047" : "#E53935",
+                    }}>
+                      {passkeyMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+                {!hasPasskey && (
+                  <button
+                    onClick={handleSetupPasskey}
+                    disabled={passkeyLoading}
+                    style={{
+                      background: "#D4AF37",
+                      color: "#0A2342",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "0.55rem 1rem",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                      letterSpacing: "0.06em",
+                      cursor: passkeyLoading ? "default" : "pointer",
+                      opacity: passkeyLoading ? 0.7 : 1,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {passkeyLoading ? "Setting up..." : "Set Up →"}
+                  </button>
+                )}
+                {hasPasskey && (
+                  <button
+                    onClick={() => setPasskeyDismissed(true)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "rgba(255,255,255,0.3)",
+                      cursor: "pointer",
+                      fontSize: "1.1rem",
+                      lineHeight: 1,
+                      padding: "0.25rem",
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 7-day streak milestone banner */}
           {dailyState === "completed" && currentStreak >= 7 && (
