@@ -1,6 +1,5 @@
 // api/social-publisher.ts
 // Vercel edge function — posts approved social content to GHL Social Planner
-// Same pattern as api/twin.ts — no wall clock timeout issues
 
 export const config = { runtime: "edge" };
 
@@ -12,12 +11,6 @@ const CORS = {
   "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Headers": "content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const PLATFORM_MAP: Record<string, string> = {
-  LinkedIn:  "linkedin",
-  Facebook:  "facebook",
-  Instagram: "instagram",
 };
 
 export default async function handler(req: Request) {
@@ -59,15 +52,26 @@ export default async function handler(req: Request) {
     const accountsData = await accountsRes.json();
     const allAccounts  = accountsData?.data || accountsData?.accounts || [];
 
-    // ── Step 2: Filter by platform ───────────────────────────────────────────
-    const targetPlatform = PLATFORM_MAP[platform] || platform.toLowerCase();
-    const matching = allAccounts.filter(
-      (a: any) => a.platform?.toLowerCase() === targetPlatform
-    );
+    // ── Step 2: Filter by platform — flexible match ──────────────────────────
+    const targetPlatform = platform.toLowerCase(); // e.g. "linkedin"
+    const matching = allAccounts.filter((a: any) => {
+      const p = (a.platform || a.type || a.name || "").toLowerCase();
+      return p.includes(targetPlatform);
+    });
 
     if (matching.length === 0) {
+      // Return full account list so we can see exactly what GHL sends back
       return new Response(
-        JSON.stringify({ error: `No connected ${platform} account found`, approval_id }),
+        JSON.stringify({
+          error:          `No connected ${platform} account found`,
+          approval_id,
+          all_accounts:   allAccounts.map((a: any) => ({
+            id:       a.id,
+            name:     a.name,
+            platform: a.platform,
+            type:     a.type,
+          })),
+        }),
         { status: 404, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
