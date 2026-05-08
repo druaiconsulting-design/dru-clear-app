@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { authenticatePasskey } from "../lib/passkey";
+import { loginWithPasskey } from "../lib/passkey";
 
 export default function AdminLogin() {
   const { loginAdmin } = useAuth();
@@ -20,7 +20,7 @@ export default function AdminLogin() {
 
   const handlePasskeyLogin = async () => {
     setError(""); setPasskeyLoading(true);
-    const result = await authenticatePasskey();
+    const result = await loginWithPasskey();
     setPasskeyLoading(false);
     if (result.success) {
       window.location.href = "/admin";
