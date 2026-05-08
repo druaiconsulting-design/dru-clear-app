@@ -124,9 +124,9 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
 const BUNDLE_PRICING_URL = "https://app.druaiconsulting.com/bundle-pricing";
 
 const statusConfig = {
-  completed:  { bg: "rgba(67,160,71,0.12)",  border: "rgba(67,160,71,0.35)",  dot: "#43A047", label: "✓ Completed",   headerBg: "rgba(67,160,71,0.08)"  },
-  inprogress: { bg: "rgba(212,175,55,0.08)", border: "rgba(212,175,55,0.35)", dot: "#D4AF37", label: "◐ In Progress", headerBg: "rgba(212,175,55,0.06)" },
-  planned:    { bg: "rgba(30,136,229,0.06)", border: "rgba(30,136,229,0.2)",  dot: "#1E88E5", label: "○ Planned",     headerBg: "rgba(30,136,229,0.04)" },
+  completed:  { bg: "rgba(67,160,71,0.12)",  border: "rgba(67,160,71,0.35)",  dot: "#43A047", label: "✅ Completed",   headerBg: "rgba(67,160,71,0.08)"  },
+  inprogress: { bg: "rgba(212,175,55,0.08)", border: "rgba(212,175,55,0.35)", dot: "#D4AF37", label: "⏳ In Progress", headerBg: "rgba(212,175,55,0.06)" },
+  planned:    { bg: "rgba(30,136,229,0.06)", border: "rgba(30,136,229,0.2)",  dot: "#1E88E5", label: "📝 Planned",     headerBg: "rgba(30,136,229,0.04)" },
 };
 
 const TIER_COLORS: Record<string, string> = {
@@ -331,7 +331,6 @@ export default function Admin() {
   const [copied, setCopied] = useState(false);
   const { stats, loading } = useStats();
 
-  // ── Passkey state ─────────────────────────────────────────────────────────
   const [hasPasskey, setHasPasskey] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
@@ -379,14 +378,12 @@ export default function Admin() {
       <NavBar active="/admin" />
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
-        {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only - Page 1</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting - DeAnna R. Upshaw</p>
         </div>
 
-        {/* ── Passkey Setup Card ──────────────────────────────────────────── */}
         {!passkeyDismissed && (
           <div style={{
             background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(194,24,91,0.06)",
@@ -448,7 +445,6 @@ export default function Admin() {
                 )}
               </div>
             </div>
-
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
               {!hasPasskey && (
                 <button
@@ -492,7 +488,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* AI Empire Link - Page 2 */}
         <a href="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
           <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
@@ -505,7 +500,6 @@ export default function Admin() {
           </div>
         </a>
 
-        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
           {STAT_CARDS.map((stat) => (
             <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
@@ -521,7 +515,6 @@ export default function Admin() {
 
         <ClientIntelligenceDashboard />
 
-        {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Private Client Links</p>
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
@@ -538,7 +531,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Quick Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Quick Links</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
@@ -554,7 +546,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Payment Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Payment Links</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -573,7 +564,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Pending Items */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Pending Refinements</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -586,7 +576,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Sprint Roadmap */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
@@ -594,4 +583,52 @@ export default function Admin() {
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            {SPRINTS.map((sprint
+            {SPRINTS.map((sprint) => {
+              const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
+              return (
+                <div key={sprint.number} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}`, padding: "0.875rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: cfg.dot, margin: "0 0 1px" }}>Sprint {sprint.number}</p>
+                        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.95rem", fontWeight: 600, color: "#FFFFFF", margin: 0 }}>{sprint.title}</p>
+                      </div>
+                    </div>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
+                  </div>
+                  <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    {sprint.items.map((item, i) => {
+                      const isDone = sprint.status === "completed" || (item as SprintItem).done === true;
+                      const checkColor = isDone ? "#43A047" : cfg.dot;
+                      const textColor  = isDone ? "rgba(230,230,230,0.35)" : "#FFFFFF";
+                      const subColor   = isDone ? "rgba(230,230,230,0.2)" : "rgba(230,230,230,0.35)";
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
+                          <span style={{ color: checkColor, fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
+                          <div>
+                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4, textDecoration: "none" }}>{item.label}</p>
+                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: subColor, margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: "1.25rem", textAlign: "center" as const, padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#D4AF37" }}>
+              Launch Target - May 10, 2026 - app.druaiconsulting.com
+            </p>
+          </div>
+        </div>
+
+      </main>
+      <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
+        &copy; 2026 DRU CLEAR - All Rights Reserved - DRU AI Consulting
+      </footer>
+    </div>
+  );
+}
