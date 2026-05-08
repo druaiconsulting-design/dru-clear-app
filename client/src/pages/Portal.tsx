@@ -381,14 +381,9 @@ export default function Portal() {
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  fontSize: "1.1rem",
                 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke={hasPasskey ? "#43A047" : "#D4AF37"}
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0110 0v4" />
-                    {hasPasskey && <path d="M9 16l2 2 4-4" />}
-                  </svg>
+                  {hasPasskey ? "✅" : "🔐"}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <p style={{
