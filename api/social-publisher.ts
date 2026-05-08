@@ -44,7 +44,7 @@ export default async function handler(req: Request) {
 
     // ── Step 1: Get connected social accounts ────────────────────────────────
     const accountsRes = await fetch(
-      `${GHL_BASE}/social-media-posting/oauth/${LOCATION_ID}/accounts`,
+      `${GHL_BASE}/social-media-posting/${LOCATION_ID}/accounts`,
       { method: "GET", headers }
     );
 
