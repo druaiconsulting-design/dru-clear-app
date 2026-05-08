@@ -1,8 +1,4 @@
-Here is your full corrected Admin.tsx with two fixes:
-✅ block checkmarks → ✓ clear green checkmarks (sprint items)
-Icons restored next to Completed, In Progress, and Planned (status labels)
 
-`tsx
 import { useState, useEffect, useMemo } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
