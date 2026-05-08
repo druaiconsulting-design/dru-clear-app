@@ -126,6 +126,7 @@ export default function AdminApprovals() {
     }
 
     const approval = approvals.find((a) => a.id === id);
+    console.log("DEBUG category:", approval?.category, "id:", id);
     if (approval?.category === "social") {
       setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
       try {
