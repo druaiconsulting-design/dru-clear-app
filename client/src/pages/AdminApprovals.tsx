@@ -139,8 +139,11 @@ export default function AdminApprovals() {
           }),
         });
         if (res.ok) {
-          setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
-        } else {
+  const data = await res.json();
+  console.log("GHL response:", JSON.stringify(data));
+  setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
+}
+        else {
           const err = await res.json();
           console.error("Publish failed:", err);
           setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
