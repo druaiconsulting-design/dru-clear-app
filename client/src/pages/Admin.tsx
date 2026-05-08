@@ -411,7 +411,7 @@ export default function Admin() {
                 flexShrink: 0,
                 fontSize: "1.1rem",
               }}>
-                {hasPasskey ? "&#x2705;" : "&#x1F510;"}
+                {hasPasskey ? "✅" : "🔐"}
               </div>
               <div style={{ minWidth: 0 }}>
                 <p style={{
@@ -616,7 +616,7 @@ export default function Admin() {
                       const subColor   = isDone ? "rgba(230,230,230,0.2)" : "rgba(230,230,230,0.35)";
                       return (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
-                          <span style={{ color: checkColor, fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "+" : ">"}</span>
+                          <span style={{ color: checkColor, fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✅" : "→"}</span>
                           <div>
                             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4, textDecoration: "none" }}>{item.label}</p>
                             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: subColor, margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
