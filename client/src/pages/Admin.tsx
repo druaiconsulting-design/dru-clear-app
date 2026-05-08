@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
@@ -86,7 +85,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { label: "Dynamic Transformation Pathway - fully automated", sub: "pathway_stage in Supabase - 3 values map to 5 visual stages - Edge Function auto-updates on purchase" },
       { label: "Daily Connections automated engine - LIVE", sub: "Claude API generates 3 content sets daily at 6am CST - stage-aware - leadership WITH AI" },
       { label: "Smart notification dot - full state sequence", sub: "Unread: red pulsing - Read: gold glow - Completed: streak - 7-day: gold border glow" },
-      { label: "Streak tracking - Supabase persistent", sub: "currentstreak - longeststreak - total_completions" },
+      { label: "Streak tracking - Supabase persistent", sub: "current_streak - longest_streak - total_completions" },
       { label: "Mark Completed button - gold on completion", sub: "Blue to gold with glow + checkmark - streak fires" },
       { label: "Need Support - mailto with pre-filled subject", sub: "Opens email client - support@druaiconsulting.com" },
       { label: "Client Intelligence Dashboard - LIVE", sub: "submissions table - pillar scores stored - 6 stat cards - filter bar - 13-col table - color-coded heat map - CSV export" },
@@ -122,7 +121,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
   },
 ];
 
-const BUNDLEPRICINGURL = "https://app.druaiconsulting.com/bundle-pricing";
+const BUNDLE_PRICING_URL = "https://app.druaiconsulting.com/bundle-pricing";
 
 const statusConfig = {
   completed:  { bg: "rgba(67,160,71,0.12)",  border: "rgba(67,160,71,0.35)",  dot: "#43A047", label: "✓ Completed",   headerBg: "rgba(67,160,71,0.08)"  },
@@ -151,7 +150,7 @@ interface Stats {
 }
 
 function useStats() {
-  const [stats, setStats] = useState<Stats>({ assessmentscompleted: 0, leadscaptured: 0, diagnosticssold: 0, sessionsbooked: 0 });
+  const [stats, setStats] = useState<Stats>({ assessments_completed: 0, leads_captured: 0, diagnostics_sold: 0, sessions_booked: 0 });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     async function fetchStats() {
@@ -160,7 +159,7 @@ function useStats() {
         if (error) throw error;
         const map: Record<string, number> = {};
         data?.forEach((row: { id: string; value: number }) => { map[row.id] = row.value; });
-        setStats({ assessmentscompleted: map["assessmentscompleted"] || 0, leadscaptured: map["leadscaptured"] || 0, diagnosticssold: map["diagnosticssold"] || 0, sessionsbooked: map["sessionsbooked"] || 0 });
+        setStats({ assessments_completed: map["assessments_completed"] || 0, leads_captured: map["leads_captured"] || 0, diagnostics_sold: map["diagnostics_sold"] || 0, sessions_booked: map["sessions_booked"] || 0 });
       } catch (err) { console.error("Failed to fetch stats:", err); }
       finally { setLoading(false); }
     }
@@ -170,10 +169,10 @@ function useStats() {
 }
 
 interface Submission {
-  id: string; createdat: string; firstname: string; last_name: string; email: string;
-  company: string; role: string; countryname: string; totalscore: number; tier: string;
-  topgaps: string; clarityscore: number; leadershipscore: number; executionscore: number;
-  alignmentscore: number; resultsscore: number;
+  id: string; created_at: string; first_name: string; last_name: string; email: string;
+  company: string; role: string; country_name: string; total_score: number; tier: string;
+  top_gaps: string; clarity_score: number; leadership_score: number; execution_score: number;
+  alignment_score: number; results_score: number;
 }
 
 function ClientIntelligenceDashboard() {
@@ -186,7 +185,7 @@ function ClientIntelligenceDashboard() {
     async function fetchSubmissions() {
       try {
         const { data, error } = await supabase.from("submissions")
-          .select("id, createdat, firstname, lastname, email, company, role, countryname, totalscore, tier, topgaps, clarityscore, leadershipscore, executionscore, alignmentscore, results_score")
+          .select("id, created_at, first_name, last_name, email, company, role, country_name, total_score, tier, top_gaps, clarity_score, leadership_score, execution_score, alignment_score, results_score")
           .order("created_at", { ascending: false });
         if (!error && data) setSubmissions(data);
       } catch (err) { console.error("Failed to fetch submissions:", err); }
@@ -206,25 +205,25 @@ function ClientIntelligenceDashboard() {
   const filtered = useMemo(() => submissions.filter((s) => {
     const matchesTier = tierFilter === "ALL" || s.tier === tierFilter;
     const q = search.toLowerCase();
-    const matchesSearch = !q || (s.firstname || "").toLowerCase().includes(q) || (s.lastname || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q) || (s.company || "").toLowerCase().includes(q) || (s.role || "").toLowerCase().includes(q);
+    const matchesSearch = !q || (s.first_name || "").toLowerCase().includes(q) || (s.last_name || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q) || (s.company || "").toLowerCase().includes(q) || (s.role || "").toLowerCase().includes(q);
     return matchesTier && matchesSearch;
   }), [submissions, search, tierFilter]);
 
   const handleExport = () => {
     const headers = ["Date","First Name","Last Name","Email","Company","Role","Country","Score","Tier","Top Gaps","Clarity","Leadership","Execution","Alignment","Results"];
-    const rows = filtered.map((s) => [new Date(s.createdat).toLocaleDateString("en-US"), s.firstname, s.lastname, s.email, s.company, s.role, s.countryname, s.totalscore, s.tier, s.topgaps, s.clarityscore, s.leadershipscore, s.executionscore, s.alignmentscore, s.results_score]);
-    const csv = [headers, ...rows].map((row) => row.map((cell) => "${cell ?? ""}").join(",")).join("\n");
+    const rows = filtered.map((s) => [new Date(s.created_at).toLocaleDateString("en-US"), s.first_name, s.last_name, s.email, s.company, s.role, s.country_name, s.total_score, s.tier, s.top_gaps, s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell ?? ""}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
-    a.download = dru-clear-submissions-${new Date().toISOString().split("T")[0]}.csv;
+    a.download = `dru-clear-submissions-${new Date().toISOString().split("T")[0]}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   const SUMMARY_CARDS = [
     { label: "Total Submissions", value: totalSubmissions, color: "#D4AF37", icon: "📋" },
-    { label: "Avg Score", value: avgScore ? ${avgScore}/100 : "-", color: "#1E88E5", icon: "📊" },
+    { label: "Avg Score", value: avgScore ? `${avgScore}/100` : "-", color: "#1E88E5", icon: "📊" },
     { label: "Emerging",   value: tierCounts.EMERGING,   color: "#E53935", icon: "🔴" },
     { label: "Developing", value: tierCounts.DEVELOPING, color: "#D4AF37", icon: "🟡" },
     { label: "Advancing",  value: tierCounts.ADVANCING,  color: "#1E88E5", icon: "🔵" },
@@ -266,7 +265,7 @@ function ClientIntelligenceDashboard() {
         </button>
       </div>
       <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
-        {loading ? "Loading..." : ${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}}
+        {loading ? "Loading..." : `${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}`}
       </p>
       {loading ? (
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
@@ -292,15 +291,15 @@ function ClientIntelligenceDashboard() {
               {filtered.map((s, i) => (
                 <tr key={s.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>{s.firstname} {s.lastname}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>{s.first_name} {s.last_name}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem" }}>{s.email}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{s.company || "-"}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.65rem", whiteSpace: "nowrap" as const }}>{s.role || "-"}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" as const }}>{s.total_score ?? "-"}</td>
                   <td style={{ padding: "0.6rem 0.75rem" }}>
-                    {s.tier ? <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIERCOLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: ${TIERCOLORS[s.tier]}18, border: 1px solid ${TIER_COLORS[s.tier]}50, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>{s.tier}</span> : "-"}
+                    {s.tier ? <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>{s.tier}</span> : "-"}
                   </td>
-                  {[s.clarityscore, s.leadershipscore, s.executionscore, s.alignmentscore, s.results_score].map((score, pi) => (
+                  {[s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score].map((score, pi) => (
                     <td key={pi} style={{ padding: "0.6rem 0.5rem", textAlign: "center" as const }}>
                       <span style={{ fontFamily: "'Montserrat', sans-serif", color: getPillarColor(score), fontSize: "0.72rem", fontWeight: 700 }}>{score ?? "-"}</span>
                     </td>
@@ -372,7 +371,7 @@ export default function Admin() {
   ];
 
   const copyBundleLink = () => {
-    navigator.clipboard.writeText(BUNDLEPRICINGURL).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+    navigator.clipboard.writeText(BUNDLE_PRICING_URL).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
   };
 
   return (
@@ -380,14 +379,14 @@ export default function Admin() {
       <NavBar active="/admin" />
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
-        {/ Header /}
+        {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin Access Only - Page 1</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Command Center</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting - DeAnna R. Upshaw</p>
         </div>
 
-        {/ ── Passkey Setup Card ──────────────────────────────────────────── /}
+        {/* ── Passkey Setup Card ──────────────────────────────────────────── */}
         {!passkeyDismissed && (
           <div style={{
             background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(194,24,91,0.06)",
@@ -493,7 +492,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/ AI Empire Link - Page 2 /}
+        {/* AI Empire Link - Page 2 */}
         <a href="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
           <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
@@ -506,7 +505,7 @@ export default function Admin() {
           </div>
         </a>
 
-        {/ Stats /}
+        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
           {STAT_CARDS.map((stat) => (
             <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
@@ -522,7 +521,7 @@ export default function Admin() {
 
         <ClientIntelligenceDashboard />
 
-        {/ Private Client Links /}
+        {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Private Client Links</p>
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
@@ -531,7 +530,7 @@ export default function Admin() {
               <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private - Send to client during diagnostic call - Full Ecosystem payment live</p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <a href={BUNDLEPRICINGURL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none", textAlign: "center" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>Preview Page</a>
+              <a href={BUNDLE_PRICING_URL} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none", textAlign: "center" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>Preview Page</a>
               <button onClick={copyBundleLink} style={{ flex: 1, background: copied ? "#43A047" : "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "none", cursor: "pointer", transition: "background 0.2s" }}>
                 {copied ? "Copied!" : "Copy Link"}
               </button>
@@ -539,7 +538,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/ Quick Links /}
+        {/* Quick Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Quick Links</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
@@ -555,7 +554,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/ Payment Links /}
+        {/* Payment Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Payment Links</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -574,7 +573,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/ Pending Items /}
+        {/* Pending Items */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Pending Refinements</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -587,7 +586,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/ Sprint Roadmap /}
+        {/* Sprint Roadmap */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
