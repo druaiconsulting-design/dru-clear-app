@@ -1,19 +1,17 @@
+
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
-// Live Supabase data — real-time subscription — all agent types
-// UPDATED: Approve on social posts triggers GHL Social Planner via social-publisher
+// UPDATED: Approve on social posts calls Vercel api/social-publisher
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import NavBar from "../components/NavBar";
 
-// ── Supabase client ──────────────────────────────────────────────────────────
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ── Types ────────────────────────────────────────────────────────────────────
 type ApprovalStatus   = "pending" | "approved" | "rejected" | "edited";
 type ApprovalCategory = "social" | "email" | "proposal" | "content" | "other";
 type Platform         = "LinkedIn" | "Instagram" | "Facebook" | "Email" | "General";
@@ -40,7 +38,6 @@ interface Approval {
   context:          string | null;
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn:  "#0077B5",
   Instagram: "#C2185B",
@@ -72,7 +69,6 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
 export default function AdminApprovals() {
   const [approvals, setApprovals]         = useState<Approval[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -82,7 +78,6 @@ export default function AdminApprovals() {
   const [saving, setSaving]               = useState<string | null>(null);
   const [publishStatus, setPublishStatus] = useState<Record<string, "posting" | "posted" | "failed">>({});
 
-  // ── Fetch approvals ────────────────────────────────────────────────────────
   const fetchApprovals = async () => {
     const { data, error } = await supabase
       .from("approvals")
@@ -93,7 +88,6 @@ export default function AdminApprovals() {
     setLoading(false);
   };
 
-  // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
     fetchApprovals();
     const channel = supabase
@@ -116,11 +110,10 @@ export default function AdminApprovals() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Approve — posts to GHL Social Planner if category = social ────────────
+  // ── Approve — calls Vercel social-publisher for social posts ──────────────
   const handleApprove = async (id: string) => {
     setSaving(id);
 
-    // 1. Mark approved in database
     const { error } = await supabase
       .from("approvals")
       .update({ status: "approved" })
@@ -132,23 +125,25 @@ export default function AdminApprovals() {
       return;
     }
 
-    // 2. If social post → fire social-publisher → GHL Social Planner
     const approval = approvals.find((a) => a.id === id);
     if (approval?.category === "social") {
       setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
       try {
-        const { error: publishError } = await supabase.functions.invoke("social-publisher", {
-          body: {
+        const res = await fetch("/api/social-publisher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             content:     approval.edited_output || approval.output,
             platform:    approval.platform,
             approval_id: id,
-          },
+          }),
         });
-        if (publishError) {
-          console.error("Publish failed:", publishError);
-          setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
-        } else {
+        if (res.ok) {
           setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
+        } else {
+          const err = await res.json();
+          console.error("Publish failed:", err);
+          setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
         }
       } catch (err) {
         console.error("Publisher error:", err);
