@@ -3,6 +3,13 @@
 
 export const config = { runtime: "edge" };
 
+// Known connected account IDs — update when new platforms are connected
+const ACCOUNT_IDS: Record<string, string> = {
+  LinkedIn:  "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile",
+  Facebook:  "", // add when Facebook is connected
+  Instagram: "", // add when Instagram is connected
+};
+
 export default async function handler(req: Request) {
   const CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -14,8 +21,7 @@ export default async function handler(req: Request) {
     return new Response("ok", { headers: CORS });
   }
 
-  const body = await req.json();
-  const { content, platform, approval_id } = body;
+  const { content, platform, approval_id } = await req.json();
   const ghlKey = process.env.GHL_API_KEY;
 
   if (!ghlKey) {
@@ -25,53 +31,27 @@ export default async function handler(req: Request) {
     });
   }
 
-  const ghlHeaders = {
-    "Authorization": `Bearer ${ghlKey}`,
-    "Version": "2021-07-28",
-    "Content-Type": "application/json",
-  };
+  const accountId = ACCOUNT_IDS[platform] || "";
 
-  // ── Step 1: Fetch connected accounts ─────────────────────────────────────
-  const accountsRes = await fetch(
-    `https://services.leadconnectorhq.com/social-media-posting/gl07I4JnbkGgW8zJprSz/accounts`,
-    { method: "GET", headers: ghlHeaders }
-  );
-
-  if (!accountsRes.ok) {
-    const err = await accountsRes.text();
-    return new Response(JSON.stringify({ error: "Failed to fetch accounts", detail: err }), {
-      status: 502,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  }
-
-  const accountsData = await accountsRes.json();
-  // GHL returns accounts at results.accounts
-  const allAccounts = accountsData?.results?.accounts || [];
-
-  // ── Step 2: Match by platform key (e.g. account has a "linkedin" field) ──
-  const platformKey = platform.toLowerCase(); // "linkedin", "facebook", "instagram"
-  const matching = allAccounts.filter((a: any) =>
-    Object.keys(a).some((k) => k.toLowerCase() === platformKey)
-  );
-
-  if (matching.length === 0) {
+  if (!accountId) {
     return new Response(
-      JSON.stringify({ error: `No connected ${platform} account found`, approval_id }),
+      JSON.stringify({ error: `No account ID configured for ${platform}`, approval_id }),
       { status: 404, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 
-  const accountIds = matching.map((a: any) => a.id);
-
-  // ── Step 3: Post to GHL Social Planner ───────────────────────────────────
+  // ── Post directly to GHL Social Planner ───────────────────────────────────
   const postRes = await fetch(
     `https://services.leadconnectorhq.com/social-media-posting/gl07I4JnbkGgW8zJprSz/posts`,
     {
       method: "POST",
-      headers: ghlHeaders,
+      headers: {
+        "Authorization": `Bearer ${ghlKey}`,
+        "Version": "2021-07-28",
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        accountIds,
+        accountIds: [accountId],
         content,
         type:   "post",
         status: "publish",
@@ -81,10 +61,10 @@ export default async function handler(req: Request) {
 
   if (!postRes.ok) {
     const err = await postRes.text();
-    return new Response(JSON.stringify({ error: "GHL post failed", detail: err }), {
-      status: 502,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "GHL post failed", detail: err, approval_id }),
+      { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+    );
   }
 
   const postData = await postRes.json();
@@ -93,7 +73,7 @@ export default async function handler(req: Request) {
     JSON.stringify({
       success:     true,
       platform,
-      accountIds,
+      account_id:  accountId,
       approval_id,
       ghl_post_id: postData?.id || postData?.postId || null,
     }),
