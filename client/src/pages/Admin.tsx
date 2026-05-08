@@ -10,10 +10,10 @@ const QUICK_LINKS = [
   { label: "Main Website",         href: "https://druaiconsulting.com", icon: "🌐" },
   { label: "Frameworks Page",      href: "https://frameworks.druaiconsulting.com", icon: "📐" },
   { label: "Course Page",          href: "https://course.druaiconsulting.com", icon: "🎓" },
-  { label: "GitHub — App",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
-  { label: "GitHub — Website",     href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
-  { label: "GitHub — Frameworks",  href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
-  { label: "GitHub — Courses",     href: "https://github.com/druaiconsulting-design/druaiconsulting-courses", icon: "💻" },
+  { label: "GitHub - App",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
+  { label: "GitHub - Website",     href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
+  { label: "GitHub - Frameworks",  href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
+  { label: "GitHub - Courses",     href: "https://github.com/druaiconsulting-design/druaiconsulting-courses", icon: "💻" },
   { label: "Terms of Engagement",  href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
@@ -34,11 +34,14 @@ const PAYMENT_LINKS = [
 ];
 
 const PENDING_ITEMS = [
-  "SMS sequences - pending GHL phone number provisioning",
   "Add 2 PDFs to app for user access - delegated to AI Agents (Sprint 4)",
   "GHL webhook URL - wire into course waitlist form",
-  "course.druaiconsulting.com - repo create + Vercel deploy",
-  "Twin streaming fix - route via Vercel serverless or Claude Code",
+  "From Confusion to Confident with AI - Course: Waitlist form built - 3 payment links live - course.druaiconsulting.com deploy next",
+  "Affiliate Dashboard: Track referrals - commissions - top referrer leaderboard - Supabase referrals table - unique referral links - Stripe payout integration",
+  "Navigator $97/mo + Accelerator $297/mo: Price increase from founder pricing after launch - lock in founding members now",
+  "Community AI Agents: Navigator + Accelerator communities - daily prompts - Q&A - member spotlights",
+  "Community - in-app: Launch when 20+ active clients - Supabase Realtime - Navigator + Accelerator separate spaces",
+  "Framework Agent Teams: One dedicated AI agent per framework - DRU CLEAR - 5D Leadership - 5C Cultural DNA - AI Sales Mastery",
 ];
 
 interface SprintItem { label: string; sub: string; done?: boolean; }
@@ -101,14 +104,10 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Governance Agents - BUILT",                     sub: "C-Suite/Ops - Legal & Finance - AI Governance - HR Division - 14 agents - all 4 edge functions deployed" },
       { done: true,  label: "Travis - Chief of Staff - BUILT",               sub: "Pure deterministic router - routes all 37 agents across 9 divisions - reports to Twin" },
       { done: true,  label: "All 39 Agents - Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 10 divisions - all system prompts - all edge functions - Genius Mode default" },
-      { done: true,  label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - set up from Portal or Admin - sign in from login screen" },
-      { done: false, label: "Twin Streaming Fix",                             sub: "WallClockTime timeout on OPTIONS preflight - route via Vercel serverless function - Claude Code recommended" },
-      { done: false, label: "From Confusion to Confident with AI - Course",   sub: "Waitlist form built - 3 payment links live - Self-Paced $1,497 - Live Cohort $7,997 - Mastermind $12,997 - course.druaiconsulting.com deploy next" },
-      { done: false, label: "Affiliate Dashboard",                           sub: "Track referrals - commissions - top referrer leaderboard - Supabase referrals table - unique referral links - Stripe payout integration" },
-      { done: false, label: "Navigator $97/mo + Accelerator $297/mo",        sub: "Price increase from founder pricing after launch - lock in founding members now" },
-      { done: false, label: "Community AI Agents",                           sub: "Navigator + Accelerator communities - daily prompts - Q&A - member spotlights" },
-      { done: false, label: "Community - in-app",                            sub: "Launch when 20+ active clients - Supabase Realtime - Navigator + Accelerator separate spaces" },
-      { done: false, label: "Framework Agent Teams",                         sub: "One dedicated AI agent per framework - DRU CLEAR - 5D Leadership - 5C Cultural DNA - AI Sales Mastery" },
+      { done: true,  label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table - register from Portal + Admin - sign in from login screen - 4 Vercel serverless API routes" },
+      { done: true,  label: "Twin Streaming Fix - LIVE",                     sub: "WallClockTime timeout on OPTIONS preflight resolved - routed via Vercel serverless function" },
+      { done: true,  label: "SMS Sequences - LIVE",                          sub: "GHL phone number provisioned - SMS automation workflows active" },
+      { done: true,  label: "course.druaiconsulting.com - LIVE",             sub: "Repo created - Vercel deployed - course landing page live" },
       { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - May 10, 2026" },
     ],
   },
@@ -338,7 +337,6 @@ export default function Admin() {
   const [passkeyMessage, setPasskeyMessage] = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
 
-  // ── Check if user already has a passkey ───────────────────────────────────
   useEffect(() => {
     async function checkPasskey() {
       if (!user?.id) return;
@@ -639,4 +637,9 @@ export default function Admin() {
         </div>
 
       </main>
-      <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing
+      <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
+        &copy; 2026 DRU CLEAR - All Rights Reserved - DRU AI Consulting
+      </footer>
+    </div>
+  );
+}
