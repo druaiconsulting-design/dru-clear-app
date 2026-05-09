@@ -1,12 +1,9 @@
 // api/social-publisher.ts
-// Vercel edge function — posts text-only content to GHL Social Planner API
+// Vercel edge function — fires GHL workflow webhook → posts to Social Planner
 
 export const config = { runtime: "edge" };
 
-const LOCATION_ID = "gl07I4JnbkGgW8zJprSz";
-const ACCOUNT_ID  = "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile";
-const USER_ID     = "69517e68988b5630a9f5f936";
-const GHL_BASE    = "https://services.leadconnectorhq.com";
+const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/4740db63-d5a4-4814-8932-c7893e8f5658";
 
 export default async function handler(req: Request) {
   const CORS = {
@@ -20,41 +17,23 @@ export default async function handler(req: Request) {
   }
 
   const { content, platform, approval_id } = await req.json();
-  const ghlKey = process.env.GHL_API_KEY;
 
-  if (!ghlKey) {
-    return new Response(JSON.stringify({ error: "No GHL_API_KEY" }), {
-      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  }
-
-  const postRes = await fetch(`${GHL_BASE}/social-media-posting/${LOCATION_ID}/posts`, {
+  const res = await fetch(GHL_WEBHOOK, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${ghlKey}`,
-      "Version": "2021-07-28",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      userId:     USER_ID,
-      accountIds: [ACCOUNT_ID],
-      summary:    content,
-      type:       "post",
-      media:      [],
-      status:     "draft",
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, platform, approval_id }),
   });
 
-  if (!postRes.ok) {
-    const err = await postRes.text();
-    return new Response(JSON.stringify({ error: "GHL post failed", detail: err, approval_id }), {
-      status: 502, headers: { ...CORS, "Content-Type": "application/json" },
-    });
+  if (!res.ok) {
+    const err = await res.text();
+    return new Response(
+      JSON.stringify({ error: "Webhook failed", detail: err, approval_id }),
+      { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+    );
   }
 
-  const postData = await postRes.json();
   return new Response(
-    JSON.stringify({ success: true, platform, approval_id, ghl_post_id: postData?.id || null }),
+    JSON.stringify({ success: true, platform, approval_id }),
     { headers: { ...CORS, "Content-Type": "application/json" } }
   );
 }
