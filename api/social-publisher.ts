@@ -3,9 +3,8 @@
 
 export const config = { runtime: "edge" };
 
-// profileId from the accounts API response (not the compound id)
 const ACCOUNT_IDS: Record<string, string> = {
-  LinkedIn:  "69517e6f988b56e504f605bf",
+  LinkedIn:  "8J5aciAqTq",
   Facebook:  "",
   Instagram: "",
 };
@@ -51,7 +50,7 @@ export default async function handler(req: Request) {
         accountIds: [accountId],
         summary:    content,
         media:      [],
-        status:     "DRAFT",
+        status:     "draft",
       }),
     }
   );
