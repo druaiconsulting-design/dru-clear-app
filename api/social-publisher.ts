@@ -3,7 +3,7 @@
 
 export const config = { runtime: "edge" };
 
-const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/4284ddf8-3fed-4b17-aa8b-1416d11ec583";
+const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/4740db63-d5a4-4814-8932-c7893e8f5658";
 
 export default async function handler(req: Request) {
   const CORS = {
@@ -21,12 +21,7 @@ export default async function handler(req: Request) {
   const res = await fetch(GHL_WEBHOOK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      content,
-      platform,
-      approval_id,
-      url: "",
-    }),
+    body: JSON.stringify({ content, platform, approval_id }),
   });
 
   if (!res.ok) {
