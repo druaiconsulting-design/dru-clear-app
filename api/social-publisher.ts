@@ -3,12 +3,13 @@
 
 export const config = { runtime: "edge" };
 
-// Known connected account IDs — update when new platforms are connected
 const ACCOUNT_IDS: Record<string, string> = {
   LinkedIn:  "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile",
-  Facebook:  "", // add when Facebook is connected
-  Instagram: "", // add when Instagram is connected
+  Facebook:  "",
+  Instagram: "",
 };
+
+const LOCATION_ID = "gl07I4JnbkGgW8zJprSz";
 
 export default async function handler(req: Request) {
   const CORS = {
@@ -26,13 +27,11 @@ export default async function handler(req: Request) {
 
   if (!ghlKey) {
     return new Response(JSON.stringify({ error: "No GHL_API_KEY" }), {
-      status: 500,
-      headers: { ...CORS, "Content-Type": "application/json" },
+      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 
   const accountId = ACCOUNT_IDS[platform] || "";
-
   if (!accountId) {
     return new Response(
       JSON.stringify({ error: `No account ID configured for ${platform}`, approval_id }),
@@ -40,9 +39,8 @@ export default async function handler(req: Request) {
     );
   }
 
-  // ── Post directly to GHL Social Planner ───────────────────────────────────
   const postRes = await fetch(
-    `https://services.leadconnectorhq.com/social-media-posting/gl07I4JnbkGgW8zJprSz/posts`,
+    `https://services.leadconnectorhq.com/social-media-posting/${LOCATION_ID}/posts`,
     {
       method: "POST",
       headers: {
@@ -51,10 +49,11 @@ export default async function handler(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        accountIds: [accountId],
-        content,
-        type:   "post",
-        status: "publish",
+        locationId:  LOCATION_ID,
+        accountIds:  [accountId],
+        summary:     content,
+        status:      "PUBLISHED",
+        type:        "post",
       }),
     }
   );
@@ -68,15 +67,8 @@ export default async function handler(req: Request) {
   }
 
   const postData = await postRes.json();
-
   return new Response(
-    JSON.stringify({
-      success:     true,
-      platform,
-      account_id:  accountId,
-      approval_id,
-      ghl_post_id: postData?.id || postData?.postId || null,
-    }),
+    JSON.stringify({ success: true, platform, approval_id, ghl_post_id: postData?.id || null }),
     { headers: { ...CORS, "Content-Type": "application/json" } }
   );
 }
