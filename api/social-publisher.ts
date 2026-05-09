@@ -3,10 +3,10 @@
 
 export const config = { runtime: "edge" };
 
-const LOCATION_ID  = "gl07I4JnbkGgW8zJprSz";
-const ACCOUNT_ID   = "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile";
-const GHL_BASE     = "https://services.leadconnectorhq.com";
-const GHL_VERSION  = "2021-07-28";
+const LOCATION_ID = "gl07I4JnbkGgW8zJprSz";
+const ACCOUNT_ID  = "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile";
+const USER_ID     = "69517e68988b5630a9f5f936";
+const GHL_BASE    = "https://services.leadconnectorhq.com";
 
 export default async function handler(req: Request) {
   const CORS = {
@@ -28,35 +28,15 @@ export default async function handler(req: Request) {
     });
   }
 
-  const headers = {
-    "Authorization": `Bearer ${ghlKey}`,
-    "Version": GHL_VERSION,
-    "Content-Type": "application/json",
-  };
-
-  // ── Step 1: Get userId from GHL ──────────────────────────────────────────
-  const userRes = await fetch(`${GHL_BASE}/users/me`, { method: "GET", headers });
-  if (!userRes.ok) {
-    const err = await userRes.text();
-    return new Response(JSON.stringify({ error: "Failed to get user", detail: err }), {
-      status: 502, headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  }
-  const userData = await userRes.json();
-  const userId   = userData?.id || userData?.userId || "";
-
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "Could not resolve userId", userData }), {
-      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  }
-
-  // ── Step 2: Post text-only to GHL Social Planner ────────────────────────
   const postRes = await fetch(`${GHL_BASE}/social-media-posting/${LOCATION_ID}/posts`, {
     method: "POST",
-    headers,
+    headers: {
+      "Authorization": `Bearer ${ghlKey}`,
+      "Version": "2021-07-28",
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      userId,
+      userId:     USER_ID,
       accountIds: [ACCOUNT_ID],
       summary:    content,
       type:       "post",
