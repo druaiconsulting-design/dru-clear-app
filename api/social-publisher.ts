@@ -4,7 +4,7 @@
 export const config = { runtime: "edge" };
 
 const ACCOUNT_IDS: Record<string, string> = {
-  LinkedIn:  "8J5aciAqTq",
+  LinkedIn:  "69517e68988b5630a9f5f936_g107I4JnbkGgW8zJprSz_8J5aciAqTq_profile",
   Facebook:  "",
   Instagram: "",
 };
@@ -49,6 +49,7 @@ export default async function handler(req: Request) {
       body: JSON.stringify({
         accountIds: [accountId],
         summary:    content,
+        type:       "post",
         media:      [],
         status:     "draft",
       }),
