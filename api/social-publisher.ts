@@ -25,6 +25,7 @@ export default async function handler(req: Request) {
       content,
       platform,
       approval_id,
+      url: "",
     }),
   });
 
