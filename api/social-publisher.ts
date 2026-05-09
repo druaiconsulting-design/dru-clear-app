@@ -9,8 +9,6 @@ const ACCOUNT_IDS: Record<string, string> = {
   Instagram: "",
 };
 
-const LOCATION_ID = "gl07I4JnbkGgW8zJprSz";
-
 export default async function handler(req: Request) {
   const CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -40,7 +38,7 @@ export default async function handler(req: Request) {
   }
 
   const postRes = await fetch(
-    `https://services.leadconnectorhq.com/social-media-posting/${LOCATION_ID}/posts`,
+    `https://services.leadconnectorhq.com/social-media-posting/gl07I4JnbkGgW8zJprSz/posts`,
     {
       method: "POST",
       headers: {
@@ -49,11 +47,9 @@ export default async function handler(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        locationId:  LOCATION_ID,
-        accountIds:  [accountId],
-        summary:     content,
-        status:      "PUBLISHED",
-        type:        "post",
+        accountIds: [accountId],
+        summary:    content,
+        status:     "PUBLISHED",
       }),
     }
   );
