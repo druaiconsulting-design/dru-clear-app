@@ -3,8 +3,13 @@
 // File: api/ghl-agent-trigger.ts
 // Runtime: Vercel Edge (non-Next.js / Vite stack)
 //
-// Uses standard Web API Request/Response — no next/server dependency.
+// Pattern: respond immediately to pg_cron (202 Accepted),
+// process agent dispatch in background via waitUntil.
+// This prevents 504 timeouts — pg_cron gets a fast acknowledgment
+// and the agent pipeline runs without blocking the response.
 // ================================================================
+
+import { waitUntil } from '@vercel/functions';
 
 export const config = { runtime: 'edge' };
 
@@ -142,7 +147,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Cron trigger types — these get a digest notification after run
+// Cron trigger types — get digest notification after run
 // ─────────────────────────────────────────────────────────────
 
 const CRON_TRIGGER_TYPES = new Set([
@@ -154,7 +159,74 @@ const CRON_TRIGGER_TYPES = new Set([
 ]);
 
 // ─────────────────────────────────────────────────────────────
-// Digest Notification — fire-and-forget after cron agent run
+// Background: dispatch to Travis Router → Agent → Approvals
+// ─────────────────────────────────────────────────────────────
+
+async function dispatchToAgent(
+  route: AgentRoute,
+  payload: TriggerPayload,
+  triggeredAt: string,
+  sourceLabel: string,
+  isCronSource: boolean
+): Promise<void> {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('[ghl-agent-trigger] ❌ Missing Supabase env vars in background dispatch');
+    return;
+  }
+
+  try {
+    const travisResponse = await fetch(
+      `${supabaseUrl}/functions/v1/travis-router`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          agent_id: route.agent_id,
+          agent_name: route.agent_name,
+          division: route.division,
+          task: route.task,
+          description: route.description,
+          trigger_type: payload.trigger_type,
+          source: sourceLabel,
+          payload,
+          triggered_at: triggeredAt,
+        }),
+      }
+    );
+
+    const responseText = await travisResponse.text();
+
+    if (!travisResponse.ok) {
+      console.error(`[ghl-agent-trigger] ❌ Travis router ${travisResponse.status}: ${responseText}`);
+      return;
+    }
+
+    let result: TravisRouterResponse = {};
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.warn('[ghl-agent-trigger] Travis non-JSON response — status ok');
+    }
+
+    console.log(`[ghl-agent-trigger] ✅ ${route.agent_name} completed | approval_id: ${result.approval_id ?? 'pending'}`);
+
+    if (isCronSource) {
+      await sendDigestNotification(route, result, triggeredAt);
+    }
+
+  } catch (error) {
+    console.error('[ghl-agent-trigger] ❌ Background dispatch error:', error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Digest Notification — SMS + Email via GHL webhook
 // ─────────────────────────────────────────────────────────────
 
 async function sendDigestNotification(
@@ -162,8 +234,7 @@ async function sendDigestNotification(
   result: TravisRouterResponse,
   triggeredAt: string
 ): Promise<void> {
-  const webhookUrl = (globalThis as unknown as Record<string, string>)['GHL_NOTIFICATION_WEBHOOK_URL']
-    ?? (typeof process !== 'undefined' ? process.env.GHL_NOTIFICATION_WEBHOOK_URL : undefined);
+  const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
 
   if (!webhookUrl) {
     console.warn('[ghl-agent-trigger] GHL_NOTIFICATION_WEBHOOK_URL not set — skipping notification');
@@ -174,39 +245,30 @@ async function sendDigestNotification(
   const approvalIds = result.approval_ids ?? (result.approval_id ? [result.approval_id] : []);
   const cardWord = cardsCreated !== 1 ? 'cards' : 'card';
   const taskReadable = route.task.replace(/_/g, ' ');
-
-  const summary =
-    result.summary ??
-    `${route.agent_name} completed the ${taskReadable} task and dropped ${cardsCreated} ${cardWord} into your approval queue.`;
-
-  const payload = {
-    agent_name: route.agent_name,
-    agent_id: route.agent_id,
-    division: route.division,
-    task: taskReadable,
-    cards_created: cardsCreated,
-    approval_ids: approvalIds.join(', ') || 'see queue',
-    summary,
-    triggered_at: triggeredAt,
-    review_url: 'https://app.druaiconsulting.com/admin-approvals',
-    sms_body: `DRU AI™ | ${route.agent_name} dropped ${cardsCreated} ${cardWord} in your approval queue.\n\nTask: ${taskReadable}\nReview: app.druaiconsulting.com/admin-approvals`,
-    email_subject: `DRU AI Ecosystem™ — ${route.agent_name} Queue Update`,
-    email_body: `Your AI Ecosystem ran on schedule.\n\nAgent: ${route.agent_name}\nDivision: ${route.division}\nTask: ${taskReadable}\nCards in Queue: ${cardsCreated}\n\n${summary}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
-  };
+  const summary = result.summary ?? `${route.agent_name} completed the ${taskReadable} task and dropped ${cardsCreated} ${cardWord} into your approval queue.`;
 
   try {
-    const response = await fetch(webhookUrl, {
+    await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        agent_name: route.agent_name,
+        agent_id: route.agent_id,
+        division: route.division,
+        task: taskReadable,
+        cards_created: cardsCreated,
+        approval_ids: approvalIds.join(', ') || 'see queue',
+        summary,
+        triggered_at: triggeredAt,
+        review_url: 'https://app.druaiconsulting.com/admin-approvals',
+        sms_body: `DRU AI™ | ${route.agent_name} dropped ${cardsCreated} ${cardWord} in your approval queue.\n\nTask: ${taskReadable}\nReview: app.druaiconsulting.com/admin-approvals`,
+        email_subject: `DRU AI Ecosystem™ — ${route.agent_name} Queue Update`,
+        email_body: `Your AI Ecosystem ran on schedule.\n\nAgent: ${route.agent_name}\nDivision: ${route.division}\nTask: ${taskReadable}\nCards in Queue: ${cardsCreated}\n\n${summary}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+      }),
     });
-    if (!response.ok) {
-      console.warn(`[ghl-agent-trigger] Notification webhook returned ${response.status}`);
-    } else {
-      console.log(`[ghl-agent-trigger] ✅ Digest notification sent for ${route.agent_name}`);
-    }
+    console.log(`[ghl-agent-trigger] ✅ Digest notification sent for ${route.agent_name}`);
   } catch (error) {
-    console.warn('[ghl-agent-trigger] Notification dispatch failed (non-fatal):', error);
+    console.warn('[ghl-agent-trigger] Notification failed (non-fatal):', error);
   }
 }
 
@@ -215,8 +277,6 @@ async function sendDigestNotification(
 // ─────────────────────────────────────────────────────────────
 
 export default async function handler(req: Request): Promise<Response> {
-  const startTime = Date.now();
-
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -253,77 +313,21 @@ export default async function handler(req: Request): Promise<Response> {
   const triggeredAt = new Date().toISOString();
   const isCronSource = CRON_TRIGGER_TYPES.has(trigger_type);
 
-  console.log(`[ghl-agent-trigger] ✅ Routing → ${route.agent_name} | ${route.division} | ${route.task} | source: ${sourceLabel}`);
+  console.log(`[ghl-agent-trigger] ✅ Accepted → ${route.agent_name} | ${route.division} | source: ${sourceLabel}`);
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Dispatch to agent in background — does not block response
+  waitUntil(dispatchToAgent(route, payload, triggeredAt, sourceLabel, isCronSource));
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('[ghl-agent-trigger] ❌ Missing Supabase env vars');
-    return jsonResponse({ error: 'Server configuration error' }, 500);
-  }
-
-  try {
-    const travisResponse = await fetch(
-      `${supabaseUrl}/functions/v1/travis-router`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({
-          agent_id: route.agent_id,
-          agent_name: route.agent_name,
-          division: route.division,
-          task: route.task,
-          description: route.description,
-          trigger_type,
-          source: sourceLabel,
-          payload,
-          triggered_at: triggeredAt,
-        }),
-      }
-    );
-
-    const responseText = await travisResponse.text();
-
-    if (!travisResponse.ok) {
-      console.error(`[ghl-agent-trigger] ❌ Travis router ${travisResponse.status}: ${responseText}`);
-      return jsonResponse({ error: 'Agent dispatch failed', status_code: travisResponse.status, details: responseText }, 502);
-    }
-
-    let result: TravisRouterResponse = {};
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      console.warn('[ghl-agent-trigger] Travis response non-JSON — status ok, continuing');
-    }
-
-    if (isCronSource) {
-      sendDigestNotification(route, result, triggeredAt).catch(() => {});
-    }
-
-    const elapsed = Date.now() - startTime;
-    console.log(`[ghl-agent-trigger] ✅ ${route.agent_name} dispatched in ${elapsed}ms`);
-
-    return jsonResponse({
-      success: true,
-      agent: route.agent_name,
-      agent_id: route.agent_id,
-      division: route.division,
-      task: route.task,
-      source: sourceLabel,
-      approval_id: result.approval_id ?? null,
-      cards_created: result.cards_created ?? null,
-      notification_sent: isCronSource,
-      elapsed_ms: elapsed,
-      message: `${route.agent_name} activated — output queued for approval`,
-    });
-
-  } catch (error) {
-    const elapsed = Date.now() - startTime;
-    console.error(`[ghl-agent-trigger] ❌ Dispatch error after ${elapsed}ms:`, error);
-    return jsonResponse({ error: 'Internal dispatch error', details: String(error), elapsed_ms: elapsed }, 500);
-  }
+  // Respond immediately so pg_cron gets a fast 202
+  return jsonResponse({
+    success: true,
+    accepted: true,
+    agent: route.agent_name,
+    agent_id: route.agent_id,
+    division: route.division,
+    task: route.task,
+    source: sourceLabel,
+    triggered_at: triggeredAt,
+    message: `${route.agent_name} activated — processing in background`,
+  }, 202);
 }
