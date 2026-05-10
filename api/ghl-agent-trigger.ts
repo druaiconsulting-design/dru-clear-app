@@ -1,17 +1,11 @@
 // ================================================================
 // DRU AI Leadership Ecosystem™ — Autonomous Entry Point
 // File: api/ghl-agent-trigger.ts
-// Runtime: Vercel Edge (non-Next.js / Vite stack)
+// Runtime: Vercel Node.js Serverless (no edge, no external imports)
 //
-// Pattern: respond immediately to pg_cron (202 Accepted),
-// process agent dispatch in background via waitUntil.
-// This prevents 504 timeouts — pg_cron gets a fast acknowledgment
-// and the agent pipeline runs without blocking the response.
+// Pattern: respond 202 immediately, dispatch agent in background.
+// No @vercel/functions or next/server required.
 // ================================================================
-
-import { waitUntil } from '@vercel/functions';
-
-export const config = { runtime: 'edge' };
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -44,17 +38,6 @@ interface TravisRouterResponse {
   message?: string;
   summary?: string;
   [key: string]: unknown;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Helper: JSON response
-// ─────────────────────────────────────────────────────────────
-
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -147,7 +130,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Cron trigger types — get digest notification after run
+// Cron trigger types
 // ─────────────────────────────────────────────────────────────
 
 const CRON_TRIGGER_TYPES = new Set([
@@ -159,7 +142,7 @@ const CRON_TRIGGER_TYPES = new Set([
 ]);
 
 // ─────────────────────────────────────────────────────────────
-// Background: dispatch to Travis Router → Agent → Approvals
+// Background: dispatch to Travis Router
 // ─────────────────────────────────────────────────────────────
 
 async function dispatchToAgent(
@@ -173,7 +156,7 @@ async function dispatchToAgent(
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    console.error('[ghl-agent-trigger] ❌ Missing Supabase env vars in background dispatch');
+    console.error('[ghl-agent-trigger] ❌ Missing Supabase env vars');
     return;
   }
 
@@ -221,12 +204,12 @@ async function dispatchToAgent(
     }
 
   } catch (error) {
-    console.error('[ghl-agent-trigger] ❌ Background dispatch error:', error);
+    console.error('[ghl-agent-trigger] ❌ Dispatch error:', error);
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Digest Notification — SMS + Email via GHL webhook
+// Digest Notification
 // ─────────────────────────────────────────────────────────────
 
 async function sendDigestNotification(
@@ -235,11 +218,7 @@ async function sendDigestNotification(
   triggeredAt: string
 ): Promise<void> {
   const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
-
-  if (!webhookUrl) {
-    console.warn('[ghl-agent-trigger] GHL_NOTIFICATION_WEBHOOK_URL not set — skipping notification');
-    return;
-  }
+  if (!webhookUrl) return;
 
   const cardsCreated = result.cards_created ?? 1;
   const approvalIds = result.approval_ids ?? (result.approval_id ? [result.approval_id] : []);
@@ -273,40 +252,38 @@ async function sendDigestNotification(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Main Handler
+// Main Handler — plain Node.js, no edge runtime
 // ─────────────────────────────────────────────────────────────
 
-export default async function handler(req: Request): Promise<Response> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function handler(req: any, res: any): Promise<void> {
   if (req.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   // Validate cron secret
-  const incomingSecret = req.headers.get('x-cron-secret');
-  if (incomingSecret !== null && incomingSecret !== process.env.CRON_SECRET) {
+  const incomingSecret = req.headers['x-cron-secret'];
+  if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) {
     console.error('[ghl-agent-trigger] ❌ Invalid cron secret');
-    return jsonResponse({ error: 'Unauthorized' }, 401);
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
   }
 
-  // Parse body
-  let payload: TriggerPayload;
-  try {
-    payload = await req.json();
-  } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  const payload: TriggerPayload = req.body;
+
+  if (!payload || !payload.trigger_type) {
+    res.status(400).json({ error: 'trigger_type is required' });
+    return;
   }
 
   const { trigger_type, source } = payload;
-
-  if (!trigger_type) {
-    return jsonResponse({ error: 'trigger_type is required' }, 400);
-  }
-
   const route = AGENT_ROUTES[trigger_type];
 
   if (!route) {
     console.warn(`[ghl-agent-trigger] ⚠️ Unknown trigger_type: ${trigger_type}`);
-    return jsonResponse({ error: `Unknown trigger_type: ${trigger_type}` }, 400);
+    res.status(400).json({ error: `Unknown trigger_type: ${trigger_type}` });
+    return;
   }
 
   const sourceLabel = source ?? 'webhook';
@@ -315,11 +292,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   console.log(`[ghl-agent-trigger] ✅ Accepted → ${route.agent_name} | ${route.division} | source: ${sourceLabel}`);
 
-  // Dispatch to agent in background — does not block response
-  waitUntil(dispatchToAgent(route, payload, triggeredAt, sourceLabel, isCronSource));
-
-  // Respond immediately so pg_cron gets a fast 202
-  return jsonResponse({
+  // Respond immediately — pg_cron gets fast 202
+  res.status(202).json({
     success: true,
     accepted: true,
     agent: route.agent_name,
@@ -329,5 +303,8 @@ export default async function handler(req: Request): Promise<Response> {
     source: sourceLabel,
     triggered_at: triggeredAt,
     message: `${route.agent_name} activated — processing in background`,
-  }, 202);
+  });
+
+  // Dispatch in background after response is sent
+  dispatchToAgent(route, payload, triggeredAt, sourceLabel, isCronSource).catch(console.error);
 }
