@@ -553,7 +553,6 @@ OR if a specific real issue exists:
 // ─────────────────────────────────────────────────────────────
 
 async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
-  // Process both normal path (travis_organized) AND needs_attention path (raymond_reviewed)
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return { reviewed: 0, cleared: 0, blocked: 0 };
@@ -564,7 +563,7 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   const normalRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.travis_organized&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   const normalItems: CSQItem[] = normalRes.ok ? await normalRes.json() : [];
 
-  // Get raymond_reviewed items with needs_attention_now action (expedited path)
+  // Get raymond_reviewed needs_attention items (expedited path)
   const urgentRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.raymond_reviewed&raymond_action=eq.needs_attention_now&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   const urgentItems: CSQItem[] = urgentRes.ok ? await urgentRes.json() : [];
 
@@ -572,13 +571,58 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   console.log(`[governance] Reviewing ${allItems.length} items (${urgentItems.length} needs-attention, ${normalItems.length} normal)...`);
   if (allItems.length === 0) return { reviewed: 0, cleared: 0, blocked: 0 };
 
+  // BATCH STEP 1: Isabella trademark check — all items in ONE call
+  const isabellaBatch = await callAnthropic(`${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. Review ALL items below for trademark compliance.
+
+DRU AI Consulting OWNS Classes 35, 41, 42. Coaching, training, AI consulting content is DRU's CORE BUSINESS — NOT a violation.
+Only flag: (1) DRU's own ™ marks missing the ™ symbol, OR (2) content copying a SPECIFIC named competitor's trademark.
+
+${allItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agent_name}\nContent: ${item.raw_output.slice(0, 300)}...`).join('\n\n---\n\n')}
+
+Return ONLY a valid JSON array:
+[{"id":"...","cleared":true,"flags":"none","notes":"No violations."}]`, 1500);
+
+  const isabellaResults = JSON.parse(isabellaBatch.replace(/```json|```/g, '').trim());
+
+  // BATCH STEP 2: Full governance review for Isabella-cleared items — ONE call
+  const clearedByIsabella = isabellaResults.filter((r: any) => r.cleared);
+  const blockedByIsabella = isabellaResults.filter((r: any) => !r.cleared);
+
+  let govResults: any[] = [];
+  if (clearedByIsabella.length > 0) {
+    const clearedItems = allItems.filter(item => clearedByIsabella.some((r: any) => r.id === item.id));
+    const govBatch = await callAnthropic(`${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting (Khalid, Sofia, James, Mei Lin, Rafael, Amara, Diego, Yuki, Marcus). Isabella has cleared these items for trademark compliance. Review for legal risk, privacy, financial accuracy, and brand consistency. IMPORTANT: Return cleared:true unless there is a specific real issue.
+
+${clearedItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agent_name} | Division: ${item.division}\nContent: ${item.raw_output.slice(0, 300)}...`).join('\n\n---\n\n')}
+
+Return ONLY a valid JSON array:
+[{"id":"...","cleared":true,"compliance_score":9,"governance_notes":"No issues.","legal_notes":"No legal risk.","flags":"none"}]`, 1500);
+
+    govResults = JSON.parse(govBatch.replace(/```json|```/g, '').trim());
+  }
+
+  // Update all items concurrently
   let cleared = 0;
   let blocked = 0;
 
-  // Process all items concurrently — prevents sequential timeout
-  const results = await Promise.all(allItems.map(item => runGovernanceForItem(item)));
-  results.forEach(isCleared => { if (isCleared) cleared++; else blocked++; });
+  await Promise.all(allItems.map(async (item) => {
+    const isabellaResult = isabellaResults.find((r: any) => r.id === item.id);
+    if (!isabellaResult?.cleared) {
+      blocked++;
+      await updateCSQ(item.id, { governance_cleared: false, governance_flags: isabellaResult?.flags ?? 'isabella_blocked', governance_notes: isabellaResult?.notes ?? 'Blocked by Isabella', governance_cleared_at: new Date().toISOString(), status: 'rejected' });
+      return;
+    }
+    const govResult = govResults.find((r: any) => r.id === item.id);
+    if (govResult?.cleared) {
+      cleared++;
+      await updateCSQ(item.id, { governance_cleared: true, compliance_score: govResult.compliance_score, governance_notes: govResult.governance_notes, legal_notes: govResult.legal_notes, governance_flags: govResult.flags, governance_cleared_at: new Date().toISOString(), status: 'governance_cleared' });
+    } else {
+      blocked++;
+      await updateCSQ(item.id, { governance_cleared: false, governance_notes: govResult?.governance_notes ?? 'Review failed', governance_flags: govResult?.flags ?? 'review_failed', governance_cleared_at: new Date().toISOString(), status: 'rejected' });
+    }
+  }));
 
+  console.log(`[governance] ✅ Reviewed ${allItems.length}: ${cleared} cleared, ${blocked} blocked`);
   return { reviewed: allItems.length, cleared, blocked };
 }
 
