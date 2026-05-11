@@ -3,21 +3,31 @@
 // File: api/ghl-agent-trigger.ts
 // Runtime: Vercel Node.js Serverless
 //
-// PIPELINE 1 — Revenue & Growth (10 agents):
-//   Omar → Ryan → Aaliyah (chain)
-//   Serena, Mateo, Jaylen, Chloe (daily independent)
-//   Zara (Mon), Elena (Tue), Kwame (Wed) (weekly independent)
+// ALL AGENTS OPERATE IN GENIUS MODE
 //
-// PIPELINE 2 — Content & Brand (5 agents):
-//   Camila (Mon) → content_queue
-//   Darius (daily) → pulls from queue → approvals
-//   Ravi (daily) → design brief → approvals
-//   Yara (Sat/Sun) → Spanish localization → approvals
-//   Ingrid (Fri) → press release from week's content → approvals
+// FULL CHAIN:
+//   Agents → chief_of_staff_queue (raw output)
+//   Priya (7:55am) → executive briefing → CSQ
+//   Raymond (11:00am) → reviews all CSQ items, flags "needs attention"
+//   Travis (11:05am) → organizes + packages for governance
+//   AI Governance + Legal & Finance + Isabella (11:15am) → compliance gate
+//   Isabella auto-blocks Trademark Classes 35, 41, 42 violations
+//   AI Twin (11:30am) → synthesizes cleared items in DeAnna's voice
+//   → approvals table → ONE notification to DeAnna
+//
+// NEEDS ATTENTION PATH (anytime):
+//   Raymond flags item → Governance+Legal → Twin → immediate notification
+//   Same chain, same standards — no waiting for 11:30am
 // ================================================================
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
+
+// ─────────────────────────────────────────────────────────────
+// GENIUS MODE — injected into every agent prompt
+// ─────────────────────────────────────────────────────────────
+
+const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -58,30 +68,53 @@ interface OmarResult {
   error?: string;
 }
 
+interface CSQItem {
+  id: string;
+  agent_id: string;
+  agent_name: string;
+  division: string;
+  task: string;
+  category: string;
+  raw_output: string;
+  priority: string;
+  raymond_notes?: string;
+  raymond_action?: string;
+  governance_notes?: string;
+  legal_notes?: string;
+  isabella_flags?: string;
+  compliance_score?: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Agent Routing Map
 // ─────────────────────────────────────────────────────────────
 
 const AGENT_ROUTES: Record<string, AgentRoute> = {
-  // Pipeline 1 — Revenue
-  cron_omar_lead_score:     { agent_id: 'omar',     agent_name: 'Omar Patel',       division: 'Revenue & Growth', task: 'scan_score_route_leads',       pipeline: 'p1_omar' },
-  cron_ryan_crm_update:     { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',    division: 'Revenue & Growth', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
-  cron_serena_coaching:     { agent_id: 'serena',   agent_name: 'Serena Jackson',   division: 'Revenue & Growth', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
-  cron_mateo_sales_support: { agent_id: 'mateo',    agent_name: 'Mateo Gonzalez',   division: 'Revenue & Growth', task: 'sales_pipeline_review',         pipeline: 'p1_mateo' },
-  cron_aaliyah_outreach:    { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',   division: 'Revenue & Growth', task: 'personalized_outreach_messages', pipeline: 'p1_aaliyah' },
-  cron_jaylen_email:        { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',    division: 'Revenue & Growth', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
-  cron_chloe_copy:          { agent_id: 'chloe',    agent_name: 'Chloe Dubois',     division: 'Revenue & Growth', task: 'daily_copy_asset',              pipeline: 'p1_chloe' },
-  cron_zara_product:        { agent_id: 'zara',     agent_name: 'Zara Ahmed',       division: 'Revenue & Growth', task: 'product_launch_readiness',      pipeline: 'p1_zara' },
-  cron_elena_knowledge:     { agent_id: 'elena',    agent_name: 'Elena Vasquez',    division: 'Revenue & Growth', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
-  cron_kwame_proposal:      { agent_id: 'kwame',    agent_name: 'Kwame Asante',     division: 'Revenue & Growth', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
+  // Command Layer
+  cron_priya_executive:          { agent_id: 'priya',      agent_name: 'Priya Sharma',         division: 'Command',         task: 'daily_executive_briefing',        pipeline: 'cmd_priya' },
+  cron_raymond_review:           { agent_id: 'raymond',    agent_name: 'Raymond Holloway',     division: 'Command',         task: 'daily_operations_review',         pipeline: 'cmd_raymond' },
+  cron_travis_organize:          { agent_id: 'travis',     agent_name: 'Travis Weston',        division: 'Command',         task: 'organize_for_governance',         pipeline: 'cmd_travis' },
+  cron_governance_legal_review:  { agent_id: 'governance', agent_name: 'Governance + Legal',   division: 'AI Governance',   task: 'compliance_and_legal_review',     pipeline: 'cmd_governance' },
+  cron_twin_synthesis:           { agent_id: 'twin',       agent_name: "DeAnna's AI Twin",     division: 'Command',         task: 'daily_synthesis_briefing',        pipeline: 'cmd_twin' },
+  // Pipeline 1 — Revenue & Growth
+  cron_omar_lead_score:          { agent_id: 'omar',       agent_name: 'Omar Patel',           division: 'Revenue & Growth', task: 'scan_score_route_leads',         pipeline: 'p1_omar' },
+  cron_ryan_crm_update:          { agent_id: 'ryan',       agent_name: 'Ryan Nakamura',        division: 'Revenue & Growth', task: 'overnight_crm_sync',             pipeline: 'p1_ryan' },
+  cron_serena_coaching:          { agent_id: 'serena',     agent_name: 'Serena Jackson',       division: 'Revenue & Growth', task: 'morning_coaching_briefing',      pipeline: 'p1_serena' },
+  cron_mateo_sales_support:      { agent_id: 'mateo',      agent_name: 'Mateo Gonzalez',       division: 'Revenue & Growth', task: 'sales_pipeline_review',          pipeline: 'p1_mateo' },
+  cron_aaliyah_outreach:         { agent_id: 'aaliyah',    agent_name: 'Aaliyah Foster',       division: 'Revenue & Growth', task: 'personalized_outreach_messages', pipeline: 'p1_aaliyah' },
+  cron_jaylen_email:             { agent_id: 'jaylen',     agent_name: 'Jaylen Brooks',        division: 'Revenue & Growth', task: 'email_campaign_content',         pipeline: 'p1_jaylen' },
+  cron_chloe_copy:               { agent_id: 'chloe',      agent_name: 'Chloe Dubois',         division: 'Revenue & Growth', task: 'daily_copy_asset',               pipeline: 'p1_chloe' },
+  cron_zara_product:             { agent_id: 'zara',       agent_name: 'Zara Ahmed',           division: 'Revenue & Growth', task: 'product_launch_readiness',       pipeline: 'p1_zara' },
+  cron_elena_knowledge:          { agent_id: 'elena',      agent_name: 'Elena Vasquez',        division: 'Revenue & Growth', task: 'product_knowledge_update',       pipeline: 'p1_elena' },
+  cron_kwame_proposal:           { agent_id: 'kwame',      agent_name: 'Kwame Asante',         division: 'Revenue & Growth', task: 'proposal_template_update',       pipeline: 'p1_kwame' },
   // Pipeline 2 — Content & Brand
-  cron_camila_linkedin_queue:  { agent_id: 'camila',  agent_name: 'Camila Flores',  division: 'Content & Brand', task: 'generate_weekly_linkedin_queue', pipeline: 'p2_camila' },
-  cron_darius_linkedin_post:   { agent_id: 'darius',  agent_name: 'Darius King',    division: 'Content & Brand', task: 'generate_daily_linkedin_post',   pipeline: 'p2_darius' },
-  cron_ravi_design_brief:      { agent_id: 'ravi',    agent_name: 'Ravi Gupta',     division: 'Content & Brand', task: 'generate_design_brief',          pipeline: 'p2_ravi' },
-  cron_yara_localization:      { agent_id: 'yara',    agent_name: 'Yara Mansour',   division: 'Content & Brand', task: 'spanish_localization',           pipeline: 'p2_yara' },
-  cron_ingrid_press_release:   { agent_id: 'ingrid',  agent_name: 'Ingrid Larsen',  division: 'Content & Brand', task: 'weekly_press_release',           pipeline: 'p2_ingrid' },
+  cron_camila_linkedin_queue:    { agent_id: 'camila',     agent_name: 'Camila Flores',        division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue', pipeline: 'p2_camila' },
+  cron_darius_linkedin_post:     { agent_id: 'darius',     agent_name: 'Darius King',          division: 'Content & Brand',  task: 'generate_daily_linkedin_post',   pipeline: 'p2_darius' },
+  cron_ravi_design_brief:        { agent_id: 'ravi',       agent_name: 'Ravi Gupta',           division: 'Content & Brand',  task: 'generate_design_brief',          pipeline: 'p2_ravi' },
+  cron_yara_localization:        { agent_id: 'yara',       agent_name: 'Yara Mansour',         division: 'Content & Brand',  task: 'spanish_localization',           pipeline: 'p2_yara' },
+  cron_ingrid_press_release:     { agent_id: 'ingrid',     agent_name: 'Ingrid Larsen',        division: 'Content & Brand',  task: 'weekly_press_release',           pipeline: 'p2_ingrid' },
   // Analytics
-  cron_analytics_weekly:    { agent_id: 'analytics', agent_name: 'Analytics Agent', division: 'Analytics',       task: 'weekly_performance_summary' },
+  cron_analytics_weekly:         { agent_id: 'analytics',  agent_name: 'Analytics Agent',      division: 'Analytics',        task: 'weekly_performance_summary' },
   // GHL Webhooks
   lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',    division: 'Revenue & Growth', task: 'score_new_lead' },
   contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura', division: 'Revenue & Growth', task: 'process_contact_update' },
@@ -92,24 +125,59 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 const CRON_TRIGGER_TYPES = new Set(Object.keys(AGENT_ROUTES).filter(k => k.startsWith('cron_')));
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Anthropic call
+// SHARED — Anthropic call (Haiku — all agents)
 // ─────────────────────────────────────────────────────────────
 
 async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
   });
-  if (!response.ok) throw new Error(`Anthropic error ${response.status}`);
-  const data = await response.json();
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
+  const data = await res.json();
   return data.content?.[0]?.text ?? '';
 }
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Write approval card
+// SHARED — Anthropic call (Sonnet — Twin only, highest quality)
+// ─────────────────────────────────────────────────────────────
+
+async function callTwin(prompt: string, maxTokens = 4000): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!res.ok) throw new Error(`Twin Anthropic error ${res.status}`);
+  const data = await res.json();
+  return data.content?.[0]?.text ?? '';
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHARED — Write to chief_of_staff_queue
+// ─────────────────────────────────────────────────────────────
+
+async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) { console.error(`[csq] Write failed: ${await res.text()}`); return null; }
+  const data = await res.json();
+  return data?.[0]?.id ?? null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHARED — Write final approval (Twin output only)
 // ─────────────────────────────────────────────────────────────
 
 async function writeApproval(record: Record<string, unknown>): Promise<string | null> {
@@ -127,26 +195,74 @@ async function writeApproval(record: Record<string, unknown>): Promise<string | 
 }
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Read latest high-intent leads from approvals
-// Used by Aaliyah to get Omar's output
+// SHARED — Get CSQ items by status
 // ─────────────────────────────────────────────────────────────
 
-async function getLatestHighIntentLeads(): Promise<string> {
+async function getCSQItems(status: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'No lead data available.';
+  if (!url || !key) return [];
   const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(
-    `${url}/rest/v1/approvals?category=eq.lead_intelligence&created_at=gte.${today}&order=created_at.desc&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}` } }
-  );
-  if (!res.ok) return 'No lead data available.';
-  const data = await res.json();
-  return data?.[0]?.output ?? 'No leads scored today.';
+  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.${status}&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) return [];
+  return await res.json();
 }
 
 // ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — OMAR
+// SHARED — Update CSQ item
+// ─────────────────────────────────────────────────────────────
+
+async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify(updates),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHARED — Generic agent → CSQ runner
+// ─────────────────────────────────────────────────────────────
+
+async function runAgentToCSQ(agentId: string, agentName: string, division: string, task: string, category: string, prompt: string, priority = 'normal'): Promise<string | null> {
+  try {
+    const output = await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`, 1500);
+    return await writeToCSQ({ agent_id: agentId, agent_name: agentName, division, task, category, raw_output: output, priority, status: 'pending' });
+  } catch (error) {
+    console.error(`[${agentId}] Error:`, error);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMMAND LAYER — PRIYA SHARMA (Executive Assistant)
+// Daily 7:55am — executive briefing to CSQ for Travis to package
+// ─────────────────────────────────────────────────────────────
+
+async function runPriya(): Promise<string | null> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  return runAgentToCSQ('priya', 'Priya Sharma', 'Command', 'daily_executive_briefing', 'executive_support',
+    `You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority, CEO/Founder of DRU AI Consulting.
+
+Today is ${today}.
+
+${GENIUS_MODE}
+
+Generate DeAnna's daily executive briefing. Include:
+1. Today's strategic focus (one clear priority aligned to DRU AI Consulting's pre-launch phase)
+2. Key follow-up items (correspondence, decisions, or actions that may need attention)
+3. Administrative notes (anything time-sensitive for today)
+4. Calendar/schedule considerations for this day of the week
+5. One executive reminder — something a world-class assistant would flag proactively
+
+Keep it concise, professional, and immediately actionable. DeAnna is building the DRU AI Leadership Ecosystem™ toward her first launch.`);
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIPELINE 1 — OMAR (Lead Scoring)
 // ─────────────────────────────────────────────────────────────
 
 async function runOmar(): Promise<OmarResult> {
@@ -155,38 +271,32 @@ async function runOmar(): Promise<OmarResult> {
   try {
     const yesterday = new Date();
     yesterday.setHours(yesterday.getHours() - 24);
-    const url = `${GHL_API_BASE}/contacts/?locationId=${GHL_LOCATION_ID}&startAfterDate=${encodeURIComponent(yesterday.toISOString())}&limit=100`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${ghlApiKey}`, Version: '2021-07-28' } });
+    const res = await fetch(`${GHL_API_BASE}/contacts/?locationId=${GHL_LOCATION_ID}&startAfterDate=${encodeURIComponent(yesterday.toISOString())}&limit=100`, { headers: { Authorization: `Bearer ${ghlApiKey}`, Version: '2021-07-28' } });
     if (!res.ok) throw new Error(`GHL error ${res.status}`);
     const rawLeads = (await res.json()).contacts ?? [];
-    console.log(`[omar] Found ${rawLeads.length} new leads`);
     if (rawLeads.length === 0) return { success: true, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString() };
-
     const leadSummary = rawLeads.map((l: any) => ({ id: l.id, name: `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim(), email: l.email ?? '', phone: l.phone ?? '', source: l.source ?? 'unknown', tags: l.tags ?? [] }));
-
-    const text = await callAnthropic(`You are Omar Patel, Lead Scoring Agent for DRU AI Consulting. Score each lead 1–10. Return ONLY a JSON array:
+    const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Omar Patel, Lead Scoring Agent for DRU AI Consulting. Score each lead 1–10 based on seniority, business context, source quality, and engagement. Return ONLY a JSON array:
 [{"contact_id":"...","name":"...","email":"...","phone":"...","source":"...","score":8,"intent_level":"high","recommended_action":"...","notes":"..."}]
 Leads: ${JSON.stringify(leadSummary)}`, 2000);
-
     const scored: ScoredLead[] = JSON.parse(text.replace(/```json|```/g, '').trim());
-    const highIntent = scored.filter(l => l.intent_level === 'high');
-    return { success: true, total_leads_scanned: rawLeads.length, scored_leads: scored, high_intent_leads: highIntent, run_date: new Date().toISOString() };
+    return { success: true, total_leads_scanned: rawLeads.length, scored_leads: scored, high_intent_leads: scored.filter(l => l.intent_level === 'high'), run_date: new Date().toISOString() };
   } catch (error) {
     return { success: false, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString(), error: String(error) };
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — RYAN
+// PIPELINE 1 — RYAN (CRM Management → CSQ)
 // ─────────────────────────────────────────────────────────────
 
-async function runRyan(omarResult: OmarResult): Promise<{ approval_id: string | null; cards_created: number; crm_updates: number; high_intent_count: number }> {
+async function runRyan(omarResult: OmarResult): Promise<{ csq_id: string | null; crm_updates: number }> {
   const ghlApiKey = process.env.GHL_API_KEY;
-  if (!ghlApiKey) return { approval_id: null, cards_created: 0, crm_updates: 0, high_intent_count: 0 };
+  if (!ghlApiKey) return { csq_id: null, crm_updates: 0 };
 
   if (omarResult.total_leads_scanned === 0) {
-    const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_omar_lead_score', agent_name: 'Ryan Nakamura', agent_role: 'CRM Management (GHL)', division: 'Revenue & Growth', task_brief: 'Daily lead intelligence — 0 leads scanned', output: '**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.\n\nNext scan: tomorrow at 8:00am CDT.', status: 'pending', notify_deanna: true, priority: 'normal', category: 'lead_intelligence', platform: null });
-    return { approval_id: id, cards_created: 1, crm_updates: 0, high_intent_count: 0 };
+    const csq_id = await writeToCSQ({ agent_id: 'ryan', agent_name: 'Ryan Nakamura', division: 'Revenue & Growth', task: 'overnight_crm_sync', category: 'lead_intelligence', raw_output: '**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.\n\nNext scan: tomorrow at 8:00am CDT.', priority: 'normal', status: 'pending' });
+    return { csq_id, crm_updates: 0 };
   }
 
   let crmUpdates = 0;
@@ -198,230 +308,23 @@ async function runRyan(omarResult: OmarResult): Promise<{ approval_id: string | 
   }
 
   const highIntentSummary = omarResult.high_intent_leads.map(l => `• ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`).join('\n');
-  const briefingCard = await callAnthropic(`You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write an executive briefing card for DeAnna.
-DATA: Total leads: ${omarResult.total_leads_scanned} | High-intent: ${omarResult.high_intent_leads.length} | Medium: ${omarResult.scored_leads.filter(l => l.intent_level === 'medium').length} | Low: ${omarResult.scored_leads.filter(l => l.intent_level === 'low').length}
+  const briefing = await callAnthropic(`${GENIUS_MODE}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing.
+DATA: Total: ${omarResult.total_leads_scanned} | High-intent: ${omarResult.high_intent_leads.length} | Medium: ${omarResult.scored_leads.filter(l => l.intent_level === 'medium').length} | Low: ${omarResult.scored_leads.filter(l => l.intent_level === 'low').length}
 HIGH-INTENT: ${highIntentSummary || 'None today'}
-Include: executive summary, high-intent leads with actions, CRM updates completed, recommended approval action.`);
+Include: executive summary, high-intent leads with specific actions, CRM updates completed, strategic next steps.`);
 
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_omar_lead_score', agent_name: 'Ryan Nakamura', agent_role: 'CRM Management (GHL)', division: 'Revenue & Growth', task_brief: `Daily lead intelligence — ${omarResult.total_leads_scanned} leads, ${omarResult.high_intent_leads.length} high-intent`, output: briefingCard, status: 'pending', ghl_contact_id: omarResult.high_intent_leads.map(l => l.contact_id).join(',') || null, notify_deanna: true, priority: omarResult.high_intent_leads.length > 0 ? 'high' : 'normal', category: 'lead_intelligence', platform: null });
-  return { approval_id: id, cards_created: 1, crm_updates: crmUpdates, high_intent_count: omarResult.high_intent_leads.length };
+  const csq_id = await writeToCSQ({ agent_id: 'ryan', agent_name: 'Ryan Nakamura', division: 'Revenue & Growth', task: 'overnight_crm_sync', category: 'lead_intelligence', raw_output: briefing, priority: omarResult.high_intent_leads.length > 0 ? 'high' : 'normal', status: 'pending' });
+  return { csq_id, crm_updates: crmUpdates };
 }
 
 // ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — AALIYAH (reads Omar's output, writes outreach)
+// PIPELINE 2 — CAMILA (Weekly Content Queue)
 // ─────────────────────────────────────────────────────────────
 
-async function runAaliyah(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const leadIntelligence = await getLatestHighIntentLeads();
-  const output = await callAnthropic(`You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting.
-
-Based on today's lead intelligence from Omar, write personalized outreach messages for each high-intent lead. Create BOTH a LinkedIn DM and an email for each lead.
-
-Lead Intelligence:
-${leadIntelligence}
-
-For each high-intent lead write:
-1. LinkedIn DM (150 words max) — warm, personalized, references their context, soft CTA to book a call
-2. Email (subject line + body, 200 words max) — professional, value-focused, references DRU AI Consulting's relevant service
-
-If no high-intent leads today, write a general warm outreach template for future use.
-
-Brand voice: AI Mastery. Leadership Clarity. Measurable Results. DeAnna R. Upshaw — AI Authority.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_aaliyah_outreach', agent_name: 'Aaliyah Foster', agent_role: 'Personalized Outreach', division: 'Revenue & Growth', task_brief: 'Daily personalized outreach messages for high-intent leads', output, status: 'pending', notify_deanna: true, priority: 'high', category: 'outreach', platform: 'linkedin_email' });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — SERENA (daily coaching briefing)
-// ─────────────────────────────────────────────────────────────
-
-async function runSerena(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Serena Jackson, Business Coach for DRU AI Consulting, led by DeAnna R. Upshaw.
-
-Generate a morning business coaching briefing for DeAnna. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.
-
-Include:
-1. Strategic focus for today (one priority, clearly stated)
-2. Business coaching insight (relevant to an AI consulting founder in pre-launch)
-3. Mindset anchor (one sentence to carry through the day)
-4. One actionable move for today's business growth
-
-Keep it concise, energizing, and strategic. DeAnna is building the DRU AI Leadership Ecosystem™ — every day matters.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_serena_coaching', agent_name: 'Serena Jackson', agent_role: 'Business Coach', division: 'Revenue & Growth', task_brief: 'Daily morning coaching briefing', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'coaching', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — MATEO (sales pipeline review)
-// ─────────────────────────────────────────────────────────────
-
-async function runMateo(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.
-
-Generate a daily sales support briefing for DeAnna R. Upshaw. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.
-
-DRU AI Consulting offers:
-- DRU CLEAR™ AI Readiness Scorecard (free assessment)
-- Strategic Diagnostic ($3,497)
-- Executive Diagnostic ($4,997 — BEST VALUE)
-- From Confusion to Confident with AI™ ($497–$1,497)
-
-Include:
-1. Sales focus for today
-2. Pipeline health check — what stage needs attention
-3. Recommended follow-up actions for warm leads
-4. One sales tip or strategy relevant to AI consulting sales
-5. Objection handling tip for today
-
-Keep it actionable and sales-focused.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_mateo_sales_support', agent_name: 'Mateo Gonzalez', agent_role: 'Sales Support', division: 'Revenue & Growth', task_brief: 'Daily sales pipeline review and support briefing', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'sales_support', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — JAYLEN (email marketing content)
-// ─────────────────────────────────────────────────────────────
-
-async function runJaylen(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting.
-
-Generate today's email marketing content for DeAnna R. Upshaw's campaigns.
-
-Brand: DRU AI Consulting — "AI Mastery. Leadership Clarity. Measurable Results."
-Audience: Executives, directors, founders navigating AI adoption.
-Services: DRU CLEAR™ Scorecard, Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), From Confusion to Confident with AI™ course.
-
-Today generate ONE of the following (rotate daily):
-- A nurture email for leads in the EMERGING tier (just discovered AI)
-- A nurture email for leads in the DEVELOPING tier (exploring AI)
-- A nurture email for ADVANCING leads (implementing AI)
-- A re-engagement email for cold leads
-- A promotional email for the Executive Diagnostic
-
-Include: Subject line (with A/B variant), Preview text, Email body (300 words max), CTA button text.
-
-Make it feel personal, not mass-email. DeAnna's voice: authoritative, warm, strategic.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_jaylen_email', agent_name: 'Jaylen Brooks', agent_role: 'Email Marketing', division: 'Revenue & Growth', task_brief: 'Daily email campaign content', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'email_marketing', platform: 'email' });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — CHLOE (daily copy asset)
-// ─────────────────────────────────────────────────────────────
-
-async function runChloe(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Chloe Dubois, Copy Writer for DRU AI Consulting.
-
-Generate one copy asset for today. Rotate through these types:
-- Facebook/Instagram ad copy (hook + body + CTA)
-- LinkedIn sponsored content copy
-- Landing page headline + subheadline + hero copy
-- CTA button variations (5 options)
-- Testimonial prompt template
-
-Brand: DRU AI Consulting — "AI Mastery. Leadership Clarity. Measurable Results."
-Voice: Confident, clear, strategic. DeAnna R. Upshaw — AI Authority.
-Frameworks: DRU CLEAR™, DRU AI Leadership Ecosystem™, From Confusion to Confident with AI™, DRU AI Transformation Pathway™.
-Offers: Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497).
-
-Write copy that converts executives. No fluff. Every word earns its place.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_chloe_copy', agent_name: 'Chloe Dubois', agent_role: 'Copy Writer', division: 'Revenue & Growth', task_brief: 'Daily copy asset', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'copywriting', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — ZARA (weekly product launch readiness)
-// ─────────────────────────────────────────────────────────────
-
-async function runZara(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting.
-
-Generate a weekly product launch readiness report for DeAnna R. Upshaw.
-
-Current offers:
-- DRU CLEAR™ AI Readiness Scorecard (PWA — live)
-- Strategic Diagnostic ($3,497)
-- Executive Diagnostic ($4,997)
-- From Confusion to Confident with AI™ (Sprint 4 — in development)
-- Daily Connections tiers (Free / Navigator $47/mo / Accelerator $147/mo)
-
-This week assess:
-1. Launch readiness status for each offer
-2. Marketing gaps to address before launch
-3. One product/offer improvement recommendation
-4. Pricing or positioning insight
-5. Next week's launch priority
-
-Be strategic and specific. DeAnna is pre-launch — every recommendation should move her closer to her first paying client.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_zara_product', agent_name: 'Zara Ahmed', agent_role: 'Product Launch', division: 'Revenue & Growth', task_brief: 'Weekly product launch readiness check', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'product_launch', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — ELENA (weekly product knowledge)
-// ─────────────────────────────────────────────────────────────
-
-async function runElena(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting.
-
-Generate a weekly product knowledge update for DeAnna's team and sales process.
-
-DRU AI Consulting offers:
-- DRU CLEAR™ AI Readiness Scorecard — 4 tiers: Emerging, Developing, Advancing, Leading
-- Strategic Diagnostic ($3,497) — for Developing/Advancing leaders
-- Executive Diagnostic ($4,997) — BEST VALUE for Advancing/Leading executives
-- From Confusion to Confident with AI™ — self-paced $497, live $997, 1:1 $1,497
-- Daily Connections — Free, Navigator $47/mo, Accelerator $147/mo
-
-This week generate:
-1. Updated FAQ (5 questions executives commonly ask about AI consulting)
-2. Offer comparison guide (when to recommend each offer)
-3. Common objection + response for each offer
-4. One product positioning insight
-
-Keep it sharp and sales-ready.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_elena_knowledge', agent_name: 'Elena Vasquez', agent_role: 'Product Knowledge', division: 'Revenue & Growth', task_brief: 'Weekly product knowledge update', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'product_knowledge', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 1 — KWAME (weekly proposal update)
-// ─────────────────────────────────────────────────────────────
-
-async function runKwame(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const output = await callAnthropic(`You are Kwame Asante, Proposal Writer for DRU AI Consulting.
-
-Generate a weekly proposal and executive summary update for DeAnna R. Upshaw.
-
-This week produce:
-1. Executive summary template for the Executive Diagnostic ($4,997) — 1 page, McKinsey-style
-2. Proposal outline for a hypothetical C-suite client (customize for an executive in financial services or healthcare)
-3. Value proposition statement (3 versions: short/medium/long) for DRU AI Consulting
-4. One proposal best practice tip
-
-Brand: DRU AI Consulting — "AI Mastery. Leadership Clarity. Measurable Results."
-Positioning: DeAnna R. Upshaw, AI Authority — 25+ years IT, 10+ years leadership development, international facilitator.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_kwame_proposal', agent_name: 'Kwame Asante', agent_role: 'Proposal Writer', division: 'Revenue & Growth', task_brief: 'Weekly proposal template and executive summary update', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'proposals', platform: null });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 2 — CAMILA (weekly content strategy)
-// ─────────────────────────────────────────────────────────────
-
-async function runCamila(): Promise<{ posts_generated: number; week_of: string }> {
+async function runCamila(): Promise<number> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return { posts_generated: 0, week_of: '' };
-
+  if (!url || !key) return 0;
   const now = new Date();
   const monday = new Date(now);
   monday.setDate(now.getDate() - now.getDay() + 1);
@@ -429,40 +332,23 @@ async function runCamila(): Promise<{ posts_generated: number; week_of: string }
   const weekOf = monday.toISOString().split('T')[0];
   const days = [1,2,3,4,5].map(d => { const date = new Date(monday); date.setDate(monday.getDate() + d - 1); return { day_number: d, scheduled_for: date.toISOString().split('T')[0] }; });
 
-  const text = await callAnthropic(`You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-
-Brand: "AI Mastery. Leadership Clarity. Measurable Results."
-Frameworks (always ™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover→Diagnose→Design→Deploy→Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-Audience: Executives, directors, founders navigating AI adoption.
-
-Generate 5 LinkedIn posts for this week (Mon–Fri). Mix types:
-Day 1: Thought leadership | Day 2: Educational | Day 3: Engagement question | Day 4: Story/insight | Day 5: Soft promotional
-
-Each post: compelling hook (stops scroll), 150–250 words, one framework, clear CTA, 3–5 hashtags. Sound like DeAnna.
-
-Return ONLY valid JSON array:
-[{"day_number":1,"framework_covered":"DRU CLEAR™","post_type":"thought_leadership","hook":"...","content":"...","hashtags":"#AILeadership"}]`, 3000);
+  const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Frameworks (™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™. Audience: Executives, directors, founders navigating AI adoption.
+Generate 5 LinkedIn posts (Mon–Fri). Day 1: thought_leadership | Day 2: educational | Day 3: engagement | Day 4: story_insight | Day 5: soft_promotional. Each: compelling hook, 150–250 words, one framework, CTA, 3–5 hashtags.
+Return ONLY valid JSON: [{"day_number":1,"framework_covered":"DRU CLEAR™","post_type":"thought_leadership","hook":"...","content":"...","hashtags":"#AILeadership"}]`, 3000);
 
   const posts = JSON.parse(text.replace(/```json|```/g, '').trim());
-
   for (const post of posts) {
     const day = days.find(d => d.day_number === post.day_number) ?? days[0];
-    await fetch(`${url}/rest/v1/content_queue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ week_of: weekOf, day_number: post.day_number, scheduled_for: day.scheduled_for, platform: 'linkedin', framework_covered: post.framework_covered, post_type: post.post_type, hook: post.hook, content: post.content, hashtags: post.hashtags, status: 'queued' }),
-    });
+    await fetch(`${url}/rest/v1/content_queue`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ week_of: weekOf, day_number: post.day_number, scheduled_for: day.scheduled_for, platform: 'linkedin', framework_covered: post.framework_covered, post_type: post.post_type, hook: post.hook, content: post.content, hashtags: post.hashtags, status: 'queued' }) });
   }
-
-  console.log(`[camila] ✅ ${posts.length} posts written to content_queue`);
-  return { posts_generated: posts.length, week_of: weekOf };
+  return posts.length;
 }
 
 // ─────────────────────────────────────────────────────────────
-// PIPELINE 2 — DARIUS (daily LinkedIn post)
+// PIPELINE 2 — DARIUS (Daily Post → CSQ)
 // ─────────────────────────────────────────────────────────────
 
-async function runDarius(): Promise<{ approval_id: string | null; cards_created: number; framework_covered: string }> {
+async function runDarius(): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const today = new Date().toISOString().split('T')[0];
@@ -472,201 +358,371 @@ async function runDarius(): Promise<{ approval_id: string | null; cards_created:
   const weekOf = monday.toISOString().split('T')[0];
 
   let postContent = '';
-  let frameworkCovered = 'Mixed';
   let queueId: string | null = null;
 
   if (url && key) {
     const res = await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&status=eq.queued&scheduled_for=eq.${today}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (res.ok) {
       const queue = await res.json();
-      if (queue.length > 0) {
-        queueId = queue[0].id;
-        frameworkCovered = queue[0].framework_covered;
-        postContent = `${queue[0].hook}\n\n${queue[0].content}\n\n${queue[0].hashtags}`;
-      }
+      if (queue.length > 0) { queueId = queue[0].id; postContent = `${queue[0].hook}\n\n${queue[0].content}\n\n${queue[0].hashtags}`; }
     }
   }
 
   if (!postContent) {
-    postContent = await callAnthropic(`You are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-
-Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results."
-Frameworks (™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-
-Hook that stops the scroll. 150–250 words. One framework. Strong CTA. 3–5 hashtags. Sound like DeAnna.`);
-    frameworkCovered = 'Mixed';
+    postContent = await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Use a ™ framework. 150–250 words. Strong CTA. 3–5 hashtags. Sound like DeAnna R. Upshaw — AI Authority.`);
   }
 
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_darius_linkedin_post', agent_name: 'Darius King', agent_role: 'Viral Scripter', division: 'Content & Brand', task_brief: `Daily LinkedIn post — ${frameworkCovered} — ${today}`, output: postContent, status: 'pending', notify_deanna: true, priority: 'normal', category: 'linkedin_post', platform: 'linkedin' });
+  const csqId = await writeToCSQ({ agent_id: 'darius', agent_name: 'Darius King', division: 'Content & Brand', task: 'generate_daily_linkedin_post', category: 'linkedin_post', raw_output: postContent, priority: 'normal', status: 'pending' });
 
   if (queueId && url && key) {
-    await fetch(`${url}/rest/v1/content_queue?id=eq.${queueId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ status: 'submitted', approval_id: id, submitted_at: new Date().toISOString() }) });
+    await fetch(`${url}/rest/v1/content_queue?id=eq.${queueId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ status: 'submitted', submitted_at: new Date().toISOString() }) });
   }
-
-  return { approval_id: id, cards_created: 1, framework_covered: frameworkCovered };
+  return csqId;
 }
 
 // ─────────────────────────────────────────────────────────────
-// PIPELINE 2 — RAVI (design brief)
+// COMMAND LAYER — RAYMOND HOLLOWAY (Chief of Staff)
+// Reviews all pending CSQ items from today
+// Adds strategic context, priority, flags "needs attention" items
 // ─────────────────────────────────────────────────────────────
 
-async function runRavi(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const today = new Date().toISOString().split('T')[0];
-  const output = await callAnthropic(`You are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
+async function runRaymond(): Promise<{ reviewed: number; needs_attention: number }> {
+  const pending = await getCSQItems('pending');
+  console.log(`[raymond] Reviewing ${pending.length} pending items...`);
+  if (pending.length === 0) return { reviewed: 0, needs_attention: 0 };
 
-Brand colors: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).
+  let needsAttentionCount = 0;
 
-Generate a creative design brief for today's LinkedIn post visual. Be creative — not every post needs the same treatment.
+  for (const item of pending) {
+    try {
+      const review = await callAnthropic(`${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw's most trusted operations lead. You oversee 8 divisions and 36 agents.
 
-Include:
-1. Visual concept (what should this graphic communicate at a glance)
-2. Layout recommendation (text overlay, split image, abstract, data viz, quote card, etc.)
-3. Color palette for this specific post
-4. Image/illustration direction (what to show or generate)
-5. Typography guidance (what text to feature, if any)
-6. AI image generation prompt (ready to use in Midjourney or DALL-E)
+Review this agent output and provide your Chief of Staff assessment.
 
-Today: ${today}. Make it scroll-stopping and brand-consistent.`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_ravi_design_brief', agent_name: 'Ravi Gupta', agent_role: 'Graphic Designer', division: 'Content & Brand', task_brief: `Daily design brief — ${today}`, output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'design_brief', platform: 'linkedin' });
-  return { approval_id: id, cards_created: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 2 — YARA (Spanish localization)
-// ─────────────────────────────────────────────────────────────
-
-async function runYara(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  let topPost = '';
-
-  if (url && key) {
-    const monday = new Date();
-    monday.setDate(monday.getDate() - monday.getDay() + 1);
-    const weekOf = monday.toISOString().split('T')[0];
-    const res = await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&status=neq.queued&order=day_number.asc&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (res.ok) {
-      const queue = await res.json();
-      if (queue.length > 0) topPost = `${queue[0].hook}\n\n${queue[0].content}\n\n${queue[0].hashtags}`;
-    }
-  }
-
-  const output = await callAnthropic(`You are Yara Mansour, Translator and Localization Agent for DRU AI Consulting.
-
-${topPost ? `Translate and localize this LinkedIn post for Spanish-speaking executive audiences (Latin America focus — Costa Rica, Dominican Republic, broader LATAM):
-
-ORIGINAL POST:
-${topPost}
+AGENT: ${item.agent_name} (${item.division})
+TASK: ${item.task}
+OUTPUT:
+${item.raw_output}
 
 Provide:
-1. Full Spanish translation (natural, professional, not literal)
-2. Localization notes (cultural adaptations made)
-3. Translated hashtags (Spanish equivalents)
-4. Any frameworks that need explanation for LATAM audience` : `Generate an original LinkedIn post in Spanish for DRU AI Consulting targeting LATAM executives navigating AI adoption. Brand: "AI Mastery. Leadership Clarity. Measurable Results." — DeAnna R. Upshaw. Include relevant Spanish hashtags.`}`);
+1. Strategic assessment (2–3 sentences — is this output strong, adequate, or needs improvement?)
+2. Priority rating: normal | high (high = needs DeAnna's attention today)
+3. Action: route_to_governance | needs_attention_now
+4. Chief of Staff notes (what should governance and the Twin know about this item?)
 
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_yara_localization', agent_name: 'Yara Mansour', agent_role: 'Translator / Localization', division: 'Content & Brand', task_brief: 'Weekend Spanish localization post', output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'localization', platform: 'linkedin' });
-  return { approval_id: id, cards_created: 1 };
-}
+"needs_attention_now" means this cannot wait for the 11:30am briefing — it requires immediate routing through governance to DeAnna.
 
-// ─────────────────────────────────────────────────────────────
-// PIPELINE 2 — INGRID (Friday press release)
-// ─────────────────────────────────────────────────────────────
+Respond ONLY with valid JSON:
+{"priority":"normal","action":"route_to_governance","assessment":"...","notes":"..."}`, 800);
 
-async function runIngrid(): Promise<{ approval_id: string | null; cards_created: number }> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  let weekContent = '';
+      const parsed = JSON.parse(review.replace(/```json|```/g, '').trim());
+      const isNeedsAttention = parsed.action === 'needs_attention_now';
+      if (isNeedsAttention) needsAttentionCount++;
 
-  if (url && key) {
-    const monday = new Date();
-    monday.setDate(monday.getDate() - monday.getDay() + 1);
-    const weekOf = monday.toISOString().split('T')[0];
-    const res = await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&order=day_number.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (res.ok) {
-      const posts = await res.json();
-      weekContent = posts.map((p: any) => `Day ${p.day_number} (${p.framework_covered}): ${p.hook}`).join('\n');
+      await updateCSQ(item.id, {
+        raymond_reviewed: true,
+        raymond_notes: parsed.notes,
+        raymond_priority: parsed.priority,
+        raymond_action: parsed.action,
+        raymond_reviewed_at: new Date().toISOString(),
+        status: 'raymond_reviewed',
+        priority: parsed.priority,
+      });
+
+      // If needs attention, immediately trigger governance for this item
+      if (isNeedsAttention) {
+        console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name} — ${item.task}`);
+        await runGovernanceForItem({ ...item, raymond_notes: parsed.notes, raymond_action: parsed.action });
+      }
+
+    } catch (error) {
+      console.error(`[raymond] Failed to review item ${item.id}:`, error);
     }
   }
 
-  const output = await callAnthropic(`You are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder.
-
-This week's content themes:
-${weekContent || 'AI leadership, DRU CLEAR™ framework, executive AI adoption'}
-
-Write a professional press release based on the strongest story from this week's content. Pick the angle that positions DRU AI Consulting most powerfully.
-
-Format:
-FOR IMMEDIATE RELEASE
-Headline (AP style)
-Subheadline
-
-City, Date — [Lead paragraph — who, what, when, where, why]
-
-[Body — 2–3 paragraphs with quotes from DeAnna R. Upshaw]
-
-[Boilerplate about DRU AI Consulting]
-
-About DRU AI Consulting:
-DeAnna R. Upshaw — AI Authority, CEO/Founder of DRU AI Consulting (DBA Dimensional Solns, LLC). 25+ years IT experience, 10+ years leadership development, Certified International Corporate Facilitator, Keynote Speaker, Executive Coach. Creator of the DRU AI Leadership Ecosystem™.
-
-###
-
-Contact: druaiconsulting@gmail.com`);
-
-  const id = await writeApproval({ source: 'pg_cron', trigger_type: 'cron_ingrid_press_release', agent_name: 'Ingrid Larsen', agent_role: 'Press Release', division: 'Content & Brand', task_brief: "Friday press release from week's strongest content", output, status: 'pending', notify_deanna: true, priority: 'normal', category: 'press_release', platform: null });
-  return { approval_id: id, cards_created: 1 };
+  return { reviewed: pending.length, needs_attention: needsAttentionCount };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Dispatch to Travis Router (non-pipeline agents)
+// COMMAND LAYER — TRAVIS WESTON (Assistant Chief of Staff)
+// Organizes Raymond-reviewed items for governance gate
+// Groups by division, prepares structured package
 // ─────────────────────────────────────────────────────────────
 
-async function dispatchToTravisRouter(route: AgentRoute, payload: TriggerPayload, triggeredAt: string, sourceLabel: string): Promise<{ approval_id?: string; cards_created?: number }> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return {};
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+async function runTravis(): Promise<number> {
+  const reviewed = await getCSQItems('raymond_reviewed');
+  // Filter out items already sent via needs_attention_now path
+  const toOrganize = reviewed.filter(item => item.raymond_action !== 'needs_attention_now');
+  console.log(`[travis] Organizing ${toOrganize.length} items for governance...`);
+
+  for (const item of toOrganize) {
+    await updateCSQ(item.id, { status: 'travis_organized' });
+  }
+
+  return toOrganize.length;
+}
+
+// ─────────────────────────────────────────────────────────────
+// GOVERNANCE GATE — Single item review
+// Used by both scheduled (11:15am) and needs_attention_now paths
+// Includes Isabella Moreno trademark auto-block (Classes 35, 41, 42)
+// ─────────────────────────────────────────────────────────────
+
+async function runGovernanceForItem(item: CSQItem): Promise<boolean> {
   try {
-    const res = await fetch(`${url}/functions/v1/travis-router`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ agent_id: route.agent_id, agent_name: route.agent_name, division: route.division, task: route.task, trigger_type: payload.trigger_type, source: sourceLabel, payload, triggered_at: triggeredAt }), signal: controller.signal });
-    clearTimeout(timeout);
-    const text = await res.text();
-    if (!res.ok) { console.error(`[travis-router] ${res.status}: ${text}`); return {}; }
-    try { return JSON.parse(text); } catch { return {}; }
-  } catch (error: unknown) {
-    clearTimeout(timeout);
-    if (error instanceof Error && error.name === 'AbortError') console.warn('[travis-router] Timed out after 8s');
-    else console.error('[travis-router] Error:', error);
-    return {};
+    // Isabella Moreno — Trademark Auto-Block (Classes 35, 41, 42)
+    const isabellaCheck = await callAnthropic(`${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. You auto-block any content violating Trademark Classes 35, 41, and 42.
+
+Trademark Class definitions:
+- Class 35: Business consulting, advertising, business management, organizational services
+- Class 41: Education, training, coaching, leadership development, entertainment
+- Class 42: Technology consulting, AI services, software development, research
+
+DRU AI Consulting's protected marks (™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+
+Review this content for trademark violations:
+${item.raw_output}
+
+Check for:
+1. Misuse of DRU AI Consulting's ™ marks (missing ™, incorrect use)
+2. Content that could infringe on Class 35, 41, or 42 trademarks of others
+3. Claims that could constitute trademark dilution
+4. Brand positioning statements that contradict registered positioning
+
+Respond ONLY with valid JSON:
+{"cleared":true,"flags":"none","isabella_notes":"All trademark marks correctly applied. No violations detected."}
+OR if issues found:
+{"cleared":false,"flags":"missing_trademark_symbol|incorrect_class_35_claim","isabella_notes":"Specific violation description here. BLOCKED."}`, 600);
+
+    const isabellaResult = JSON.parse(isabellaCheck.replace(/```json|```/g, '').trim());
+
+    if (!isabellaResult.cleared) {
+      console.warn(`[isabella] ⛔ BLOCKED: ${item.agent_name} — ${isabellaResult.flags}`);
+      await updateCSQ(item.id, {
+        governance_cleared: false,
+        governance_flags: isabellaResult.flags,
+        governance_notes: `BLOCKED BY ISABELLA: ${isabellaResult.isabella_notes}`,
+        status: 'rejected',
+        governance_cleared_at: new Date().toISOString(),
+      });
+      return false;
+    }
+
+    // Full Governance + Legal review
+    const govReview = await callAnthropic(`${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance review panel for DRU AI Consulting:
+- Khalid Hassan (Disclaimer Writer) — flags content requiring legal disclaimers
+- Sofia Petrov (Privacy Policy) — flags privacy and data compliance concerns
+- James Osei (Contract Writer) — reviews proposals and agreements for legal risk
+- Mei Lin (Brand Protection) — ensures brand consistency and IP protection
+- Rafael Torres (Continuous Learning) — identifies improvement opportunities
+- Amara Okafor (Legal Team) — overall legal risk assessment
+- Diego Reyes (Expense Manager) — flags any financial exposure claims
+- Yuki Tanaka (Financial Reporting) — verifies accuracy of any financial statements
+- Marcus Chen (Tax Strategist) — flags tax implications in financial content
+
+Isabella Moreno has already cleared this content for trademark compliance.
+
+Review this content for ALL other compliance concerns:
+
+AGENT: ${item.agent_name} | DIVISION: ${item.division}
+RAYMOND'S NOTES: ${item.raymond_notes ?? 'N/A'}
+CONTENT:
+${item.raw_output}
+
+Assess:
+1. Legal risk (disclaimers needed? legal exposure?)
+2. Privacy compliance (any PII or data concerns?)
+3. Financial accuracy (any claims about pricing, ROI, results?)
+4. Brand consistency (aligned with DRU AI Consulting positioning?)
+5. Improvement notes for Rafael Torres
+
+Respond ONLY with valid JSON:
+{"cleared":true,"compliance_score":9,"governance_notes":"...","legal_notes":"...","flags":"none"}`, 800);
+
+    const govResult = JSON.parse(govReview.replace(/```json|```/g, '').trim());
+
+    await updateCSQ(item.id, {
+      governance_cleared: govResult.cleared,
+      governance_notes: govResult.governance_notes,
+      legal_notes: govResult.legal_notes,
+      governance_flags: govResult.flags,
+      compliance_score: govResult.compliance_score,
+      isabella_flags: isabellaResult.isabella_notes,
+      governance_cleared_at: new Date().toISOString(),
+      status: govResult.cleared ? 'governance_cleared' : 'rejected',
+    });
+
+    return govResult.cleared;
+  } catch (error) {
+    console.error(`[governance] Error reviewing item ${item.id}:`, error);
+    return false;
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Digest Notification
+// COMMAND LAYER — GOVERNANCE + LEGAL GATE (scheduled 11:15am)
+// Processes all travis_organized items
 // ─────────────────────────────────────────────────────────────
 
-async function sendDigestNotification(agentName: string, task: string, division: string, cardsCreated: number, approvalId: string | null | undefined, triggeredAt: string, summary?: string): Promise<void> {
+async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
+  const items = await getCSQItems('travis_organized');
+  console.log(`[governance] Reviewing ${items.length} items...`);
+  if (items.length === 0) return { reviewed: 0, cleared: 0, blocked: 0 };
+
+  let cleared = 0;
+  let blocked = 0;
+
+  for (const item of items) {
+    const isCleared = await runGovernanceForItem(item);
+    if (isCleared) cleared++; else blocked++;
+  }
+
+  return { reviewed: items.length, cleared, blocked };
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMMAND LAYER — AI TWIN SYNTHESIS (11:30am)
+// Reads all governance_cleared items
+// Synthesizes in DeAnna's voice using Sonnet
+// Writes ONE consolidated briefing to approvals table
+// Sends ONE notification to DeAnna
+// ─────────────────────────────────────────────────────────────
+
+async function runTwinSynthesis(needsAttentionOnly = false): Promise<{ approval_id: string | null; items_synthesized: number }> {
+  const status = needsAttentionOnly ? 'needs_attention_cleared' : 'governance_cleared';
+  const items = await getCSQItems('governance_cleared');
+  console.log(`[twin] Synthesizing ${items.length} cleared items...`);
+
+  if (items.length === 0) {
+    console.log('[twin] No cleared items to synthesize today.');
+    return { approval_id: null, items_synthesized: 0 };
+  }
+
+  // Group items by division for structured synthesis
+  const byDivision: Record<string, CSQItem[]> = {};
+  for (const item of items) {
+    if (!byDivision[item.division]) byDivision[item.division] = [];
+    byDivision[item.division].push(item);
+  }
+
+  const divisionSummaries = Object.entries(byDivision).map(([div, divItems]) =>
+    `**${div}:**\n${divItems.map(i => `• ${i.agent_name} (${i.task.replace(/_/g, ' ')}): ${i.raw_output.slice(0, 300)}...`).join('\n')}`
+  ).join('\n\n');
+
+  const synthesis = await callTwin(`You are DeAnna R. Upshaw's AI Twin — the Master Orchestrator of DRU AI Consulting. You speak with authority, clarity, and strategic precision in DeAnna's voice.
+
+Your team has completed today's operations. Raymond reviewed everything. AI Governance + Legal (including Isabella Moreno's trademark clearance) has cleared all items. You are now synthesizing the day's work into an executive briefing for DeAnna's review and approval.
+
+BRAND PRINCIPLE: "AI Mastery. Leadership Clarity. Measurable Results."
+FRAMEWORKS (always ™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
+
+TODAY'S CLEARED OPERATIONS:
+${divisionSummaries}
+
+RAYMOND'S OVERALL NOTES:
+${items.map(i => i.raymond_notes).filter(Boolean).join(' | ')}
+
+Synthesize this into ONE executive briefing in DeAnna's voice. Structure:
+
+## Daily Operations Briefing — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+
+**Executive Summary** (3–4 sentences in first person — "My team has..." — strategic overview of today's operations)
+
+**Revenue & Growth** (key highlights, lead intelligence, sales activity)
+
+**Content & Brand** (today's content, design, outreach)
+
+**Administrative** (Priya's executive briefing items)
+
+**Decisions Needed** (anything requiring DeAnna's approval or action)
+
+**Tomorrow's Priorities** (what the team is positioned to execute)
+
+Write as DeAnna would speak to herself — authoritative, clear, action-oriented. This is her mirror.`, 4000);
+
+  const approvalId = await writeApproval({
+    source: 'twin_synthesis',
+    trigger_type: 'cron_twin_synthesis',
+    agent_name: "DeAnna's AI Twin",
+    agent_role: 'Master Orchestrator',
+    division: 'Command',
+    task_brief: `Daily operations briefing — ${items.length} items synthesized across ${Object.keys(byDivision).length} divisions`,
+    output: synthesis,
+    status: 'pending',
+    notify_deanna: true,
+    priority: items.some(i => i.priority === 'high') ? 'high' : 'normal',
+    category: 'daily_briefing',
+    platform: null,
+  });
+
+  // Mark all synthesized items
+  for (const item of items) {
+    await updateCSQ(item.id, { twin_processed: true, twin_synthesis: synthesis.slice(0, 500), approval_id: approvalId, twin_processed_at: new Date().toISOString(), status: 'twin_processed' });
+  }
+
+  console.log(`[twin] ✅ Daily briefing synthesized | approval_id: ${approvalId}`);
+  return { approval_id: approvalId, items_synthesized: items.length };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notification — sent ONLY after Twin synthesis
+// ─────────────────────────────────────────────────────────────
+
+async function sendTwinNotification(approvalId: string | null, itemsCount: number, triggeredAt: string, needsAttention = false): Promise<void> {
   const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
   if (!webhookUrl) return;
-  const cardWord = cardsCreated !== 1 ? 'cards' : 'card';
-  const taskReadable = task.replace(/_/g, ' ');
+
+  const subject = needsAttention
+    ? `DRU AI Ecosystem™ — Your Twin Has Something That Needs Your Attention`
+    : `DRU AI Ecosystem™ — Your Daily Briefing Is Ready`;
+
+  const sms = needsAttention
+    ? `DRU AI™ | Your Twin flagged something that needs your attention.\n\nReview: app.druaiconsulting.com/admin-approvals`
+    : `DRU AI™ | Your daily briefing is ready. ${itemsCount} items synthesized by your Twin.\n\nReview: app.druaiconsulting.com/admin-approvals`;
+
   try {
     await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'druaiconsulting@gmail.com', phone: '+19796186671', first_name: 'DeAnna', last_name: 'Upshaw',
-        agent_name: agentName, division, task: taskReadable, cards_created: cardsCreated,
-        approval_ids: approvalId ?? 'see queue',
-        summary: summary ?? `${agentName} completed the ${taskReadable} task and dropped ${cardsCreated} ${cardWord} into your approval queue.`,
-        triggered_at: triggeredAt, review_url: 'https://app.druaiconsulting.com/admin-approvals',
-        sms_body: `DRU AI™ | ${agentName} dropped ${cardsCreated} ${cardWord} in your queue.\n\nTask: ${taskReadable}\nReview: app.druaiconsulting.com/admin-approvals`,
-        email_subject: `DRU AI Ecosystem™ — ${agentName} Queue Update`,
-        email_body: `Your AI Ecosystem ran on schedule.\n\nAgent: ${agentName}\nDivision: ${division}\nTask: ${taskReadable}\nCards: ${cardsCreated}\n\n${summary ?? ''}\n\nReview: https://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+        email: 'druaiconsulting@gmail.com', phone: '+19796186671',
+        first_name: 'DeAnna', last_name: 'Upshaw',
+        agent_name: "DeAnna's AI Twin", division: 'Command',
+        task: needsAttention ? 'needs attention' : 'daily synthesis briefing',
+        cards_created: 1, approval_ids: approvalId ?? 'see queue',
+        summary: needsAttention
+          ? `Your Twin has identified something that needs your attention. Governance and Legal have cleared it. Review in your approval queue.`
+          : `Your AI Twin has synthesized today's operations across ${itemsCount} items from your team. Your daily briefing is ready for review and approval.`,
+        triggered_at: triggeredAt,
+        review_url: 'https://app.druaiconsulting.com/admin-approvals',
+        sms_body: sms,
+        email_subject: subject,
+        email_body: `${subject}\n\n${needsAttention ? 'Your Twin has identified something that needs your attention. It has cleared Governance and Legal review.' : `Your AI Team completed today's operations. Your Twin synthesized ${itemsCount} items across your divisions.`}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
       }),
     });
-  } catch (error) { console.warn('[notification] Failed (non-fatal):', error); }
+    console.log(`[twin] ✅ Notification sent`);
+  } catch (error) {
+    console.warn('[twin] Notification failed (non-fatal):', error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Standard dispatch to Travis Router (non-pipeline agents)
+// ─────────────────────────────────────────────────────────────
+
+async function dispatchToTravisRouter(route: AgentRoute, payload: TriggerPayload, triggeredAt: string, sourceLabel: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    await fetch(`${url}/functions/v1/travis-router`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ agent_id: route.agent_id, agent_name: route.agent_name, division: route.division, task: route.task, trigger_type: payload.trigger_type, source: sourceLabel, payload, triggered_at: triggeredAt }), signal: controller.signal });
+    clearTimeout(timeout);
+  } catch (error: unknown) {
+    clearTimeout(timeout);
+    if (!(error instanceof Error && error.name === 'AbortError')) console.error('[travis-router] Error:', error);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -686,60 +742,121 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const sourceLabel = payload.source ?? 'webhook';
   const triggeredAt = new Date().toISOString();
-  const isCronSource = CRON_TRIGGER_TYPES.has(payload.trigger_type);
-
   console.log(`[ghl-agent-trigger] ✅ ${route.agent_name} | ${route.division} | ${sourceLabel}`);
 
-  let approvalId: string | null = null;
-  let cardsCreated = 0;
-  let summary: string | undefined;
+  // ── Command Layer ─────────────────────────────────────────
+  if (route.pipeline === 'cmd_priya') {
+    const csqId = await runPriya();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: csqId, message: 'Priya executive briefing written to chief of staff queue' });
+
+  } else if (route.pipeline === 'cmd_raymond') {
+    const result = await runRaymond();
+    res.status(202).json({ success: true, agent: route.agent_name, ...result, message: `Raymond reviewed ${result.reviewed} items, flagged ${result.needs_attention} for immediate attention` });
+
+  } else if (route.pipeline === 'cmd_travis') {
+    const organized = await runTravis();
+    res.status(202).json({ success: true, agent: route.agent_name, organized, message: `Travis organized ${organized} items for governance review` });
+
+  } else if (route.pipeline === 'cmd_governance') {
+    const result = await runGovernanceLegal();
+    res.status(202).json({ success: true, agent: route.agent_name, ...result, message: `Governance+Legal reviewed ${result.reviewed} items: ${result.cleared} cleared, ${result.blocked} blocked by Isabella` });
+
+  } else if (route.pipeline === 'cmd_twin') {
+    const result = await runTwinSynthesis();
+    if (result.approval_id) {
+      await sendTwinNotification(result.approval_id, result.items_synthesized, triggeredAt, false);
+    }
+    res.status(202).json({ success: true, agent: route.agent_name, ...result, message: `Twin synthesized ${result.items_synthesized} items into daily briefing` });
 
   // ── Pipeline 1 — Revenue ──────────────────────────────────
-  if (route.pipeline === 'p1_omar') {
+  } else if (route.pipeline === 'p1_omar') {
     const omar = await runOmar();
     const ryan = await runRyan(omar);
-    approvalId = ryan.approval_id; cardsCreated = ryan.cards_created;
-    summary = `Pipeline 1: ${omar.total_leads_scanned} leads scored, ${ryan.high_intent_count} high-intent, ${ryan.crm_updates} CRM updates`;
+    res.status(202).json({ success: true, agent: route.agent_name, leads_scanned: omar.total_leads_scanned, high_intent: omar.high_intent_leads.length, crm_updates: ryan.crm_updates, message: 'Omar scored leads, Ryan updated CRM — output in chief of staff queue' });
+
+  } else if (route.pipeline === 'p1_serena') {
+    const id = await runAgentToCSQ('serena', 'Serena Jackson', 'Revenue & Growth', 'morning_coaching_briefing', 'coaching', `${GENIUS_MODE}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting. Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move. DeAnna is building the DRU AI Leadership Ecosystem™ toward launch.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
+  } else if (route.pipeline === 'p1_mateo') {
+    const id = await runAgentToCSQ('mateo', 'Mateo Gonzalez', 'Revenue & Growth', 'sales_pipeline_review', 'sales_support', `${GENIUS_MODE}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting. Generate a daily sales support briefing. Offers: Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_aaliyah') {
-    const r = await runAaliyah(); approvalId = r.approval_id; cardsCreated = r.cards_created;
-  } else if (route.pipeline === 'p1_serena') {
-    const r = await runSerena(); approvalId = r.approval_id; cardsCreated = r.cards_created;
-  } else if (route.pipeline === 'p1_mateo') {
-    const r = await runMateo(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let leadContext = 'No lead data available today.';
+    if (url && key) {
+      const today = new Date().toISOString().split('T')[0];
+      const r = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&agent_id=eq.ryan&order=created_at.desc&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+      if (r.ok) { const d = await r.json(); if (d?.[0]?.raw_output) leadContext = d[0].raw_output; }
+    }
+    const id = await runAgentToCSQ('aaliyah', 'Aaliyah Foster', 'Revenue & Growth', 'personalized_outreach_messages', 'outreach', `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results."\n\nLead Intelligence from today:\n${leadContext}\n\nWrite personalized outreach for each high-intent lead — both a LinkedIn DM (150 words max) and an email (subject + 200 word body). If no high-intent leads, write a general warm outreach template.`, 'high');
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p1_jaylen') {
-    const r = await runJaylen(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue & Growth', 'email_campaign_content', 'email_marketing', `${GENIUS_MODE}\n\nYou are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Rotate daily: nurture email (Emerging/Developing/Advancing tier), re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max), CTA. Personal tone, not mass-email. DeAnna's voice: authoritative, warm, strategic.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p1_chloe') {
-    const r = await runChloe(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runAgentToCSQ('chloe', 'Chloe Dubois', 'Revenue & Growth', 'daily_copy_asset', 'copywriting', `${GENIUS_MODE}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy (Facebook/Instagram/LinkedIn), landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Every word earns its place.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p1_zara') {
-    const r = await runZara(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runAgentToCSQ('zara', 'Zara Ahmed', 'Revenue & Growth', 'product_launch_readiness', 'product_launch', `${GENIUS_MODE}\n\nYou are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ Scorecard (live), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), From Confusion to Confident with AI™ (Sprint 4), Daily Connections tiers. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing/positioning insight, next week priority.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p1_elena') {
-    const r = await runElena(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runAgentToCSQ('elena', 'Elena Vasquez', 'Revenue & Growth', 'product_knowledge_update', 'product_knowledge', `${GENIUS_MODE}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (when to recommend each), objection + response per offer, one positioning insight. Sales-ready, sharp, immediately usable.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p1_kwame') {
-    const r = await runKwame(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runAgentToCSQ('kwame', 'Kwame Asante', 'Revenue & Growth', 'proposal_template_update', 'proposals', `${GENIUS_MODE}\n\nYou are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic ($4,997) in McKinsey-style, proposal outline for a C-suite client (financial services or healthcare), value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   // ── Pipeline 2 — Content & Brand ─────────────────────────
   } else if (route.pipeline === 'p2_camila') {
-    const r = await runCamila(); cardsCreated = r.posts_generated;
-    summary = `Camila generated ${r.posts_generated} LinkedIn posts for week of ${r.week_of}`;
+    const count = await runCamila();
+    res.status(202).json({ success: true, agent: route.agent_name, posts_generated: count, message: `Camila generated ${count} posts in content_queue` });
+
   } else if (route.pipeline === 'p2_darius') {
-    const r = await runDarius(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const id = await runDarius();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p2_ravi') {
-    const r = await runRavi(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const today = new Date().toISOString().split('T')[0];
+    const id = await runAgentToCSQ('ravi', 'Ravi Gupta', 'Content & Brand', 'generate_design_brief', 'design_brief', `${GENIUS_MODE}\n\nYou are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout recommendation, color palette, image/illustration direction, typography guidance, AI image generation prompt (Midjourney/DALL-E ready). Today: ${today}. Scroll-stopping and brand-consistent.`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p2_yara') {
-    const r = await runYara(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const url2 = process.env.VITE_SUPABASE_URL;
+    const key2 = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let topPost = '';
+    if (url2 && key2) {
+      const monday = new Date(); monday.setDate(monday.getDate() - monday.getDay() + 1);
+      const weekOf = monday.toISOString().split('T')[0];
+      const r = await fetch(`${url2}/rest/v1/content_queue?week_of=eq.${weekOf}&status=neq.queued&order=day_number.asc&limit=1`, { headers: { apikey: key2, Authorization: `Bearer ${key2}` } });
+      if (r.ok) { const q = await r.json(); if (q.length > 0) topPost = `${q[0].hook}\n\n${q[0].content}\n\n${q[0].hashtags}`; }
+    }
+    const id = await runAgentToCSQ('yara', 'Yara Mansour', 'Content & Brand', 'spanish_localization', 'localization', `${GENIUS_MODE}\n\nYou are Yara Mansour, Translator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${topPost ? `Translate and localize this LinkedIn post for LATAM executives (Costa Rica, Dominican Republic, broader LATAM):\n\n${topPost}\n\nProvide: full Spanish translation, localization notes, translated hashtags.` : 'Write an original LinkedIn post in Spanish for LATAM executives navigating AI adoption.'}`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
   } else if (route.pipeline === 'p2_ingrid') {
-    const r = await runIngrid(); approvalId = r.approval_id; cardsCreated = r.cards_created;
+    const url3 = process.env.VITE_SUPABASE_URL;
+    const key3 = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let weekContent = '';
+    if (url3 && key3) {
+      const monday = new Date(); monday.setDate(monday.getDate() - monday.getDay() + 1);
+      const weekOf = monday.toISOString().split('T')[0];
+      const r = await fetch(`${url3}/rest/v1/content_queue?week_of=eq.${weekOf}&order=day_number.asc`, { headers: { apikey: key3, Authorization: `Bearer ${key3}` } });
+      if (r.ok) { const posts = await r.json(); weekContent = posts.map((p: any) => `Day ${p.day_number} (${p.framework_covered}): ${p.hook}`).join('\n'); }
+    }
+    const id = await runAgentToCSQ('ingrid', 'Ingrid Larsen', 'Content & Brand', 'weekly_press_release', 'press_release', `${GENIUS_MODE}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's content: ${weekContent || 'AI leadership, DRU frameworks, executive AI adoption'}. Write a professional AP-style press release from the strongest story. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate / Contact: druaiconsulting@gmail.com`);
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   // ── Standard dispatch ─────────────────────────────────────
   } else {
-    const r = await dispatchToTravisRouter(route, payload, triggeredAt, sourceLabel);
-    approvalId = r.approval_id ?? null; cardsCreated = r.cards_created ?? 1;
+    await dispatchToTravisRouter(route, payload, triggeredAt, sourceLabel);
+    res.status(202).json({ success: true, agent: route.agent_name, division: route.division, task: route.task, source: sourceLabel });
   }
-
-  if (isCronSource) {
-    await sendDigestNotification(route.agent_name, route.task, route.division, cardsCreated, approvalId, triggeredAt, summary);
-  }
-
-  res.status(202).json({ success: true, agent: route.agent_name, division: route.division, task: route.task, pipeline: route.pipeline ?? null, source: sourceLabel, triggered_at: triggeredAt, approval_id: approvalId, cards_created: cardsCreated, summary: summary ?? null });
 }
