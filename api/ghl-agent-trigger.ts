@@ -432,11 +432,9 @@ Return ONLY a valid JSON array with one object per item, using the exact id prov
     });
 
     if (isNeedsAttention) {
-      const item = pending.find(p => p.id === review.id);
-      if (item) {
-        console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name}`);
-        await runGovernanceForItem({ ...item, raymond_notes: review.notes, raymond_action: review.action });
-      }
+      console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name}`);
+      // Status already set to raymond_reviewed — governance gate will pick this up
+      // and prioritize it over standard items
     }
   }
 
@@ -560,19 +558,34 @@ OR if a specific real issue exists:
 // ─────────────────────────────────────────────────────────────
 
 async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
-  const items = await getCSQItems('travis_organized');
-  console.log(`[governance] Reviewing ${items.length} items...`);
-  if (items.length === 0) return { reviewed: 0, cleared: 0, blocked: 0 };
+  // Process both normal path (travis_organized) AND needs_attention path (raymond_reviewed)
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { reviewed: 0, cleared: 0, blocked: 0 };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get travis_organized items (normal path)
+  const normalRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.travis_organized&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const normalItems: CSQItem[] = normalRes.ok ? await normalRes.json() : [];
+
+  // Get raymond_reviewed items with needs_attention_now action (expedited path)
+  const urgentRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.raymond_reviewed&raymond_action=eq.needs_attention_now&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const urgentItems: CSQItem[] = urgentRes.ok ? await urgentRes.json() : [];
+
+  const allItems = [...urgentItems, ...normalItems];
+  console.log(`[governance] Reviewing ${allItems.length} items (${urgentItems.length} needs-attention, ${normalItems.length} normal)...`);
+  if (allItems.length === 0) return { reviewed: 0, cleared: 0, blocked: 0 };
 
   let cleared = 0;
   let blocked = 0;
 
-  for (const item of items) {
+  for (const item of allItems) {
     const isCleared = await runGovernanceForItem(item);
     if (isCleared) cleared++; else blocked++;
   }
 
-  return { reviewed: items.length, cleared, blocked };
+  return { reviewed: allItems.length, cleared, blocked };
 }
 
 // ─────────────────────────────────────────────────────────────
