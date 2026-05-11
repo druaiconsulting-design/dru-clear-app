@@ -3,10 +3,13 @@
 // File: api/ghl-agent-trigger.ts
 // Runtime: Vercel Node.js Serverless
 //
-// Pattern: dispatch to travis-router first (8 second max),
-// then always respond 202. pg_cron timeout is set to 30s
-// so waiting 8s on our side is safe.
+// Routes cron triggers to the correct agent or pipeline.
+// Pipeline 1 (lead_intelligence): Omar → Ryan → approvals
+// All other agents: direct dispatch to travis-router
 // ================================================================
+
+import { runOmar } from './agents/omar';
+import { runRyan } from './agents/ryan';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -18,26 +21,12 @@ interface AgentRoute {
   division: string;
   task: string;
   description: string;
+  pipeline?: string;
 }
 
 interface TriggerPayload {
   trigger_type: string;
   source?: string;
-  agent_id?: string;
-  division?: string;
-  scheduled_at?: string;
-  contact_id?: string;
-  lead_data?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-interface TravisRouterResponse {
-  approval_id?: string;
-  approval_ids?: string[];
-  cards_created?: number;
-  status?: string;
-  message?: string;
-  summary?: string;
   [key: string]: unknown;
 }
 
@@ -47,32 +36,36 @@ interface TravisRouterResponse {
 
 const AGENT_ROUTES: Record<string, AgentRoute> = {
 
-  // ── Revenue Division ──────────────────────────────────────
+  // ── Pipeline 1 — Lead Intelligence ───────────────────────
+  // Omar → Ryan → approvals table
 
   cron_omar_lead_score: {
     agent_id: 'omar',
-    agent_name: 'Omar',
+    agent_name: 'Omar Patel',
     division: 'revenue',
     task: 'scan_score_route_leads',
-    description: 'Scan new GHL leads since last run, apply lead scoring model, route high-intent leads to active pipeline stages',
+    description: 'Pipeline 1: Omar scores leads, Ryan updates CRM and writes briefing card',
+    pipeline: 'pipeline_1_lead_intelligence',
   },
+
+  // ── Revenue Division ──────────────────────────────────────
 
   cron_ryan_crm_update: {
     agent_id: 'ryan',
-    agent_name: 'Ryan',
+    agent_name: 'Ryan Nakamura',
     division: 'revenue',
     task: 'overnight_crm_sync',
-    description: 'Review overnight CRM activity in GHL, update contact records, flag stale deals, generate morning briefing card',
+    description: 'Update CRM with overnight activity and contact changes',
   },
 
   // ── Marketing Division ────────────────────────────────────
 
   cron_camila_linkedin_queue: {
     agent_id: 'camila',
-    agent_name: 'Camila',
+    agent_name: 'Camila Flores',
     division: 'marketing',
     task: 'generate_weekly_linkedin_queue',
-    description: "Generate this week's LinkedIn content queue — 5 posts aligned to brand pillars and current campaign focus. Submit to approval queue.",
+    description: "Generate this week's LinkedIn content queue",
   },
 
   // ── Content/Brand Division ────────────────────────────────
@@ -82,7 +75,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     agent_name: 'Content Agent',
     division: 'content_brand',
     task: 'generate_daily_linkedin_post',
-    description: "Generate today's LinkedIn post for DeAnna's profile. Align to DRU AI Leadership Ecosystem™ brand voice. Submit to approval queue.",
+    description: "Generate today's LinkedIn post for approval",
   },
 
   // ── Analytics ─────────────────────────────────────────────
@@ -92,14 +85,14 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     agent_name: 'Analytics Agent',
     division: 'analytics',
     task: 'weekly_performance_summary',
-    description: 'Compile weekly performance summary: lead volume, assessment completions, approval queue throughput, GHL pipeline movement. Submit to approval queue.',
+    description: 'Weekly performance summary for approval queue',
   },
 
   // ── GHL Webhook Triggers (existing) ───────────────────────
 
   lead_created: {
     agent_id: 'omar',
-    agent_name: 'Omar',
+    agent_name: 'Omar Patel',
     division: 'revenue',
     task: 'score_new_lead',
     description: 'Score and route newly created GHL lead',
@@ -107,23 +100,23 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 
   contact_updated: {
     agent_id: 'ryan',
-    agent_name: 'Ryan',
+    agent_name: 'Ryan Nakamura',
     division: 'revenue',
     task: 'process_contact_update',
-    description: 'Process CRM contact update event and adjust pipeline stage if warranted',
+    description: 'Process CRM contact update event',
   },
 
   assessment_completed: {
     agent_id: 'omar',
-    agent_name: 'Omar',
+    agent_name: 'Omar Patel',
     division: 'revenue',
     task: 'route_assessment_lead',
-    description: 'Route lead based on completed DRU CLEAR™ scorecard tier result',
+    description: 'Route lead based on DRU CLEAR™ scorecard result',
   },
 
   support_ticket: {
     agent_id: 'support',
-    agent_name: 'Support Agent',
+    agent_name: 'Isaiah Carter',
     division: 'customer_support',
     task: 'handle_support_request',
     description: 'Route and respond to incoming support request',
@@ -131,7 +124,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Cron trigger types
+// Cron trigger types — get digest notification after run
 // ─────────────────────────────────────────────────────────────
 
 const CRON_TRIGGER_TYPES = new Set([
@@ -143,17 +136,37 @@ const CRON_TRIGGER_TYPES = new Set([
 ]);
 
 // ─────────────────────────────────────────────────────────────
-// Dispatch to Travis Router with timeout
-// Waits up to 8 seconds then resolves regardless
+// Pipeline 1 — Omar → Ryan
 // ─────────────────────────────────────────────────────────────
 
-async function dispatchToAgent(
+async function runPipeline1(): Promise<{ approval_id: string | null; cards_created: number; summary: string }> {
+  console.log('[pipeline-1] Starting Lead Intelligence pipeline...');
+
+  // Step 1: Omar scores leads
+  const omarResult = await runOmar();
+  console.log(`[pipeline-1] Omar complete — ${omarResult.total_leads_scanned} leads, ${omarResult.high_intent_leads.length} high-intent`);
+
+  // Step 2: Ryan updates CRM and writes briefing card
+  const ryanResult = await runRyan(omarResult);
+  console.log(`[pipeline-1] Ryan complete — approval_id: ${ryanResult.approval_id}`);
+
+  return {
+    approval_id: ryanResult.approval_id,
+    cards_created: ryanResult.cards_created,
+    summary: `Pipeline 1 complete: ${omarResult.total_leads_scanned} leads scored, ${ryanResult.high_intent_count} high-intent, ${ryanResult.crm_updates} CRM updates`,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Direct agent dispatch — non-pipeline cron triggers
+// ─────────────────────────────────────────────────────────────
+
+async function dispatchToTravisRouter(
   route: AgentRoute,
   payload: TriggerPayload,
   triggeredAt: string,
-  sourceLabel: string,
-  isCronSource: boolean
-): Promise<TravisRouterResponse> {
+  sourceLabel: string
+): Promise<{ approval_id?: string; cards_created?: number }> {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -166,7 +179,7 @@ async function dispatchToAgent(
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const travisResponse = await fetch(
+    const response = await fetch(
       `${supabaseUrl}/functions/v1/travis-router`,
       {
         method: 'POST',
@@ -190,27 +203,23 @@ async function dispatchToAgent(
     );
 
     clearTimeout(timeout);
-    const responseText = await travisResponse.text();
+    const text = await response.text();
 
-    if (!travisResponse.ok) {
-      console.error(`[ghl-agent-trigger] ❌ Travis router ${travisResponse.status}: ${responseText}`);
+    if (!response.ok) {
+      console.error(`[ghl-agent-trigger] ❌ Travis router ${response.status}: ${text}`);
       return {};
     }
 
-    let result: TravisRouterResponse = {};
     try {
-      result = JSON.parse(responseText);
+      return JSON.parse(text);
     } catch {
-      console.warn('[ghl-agent-trigger] Travis non-JSON response — status ok');
+      return {};
     }
-
-    console.log(`[ghl-agent-trigger] ✅ ${route.agent_name} dispatched | approval_id: ${result.approval_id ?? 'pending'}`);
-    return result;
 
   } catch (error: unknown) {
     clearTimeout(timeout);
     if (error instanceof Error && error.name === 'AbortError') {
-      console.warn(`[ghl-agent-trigger] ⏱ Travis router timed out after 8s — responding anyway`);
+      console.warn('[ghl-agent-trigger] ⏱ Travis router timed out after 8s');
     } else {
       console.error('[ghl-agent-trigger] ❌ Dispatch error:', error);
     }
@@ -219,58 +228,47 @@ async function dispatchToAgent(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Digest Notification — SMS + Email via GHL webhook
+// Digest Notification
 // ─────────────────────────────────────────────────────────────
 
 async function sendDigestNotification(
-  route: AgentRoute,
-  result: TravisRouterResponse,
-  triggeredAt: string
+  agentName: string,
+  task: string,
+  division: string,
+  cardsCreated: number,
+  approvalId: string | null | undefined,
+  triggeredAt: string,
+  summary?: string
 ): Promise<void> {
   const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
+  if (!webhookUrl) return;
 
-  if (!webhookUrl) {
-    console.warn('[ghl-agent-trigger] GHL_NOTIFICATION_WEBHOOK_URL not set — skipping notification');
-    return;
-  }
-
-  const cardsCreated = result.cards_created ?? 1;
-  const approvalIds = result.approval_ids ?? (result.approval_id ? [result.approval_id] : []);
   const cardWord = cardsCreated !== 1 ? 'cards' : 'card';
-  const taskReadable = route.task.replace(/_/g, ' ');
-  const summary = result.summary ?? `${route.agent_name} completed the ${taskReadable} task and dropped ${cardsCreated} ${cardWord} into your approval queue.`;
+  const taskReadable = task.replace(/_/g, ' ');
 
   try {
-    const notifResponse = await fetch(webhookUrl, {
+    await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // Contact fields — required for GHL to resolve who to notify
         email: 'druaiconsulting@gmail.com',
         phone: '+19796186671',
         first_name: 'DeAnna',
         last_name: 'Upshaw',
-        // Agent context
-        agent_name: route.agent_name,
-        agent_id: route.agent_id,
-        division: route.division,
+        agent_name: agentName,
+        division,
         task: taskReadable,
         cards_created: cardsCreated,
-        approval_ids: approvalIds.join(', ') || 'see queue',
-        summary,
+        approval_ids: approvalId ?? 'see queue',
+        summary: summary ?? `${agentName} completed the ${taskReadable} task and dropped ${cardsCreated} ${cardWord} into your approval queue.`,
         triggered_at: triggeredAt,
         review_url: 'https://app.druaiconsulting.com/admin-approvals',
-        sms_body: `DRU AI™ | ${route.agent_name} dropped ${cardsCreated} ${cardWord} in your approval queue.\n\nTask: ${taskReadable}\nReview: app.druaiconsulting.com/admin-approvals`,
-        email_subject: `DRU AI Ecosystem™ — ${route.agent_name} Queue Update`,
-        email_body: `Your AI Ecosystem ran on schedule.\n\nAgent: ${route.agent_name}\nDivision: ${route.division}\nTask: ${taskReadable}\nCards in Queue: ${cardsCreated}\n\n${summary}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+        sms_body: `DRU AI™ | ${agentName} dropped ${cardsCreated} ${cardWord} in your approval queue.\n\nTask: ${taskReadable}\nReview: app.druaiconsulting.com/admin-approvals`,
+        email_subject: `DRU AI Ecosystem™ — ${agentName} Queue Update`,
+        email_body: `Your AI Ecosystem ran on schedule.\n\nAgent: ${agentName}\nDivision: ${division}\nTask: ${taskReadable}\nCards in Queue: ${cardsCreated}\n\n${summary ?? ''}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
       }),
     });
-
-    if (!notifResponse.ok) {
-      console.warn(`[ghl-agent-trigger] ⚠️ Notification webhook returned ${notifResponse.status}`);
-    } else {
-      console.log(`[ghl-agent-trigger] ✅ Digest notification sent for ${route.agent_name}`);
-    }
+    console.log(`[ghl-agent-trigger] ✅ Notification sent for ${agentName}`);
   } catch (error) {
     console.warn('[ghl-agent-trigger] Notification failed (non-fatal):', error);
   }
@@ -287,7 +285,6 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
-  // Validate cron secret
   const incomingSecret = req.headers['x-cron-secret'];
   if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) {
     console.error('[ghl-agent-trigger] ❌ Invalid cron secret');
@@ -317,26 +314,50 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   console.log(`[ghl-agent-trigger] ✅ Routing → ${route.agent_name} | ${route.division} | source: ${sourceLabel}`);
 
-  // Dispatch to agent — waits up to 8 seconds
-  const result = await dispatchToAgent(route, payload, triggeredAt, sourceLabel, isCronSource);
+  let approvalId: string | null = null;
+  let cardsCreated = 0;
+  let pipelineSummary: string | undefined;
 
-  // Send digest notification for cron runs
-  if (isCronSource) {
-    await sendDigestNotification(route, result, triggeredAt);
+  // ── Route: Pipeline 1 (Omar → Ryan) ──────────────────────
+  if (route.pipeline === 'pipeline_1_lead_intelligence') {
+    const result = await runPipeline1();
+    approvalId = result.approval_id;
+    cardsCreated = result.cards_created;
+    pipelineSummary = result.summary;
+
+  // ── Route: Standard agent via travis-router ───────────────
+  } else {
+    const result = await dispatchToTravisRouter(route, payload, triggeredAt, sourceLabel);
+    approvalId = result.approval_id ?? null;
+    cardsCreated = result.cards_created ?? 1;
   }
 
-  // Respond 202
+  // Send digest notification for all cron runs
+  if (isCronSource) {
+    await sendDigestNotification(
+      route.agent_name,
+      route.task,
+      route.division,
+      cardsCreated,
+      approvalId,
+      triggeredAt,
+      pipelineSummary
+    );
+  }
+
   res.status(202).json({
     success: true,
     agent: route.agent_name,
-    agent_id: route.agent_id,
     division: route.division,
     task: route.task,
+    pipeline: route.pipeline ?? null,
     source: sourceLabel,
     triggered_at: triggeredAt,
-    approval_id: result.approval_id ?? null,
-    cards_created: result.cards_created ?? null,
-    notification_sent: isCronSource,
-    message: `${route.agent_name} activated — output queued for approval`,
+    approval_id: approvalId,
+    cards_created: cardsCreated,
+    summary: pipelineSummary ?? null,
+    message: route.pipeline
+      ? `Pipeline complete — briefing card queued for approval`
+      : `${route.agent_name} activated — output queued for approval`,
   });
 }
