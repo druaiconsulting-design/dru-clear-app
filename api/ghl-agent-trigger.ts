@@ -471,28 +471,28 @@ async function runTravis(): Promise<number> {
 async function runGovernanceForItem(item: CSQItem): Promise<boolean> {
   try {
     // Isabella Moreno — Trademark Auto-Block (Classes 35, 41, 42)
-    const isabellaCheck = await callAnthropic(`${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. You auto-block any content violating Trademark Classes 35, 41, and 42.
+    const isabellaCheck = await callAnthropic(`${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. Your job is to PROTECT DRU AI Consulting's intellectual property and ensure content does not infringe on OTHERS' trademarks.
 
-Trademark Class definitions:
-- Class 35: Business consulting, advertising, business management, organizational services
-- Class 41: Education, training, coaching, leadership development, entertainment
-- Class 42: Technology consulting, AI services, software development, research
+IMPORTANT DISTINCTION:
+- DRU AI Consulting OWNS and OPERATES in Classes 35, 41, and 42. Content about coaching, training, AI consulting, and business services is DRU AI Consulting's CORE BUSINESS — this is NOT a violation.
+- You only block content that: (1) misuses DRU's own ™ marks, OR (2) infringes on a SPECIFIC OTHER COMPANY's registered trademark.
 
-DRU AI Consulting's protected marks (™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+DRU AI Consulting's protected marks (always require ™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 
-Review this content for trademark violations:
+ONLY flag content if:
+1. A DRU proprietary framework name appears WITHOUT the ™ symbol
+2. Content copies or closely mimics a SPECIFIC named competitor's trademarked phrase or slogan
+3. Content makes false claims about certifications, affiliations, or credentials DeAnna does not hold
+
+DO NOT flag content simply because it discusses coaching, training, AI consulting, leadership, or business services — these are DRU AI Consulting's own protected service categories.
+
+Review this content:
 ${item.raw_output}
 
-Check for:
-1. Misuse of DRU AI Consulting's ™ marks (missing ™, incorrect use)
-2. Content that could infringe on Class 35, 41, or 42 trademarks of others
-3. Claims that could constitute trademark dilution
-4. Brand positioning statements that contradict registered positioning
-
 Respond ONLY with valid JSON:
-{"cleared":true,"flags":"none","isabella_notes":"All trademark marks correctly applied. No violations detected."}
-OR if issues found:
-{"cleared":false,"flags":"missing_trademark_symbol|incorrect_class_35_claim","isabella_notes":"Specific violation description here. BLOCKED."}`, 600);
+{"cleared":true,"flags":"none","isabella_notes":"Content reviewed. No trademark violations detected."}
+OR only if a genuine violation exists:
+{"cleared":false,"flags":"specific_violation_description","isabella_notes":"Exact violation here. BLOCKED."}`, 600);
 
     const isabellaResult = JSON.parse(isabellaCheck.replace(/```json|```/g, '').trim());
 
@@ -510,34 +510,29 @@ OR if issues found:
 
     // Full Governance + Legal review
     const govReview = await callAnthropic(`${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance review panel for DRU AI Consulting:
-- Khalid Hassan (Disclaimer Writer) — flags content requiring legal disclaimers
-- Sofia Petrov (Privacy Policy) — flags privacy and data compliance concerns
-- James Osei (Contract Writer) — reviews proposals and agreements for legal risk
-- Mei Lin (Brand Protection) — ensures brand consistency and IP protection
-- Rafael Torres (Continuous Learning) — identifies improvement opportunities
+- Khalid Hassan (Disclaimer Writer) — does this content need a legal disclaimer?
+- Sofia Petrov (Privacy Policy) — any privacy or data compliance concerns?
+- James Osei (Contract Writer) — any legal risk in proposals or agreements?
+- Mei Lin (Brand Protection) — is brand voice and positioning consistent?
+- Rafael Torres (Continuous Learning) — note any improvement opportunities
 - Amara Okafor (Legal Team) — overall legal risk assessment
-- Diego Reyes (Expense Manager) — flags any financial exposure claims
-- Yuki Tanaka (Financial Reporting) — verifies accuracy of any financial statements
-- Marcus Chen (Tax Strategist) — flags tax implications in financial content
+- Diego Reyes (Expense Manager) — any financial exposure claims?
+- Yuki Tanaka (Financial Reporting) — are any financial figures accurate and appropriate?
+- Marcus Chen (Tax Strategist) — any tax implications in financial content?
 
 Isabella Moreno has already cleared this content for trademark compliance.
 
-Review this content for ALL other compliance concerns:
+IMPORTANT: If you find NO issues, you MUST return cleared: true. Only return cleared: false if there is a specific, real, articulable legal or compliance risk. Do not fail content without a specific reason.
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division}
 RAYMOND'S NOTES: ${item.raymond_notes ?? 'N/A'}
 CONTENT:
 ${item.raw_output}
 
-Assess:
-1. Legal risk (disclaimers needed? legal exposure?)
-2. Privacy compliance (any PII or data concerns?)
-3. Financial accuracy (any claims about pricing, ROI, results?)
-4. Brand consistency (aligned with DRU AI Consulting positioning?)
-5. Improvement notes for Rafael Torres
-
 Respond ONLY with valid JSON:
-{"cleared":true,"compliance_score":9,"governance_notes":"...","legal_notes":"...","flags":"none"}`, 800);
+{"cleared":true,"compliance_score":9,"governance_notes":"Content reviewed by full panel. No compliance issues identified.","legal_notes":"No legal risk detected.","flags":"none"}
+OR if a specific real issue exists:
+{"cleared":false,"compliance_score":4,"governance_notes":"Specific issue here.","legal_notes":"Specific legal concern here.","flags":"specific_flag"}`, 800);
 
     const govResult = JSON.parse(govReview.replace(/```json|```/g, '').trim());
 
