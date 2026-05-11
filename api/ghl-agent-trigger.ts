@@ -202,8 +202,7 @@ async function getCSQItems(status: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return [];
-  const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.${status}&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   if (!res.ok) return [];
   return await res.json();
 }
@@ -557,14 +556,12 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return { reviewed: 0, cleared: 0, blocked: 0 };
 
-  const today = new Date().toISOString().split('T')[0];
-
   // Get travis_organized items (normal path)
-  const normalRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.travis_organized&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const normalRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.travis_organized&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   const normalItems: CSQItem[] = normalRes.ok ? await normalRes.json() : [];
 
   // Get raymond_reviewed needs_attention items (expedited path)
-  const urgentRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&status=eq.raymond_reviewed&raymond_action=eq.needs_attention_now&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const urgentRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.raymond_reviewed&raymond_action=eq.needs_attention_now&order=created_at.asc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   const urgentItems: CSQItem[] = urgentRes.ok ? await urgentRes.json() : [];
 
   const allItems = [...urgentItems, ...normalItems];
