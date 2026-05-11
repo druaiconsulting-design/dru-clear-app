@@ -3,6 +3,11 @@
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
+  "functions": {
+    "api/ghl-agent-trigger.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
