@@ -3,13 +3,16 @@
 // File: api/ghl-agent-trigger.ts
 // Runtime: Vercel Node.js Serverless
 //
-// Routes cron triggers to the correct agent or pipeline.
-// Pipeline 1 (lead_intelligence): Omar → Ryan → approvals
-// All other agents: direct dispatch to travis-router
+// Self-contained — all agent logic inline.
+// Vercel bundles each API function independently so cross-imports
+// between api/ files are not supported at runtime.
+//
+// Pipeline 1 (Lead Intelligence): Omar → Ryan → approvals table
+// All other agents: dispatch to travis-router
 // ================================================================
 
-import { runOmar } from './agents/omar';
-import { runRyan } from './agents/ryan';
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -30,15 +33,42 @@ interface TriggerPayload {
   [key: string]: unknown;
 }
 
+interface ScoredLead {
+  contact_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  score: number;
+  intent_level: 'high' | 'medium' | 'low';
+  recommended_action: string;
+  notes: string;
+}
+
+interface OmarResult {
+  success: boolean;
+  total_leads_scanned: number;
+  scored_leads: ScoredLead[];
+  high_intent_leads: ScoredLead[];
+  run_date: string;
+  error?: string;
+}
+
+interface RyanResult {
+  success: boolean;
+  approval_id: string | null;
+  cards_created: number;
+  crm_updates: number;
+  briefing_card: string;
+  high_intent_count: number;
+  error?: string;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Agent Routing Map
 // ─────────────────────────────────────────────────────────────
 
 const AGENT_ROUTES: Record<string, AgentRoute> = {
-
-  // ── Pipeline 1 — Lead Intelligence ───────────────────────
-  // Omar → Ryan → approvals table
-
   cron_omar_lead_score: {
     agent_id: 'omar',
     agent_name: 'Omar Patel',
@@ -47,9 +77,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     description: 'Pipeline 1: Omar scores leads, Ryan updates CRM and writes briefing card',
     pipeline: 'pipeline_1_lead_intelligence',
   },
-
-  // ── Revenue Division ──────────────────────────────────────
-
   cron_ryan_crm_update: {
     agent_id: 'ryan',
     agent_name: 'Ryan Nakamura',
@@ -57,9 +84,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'overnight_crm_sync',
     description: 'Update CRM with overnight activity and contact changes',
   },
-
-  // ── Marketing Division ────────────────────────────────────
-
   cron_camila_linkedin_queue: {
     agent_id: 'camila',
     agent_name: 'Camila Flores',
@@ -67,9 +91,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'generate_weekly_linkedin_queue',
     description: "Generate this week's LinkedIn content queue",
   },
-
-  // ── Content/Brand Division ────────────────────────────────
-
   cron_content_daily_post: {
     agent_id: 'content',
     agent_name: 'Content Agent',
@@ -77,9 +98,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'generate_daily_linkedin_post',
     description: "Generate today's LinkedIn post for approval",
   },
-
-  // ── Analytics ─────────────────────────────────────────────
-
   cron_analytics_weekly: {
     agent_id: 'analytics',
     agent_name: 'Analytics Agent',
@@ -87,9 +105,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'weekly_performance_summary',
     description: 'Weekly performance summary for approval queue',
   },
-
-  // ── GHL Webhook Triggers (existing) ───────────────────────
-
   lead_created: {
     agent_id: 'omar',
     agent_name: 'Omar Patel',
@@ -97,7 +112,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'score_new_lead',
     description: 'Score and route newly created GHL lead',
   },
-
   contact_updated: {
     agent_id: 'ryan',
     agent_name: 'Ryan Nakamura',
@@ -105,7 +119,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'process_contact_update',
     description: 'Process CRM contact update event',
   },
-
   assessment_completed: {
     agent_id: 'omar',
     agent_name: 'Omar Patel',
@@ -113,7 +126,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     task: 'route_assessment_lead',
     description: 'Route lead based on DRU CLEAR™ scorecard result',
   },
-
   support_ticket: {
     agent_id: 'support',
     agent_name: 'Isaiah Carter',
@@ -122,10 +134,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
     description: 'Route and respond to incoming support request',
   },
 };
-
-// ─────────────────────────────────────────────────────────────
-// Cron trigger types — get digest notification after run
-// ─────────────────────────────────────────────────────────────
 
 const CRON_TRIGGER_TYPES = new Set([
   'cron_omar_lead_score',
@@ -136,20 +144,290 @@ const CRON_TRIGGER_TYPES = new Set([
 ]);
 
 // ─────────────────────────────────────────────────────────────
+// OMAR — Fetch new GHL leads
+// ─────────────────────────────────────────────────────────────
+
+async function fetchNewLeads(ghlApiKey: string): Promise<any[]> {
+  const yesterday = new Date();
+  yesterday.setHours(yesterday.getHours() - 24);
+  const startAfterDate = yesterday.toISOString();
+
+  const url = `${GHL_API_BASE}/contacts/?locationId=${GHL_LOCATION_ID}&startAfterDate=${encodeURIComponent(startAfterDate)}&limit=100`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${ghlApiKey}`,
+      Version: '2021-07-28',
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`GHL contacts API error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.contacts ?? [];
+}
+
+// ─────────────────────────────────────────────────────────────
+// OMAR — Score leads with Anthropic
+// ─────────────────────────────────────────────────────────────
+
+async function scoreLeads(leads: any[], anthropicApiKey: string): Promise<ScoredLead[]> {
+  if (leads.length === 0) return [];
+
+  const leadSummary = leads.map(l => ({
+    id: l.id,
+    name: `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim(),
+    email: l.email ?? '',
+    phone: l.phone ?? '',
+    source: l.source ?? 'unknown',
+    tags: l.tags ?? [],
+  }));
+
+  const prompt = `You are Omar Patel, Lead Scoring Agent for DRU AI Consulting.
+
+DRU AI Consulting serves executives, leaders, and business owners who need AI strategy, leadership development, and implementation support. Services range from $497 courses to $4,997 Executive Diagnostics.
+
+Score each lead 1–10 based on role seniority, business context, source quality, and engagement signals.
+
+For each lead return:
+- score (1–10)
+- intent_level: "high" (7–10), "medium" (4–6), "low" (1–3)
+- recommended_action: specific next step
+- notes: brief rationale
+
+Leads:
+${JSON.stringify(leadSummary, null, 2)}
+
+Respond ONLY with a valid JSON array. No preamble, no markdown:
+[{"contact_id":"...","name":"...","email":"...","phone":"...","source":"...","score":8,"intent_level":"high","recommended_action":"...","notes":"..."}]`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicApiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text ?? '[]';
+
+  try {
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch {
+    console.error('[omar] Failed to parse scored leads:', text);
+    return [];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// OMAR — Main function
+// ─────────────────────────────────────────────────────────────
+
+async function runOmar(): Promise<OmarResult> {
+  const ghlApiKey = process.env.GHL_API_KEY;
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!ghlApiKey || !anthropicApiKey) {
+    return { success: false, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString(), error: 'Missing GHL_API_KEY or ANTHROPIC_API_KEY' };
+  }
+
+  try {
+    console.log('[omar] Fetching new GHL leads...');
+    const rawLeads = await fetchNewLeads(ghlApiKey);
+    console.log(`[omar] Found ${rawLeads.length} new leads`);
+
+    if (rawLeads.length === 0) {
+      return { success: true, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString() };
+    }
+
+    const scoredLeads = await scoreLeads(rawLeads, anthropicApiKey);
+    const highIntentLeads = scoredLeads.filter(l => l.intent_level === 'high');
+
+    console.log(`[omar] Scored ${scoredLeads.length} leads | High intent: ${highIntentLeads.length}`);
+
+    return { success: true, total_leads_scanned: rawLeads.length, scored_leads: scoredLeads, high_intent_leads: highIntentLeads, run_date: new Date().toISOString() };
+
+  } catch (error) {
+    console.error('[omar] Error:', error);
+    return { success: false, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString(), error: String(error) };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RYAN — Update GHL contact tags
+// ─────────────────────────────────────────────────────────────
+
+async function updateGHLContact(contactId: string, lead: ScoredLead, ghlApiKey: string): Promise<void> {
+  const tags = [`ai-scored`, `intent-${lead.intent_level}`, `score-${lead.score}`];
+
+  const response = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${ghlApiKey}`,
+      Version: '2021-07-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tags }),
+  });
+
+  if (!response.ok) {
+    console.warn(`[ryan] Failed to update contact ${contactId}: ${response.status}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RYAN — Generate briefing card
+// ─────────────────────────────────────────────────────────────
+
+async function generateBriefingCard(omarResult: OmarResult, anthropicApiKey: string): Promise<string> {
+  const highIntentSummary = omarResult.high_intent_leads.map(l =>
+    `• ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`
+  ).join('\n');
+
+  const prompt = `You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting.
+
+Omar completed daily lead scoring. Write a concise executive briefing card for DeAnna R. Upshaw.
+
+DATA:
+- Total leads scanned: ${omarResult.total_leads_scanned}
+- High-intent (7+): ${omarResult.high_intent_leads.length}
+- Medium-intent: ${omarResult.scored_leads.filter(l => l.intent_level === 'medium').length}
+- Low-intent: ${omarResult.scored_leads.filter(l => l.intent_level === 'low').length}
+
+HIGH-INTENT LEADS:
+${highIntentSummary || 'None today'}
+
+Write a professional briefing card with:
+1. Executive summary (2–3 sentences)
+2. High-intent leads requiring immediate action
+3. CRM updates completed
+4. Recommended approval action`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicApiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
+
+  const data = await response.json();
+  return data.content?.[0]?.text ?? 'Briefing card generation failed.';
+}
+
+// ─────────────────────────────────────────────────────────────
+// RYAN — Write approval card to Supabase
+// ─────────────────────────────────────────────────────────────
+
+async function writeApprovalCard(briefingCard: string, omarResult: OmarResult, supabaseUrl: string, serviceRoleKey: string): Promise<string | null> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/approvals`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({
+      source: 'pg_cron',
+      trigger_type: 'cron_omar_lead_score',
+      agent_name: 'Ryan Nakamura',
+      agent_role: 'CRM Management (GHL)',
+      division: 'Revenue & Growth',
+      task_brief: `Daily lead intelligence — ${omarResult.total_leads_scanned} leads scanned, ${omarResult.high_intent_leads.length} high-intent flagged`,
+      output: briefingCard,
+      status: 'pending',
+      ghl_contact_id: omarResult.high_intent_leads.map(l => l.contact_id).join(',') || null,
+      notify_deanna: true,
+      priority: omarResult.high_intent_leads.length > 0 ? 'high' : 'normal',
+      category: 'lead_intelligence',
+      platform: null,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error(`[ryan] Failed to write approval card: ${await response.text()}`);
+    return null;
+  }
+
+  const data = await response.json();
+  return data?.[0]?.id ?? null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// RYAN — Main function
+// ─────────────────────────────────────────────────────────────
+
+async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
+  const ghlApiKey = process.env.GHL_API_KEY;
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!ghlApiKey || !anthropicApiKey || !supabaseUrl || !serviceRoleKey) {
+    return { success: false, approval_id: null, cards_created: 0, crm_updates: 0, briefing_card: '', high_intent_count: 0, error: 'Missing required env vars' };
+  }
+
+  if (omarResult.total_leads_scanned === 0) {
+    const noLeadsCard = `**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.\n\nNext scan: tomorrow at 8:00am CDT.`;
+    const approvalId = await writeApprovalCard(noLeadsCard, omarResult, supabaseUrl, serviceRoleKey);
+    return { success: true, approval_id: approvalId, cards_created: 1, crm_updates: 0, briefing_card: noLeadsCard, high_intent_count: 0 };
+  }
+
+  try {
+    let crmUpdates = 0;
+    for (const lead of omarResult.scored_leads) {
+      if (lead.contact_id) {
+        await updateGHLContact(lead.contact_id, lead, ghlApiKey);
+        crmUpdates++;
+      }
+    }
+    console.log(`[ryan] CRM updated for ${crmUpdates} contacts`);
+
+    const briefingCard = await generateBriefingCard(omarResult, anthropicApiKey);
+    const approvalId = await writeApprovalCard(briefingCard, omarResult, supabaseUrl, serviceRoleKey);
+
+    console.log(`[ryan] ✅ Pipeline 1 complete | approval_id: ${approvalId}`);
+
+    return { success: true, approval_id: approvalId, cards_created: 1, crm_updates: crmUpdates, briefing_card: briefingCard, high_intent_count: omarResult.high_intent_leads.length };
+
+  } catch (error) {
+    console.error('[ryan] Error:', error);
+    return { success: false, approval_id: null, cards_created: 0, crm_updates: 0, briefing_card: '', high_intent_count: 0, error: String(error) };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Pipeline 1 — Omar → Ryan
 // ─────────────────────────────────────────────────────────────
 
 async function runPipeline1(): Promise<{ approval_id: string | null; cards_created: number; summary: string }> {
   console.log('[pipeline-1] Starting Lead Intelligence pipeline...');
-
-  // Step 1: Omar scores leads
   const omarResult = await runOmar();
   console.log(`[pipeline-1] Omar complete — ${omarResult.total_leads_scanned} leads, ${omarResult.high_intent_leads.length} high-intent`);
-
-  // Step 2: Ryan updates CRM and writes briefing card
   const ryanResult = await runRyan(omarResult);
   console.log(`[pipeline-1] Ryan complete — approval_id: ${ryanResult.approval_id}`);
-
   return {
     approval_id: ryanResult.approval_id,
     cards_created: ryanResult.cards_created,
@@ -158,70 +436,37 @@ async function runPipeline1(): Promise<{ approval_id: string | null; cards_creat
 }
 
 // ─────────────────────────────────────────────────────────────
-// Direct agent dispatch — non-pipeline cron triggers
+// Standard dispatch to Travis Router
 // ─────────────────────────────────────────────────────────────
 
-async function dispatchToTravisRouter(
-  route: AgentRoute,
-  payload: TriggerPayload,
-  triggeredAt: string,
-  sourceLabel: string
-): Promise<{ approval_id?: string; cards_created?: number }> {
+async function dispatchToTravisRouter(route: AgentRoute, payload: TriggerPayload, triggeredAt: string, sourceLabel: string): Promise<{ approval_id?: string; cards_created?: number }> {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('[ghl-agent-trigger] ❌ Missing Supabase env vars');
-    return {};
-  }
+  if (!supabaseUrl || !serviceRoleKey) return {};
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const response = await fetch(
-      `${supabaseUrl}/functions/v1/travis-router`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({
-          agent_id: route.agent_id,
-          agent_name: route.agent_name,
-          division: route.division,
-          task: route.task,
-          description: route.description,
-          trigger_type: payload.trigger_type,
-          source: sourceLabel,
-          payload,
-          triggered_at: triggeredAt,
-        }),
-        signal: controller.signal,
-      }
-    );
+    const response = await fetch(`${supabaseUrl}/functions/v1/travis-router`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
+      body: JSON.stringify({ agent_id: route.agent_id, agent_name: route.agent_name, division: route.division, task: route.task, description: route.description, trigger_type: payload.trigger_type, source: sourceLabel, payload, triggered_at: triggeredAt }),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeout);
     const text = await response.text();
-
-    if (!response.ok) {
-      console.error(`[ghl-agent-trigger] ❌ Travis router ${response.status}: ${text}`);
-      return {};
-    }
-
-    try {
-      return JSON.parse(text);
-    } catch {
-      return {};
-    }
+    if (!response.ok) { console.error(`[ghl-agent-trigger] Travis router ${response.status}: ${text}`); return {}; }
+    try { return JSON.parse(text); } catch { return {}; }
 
   } catch (error: unknown) {
     clearTimeout(timeout);
     if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('[ghl-agent-trigger] ⏱ Travis router timed out after 8s');
+      console.warn('[ghl-agent-trigger] Travis router timed out after 8s');
     } else {
-      console.error('[ghl-agent-trigger] ❌ Dispatch error:', error);
+      console.error('[ghl-agent-trigger] Dispatch error:', error);
     }
     return {};
   }
@@ -231,15 +476,7 @@ async function dispatchToTravisRouter(
 // Digest Notification
 // ─────────────────────────────────────────────────────────────
 
-async function sendDigestNotification(
-  agentName: string,
-  task: string,
-  division: string,
-  cardsCreated: number,
-  approvalId: string | null | undefined,
-  triggeredAt: string,
-  summary?: string
-): Promise<void> {
+async function sendDigestNotification(agentName: string, task: string, division: string, cardsCreated: number, approvalId: string | null | undefined, triggeredAt: string, summary?: string): Promise<void> {
   const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
   if (!webhookUrl) return;
 
@@ -280,33 +517,20 @@ async function sendDigestNotification(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const incomingSecret = req.headers['x-cron-secret'];
   if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) {
-    console.error('[ghl-agent-trigger] ❌ Invalid cron secret');
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
+    res.status(401).json({ error: 'Unauthorized' }); return;
   }
 
   const payload: TriggerPayload = req.body;
-
-  if (!payload || !payload.trigger_type) {
-    res.status(400).json({ error: 'trigger_type is required' });
-    return;
-  }
+  if (!payload || !payload.trigger_type) { res.status(400).json({ error: 'trigger_type is required' }); return; }
 
   const { trigger_type, source } = payload;
   const route = AGENT_ROUTES[trigger_type];
 
-  if (!route) {
-    console.warn(`[ghl-agent-trigger] ⚠️ Unknown trigger_type: ${trigger_type}`);
-    res.status(400).json({ error: `Unknown trigger_type: ${trigger_type}` });
-    return;
-  }
+  if (!route) { res.status(400).json({ error: `Unknown trigger_type: ${trigger_type}` }); return; }
 
   const sourceLabel = source ?? 'webhook';
   const triggeredAt = new Date().toISOString();
@@ -318,31 +542,19 @@ export default async function handler(req: any, res: any): Promise<void> {
   let cardsCreated = 0;
   let pipelineSummary: string | undefined;
 
-  // ── Route: Pipeline 1 (Omar → Ryan) ──────────────────────
   if (route.pipeline === 'pipeline_1_lead_intelligence') {
     const result = await runPipeline1();
     approvalId = result.approval_id;
     cardsCreated = result.cards_created;
     pipelineSummary = result.summary;
-
-  // ── Route: Standard agent via travis-router ───────────────
   } else {
     const result = await dispatchToTravisRouter(route, payload, triggeredAt, sourceLabel);
     approvalId = result.approval_id ?? null;
     cardsCreated = result.cards_created ?? 1;
   }
 
-  // Send digest notification for all cron runs
   if (isCronSource) {
-    await sendDigestNotification(
-      route.agent_name,
-      route.task,
-      route.division,
-      cardsCreated,
-      approvalId,
-      triggeredAt,
-      pipelineSummary
-    );
+    await sendDigestNotification(route.agent_name, route.task, route.division, cardsCreated, approvalId, triggeredAt, pipelineSummary);
   }
 
   res.status(202).json({
@@ -356,8 +568,6 @@ export default async function handler(req: any, res: any): Promise<void> {
     approval_id: approvalId,
     cards_created: cardsCreated,
     summary: pipelineSummary ?? null,
-    message: route.pipeline
-      ? `Pipeline complete — briefing card queued for approval`
-      : `${route.agent_name} activated — output queued for approval`,
+    message: route.pipeline ? `Pipeline complete — briefing card queued for approval` : `${route.agent_name} activated — output queued for approval`,
   });
 }
