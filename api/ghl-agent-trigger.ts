@@ -131,35 +131,29 @@ const CRON_TRIGGER_TYPES = new Set(Object.keys(AGENT_ROUTES).filter(k => k.start
 // ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Anthropic JSON array call using assistant prefill
-// Forces response to start with [ — no beta features needed
-// Works on all models, no schema complexity limits, no 400 errors
-// Anthropic cookbook recommended approach for reliable JSON arrays
+// SHARED — Anthropic JSON object call using assistant prefill
+// Forces response to start with { — guaranteed single object
 // ─────────────────────────────────────────────────────────────
 
-async function callAnthropicStructured(prompt: string, _schema: Record<string, unknown>, maxTokens = 2000): Promise<any[]> {
+async function callAnthropicJSON(prompt: string, maxTokens = 800): Promise<any> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
       messages: [
         { role: 'user', content: prompt },
-        { role: 'assistant', content: '[' }, // prefill forces JSON array
+        { role: 'assistant', content: '{' },
       ],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
-  const text = data.content?.[0]?.text ?? ']';
-  return JSON.parse('[' + text);
+  const text = data.content?.[0]?.text ?? '"error":"failed"}';
+  return JSON.parse('{' + text);
 }
 
 async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
@@ -426,58 +420,38 @@ async function runRaymond(): Promise<{ reviewed: number; needs_attention: number
   console.log(`[raymond] Reviewing ${pending.length} pending items...`);
   if (pending.length === 0) return { reviewed: 0, needs_attention: 0 };
 
-  // Batch review — all items in ONE Anthropic call instead of one per item
-  const itemSummaries = pending.map((item, i) =>
-    `ITEM ${i + 1} (id: ${item.id}):
-Agent: ${item.agent_name} | Division: ${item.division} | Task: ${item.task} | Category: ${item.category}
-Output preview: ${item.raw_output.slice(0, 400)}...`
-  ).join('\n\n---\n\n');
-
-  // Batch review — structured outputs guarantees valid JSON
-  const reviews = await callAnthropicStructured(
-    `${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw's most trusted operations lead. You oversee 8 divisions and 36 agents.
-
-Review ALL of these agent outputs in one pass and return your Chief of Staff assessment for each.
-
-${itemSummaries}
-
-For EACH item assess:
-- priority: "normal" or "high" (high = needs DeAnna's attention today)
-- action: "route_to_governance" or "needs_attention_now"
-- notes: what governance and the Twin should know (1–2 sentences)
-
-"needs_attention_now" = cannot wait for 11:30am briefing.`,
-    {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        priority: { type: 'string' },
-        action: { type: 'string' },
-        notes: { type: 'string' },
-      },
-      required: ['id', 'priority', 'action', 'notes'],
-      additionalProperties: false,
-    },
-    2000
-  );
   let needsAttentionCount = 0;
+  const updates: Promise<void>[] = [];
 
-  // Update all items concurrently — prevents sequential timeout
-  await Promise.all(reviews.map(async (review: any) => {
-    const isNeedsAttention = review.action === 'needs_attention_now';
-    if (isNeedsAttention) needsAttentionCount++;
-    if (isNeedsAttention) console.log(`[raymond] ⚡ Needs attention: ${review.id}`);
-    await updateCSQ(review.id, {
-      raymond_reviewed: true,
-      raymond_notes: review.notes,
-      raymond_priority: review.priority,
-      raymond_action: review.action,
-      raymond_reviewed_at: new Date().toISOString(),
-      status: 'raymond_reviewed',
-      priority: review.priority,
-    });
-  }));
+  for (const item of pending) {
+    try {
+      const review = await callAnthropicJSON(
+        `${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Review this agent output and return a JSON object with exactly these fields:
+"priority": "normal" or "high"
+"action": "route_to_governance" or "needs_attention_now"
+"notes": one sentence for the governance team
 
+AGENT: ${item.agent_name} (${item.division})
+TASK: ${item.task}
+OUTPUT: ${item.raw_output.slice(0, 400)}`
+      );
+      const isNeedsAttention = review.action === 'needs_attention_now';
+      if (isNeedsAttention) needsAttentionCount++;
+      updates.push(updateCSQ(item.id, {
+        raymond_reviewed: true,
+        raymond_notes: review.notes ?? '',
+        raymond_priority: review.priority ?? 'normal',
+        raymond_action: review.action ?? 'route_to_governance',
+        raymond_reviewed_at: new Date().toISOString(),
+        status: 'raymond_reviewed',
+        priority: review.priority ?? 'normal',
+      }));
+    } catch (error) {
+      console.error(`[raymond] Failed item ${item.id}:`, error);
+    }
+  }
+
+  await Promise.all(updates);
   return { reviewed: pending.length, needs_attention: needsAttentionCount };
 }
 
@@ -614,92 +588,59 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   console.log(`[governance] Reviewing ${allItems.length} items (${urgentItems.length} needs-attention, ${normalItems.length} normal)...`);
   if (allItems.length === 0) return { reviewed: 0, cleared: 0, blocked: 0 };
 
-  // BATCH STEP 1: Isabella trademark check — structured output guarantees valid JSON
-  const isabellaResults = await callAnthropicStructured(
-    `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. You auto-block any output that misuses or omits trademark symbols on DRU's proprietary frameworks, or that infringes on external trademarks.
-
-DRU AI Consulting's protected marks — ALWAYS require ™ symbol:
-DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
-
-HARD BLOCK (cleared: false) if:
-1. Any DRU proprietary framework name appears WITHOUT the ™ symbol
-2. Content directly copies a specific named external competitor's registered trademark
-
-CLEAR (cleared: true) if:
-- All DRU framework names are correctly marked with ™ OR frameworks are not mentioned at all
-- No external trademark infringement detected
-
-DEFAULT: If content does not reference any DRU frameworks at all, cleared = true.
-
-${allItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agent_name}\nContent: ${item.raw_output.slice(0, 300)}...`).join('\n\n---\n\n')}
-
-Review each item and return results.`,
-    {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        cleared: { type: 'boolean' },
-        flags: { type: 'string' },
-        notes: { type: 'string' },
-      },
-      required: ['id', 'cleared', 'flags', 'notes'],
-      additionalProperties: false,
-    },
-    1500
-  );
-
-  // BATCH STEP 2: Full governance review for Isabella-cleared items — ONE call
-  const clearedByIsabella = isabellaResults.filter((r: any) => r.cleared);
-  const blockedByIsabella = isabellaResults.filter((r: any) => !r.cleared);
-
-  let govResults: any[] = [];
-  if (clearedByIsabella.length > 0) {
-    const clearedItems = allItems.filter(item => clearedByIsabella.some((r: any) => r.id === item.id));
-    govResults = await callAnthropicStructured(
-      `${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting (Khalid, Sofia, James, Mei Lin, Rafael, Amara, Diego, Yuki, Marcus). Isabella has cleared these items for trademark compliance. Review for legal risk, privacy, financial accuracy, and brand consistency. Return cleared:true unless there is a specific real issue.
-
-${clearedItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agent_name} | Division: ${item.division}\nContent: ${item.raw_output.slice(0, 300)}...`).join('\n\n---\n\n')}
-
-Review each item and return results.`,
-      {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          cleared: { type: 'boolean' },
-          compliance_score: { type: 'number' },
-          governance_notes: { type: 'string' },
-          legal_notes: { type: 'string' },
-          flags: { type: 'string' },
-        },
-        required: ['id', 'cleared', 'compliance_score', 'governance_notes', 'legal_notes', 'flags'],
-        additionalProperties: false,
-      },
-      1500
-    );
-  }
-
-  // Update all items concurrently
   let cleared = 0;
   let blocked = 0;
+  const updates: Promise<void>[] = [];
 
-  await Promise.all(allItems.map(async (item) => {
-    const isabellaResult = isabellaResults.find((r: any) => r.id === item.id);
-    if (!isabellaResult?.cleared) {
-      blocked++;
-      await updateCSQ(item.id, { governance_cleared: false, governance_flags: isabellaResult?.flags ?? 'isabella_blocked', governance_notes: isabellaResult?.notes ?? 'Blocked by Isabella', governance_cleared_at: new Date().toISOString(), status: 'rejected' });
-      return;
-    }
-    const govResult = govResults.find((r: any) => r.id === item.id);
-    if (govResult?.cleared) {
-      cleared++;
-      await updateCSQ(item.id, { governance_cleared: true, compliance_score: govResult.compliance_score, governance_notes: govResult.governance_notes, legal_notes: govResult.legal_notes, governance_flags: govResult.flags, governance_cleared_at: new Date().toISOString(), status: 'governance_cleared' });
-    } else {
-      blocked++;
-      await updateCSQ(item.id, { governance_cleared: false, governance_notes: govResult?.governance_notes ?? 'Review failed', governance_flags: govResult?.flags ?? 'review_failed', governance_cleared_at: new Date().toISOString(), status: 'rejected' });
-    }
-  }));
+  for (const item of allItems) {
+    try {
+      // Step 1: Isabella trademark check
+      const isabella = await callAnthropicJSON(
+        `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting.
 
-  console.log(`[governance] ✅ Reviewed ${allItems.length}: ${cleared} cleared, ${blocked} blocked`);
+DRU's protected marks ALWAYS require ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
+
+HARD BLOCK (cleared:false) ONLY if a DRU framework name appears WITHOUT ™ OR content copies a specific competitor's trademark.
+DEFAULT cleared:true if frameworks are not mentioned or all ™ are correct.
+
+AGENT: ${item.agent_name}
+CONTENT: ${item.raw_output.slice(0, 400)}
+
+Return JSON: "cleared":true/false, "flags":"none or description", "notes":"one sentence"`
+      );
+
+      if (!isabella.cleared) {
+        blocked++;
+        updates.push(updateCSQ(item.id, { governance_cleared: false, governance_flags: isabella.flags ?? 'isabella_blocked', governance_notes: isabella.notes ?? 'Blocked by Isabella', governance_cleared_at: new Date().toISOString(), status: 'rejected' }));
+        continue;
+      }
+
+      // Step 2: Full governance panel review
+      const gov = await callAnthropicJSON(
+        `${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella cleared this content for trademark compliance. Review for legal risk, privacy concerns, financial accuracy, and brand consistency. Return cleared:true unless there is a specific real issue.
+
+AGENT: ${item.agent_name} | DIVISION: ${item.division}
+RAYMOND'S NOTES: ${item.raymond_notes ?? 'N/A'}
+CONTENT: ${item.raw_output.slice(0, 400)}
+
+Return JSON: "cleared":true/false, "compliance_score":1-10, "governance_notes":"...", "legal_notes":"...", "flags":"none or description"`
+      );
+
+      if (gov.cleared) {
+        cleared++;
+        updates.push(updateCSQ(item.id, { governance_cleared: true, compliance_score: gov.compliance_score ?? 8, governance_notes: gov.governance_notes ?? '', legal_notes: gov.legal_notes ?? '', governance_flags: gov.flags ?? 'none', governance_cleared_at: new Date().toISOString(), status: 'governance_cleared' }));
+      } else {
+        blocked++;
+        updates.push(updateCSQ(item.id, { governance_cleared: false, governance_notes: gov.governance_notes ?? 'Blocked', governance_flags: gov.flags ?? 'review_failed', governance_cleared_at: new Date().toISOString(), status: 'rejected' }));
+      }
+    } catch (error) {
+      console.error(`[governance] Failed item ${item.id}:`, error);
+      blocked++;
+    }
+  }
+
+  await Promise.all(updates);
+  console.log(`[governance] ✅ ${allItems.length} reviewed: ${cleared} cleared, ${blocked} blocked`);
   return { reviewed: allItems.length, cleared, blocked };
 }
 
