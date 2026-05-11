@@ -413,7 +413,9 @@ For EACH item assess:
 Return ONLY a valid JSON array with one object per item, using the exact id provided:
 [{"id":"...","priority":"normal","action":"route_to_governance","notes":"..."}]`, 2000);
 
-  const reviews = JSON.parse(batchReview.replace(/```json|```/g, '').trim());
+  const raymondRaw = batchReview.replace(/```json|```/g, '').trim();
+  const raymondMatch = raymondRaw.match(/\[[\s\S]*\]/);
+  const reviews = JSON.parse(raymondMatch ? raymondMatch[0] : '[]');
   let needsAttentionCount = 0;
 
   // Update all items concurrently — prevents sequential timeout
@@ -579,7 +581,9 @@ ${allItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agen
 Return ONLY a valid JSON array:
 [{"id":"...","cleared":true,"flags":"none","notes":"No violations."}]`, 1500);
 
-  const isabellaResults = JSON.parse(isabellaBatch.replace(/```json|```/g, '').trim());
+  const isabellaRaw = isabellaBatch.replace(/```json|```/g, '').trim();
+  const isabellaMatch = isabellaRaw.match(/\[[\s\S]*\]/);
+  const isabellaResults = JSON.parse(isabellaMatch ? isabellaMatch[0] : '[]');
 
   // BATCH STEP 2: Full governance review for Isabella-cleared items — ONE call
   const clearedByIsabella = isabellaResults.filter((r: any) => r.cleared);
@@ -595,7 +599,9 @@ ${clearedItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.
 Return ONLY a valid JSON array:
 [{"id":"...","cleared":true,"compliance_score":9,"governance_notes":"No issues.","legal_notes":"No legal risk.","flags":"none"}]`, 1500);
 
-    govResults = JSON.parse(govBatch.replace(/```json|```/g, '').trim());
+    const govRaw = govBatch.replace(/```json|```/g, '').trim();
+    const govMatch = govRaw.match(/\[[\s\S]*\]/);
+    govResults = JSON.parse(govMatch ? govMatch[0] : '[]');
   }
 
   // Update all items concurrently
