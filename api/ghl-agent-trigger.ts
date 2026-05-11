@@ -575,10 +575,9 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   let cleared = 0;
   let blocked = 0;
 
-  for (const item of allItems) {
-    const isCleared = await runGovernanceForItem(item);
-    if (isCleared) cleared++; else blocked++;
-  }
+  // Process all items concurrently — prevents sequential timeout
+  const results = await Promise.all(allItems.map(item => runGovernanceForItem(item)));
+  results.forEach(isCleared => { if (isCleared) cleared++; else blocked++; });
 
   return { reviewed: allItems.length, cleared, blocked };
 }
