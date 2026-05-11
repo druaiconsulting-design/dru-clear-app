@@ -391,52 +391,52 @@ async function runRaymond(): Promise<{ reviewed: number; needs_attention: number
   console.log(`[raymond] Reviewing ${pending.length} pending items...`);
   if (pending.length === 0) return { reviewed: 0, needs_attention: 0 };
 
+  // Batch review — all items in ONE Anthropic call instead of one per item
+  const itemSummaries = pending.map((item, i) =>
+    `ITEM ${i + 1} (id: ${item.id}):
+Agent: ${item.agent_name} | Division: ${item.division} | Task: ${item.task} | Category: ${item.category}
+Output preview: ${item.raw_output.slice(0, 400)}...`
+  ).join('\n\n---\n\n');
+
+  const batchReview = await callAnthropic(`${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw's most trusted operations lead. You oversee 8 divisions and 36 agents.
+
+Review ALL of these agent outputs in one pass and return your Chief of Staff assessment for each.
+
+${itemSummaries}
+
+For EACH item assess:
+- priority: "normal" or "high" (high = needs DeAnna's attention today)
+- action: "route_to_governance" or "needs_attention_now"
+- notes: what governance and the Twin should know (1–2 sentences)
+
+"needs_attention_now" = cannot wait for 11:30am briefing.
+
+Return ONLY a valid JSON array with one object per item, using the exact id provided:
+[{"id":"...","priority":"normal","action":"route_to_governance","notes":"..."}]`, 2000);
+
+  const reviews = JSON.parse(batchReview.replace(/```json|```/g, '').trim());
   let needsAttentionCount = 0;
 
-  for (const item of pending) {
-    try {
-      const review = await callAnthropic(`${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw's most trusted operations lead. You oversee 8 divisions and 36 agents.
+  for (const review of reviews) {
+    const isNeedsAttention = review.action === 'needs_attention_now';
+    if (isNeedsAttention) needsAttentionCount++;
 
-Review this agent output and provide your Chief of Staff assessment.
+    await updateCSQ(review.id, {
+      raymond_reviewed: true,
+      raymond_notes: review.notes,
+      raymond_priority: review.priority,
+      raymond_action: review.action,
+      raymond_reviewed_at: new Date().toISOString(),
+      status: 'raymond_reviewed',
+      priority: review.priority,
+    });
 
-AGENT: ${item.agent_name} (${item.division})
-TASK: ${item.task}
-OUTPUT:
-${item.raw_output}
-
-Provide:
-1. Strategic assessment (2–3 sentences — is this output strong, adequate, or needs improvement?)
-2. Priority rating: normal | high (high = needs DeAnna's attention today)
-3. Action: route_to_governance | needs_attention_now
-4. Chief of Staff notes (what should governance and the Twin know about this item?)
-
-"needs_attention_now" means this cannot wait for the 11:30am briefing — it requires immediate routing through governance to DeAnna.
-
-Respond ONLY with valid JSON:
-{"priority":"normal","action":"route_to_governance","assessment":"...","notes":"..."}`, 800);
-
-      const parsed = JSON.parse(review.replace(/```json|```/g, '').trim());
-      const isNeedsAttention = parsed.action === 'needs_attention_now';
-      if (isNeedsAttention) needsAttentionCount++;
-
-      await updateCSQ(item.id, {
-        raymond_reviewed: true,
-        raymond_notes: parsed.notes,
-        raymond_priority: parsed.priority,
-        raymond_action: parsed.action,
-        raymond_reviewed_at: new Date().toISOString(),
-        status: 'raymond_reviewed',
-        priority: parsed.priority,
-      });
-
-      // If needs attention, immediately trigger governance for this item
-      if (isNeedsAttention) {
-        console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name} — ${item.task}`);
-        await runGovernanceForItem({ ...item, raymond_notes: parsed.notes, raymond_action: parsed.action });
+    if (isNeedsAttention) {
+      const item = pending.find(p => p.id === review.id);
+      if (item) {
+        console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name}`);
+        await runGovernanceForItem({ ...item, raymond_notes: review.notes, raymond_action: review.action });
       }
-
-    } catch (error) {
-      console.error(`[raymond] Failed to review item ${item.id}:`, error);
     }
   }
 
