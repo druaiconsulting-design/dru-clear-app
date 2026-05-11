@@ -286,6 +286,8 @@ Today is ${today}.
 
 ${GENIUS_MODE}
 
+TRADEMARK REQUIREMENT: When referencing any DRU framework, ALWAYS include the ™ symbol: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+
 Generate DeAnna's daily executive briefing. Include:
 1. Today's strategic focus (one clear priority aligned to DRU AI Consulting's pre-launch phase)
 2. Key follow-up items (correspondence, decisions, or actions that may need attention)
@@ -616,10 +618,20 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
 
   // BATCH STEP 1: Isabella trademark check — structured output guarantees valid JSON
   const isabellaResults = await callAnthropicStructured(
-    `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. Review ALL items below for trademark compliance.
+    `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. You auto-block any output that misuses or omits trademark symbols on DRU's proprietary frameworks, or that infringes on external trademarks.
 
-DRU AI Consulting OWNS Classes 35, 41, 42. Coaching, training, AI consulting content is DRU's CORE BUSINESS — NOT a violation.
-Only flag: (1) DRU's own ™ marks missing the ™ symbol, OR (2) content copying a SPECIFIC named competitor's trademark.
+DRU AI Consulting's protected marks — ALWAYS require ™ symbol:
+DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
+
+HARD BLOCK (cleared: false) if:
+1. Any DRU proprietary framework name appears WITHOUT the ™ symbol
+2. Content directly copies a specific named external competitor's registered trademark
+
+CLEAR (cleared: true) if:
+- All DRU framework names are correctly marked with ™ OR frameworks are not mentioned at all
+- No external trademark infringement detected
+
+DEFAULT: If content does not reference any DRU frameworks at all, cleared = true.
 
 ${allItems.map((item, i) => `ITEM ${i + 1} (id: ${item.id}):\nAgent: ${item.agent_name}\nContent: ${item.raw_output.slice(0, 300)}...`).join('\n\n---\n\n')}
 
@@ -888,7 +900,11 @@ export default async function handler(req: any, res: any): Promise<void> {
     res.status(202).json({ success: true, agent: route.agent_name, leads_scanned: omar.total_leads_scanned, high_intent: omar.high_intent_leads.length, crm_updates: ryan.crm_updates, message: 'Omar scored leads, Ryan updated CRM — output in chief of staff queue' });
 
   } else if (route.pipeline === 'p1_serena') {
-    const id = await runAgentToCSQ('serena', 'Serena Jackson', 'Revenue & Growth', 'morning_coaching_briefing', 'coaching', `${GENIUS_MODE}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting. Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move. DeAnna is building the DRU AI Leadership Ecosystem™ toward launch.`);
+    const id = await runAgentToCSQ('serena', 'Serena Jackson', 'Revenue & Growth', 'morning_coaching_briefing', 'coaching', `${GENIUS_MODE}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder.
+
+TRADEMARK REQUIREMENT: When referencing any DRU framework, ALWAYS include the ™ symbol: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover→Diagnose→Design→Deploy→Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+
+Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move. DeAnna is building the DRU AI Leadership Ecosystem™ toward launch.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_mateo') {
