@@ -417,10 +417,11 @@ Return ONLY a valid JSON array with one object per item, using the exact id prov
   const reviews = JSON.parse(batchReview.replace(/```json|```/g, '').trim());
   let needsAttentionCount = 0;
 
-  for (const review of reviews) {
+  // Update all items concurrently — prevents sequential timeout
+  await Promise.all(reviews.map(async (review: any) => {
     const isNeedsAttention = review.action === 'needs_attention_now';
     if (isNeedsAttention) needsAttentionCount++;
-
+    if (isNeedsAttention) console.log(`[raymond] ⚡ Needs attention: ${review.id}`);
     await updateCSQ(review.id, {
       raymond_reviewed: true,
       raymond_notes: review.notes,
@@ -430,13 +431,7 @@ Return ONLY a valid JSON array with one object per item, using the exact id prov
       status: 'raymond_reviewed',
       priority: review.priority,
     });
-
-    if (isNeedsAttention) {
-      console.log(`[raymond] ⚡ Flagging for immediate attention: ${item.agent_name}`);
-      // Status already set to raymond_reviewed — governance gate will pick this up
-      // and prioritize it over standard items
-    }
-  }
+  }));
 
   return { reviewed: pending.length, needs_attention: needsAttentionCount };
 }
