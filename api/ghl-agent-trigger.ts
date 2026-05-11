@@ -130,7 +130,14 @@ const CRON_TRIGGER_TYPES = new Set(Object.keys(AGENT_ROUTES).filter(k => k.start
 // Eliminates JSON.parse errors permanently
 // ─────────────────────────────────────────────────────────────
 
-async function callAnthropicStructured(prompt: string, schema: Record<string, unknown>, maxTokens = 2000): Promise<any[]> {
+// ─────────────────────────────────────────────────────────────
+// SHARED — Anthropic JSON array call using assistant prefill
+// Forces response to start with [ — no beta features needed
+// Works on all models, no schema complexity limits, no 400 errors
+// Anthropic cookbook recommended approach for reliable JSON arrays
+// ─────────────────────────────────────────────────────────────
+
+async function callAnthropicStructured(prompt: string, _schema: Record<string, unknown>, maxTokens = 2000): Promise<any[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -139,29 +146,20 @@ async function callAnthropicStructured(prompt: string, schema: Record<string, un
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'structured-outputs-2025-11-13',
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-      output_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'structured_response',
-          strict: true,
-          schema: {
-            type: 'array',
-            items: schema,
-          },
-        },
-      },
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '[' }, // prefill forces JSON array
+      ],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic structured error ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const text = data.content?.[0]?.text ?? '[]';
-  return JSON.parse(text);
+  const text = data.content?.[0]?.text ?? ']';
+  return JSON.parse('[' + text);
 }
 
 async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
