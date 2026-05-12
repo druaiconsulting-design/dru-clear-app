@@ -124,32 +124,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 
 const CRON_TRIGGER_TYPES = new Set(Object.keys(AGENT_ROUTES).filter(k => k.startsWith('cron_')));
 
-// ─────────────────────────────────────────────────────────────
-// SHARED — Anthropic JSON object call using assistant prefill
-// Forces response to start with { — guaranteed single object
-// ─────────────────────────────────────────────────────────────
-
-async function callAnthropicJSON(prompt: string, maxTokens = 800): Promise<any> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: '{' },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json();
-  const text = data.content?.[0]?.text ?? '"error":"failed"}';
-  return JSON.parse('{' + text);
-}
-
 async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
@@ -424,16 +398,19 @@ async function runRaymond(): Promise<{ reviewed: number; needs_attention: number
 
   for (const item of pending) {
     try {
-      const review = await callAnthropicJSON(
+      const rawReview = await callAnthropic(
         `${GENIUS_MODE}\n\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Review this agent output and return a JSON object with exactly these fields:
 "priority": "normal" or "high"
 "action": "route_to_governance" or "needs_attention_now"
 "notes": one sentence for the governance team
 
+Return ONLY valid JSON — no explanation, no markdown, no code fences.
+
 AGENT: ${item.agent_name} (${item.division})
 TASK: ${item.task}
-OUTPUT: ${item.raw_output.slice(0, 400)}`
+OUTPUT: ${item.raw_output.slice(0, 400)}`, 400
       );
+      const review = JSON.parse(rawReview.replace(/\`\`\`json|\`\`\`/g, '').trim());
       const isNeedsAttention = review.action === 'needs_attention_now';
       if (isNeedsAttention) needsAttentionCount++;
       updates.push(updateCSQ(item.id, {
@@ -447,6 +424,17 @@ OUTPUT: ${item.raw_output.slice(0, 400)}`
       }));
     } catch (error) {
       console.error(`[raymond] Failed item ${item.id}:`, error);
+      // Fallback — AI review failed but item must still move forward.
+      // Governance is the quality gate, not Raymond.
+      updates.push(updateCSQ(item.id, {
+        raymond_reviewed: true,
+        raymond_notes: 'Routed by Raymond — AI review unavailable, governance will assess.',
+        raymond_priority: 'normal',
+        raymond_action: 'route_to_governance',
+        raymond_reviewed_at: new Date().toISOString(),
+        status: 'raymond_reviewed',
+        priority: 'normal',
+      }));
     }
   }
 
@@ -477,7 +465,7 @@ async function runTravis(): Promise<number> {
 // COMMAND LAYER — GOVERNANCE + LEGAL GATE (scheduled 11:15am)
 // Processes all travis_organized items
 // Isabella Moreno trademark check → Full governance panel
-// Uses callAnthropicJSON (assistant prefill) — guaranteed JSON
+// Uses callAnthropic + JSON.parse — same method as all agents
 // ─────────────────────────────────────────────────────────────
 
 async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
@@ -504,7 +492,7 @@ async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number
   for (const item of allItems) {
     try {
       // Step 1: Isabella trademark check
-      const isabella = await callAnthropicJSON(
+      const rawIsabella = await callAnthropic(
         `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting.
 
 DRU's protected marks ALWAYS require ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
@@ -517,8 +505,10 @@ Also verify: does the content include assessment.druaiconsulting.com as the CTA?
 AGENT: ${item.agent_name}
 CONTENT: ${item.raw_output.slice(0, 400)}
 
-Return JSON: "cleared":true/false, "flags":"none or description", "notes":"one sentence"`
+Return ONLY valid JSON — no explanation, no markdown, no code fences:
+{"cleared":true,"flags":"none","notes":"one sentence"}`, 400
       );
+      const isabella = JSON.parse(rawIsabella.replace(/\`\`\`json|\`\`\`/g, '').trim());
 
       if (!isabella.cleared) {
         blocked++;
@@ -527,15 +517,17 @@ Return JSON: "cleared":true/false, "flags":"none or description", "notes":"one s
       }
 
       // Step 2: Full governance panel review
-      const gov = await callAnthropicJSON(
+      const rawGov = await callAnthropic(
         `${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella cleared this content for trademark compliance. Review for legal risk, privacy concerns, financial accuracy, and brand consistency. Return cleared:true unless there is a specific real issue.
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division}
 RAYMOND'S NOTES: ${item.raymond_notes ?? 'N/A'}
 CONTENT: ${item.raw_output.slice(0, 400)}
 
-Return JSON: "cleared":true/false, "compliance_score":1-10, "governance_notes":"...", "legal_notes":"...", "flags":"none or description"`
+Return ONLY valid JSON — no explanation, no markdown, no code fences:
+{"cleared":true,"compliance_score":9,"governance_notes":"...","legal_notes":"...","flags":"none"}`, 600
       );
+      const gov = JSON.parse(rawGov.replace(/\`\`\`json|\`\`\`/g, '').trim());
 
       if (gov.cleared) {
         cleared++;
@@ -706,6 +698,10 @@ async function dispatchToTravisRouter(route: AgentRoute, payload: TriggerPayload
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cron-secret');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const incomingSecret = req.headers['x-cron-secret'];
   if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) { res.status(401).json({ error: 'Unauthorized' }); return; }
