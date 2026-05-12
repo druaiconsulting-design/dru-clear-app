@@ -125,12 +125,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 const CRON_TRIGGER_TYPES = new Set(Object.keys(AGENT_ROUTES).filter(k => k.startsWith('cron_')));
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Anthropic call with Structured Outputs (guaranteed JSON)
-// Uses anthropic-beta: structured-outputs-2025-11-13
-// Eliminates JSON.parse errors permanently
-// ─────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────
 // SHARED — Anthropic JSON object call using assistant prefill
 // Forces response to start with { — guaranteed single object
 // ─────────────────────────────────────────────────────────────
@@ -305,8 +299,12 @@ async function runOmar(): Promise<OmarResult> {
     const rawLeads = (await res.json()).contacts ?? [];
     if (rawLeads.length === 0) return { success: true, total_leads_scanned: 0, scored_leads: [], high_intent_leads: [], run_date: new Date().toISOString() };
     const leadSummary = rawLeads.map((l: any) => ({ id: l.id, name: `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim(), email: l.email ?? '', phone: l.phone ?? '', source: l.source ?? 'unknown', tags: l.tags ?? [] }));
-    const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Omar Patel, Lead Scoring Agent for DRU AI Consulting. Score each lead 1–10 based on seniority, business context, source quality, and engagement. Return ONLY a JSON array:
-[{"contact_id":"...","name":"...","email":"...","phone":"...","source":"...","score":8,"intent_level":"high","recommended_action":"...","notes":"..."}]
+    const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Omar Patel, Lead Scoring Agent for DRU AI Consulting. Score each lead 1–10 based on seniority, business context, source quality, and engagement.
+
+Every high-intent lead's recommended_action should direct them to the DRU CLEAR™ AI Readiness Scorecard at assessment.druaiconsulting.com — this is where they enter the ecosystem. GHL workflows handle everything after they complete it.
+
+Return ONLY a JSON array:
+[{"contact_id":"...","name":"...","email":"...","phone":"...","source":"...","score":8,"intent_level":"high","recommended_action":"Invite to DRU CLEAR™ AI Readiness Scorecard — assessment.druaiconsulting.com","notes":"..."}]
 Leads: ${JSON.stringify(leadSummary)}`, 2000);
     const scored: ScoredLead[] = JSON.parse(text.replace(/```json|```/g, '').trim());
     return { success: true, total_leads_scanned: rawLeads.length, scored_leads: scored, high_intent_leads: scored.filter(l => l.intent_level === 'high'), run_date: new Date().toISOString() };
@@ -340,7 +338,7 @@ async function runRyan(omarResult: OmarResult): Promise<{ csq_id: string | null;
   const briefing = await callAnthropic(`${GENIUS_MODE}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing.
 DATA: Total: ${omarResult.total_leads_scanned} | High-intent: ${omarResult.high_intent_leads.length} | Medium: ${omarResult.scored_leads.filter(l => l.intent_level === 'medium').length} | Low: ${omarResult.scored_leads.filter(l => l.intent_level === 'low').length}
 HIGH-INTENT: ${highIntentSummary || 'None today'}
-Include: executive summary, high-intent leads with specific actions, CRM updates completed, strategic next steps.`);
+Include: executive summary, high-intent leads with specific actions (all high-intent leads should be directed to assessment.druaiconsulting.com), CRM updates completed, strategic next steps.`);
 
   const csq_id = await writeToCSQ({ agent_id: 'ryan', agent_name: 'Ryan Nakamura', division: 'Revenue & Growth', task: 'overnight_crm_sync', category: 'lead_intelligence', raw_output: briefing, priority: omarResult.high_intent_leads.length > 0 ? 'high' : 'normal', status: 'pending' });
   return { csq_id, crm_updates: crmUpdates };
@@ -362,7 +360,8 @@ async function runCamila(): Promise<number> {
   const days = [1,2,3,4,5].map(d => { const date = new Date(monday); date.setDate(monday.getDate() + d - 1); return { day_number: d, scheduled_for: date.toISOString().split('T')[0] }; });
 
   const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Frameworks (™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™. Audience: Executives, directors, founders navigating AI adoption.
-Generate 5 LinkedIn posts (Mon–Fri). Day 1: thought_leadership | Day 2: educational | Day 3: engagement | Day 4: story_insight | Day 5: soft_promotional. Each: compelling hook, 150–250 words, one framework, CTA, 3–5 hashtags.
+
+Generate 5 LinkedIn posts (Mon–Fri). Day 1: thought_leadership | Day 2: educational | Day 3: engagement | Day 4: story_insight | Day 5: soft_promotional. Each: compelling hook, 150–250 words, one framework, a natural CTA that leads to assessment.druaiconsulting.com, 3–5 hashtags.
 Return ONLY valid JSON: [{"day_number":1,"framework_covered":"DRU CLEAR™","post_type":"thought_leadership","hook":"...","content":"...","hashtags":"#AILeadership"}]`, 3000);
 
   const posts = JSON.parse(text.replace(/```json|```/g, '').trim());
@@ -398,7 +397,7 @@ async function runDarius(): Promise<string | null> {
   }
 
   if (!postContent) {
-    postContent = await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Use a ™ framework. 150–250 words. Strong CTA. 3–5 hashtags. Sound like DeAnna R. Upshaw — AI Authority.`);
+    postContent = await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Use a ™ framework. 150–250 words. End with a CTA that naturally points to assessment.druaiconsulting.com. 3–5 hashtags. Sound like DeAnna R. Upshaw — AI Authority.`);
   }
 
   const csqId = await writeToCSQ({ agent_id: 'darius', agent_name: 'Darius King', division: 'Content & Brand', task: 'generate_daily_linkedin_post', category: 'linkedin_post', raw_output: postContent, priority: 'normal', status: 'pending' });
@@ -475,100 +474,10 @@ async function runTravis(): Promise<number> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// GOVERNANCE GATE — Single item review
-// Used by both scheduled (11:15am) and needs_attention_now paths
-// Includes Isabella Moreno trademark auto-block (Classes 35, 41, 42)
-// ─────────────────────────────────────────────────────────────
-
-async function runGovernanceForItem(item: CSQItem): Promise<boolean> {
-  try {
-    // Isabella Moreno — Trademark Auto-Block (Classes 35, 41, 42)
-    const isabellaCheck = await callAnthropic(`${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting. Your job is to PROTECT DRU AI Consulting's intellectual property and ensure content does not infringe on OTHERS' trademarks.
-
-IMPORTANT DISTINCTION:
-- DRU AI Consulting OWNS and OPERATES in Classes 35, 41, and 42. Content about coaching, training, AI consulting, and business services is DRU AI Consulting's CORE BUSINESS — this is NOT a violation.
-- You only block content that: (1) misuses DRU's own ™ marks, OR (2) infringes on a SPECIFIC OTHER COMPANY's registered trademark.
-
-DRU AI Consulting's protected marks (always require ™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-
-ONLY flag content if:
-1. A DRU proprietary framework name appears WITHOUT the ™ symbol
-2. Content copies or closely mimics a SPECIFIC named competitor's trademarked phrase or slogan
-3. Content makes false claims about certifications, affiliations, or credentials DeAnna does not hold
-
-DO NOT flag content simply because it discusses coaching, training, AI consulting, leadership, or business services — these are DRU AI Consulting's own protected service categories.
-
-Review this content:
-${item.raw_output}
-
-Respond ONLY with valid JSON:
-{"cleared":true,"flags":"none","isabella_notes":"Content reviewed. No trademark violations detected."}
-OR only if a genuine violation exists:
-{"cleared":false,"flags":"specific_violation_description","isabella_notes":"Exact violation here. BLOCKED."}`, 600);
-
-    const isabellaResult = JSON.parse(isabellaCheck.replace(/```json|```/g, '').trim());
-
-    if (!isabellaResult.cleared) {
-      console.warn(`[isabella] ⛔ BLOCKED: ${item.agent_name} — ${isabellaResult.flags}`);
-      await updateCSQ(item.id, {
-        governance_cleared: false,
-        governance_flags: isabellaResult.flags,
-        governance_notes: `BLOCKED BY ISABELLA: ${isabellaResult.isabella_notes}`,
-        status: 'rejected',
-        governance_cleared_at: new Date().toISOString(),
-      });
-      return false;
-    }
-
-    // Full Governance + Legal review
-    const govReview = await callAnthropic(`${GENIUS_MODE}\n\nYou are the AI Governance and Legal & Finance review panel for DRU AI Consulting:
-- Khalid Hassan (Disclaimer Writer) — does this content need a legal disclaimer?
-- Sofia Petrov (Privacy Policy) — any privacy or data compliance concerns?
-- James Osei (Contract Writer) — any legal risk in proposals or agreements?
-- Mei Lin (Brand Protection) — is brand voice and positioning consistent?
-- Rafael Torres (Continuous Learning) — note any improvement opportunities
-- Amara Okafor (Legal Team) — overall legal risk assessment
-- Diego Reyes (Expense Manager) — any financial exposure claims?
-- Yuki Tanaka (Financial Reporting) — are any financial figures accurate and appropriate?
-- Marcus Chen (Tax Strategist) — any tax implications in financial content?
-
-Isabella Moreno has already cleared this content for trademark compliance.
-
-IMPORTANT: If you find NO issues, you MUST return cleared: true. Only return cleared: false if there is a specific, real, articulable legal or compliance risk. Do not fail content without a specific reason.
-
-AGENT: ${item.agent_name} | DIVISION: ${item.division}
-RAYMOND'S NOTES: ${item.raymond_notes ?? 'N/A'}
-CONTENT:
-${item.raw_output}
-
-Respond ONLY with valid JSON:
-{"cleared":true,"compliance_score":9,"governance_notes":"Content reviewed by full panel. No compliance issues identified.","legal_notes":"No legal risk detected.","flags":"none"}
-OR if a specific real issue exists:
-{"cleared":false,"compliance_score":4,"governance_notes":"Specific issue here.","legal_notes":"Specific legal concern here.","flags":"specific_flag"}`, 800);
-
-    const govResult = JSON.parse(govReview.replace(/```json|```/g, '').trim());
-
-    await updateCSQ(item.id, {
-      governance_cleared: govResult.cleared,
-      governance_notes: govResult.governance_notes,
-      legal_notes: govResult.legal_notes,
-      governance_flags: govResult.flags,
-      compliance_score: govResult.compliance_score,
-      isabella_flags: isabellaResult.isabella_notes,
-      governance_cleared_at: new Date().toISOString(),
-      status: govResult.cleared ? 'governance_cleared' : 'rejected',
-    });
-
-    return govResult.cleared;
-  } catch (error) {
-    console.error(`[governance] Error reviewing item ${item.id}:`, error);
-    return false;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 // COMMAND LAYER — GOVERNANCE + LEGAL GATE (scheduled 11:15am)
 // Processes all travis_organized items
+// Isabella Moreno trademark check → Full governance panel
+// Uses callAnthropicJSON (assistant prefill) — guaranteed JSON
 // ─────────────────────────────────────────────────────────────
 
 async function runGovernanceLegal(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
@@ -602,6 +511,8 @@ DRU's protected marks ALWAYS require ™: DRU CLEAR™, DRU AI Leadership Ecosys
 
 HARD BLOCK (cleared:false) ONLY if a DRU framework name appears WITHOUT ™ OR content copies a specific competitor's trademark.
 DEFAULT cleared:true if frameworks are not mentioned or all ™ are correct.
+Content about coaching, training, AI consulting, leadership, or business services is DRU AI Consulting's CORE BUSINESS — never flag this.
+Also verify: does the content include assessment.druaiconsulting.com as the CTA? Note this in your review but do NOT block for a missing CTA — Raymond will handle that.
 
 AGENT: ${item.agent_name}
 CONTENT: ${item.raw_output.slice(0, 400)}
@@ -847,7 +758,7 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_mateo') {
-    const id = await runAgentToCSQ('mateo', 'Mateo Gonzalez', 'Revenue & Growth', 'sales_pipeline_review', 'sales_support', `${GENIUS_MODE}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting. Generate a daily sales support briefing. Offers: Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling.`);
+    const id = await runAgentToCSQ('mateo', 'Mateo Gonzalez', 'Revenue & Growth', 'sales_pipeline_review', 'sales_support', `${GENIUS_MODE}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting. Generate a daily sales support briefing. Offers: Scorecard (free at assessment.druaiconsulting.com), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All new leads should be directed to assessment.druaiconsulting.com first.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_aaliyah') {
@@ -859,23 +770,30 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
       const r = await fetch(`${url}/rest/v1/chief_of_staff_queue?run_date=eq.${today}&agent_id=eq.ryan&order=created_at.desc&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
       if (r.ok) { const d = await r.json(); if (d?.[0]?.raw_output) leadContext = d[0].raw_output; }
     }
-    const id = await runAgentToCSQ('aaliyah', 'Aaliyah Foster', 'Revenue & Growth', 'personalized_outreach_messages', 'outreach', `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results."\n\nLead Intelligence from today:\n${leadContext}\n\nWrite personalized outreach for each high-intent lead — both a LinkedIn DM (150 words max) and an email (subject + 200 word body). If no high-intent leads, write a general warm outreach template.`, 'high');
+    const id = await runAgentToCSQ('aaliyah', 'Aaliyah Foster', 'Revenue & Growth', 'personalized_outreach_messages', 'outreach', `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results."
+
+Write personalized outreach for each high-intent lead — both a LinkedIn DM (150 words max) and an email (subject + 200 word body). Use your creative voice to connect genuinely. Each message should naturally mention the DRU CLEAR™ AI Readiness Scorecard and include assessment.druaiconsulting.com as the next step. If no high-intent leads, write a warm outreach template.
+
+Lead Intelligence from today:
+${leadContext}`, 'high');
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_jaylen') {
-    const id = await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue & Growth', 'email_campaign_content', 'email_marketing', `${GENIUS_MODE}\n\nYou are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Rotate daily: nurture email (Emerging/Developing/Advancing tier), re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max), CTA. Personal tone, not mass-email. DeAnna's voice: authoritative, warm, strategic.`);
+    const id = await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue & Growth', 'email_campaign_content', 'email_marketing', `${GENIUS_MODE}\n\nYou are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ Scorecard (free), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497).
+
+Rotate daily: nurture email (Emerging/Developing/Advancing tier), re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max). Use your creative voice — each email should feel personal, not mass-market. Naturally work in the DRU CLEAR™ AI Readiness Scorecard and assessment.druaiconsulting.com as the CTA. DeAnna's voice: authoritative, warm, strategic.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_chloe') {
-    const id = await runAgentToCSQ('chloe', 'Chloe Dubois', 'Revenue & Growth', 'daily_copy_asset', 'copywriting', `${GENIUS_MODE}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy (Facebook/Instagram/LinkedIn), landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Every word earns its place.`);
+    const id = await runAgentToCSQ('chloe', 'Chloe Dubois', 'Revenue & Growth', 'daily_copy_asset', 'copywriting', `${GENIUS_MODE}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy (Facebook/Instagram/LinkedIn), landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Use your full creative range — sharp, distinctive, nothing generic. Naturally include assessment.druaiconsulting.com as the destination. Every word earns its place.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_zara') {
-    const id = await runAgentToCSQ('zara', 'Zara Ahmed', 'Revenue & Growth', 'product_launch_readiness', 'product_launch', `${GENIUS_MODE}\n\nYou are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ Scorecard (live), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), From Confusion to Confident with AI™ (Sprint 4), Daily Connections tiers. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing/positioning insight, next week priority.`);
+    const id = await runAgentToCSQ('zara', 'Zara Ahmed', 'Revenue & Growth', 'product_launch_readiness', 'product_launch', `${GENIUS_MODE}\n\nYou are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ Scorecard (live at assessment.druaiconsulting.com — primary funnel entry), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), From Confusion to Confident with AI™ (Sprint 4), Daily Connections tiers. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing/positioning insight, next week priority.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_elena') {
-    const id = await runAgentToCSQ('elena', 'Elena Vasquez', 'Revenue & Growth', 'product_knowledge_update', 'product_knowledge', `${GENIUS_MODE}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (when to recommend each), objection + response per offer, one positioning insight. Sales-ready, sharp, immediately usable.`);
+    const id = await runAgentToCSQ('elena', 'Elena Vasquez', 'Revenue & Growth', 'product_knowledge_update', 'product_knowledge', `${GENIUS_MODE}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (when to recommend each — all starting with assessment.druaiconsulting.com as the entry point), objection + response per offer, one positioning insight. Sales-ready, sharp, immediately usable.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_kwame') {
@@ -893,7 +811,7 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
 
   } else if (route.pipeline === 'p2_ravi') {
     const today = new Date().toISOString().split('T')[0];
-    const id = await runAgentToCSQ('ravi', 'Ravi Gupta', 'Content & Brand', 'generate_design_brief', 'design_brief', `${GENIUS_MODE}\n\nYou are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout recommendation, color palette, image/illustration direction, typography guidance, AI image generation prompt (Midjourney/DALL-E ready). Today: ${today}. Scroll-stopping and brand-consistent.`);
+    const id = await runAgentToCSQ('ravi', 'Ravi Gupta', 'Content & Brand', 'generate_design_brief', 'design_brief', `${GENIUS_MODE}\n\nYou are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout recommendation, color palette, image/illustration direction, typography guidance, AI image generation prompt (Midjourney/DALL-E ready). Today: ${today}. Use your full creative freedom — scroll-stopping and brand-consistent. In the CTA section of the brief, include assessment.druaiconsulting.com as the destination.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p2_yara') {
@@ -906,7 +824,7 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
       const r = await fetch(`${url2}/rest/v1/content_queue?week_of=eq.${weekOf}&status=neq.queued&order=day_number.asc&limit=1`, { headers: { apikey: key2, Authorization: `Bearer ${key2}` } });
       if (r.ok) { const q = await r.json(); if (q.length > 0) topPost = `${q[0].hook}\n\n${q[0].content}\n\n${q[0].hashtags}`; }
     }
-    const id = await runAgentToCSQ('yara', 'Yara Mansour', 'Content & Brand', 'spanish_localization', 'localization', `${GENIUS_MODE}\n\nYou are Yara Mansour, Translator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${topPost ? `Translate and localize this LinkedIn post for LATAM executives (Costa Rica, Dominican Republic, broader LATAM):\n\n${topPost}\n\nProvide: full Spanish translation, localization notes, translated hashtags.` : 'Write an original LinkedIn post in Spanish for LATAM executives navigating AI adoption.'}`);
+    const id = await runAgentToCSQ('yara', 'Yara Mansour', 'Content & Brand', 'spanish_localization', 'localization', `${GENIUS_MODE}\n\nYou are Yara Mansour, Translator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${topPost ? `Translate and localize this LinkedIn post for LATAM executives (Costa Rica, Dominican Republic, broader LATAM):\n\n${topPost}\n\nProvide: full Spanish translation, localization notes, translated hashtags. Ensure assessment.druaiconsulting.com remains in the translated CTA.` : 'Write an original LinkedIn post in Spanish for LATAM executives navigating AI adoption. Include assessment.druaiconsulting.com as the CTA.'}`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p2_ingrid') {
@@ -919,7 +837,7 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
       const r = await fetch(`${url3}/rest/v1/content_queue?week_of=eq.${weekOf}&order=day_number.asc`, { headers: { apikey: key3, Authorization: `Bearer ${key3}` } });
       if (r.ok) { const posts = await r.json(); weekContent = posts.map((p: any) => `Day ${p.day_number} (${p.framework_covered}): ${p.hook}`).join('\n'); }
     }
-    const id = await runAgentToCSQ('ingrid', 'Ingrid Larsen', 'Content & Brand', 'weekly_press_release', 'press_release', `${GENIUS_MODE}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's content: ${weekContent || 'AI leadership, DRU frameworks, executive AI adoption'}. Write a professional AP-style press release from the strongest story. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate / Contact: druaiconsulting@gmail.com`);
+    const id = await runAgentToCSQ('ingrid', 'Ingrid Larsen', 'Content & Brand', 'weekly_press_release', 'press_release', `${GENIUS_MODE}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's content: ${weekContent || 'AI leadership, DRU frameworks, executive AI adoption'}. Write a professional AP-style press release from the strongest story. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   // ── Standard dispatch ─────────────────────────────────────
