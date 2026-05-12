@@ -74,7 +74,7 @@ function Router() {
   // ── Root ────────────────────────────────────────────────────────────────────
   if (path === "/" || path === "") {
     if (isAssessmentDomain) {
-      setTitle("DRU CLEAR™ AI Readiness Scorecard");
+      setTitle("DRU CLEAR™ AI Readiness Assessment");
       return <DruClearApp />;
     }
     if (isLoggedIn) {

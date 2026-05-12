@@ -1,5 +1,5 @@
 /**
- * DRU CLEAR™ AI Readiness Scorecard PWA
+ * DRU CLEAR™ AI Readiness Assessment PWA
  * Design: Executive Prestige — Dark Luxury
  * Background: #0A2342 | Gold: #D4AF37 | Magenta CTA: #C2185B
  * Fonts: Playfair Display (headings) + Inter (body)
@@ -1211,8 +1211,8 @@ function ShareYourExcitementScreen({ lead, scores, onRevisit }: { lead: LeadData
   const shareText = `I just completed my AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100. See how ready YOUR business is for AI — take the free assessment here: ${assessmentUrl}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(assessmentUrl)}&summary=${encodeURIComponent(shareText)}`;
   const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-  const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Scorecard by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIf you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time.\n\nTake it here: ${assessmentUrl}\n\n#AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
-  const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Scorecard and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
+  const linkedInCaption = `Just completed the DRU CLEAR™ AI Readiness Assessment by DRU AI Consulting and scored ${scaledScore}/100 — ${tier.label} tier.\n\nIf you're a leader wondering whether your organization is truly AI-ready, this 3-minute assessment is worth your time.\n\nTake it here: ${assessmentUrl}\n\n#AIReadiness #DRUClear #AILeadership #DigitalTransformation`;
+  const whatsAppCaption = `Hey! I just took the DRU CLEAR™ AI Readiness Assessment and scored ${scaledScore}/100 (${tier.label} tier). It's a free 3-min assessment that shows how AI-ready your business really is. Worth a look: ${assessmentUrl}`;
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [colleagueEmail, setColleagueEmail] = useState("");

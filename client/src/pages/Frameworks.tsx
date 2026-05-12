@@ -312,7 +312,7 @@ export default function Frameworks() {
           </div>
           <div style={pRowGold}>
             <div style={{ flex: 1 }}>
-              <p style={pName}>DRU CLEAR™ AI Readiness Scorecard</p>
+              <p style={pName}>DRU CLEAR™ AI Readiness Assessment</p>
               <p style={pSub}>Identify your gaps across all 4 frameworks and receive a personalized readiness score. Your transformation begins the moment you see your results.</p>
             </div>
             <p style={{ ...pPrice, fontSize: "1.1rem" }}>Free</p>
