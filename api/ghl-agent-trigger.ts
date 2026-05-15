@@ -601,7 +601,7 @@ You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Ups
 
 AGENT: ${item.agent_name} (${item.division})
 TASK: ${item.task}
-CONTENT: ${item.raw_output.slice(0, 400)}
+CONTENT: ${item.raw_output}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`, 300
@@ -615,7 +615,7 @@ Return ONLY valid JSON — no explanation, no markdown, no code fences:
 You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting. Raymond Holloway (Chief of Staff) has assessed this item. Your job is to organize and package it cleanly for the AI Twin's synthesis.
 
 AGENT: ${item.agent_name} | RAYMOND'S NOTES: ${raymond.notes ?? ''}
-CONTENT: ${item.raw_output.slice(0, 400)}
+CONTENT: ${item.raw_output}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"organized":true,"package_notes":"one sentence describing how this fits into today's briefing"}`, 300
@@ -629,7 +629,7 @@ Return ONLY valid JSON — no explanation, no markdown, no code fences:
 You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority, CEO/Founder of DRU AI Consulting. Raymond and Travis have reviewed this item. Your job is to add executive context — flag anything time-sensitive, note calendar implications, or surface anything DeAnna needs to act on personally today.
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT: ${item.raw_output.slice(0, 400)}
+CONTENT: ${item.raw_output}
 
 In 1–2 sentences, add your executive perspective. Flag if this needs DeAnna's personal attention today.`, 200
       );
