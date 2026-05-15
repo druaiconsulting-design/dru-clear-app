@@ -449,7 +449,7 @@ CLEARING STANDARD:
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT:
-${item.raw_output.slice(0, 800)}
+${item.raw_output.slice(0, 1500)}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
@@ -536,7 +536,7 @@ Return cleared:true unless there is a specific, real, articulable legal or compl
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division}
 CONTENT:
-${item.raw_output.slice(0, 800)}
+${item.raw_output.slice(0, 1500)}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No compliance issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 600
