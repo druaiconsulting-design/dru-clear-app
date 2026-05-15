@@ -457,7 +457,7 @@ OR if corrections needed:
 {"cleared":false,"flags":"specific issue here","correction_notes":"Exact instruction for the agent to correct this"}`, 500
       );
 
-      const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
       if (result.cleared) {
         cleared++;
@@ -519,30 +519,33 @@ async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number
       const raw = await callAnthropic(
         `${GENIUS_MODE}
 
-You are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella Moreno has cleared this content for trademark and class compliance. Your role is to review for legal risk, privacy concerns, financial accuracy, and brand consistency.
+You are the AI Governance and Legal & Finance panel for DRU AI Consulting.
 
-PANEL MEMBERS:
-- Khalid Hassan (Disclaimer Writer) — does this content need a legal disclaimer?
-- Sofia Petrov (Privacy Policy) — any privacy or data compliance concerns?
-- James Osei (Contract Writer) — any legal risk in proposals or agreements?
-- Mei Lin (Brand Protection) — is brand voice and positioning consistent?
-- Rafael Torres (Continuous Learning) — note any improvement opportunities
-- Amara Okafor (Legal Team) — overall legal risk assessment
-- Diego Reyes (Expense Manager) — any financial exposure claims?
-- Yuki Tanaka (Financial Reporting) — are any financial figures accurate and appropriate?
-- Marcus Chen (Tax Strategist) — any tax implications in financial content?
+IMPORTANT: Isabella Moreno has already completed trademark and service class compliance review. Her clearance is FINAL. You do NOT re-check trademarks, ™ symbols, or service class alignment. That work is done.
 
-Return cleared:true unless there is a specific, real, articulable legal or compliance risk.
+YOUR SOLE RESPONSIBILITIES are:
+- Khalid Hassan (Disclaimer Writer): Does this content require a legal disclaimer? (e.g. income claims, results not typical, professional advice)
+- Sofia Petrov (Privacy Policy): Does this content reference personal data, client information, or privacy-sensitive details?
+- James Osei (Contract Writer): Does this content contain agreement language, guarantees, or contractual risk?
+- Mei Lin (Brand Protection): Is DeAnna's brand voice consistent? Does anything misrepresent her positioning or credentials?
+- Rafael Torres (Continuous Learning): Note one improvement opportunity for quality
+- Amara Okafor (Legal Team): Is there any specific, real legal liability in this content?
+- Diego Reyes (Expense Manager): Are any financial figures, pricing, or ROI claims accurate and defensible?
+- Yuki Tanaka (Financial Reporting): Are revenue projections or financial statements appropriate?
+- Marcus Chen (Tax Strategist): Are there any tax-related claims that need qualification?
+
+DEFAULT TO cleared:true. Only return cleared:false if there is a specific, real, named legal or financial risk. Vague concerns do not justify blocking.
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division}
 CONTENT:
 ${item.raw_output}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
-{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No compliance issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 600
+{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No legal or financial issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 600
       );
 
-      const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
+      if (!result) throw new Error('Governance response could not be parsed');
 
       if (result.cleared) {
         cleared++;
@@ -606,7 +609,7 @@ CONTENT: ${item.raw_output}
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`, 300
       );
-      const raymond = JSON.parse(rawRaymond.replace(/```json|```/g, '').trim());
+      const raymond = JSON.parse(rawRaymond.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
       // Travis — Assistant Chief of Staff: organizes and packages
       const rawTravis = await callAnthropic(
@@ -620,7 +623,7 @@ CONTENT: ${item.raw_output}
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"organized":true,"package_notes":"one sentence describing how this fits into today's briefing"}`, 300
       );
-      const travis = JSON.parse(rawTravis.replace(/```json|```/g, '').trim());
+      const travis = JSON.parse(rawTravis.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
       // Priya — Executive Assistant: executive context and time-sensitive flags
       const rawPriya = await callAnthropic(
