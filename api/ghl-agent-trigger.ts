@@ -262,7 +262,7 @@ ISABELLA'S CORRECTION NOTES:
 ${correctionNotes}
 
 YOUR PREVIOUS OUTPUT (for reference):
-${item.raw_output.slice(0, 600)}
+${item.raw_output}
 
 Produce a corrected version that fully addresses every point in Isabella's feedback. This is not a downgrade — it is an upgrade. Maintain full Genius Mode quality.
 
@@ -449,7 +449,7 @@ CLEARING STANDARD:
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT:
-${item.raw_output.slice(0, 1500)}
+${item.raw_output}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
@@ -536,7 +536,7 @@ Return cleared:true unless there is a specific, real, articulable legal or compl
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division}
 CONTENT:
-${item.raw_output.slice(0, 1500)}
+${item.raw_output}
 
 Return ONLY valid JSON — no explanation, no markdown, no code fences:
 {"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No compliance issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 600
@@ -847,7 +847,20 @@ Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLoca
 
   } else if (route.pipeline === 'p1_mateo') {
     const id = await runAgentToCSQ('mateo', 'Mateo Gonzalez', 'Revenue & Growth', 'sales_pipeline_review', 'sales_support',
-      `You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting. Generate a daily sales support briefing. Offers: Scorecard (free at assessment.druaiconsulting.com), Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), Course ($497–$1,497). Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All new leads should be directed to assessment.druaiconsulting.com first.`);
+      `You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting. Generate a daily sales support briefing.
+
+TERMINOLOGY (use precisely):
+- Assessment: the tool clients take at assessment.druaiconsulting.com to evaluate their AI readiness
+- DRU CLEAR™ Scorecard: the personalized results report clients receive after completing the assessment
+- Diagnostics (Strategic Diagnostic $3,497 / Executive Diagnostic $4,997): components of DeAnna's consulting services, not standalone products
+
+OFFERS (frame all as consulting service components):
+- DRU CLEAR™ AI Readiness Assessment (free) — entry point at assessment.druaiconsulting.com
+- Strategic Diagnostic ($3,497) — consulting engagement component
+- Executive Diagnostic ($4,997) — consulting engagement component
+- From Confusion to Confident with AI™ Course ($497–$1,497) — educational service component
+
+Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All new leads directed to assessment.druaiconsulting.com first.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_aaliyah') {
