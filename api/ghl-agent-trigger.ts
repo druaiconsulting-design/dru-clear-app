@@ -426,7 +426,7 @@ async function runIsabella(): Promise<{ reviewed: number; cleared: number; sent_
 
   for (const item of pending) {
     try {
-      const raw = await callAnthropic(
+      const raw = await callTwin(
         `${GENIUS_MODE}
 
 You are Isabella Moreno, Director of Compliance for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
