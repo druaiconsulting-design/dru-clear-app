@@ -756,6 +756,8 @@ Your team has completed today's operations. Isabella cleared all content for tra
 BRAND PRINCIPLE: "AI Mastery. Leadership Clarity. Measurable Results."
 FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
 
+TODAY'S EXACT DATE: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' })} — use this exact date in the briefing header, no other date.
+
 TODAY'S COMMAND-APPROVED OPERATIONS:
 ${divisionSummaries}
 
