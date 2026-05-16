@@ -1,9 +1,6 @@
 // api/social-publisher.ts
-// Vercel edge function — fires GHL workflow webhook → posts to Social Planner
-
+// Vercel edge function — sends approved LinkedIn post to Make.com → LinkedIn
 export const config = { runtime: "edge" };
-
-const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/4740db63-d5a4-4814-8932-c7893e8f5658";
 
 export default async function handler(req: Request) {
   const CORS = {
@@ -18,16 +15,30 @@ export default async function handler(req: Request) {
 
   const { content, platform, approval_id } = await req.json();
 
-  const res = await fetch(GHL_WEBHOOK, {
+  const makeWebhookUrl = process.env.MAKE_LINKEDIN_WEBHOOK_URL;
+  if (!makeWebhookUrl) {
+    return new Response(
+      JSON.stringify({ error: "MAKE_LINKEDIN_WEBHOOK_URL not set" }),
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+    );
+  }
+
+  const res = await fetch(makeWebhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, platform, approval_id }),
+    body: JSON.stringify({
+      post_content: content,
+      agent_name:   "Darius King",
+      category:     "linkedin_post",
+      platform,
+      approval_id,
+    }),
   });
 
   if (!res.ok) {
     const err = await res.text();
     return new Response(
-      JSON.stringify({ error: "Webhook failed", detail: err, approval_id }),
+      JSON.stringify({ error: "Make.com webhook failed", detail: err, approval_id }),
       { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
