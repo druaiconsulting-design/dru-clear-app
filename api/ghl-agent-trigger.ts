@@ -451,10 +451,10 @@ AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT:
 ${item.raw_output}
 
-Return ONLY valid JSON — no explanation, no markdown, no code fences:
+Complete your review internally. Then output ONLY this JSON — nothing before it, nothing after it:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
 OR if corrections needed:
-{"cleared":false,"flags":"specific issue here","correction_notes":"Exact instruction for the agent to correct this"}`, 500
+{"cleared":false,"flags":"specific issue here","correction_notes":"Exact instruction for the agent to correct this"}`, 600
       );
 
       const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
@@ -540,8 +540,8 @@ AGENT: ${item.agent_name} | DIVISION: ${item.division}
 CONTENT:
 ${item.raw_output}
 
-Return ONLY valid JSON — no explanation, no markdown, no code fences:
-{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No legal or financial issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 600
+Complete your review internally. Then output ONLY this JSON — nothing before it, nothing after it:
+{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No legal or financial issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 1200
       );
 
       const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
@@ -571,6 +571,12 @@ Return ONLY valid JSON — no explanation, no markdown, no code fences:
     } catch (error) {
       console.error(`[governance] Failed item ${item.id}:`, error);
       blocked++;
+      updates.push(updateCSQ(item.id, {
+        governance_cleared: false,
+        governance_notes: 'Governance review failed — flagged for manual review.',
+        governance_cleared_at: new Date().toISOString(),
+        status: 'governance_error',
+      }));
     }
   }
 
@@ -606,8 +612,8 @@ AGENT: ${item.agent_name} (${item.division})
 TASK: ${item.task}
 CONTENT: ${item.raw_output}
 
-Return ONLY valid JSON — no explanation, no markdown, no code fences:
-{"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`, 300
+Complete your review internally. Then output ONLY this JSON — nothing before it, nothing after it:
+{"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`, 400
       );
       const raymond = JSON.parse(rawRaymond.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
@@ -620,8 +626,8 @@ You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting. Raymond H
 AGENT: ${item.agent_name} | RAYMOND'S NOTES: ${raymond.notes ?? ''}
 CONTENT: ${item.raw_output}
 
-Return ONLY valid JSON — no explanation, no markdown, no code fences:
-{"organized":true,"package_notes":"one sentence describing how this fits into today's briefing"}`, 300
+Complete your review internally. Then output ONLY this JSON — nothing before it, nothing after it:
+{"organized":true,"package_notes":"one sentence describing how this fits into today's briefing"}`, 400
       );
       const travis = JSON.parse(rawTravis.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
