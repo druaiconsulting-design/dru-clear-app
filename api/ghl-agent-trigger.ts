@@ -25,31 +25,6 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
 
 // ─────────────────────────────────────────────────────────────
-// TRADEMARK SANITIZER
-// Runs on every agent output before writing to CSQ
-// Ensures all DRU proprietary marks carry ™ regardless of Haiku output
-// Removes dependency on the model remembering ™ on every pass
-// ─────────────────────────────────────────────────────────────
-
-function sanitizeTrademarks(text: string): string {
-  const marks = [
-    'DRU CLEAR',
-    'DRU AI Leadership Ecosystem',
-    'DRU AI Transformation Pathway',
-    '5C Cultural DNA',
-    '5D Leadership',
-    'AI Sales Mastery',
-    'From Confusion to Confident with AI',
-  ];
-  let result = text;
-  for (const mark of marks) {
-    const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    result = result.replace(new RegExp(`${escaped}(?!™)`, 'g'), `${mark}™`);
-  }
-  return result;
-}
-
-// ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 
@@ -151,7 +126,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
 // SHARED — Anthropic call (Haiku — all agents and chain)
 // ─────────────────────────────────────────────────────────────
 
-async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -252,10 +227,10 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
 async function runAgentToCSQ(
   agentId: string, agentName: string, division: string, task: string,
   category: string, prompt: string, priority = 'normal',
-  retryCount = 0, parentCsqId: string | null = null
+  retryCount = 0, parentCsqId: string | null = null, maxTokens = 1500
 ): Promise<string | null> {
   try {
-    const output = sanitizeTrademarks(await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`, 1500));
+    const output = await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`, maxTokens);
     return await writeToCSQ({
       agent_id: agentId, agent_name: agentName, division, task, category,
       raw_output: output, priority, status: 'pending',
@@ -298,7 +273,7 @@ COMPLIANCE REQUIREMENTS (non-negotiable):
   Class 41: Training, coaching, educational services
   Class 42: AI technology consulting, software-related services`;
 
-    const output = sanitizeTrademarks(await callAnthropic(correctionPrompt, 1500));
+    const output = await callAnthropic(correctionPrompt, 1500);
     await writeToCSQ({
       agent_id: item.agent_id,
       agent_name: item.agent_name,
@@ -952,7 +927,7 @@ OFFERS (frame all as consulting service components):
 - Executive Diagnostic ($4,997) — consulting engagement component
 - From Confusion to Confident with AI™ Course ($497–$1,497) — educational service component
 
-Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All new leads directed to assessment.druaiconsulting.com first.`);
+Include: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All new leads directed to assessment.druaiconsulting.com first.`, 'normal', 0, null, 3000);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_aaliyah') {
