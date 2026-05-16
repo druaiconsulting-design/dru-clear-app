@@ -25,6 +25,31 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
 
 // ─────────────────────────────────────────────────────────────
+// TRADEMARK SANITIZER
+// Runs on every agent output before writing to CSQ
+// Ensures all DRU proprietary marks carry ™ regardless of Haiku output
+// Removes dependency on the model remembering ™ on every pass
+// ─────────────────────────────────────────────────────────────
+
+function sanitizeTrademarks(text: string): string {
+  const marks = [
+    'DRU CLEAR',
+    'DRU AI Leadership Ecosystem',
+    'DRU AI Transformation Pathway',
+    '5C Cultural DNA',
+    '5D Leadership',
+    'AI Sales Mastery',
+    'From Confusion to Confident with AI',
+  ];
+  let result = text;
+  for (const mark of marks) {
+    const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(`${escaped}(?!™)`, 'g'), `${mark}™`);
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 
@@ -230,7 +255,7 @@ async function runAgentToCSQ(
   retryCount = 0, parentCsqId: string | null = null
 ): Promise<string | null> {
   try {
-    const output = await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`, 1500);
+    const output = sanitizeTrademarks(await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`, 1500));
     return await writeToCSQ({
       agent_id: agentId, agent_name: agentName, division, task, category,
       raw_output: output, priority, status: 'pending',
@@ -273,7 +298,7 @@ COMPLIANCE REQUIREMENTS (non-negotiable):
   Class 41: Training, coaching, educational services
   Class 42: AI technology consulting, software-related services`;
 
-    const output = await callAnthropic(correctionPrompt, 1500);
+    const output = sanitizeTrademarks(await callAnthropic(correctionPrompt, 1500));
     await writeToCSQ({
       agent_id: item.agent_id,
       agent_name: item.agent_name,
@@ -761,7 +786,7 @@ ${divisionSummaries}
 
 Synthesize into ONE executive briefing in DeAnna's voice:
 
-## Daily Operations Briefing — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+## Daily Operations Briefing — ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' })}
 
 **Executive Summary** (3–4 sentences in first person — "My team has..." — strategic overview)
 
@@ -909,7 +934,7 @@ export default async function handler(req: any, res: any): Promise<void> {
     const id = await runAgentToCSQ('serena', 'Serena Jackson', 'Revenue & Growth', 'morning_coaching_briefing', 'coaching',
       `You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder.
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover→Diagnose→Design→Deploy→Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move. DeAnna is building the DRU AI Leadership Ecosystem™ toward launch.`);
+Generate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' })}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move. DeAnna is building the DRU AI Leadership Ecosystem™ toward launch.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p1_mateo') {
@@ -981,7 +1006,7 @@ Rotate daily: nurture email (Emerging/Developing/Advancing tier), re-engagement,
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
 
   } else if (route.pipeline === 'p2_ravi') {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
     const id = await runAgentToCSQ('ravi', 'Ravi Gupta', 'Content & Brand', 'generate_design_brief', 'design_brief',
       `You are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout recommendation, color palette, image/illustration direction, typography guidance, AI image generation prompt (Midjourney/DALL-E ready). Today: ${today}. Use your full creative freedom — scroll-stopping and brand-consistent. In the CTA section of the brief, include assessment.druaiconsulting.com as the destination.`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
