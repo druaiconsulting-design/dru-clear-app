@@ -469,7 +469,6 @@ OR if corrections needed:
       } else {
         const retryCount = item.retry_count ?? 0;
         if (retryCount >= 2) {
-          // Hard reject — 3rd failure
           rejected++;
           await updateCSQ(item.id, {
             isabella_flags: result.flags,
@@ -479,7 +478,6 @@ OR if corrections needed:
           });
           console.warn(`[isabella] ⛔ HARD REJECT (3rd fail): ${item.agent_name} — ${result.flags}`);
         } else {
-          // Send back to agent for correction
           sentBack++;
           await updateCSQ(item.id, {
             isabella_flags: result.flags,
@@ -502,8 +500,31 @@ OR if corrections needed:
 // ─────────────────────────────────────────────────────────────
 // COMMAND CHAIN — GOVERNANCE PANEL (11:10am CDT)
 // Processes all isabella_cleared items
-// Full panel: legal, financial, brand, privacy review
+// Content type determined by CODE from category field — NOT by Haiku
+// Internal categories → 4 blocking conditions only
+// Client-facing categories → 5 blocking conditions only
 // ─────────────────────────────────────────────────────────────
+
+// Categories the CODE classifies as internal (never published, Twin eyes only)
+const INTERNAL_CATEGORIES = [
+  'coaching',
+  'sales_support',
+  'lead_intelligence',
+  'proposals',
+  'product_knowledge',
+  'product_launch',
+];
+
+// Categories the CODE classifies as client-facing (published or sent to clients)
+const CLIENT_FACING_CATEGORIES = [
+  'linkedin_post',
+  'email_marketing',
+  'outreach',
+  'copywriting',
+  'press_release',
+  'localization',
+  'design_brief',
+];
 
 async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
   const items = await getCSQItems('isabella_cleared');
@@ -516,6 +537,52 @@ async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number
 
   for (const item of items) {
     try {
+      // ── Content type determined by CODE — Haiku never decides ──
+      const isInternal = INTERNAL_CATEGORIES.includes(item.category);
+      const isClientFacing = CLIENT_FACING_CATEGORIES.includes(item.category);
+
+      let rulesBlock = '';
+
+      if (isInternal) {
+        rulesBlock = `This is INTERNAL OPERATIONAL CONTENT (category: ${item.category}).
+It goes to DeAnna's AI Twin only. It is never published and never sent to clients.
+
+BLOCK ONLY IF one of these four specific conditions is present in the content:
+1. A specific factual error that would mislead DeAnna — wrong offer pricing, wrong date, wrong contact information
+2. A false credential claim — content states DeAnna holds a certification or affiliation she does not have
+3. A named contractual obligation — content makes a binding promise to a specific named person or company
+4. A demonstrably false financial figure — a specific dollar amount contradicting known offer pricing:
+   Strategic Diagnostic $3,497 | Executive Diagnostic $4,997 | Course $497–$1,497
+
+If NONE of those four conditions are present, you MUST return cleared:true.
+Coaching philosophy, motivational language, sales strategy, bold recommendations, and aspirational framing are the intended purpose of this content and SHALL PASS without exception.`;
+      } else if (isClientFacing) {
+        rulesBlock = `This is CLIENT-FACING CONTENT (category: ${item.category}).
+It will be published or sent directly to clients or the public.
+
+BLOCK ONLY IF one of these five specific conditions is present in the content:
+1. A specific income guarantee without disclaimer — e.g. "you will earn $X" or "guaranteed results"
+2. A false credential claim about DeAnna
+3. A named privacy violation — specific personal data of a real identifiable person exposed
+4. A specific contractual guarantee creating legal liability to a named party
+5. A specific false financial figure contradicting known offer pricing:
+   Strategic Diagnostic $3,497 | Executive Diagnostic $4,997 | Course $497–$1,497
+
+If NONE of those five conditions are present, you MUST return cleared:true.`;
+      } else {
+        // Unknown category — default to internal rules (safe pass)
+        rulesBlock = `This content has an unclassified category. Apply internal content rules.
+
+BLOCK ONLY IF one of these four specific conditions is present:
+1. A specific factual error that would mislead DeAnna
+2. A false credential claim about DeAnna
+3. A named contractual obligation to a specific person or company
+4. A specific false financial figure contradicting known offer pricing:
+   Strategic Diagnostic $3,497 | Executive Diagnostic $4,997 | Course $497–$1,497
+
+If NONE of those conditions are present, you MUST return cleared:true.`;
+      }
+
       const raw = await callAnthropic(
         `${GENIUS_MODE}
 
@@ -523,37 +590,19 @@ You are the AI Governance and Legal & Finance panel for DRU AI Consulting.
 
 CRITICAL: Isabella Moreno has already cleared this content for trademark and service class compliance. Her clearance is FINAL. Do NOT re-check trademarks or class alignment.
 
-FIRST — determine content type from the CATEGORY and TASK:
-
-INTERNAL OPERATIONAL CONTENT (coaching, sales_support, lead_intelligence, executive_support, proposals, product_knowledge, product_launch):
-This content is for DeAnna's AI Twin only. It is never published or sent to clients.
-
-BLOCK ONLY IF one of these four specific conditions is met:
-1. Factual error that misleads DeAnna — wrong pricing on an offer, wrong date, wrong contact information
-2. False credential claim — content states DeAnna holds a certification, affiliation, or credential she does not have
-3. Named legal liability — content makes a specific promise or guarantee that creates a contractual obligation
-4. Demonstrably false financial figure — a specific dollar amount or percentage that contradicts known offer pricing ($3,497 Strategic Diagnostic / $4,997 Executive Diagnostic / $497–$1,497 Course)
-
-Coaching philosophy, motivational language, sales strategy, business recommendations, bold claims, and aspirational framing are the purpose of these agents and shall pass.
-
-CLIENT-FACING CONTENT (linkedin_post, email_marketing, outreach, copywriting, press_release, localization, design_brief):
-This content goes directly to clients or the public.
-
-BLOCK ONLY IF one of these specific conditions is met:
-1. Specific income guarantee without a disclaimer — e.g. "you will make $X" or "guaranteed results"
-2. False credential claim about DeAnna
-3. Named privacy violation — specific personal data of a real person exposed
-4. Specific contractual guarantee creating legal liability
-5. Specific false financial figure contradicting known offer pricing
-
-PANEL MEMBERS review ONLY their named domain. Rafael Torres notes one quality improvement — never a reason to block.
+${rulesBlock}
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division} | CATEGORY: ${item.category} | TASK: ${item.task}
 CONTENT:
 ${item.raw_output}
 
-Complete your review internally. Then output ONLY this JSON — nothing before it, nothing after it:
-{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No legal or financial issues.","legal_notes":"No legal risk detected.","flags":"none"}`, 1200
+Review the content against the blocking conditions above. Then output ONLY this JSON — nothing before it, nothing after it:
+
+If cleared (no blocking condition found):
+{"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No blocking conditions present.","legal_notes":"No legal risk detected.","flags":"none"}
+
+If blocked (ONLY if a specific named condition above is present — state exactly which condition number):
+{"cleared":false,"compliance_score":3,"governance_notes":"Condition [NUMBER] violated: [exact text from content that triggered this]","legal_notes":"[specific issue]","flags":"[exact phrase from content]"}`, 800
       );
 
       const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
@@ -614,7 +663,6 @@ async function runCommandLayer(): Promise<{ reviewed: number }> {
 
   for (const item of items) {
     try {
-      // Raymond — Chief of Staff: strategic priority and direction
       const rawRaymond = await callAnthropic(
         `${GENIUS_MODE}
 
@@ -629,7 +677,6 @@ Complete your review internally. Then output ONLY this JSON — nothing before i
       );
       const raymond = JSON.parse(rawRaymond.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
-      // Travis — Assistant Chief of Staff: organizes and packages
       const rawTravis = await callAnthropic(
         `${GENIUS_MODE}
 
@@ -643,7 +690,6 @@ Complete your review internally. Then output ONLY this JSON — nothing before i
       );
       const travis = JSON.parse(rawTravis.match(/\{[\s\S]*\}/)?.[0] ?? 'null');
 
-      // Priya — Executive Assistant: executive context and time-sensitive flags
       const rawPriya = await callAnthropic(
         `${GENIUS_MODE}
 
