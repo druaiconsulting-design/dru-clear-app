@@ -800,6 +800,25 @@ Write as DeAnna would speak to herself — authoritative, clear, action-oriented
       twin_processed_at: new Date().toISOString(),
       status: 'twin_processed',
     });
+
+    // If this is Darius's LinkedIn post, create a separate social approval
+    // so DeAnna can approve it individually and it posts directly to LinkedIn
+    if (item.agent_id === 'darius' && item.category === 'linkedin_post') {
+      await writeApproval({
+        source:           'darius_linkedin',
+        trigger_type:     'cron_darius_linkedin_post',
+        agent_name:       'Darius King',
+        agent_role:       'Viral Scripter',
+        division:         'Content & Brand',
+        task_brief:       'Daily LinkedIn post — ready for approval and publishing',
+        output:           item.raw_output,
+        status:           'pending',
+        notify_deanna:    false,
+        priority:         'normal',
+        category:         'social',
+        platform:         'LinkedIn',
+      });
+    }
   }
 
   console.log(`[twin] ✅ Daily briefing synthesized | approval_id: ${approvalId}`);
