@@ -1,4 +1,3 @@
-
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
 // UPDATED: Approve on social posts calls Vercel api/social-publisher
@@ -67,6 +66,14 @@ function timeAgo(timestamp: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function renderDraft(text: string) {
+  return text.split('\n\n').map((para, i) => (
+    <p key={i} style={{ margin: '0 0 0.75rem 0', fontFamily: "'Inter', sans-serif", color: '#FFFFFF', fontSize: '0.75rem', lineHeight: 1.6 }}>
+      {para.replace(/\n/g, ' ')}
+    </p>
+  ));
 }
 
 export default function AdminApprovals() {
@@ -140,11 +147,10 @@ export default function AdminApprovals() {
           }),
         });
         if (res.ok) {
-  const data = await res.json();
-  console.log("GHL response:", JSON.stringify(data));
-  setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
-}
-        else {
+          const data = await res.json();
+          console.log("Make.com response:", JSON.stringify(data));
+          setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
+        } else {
           const err = await res.json();
           console.error("Publish failed:", err);
           setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
@@ -305,7 +311,6 @@ export default function AdminApprovals() {
                     )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    {/* Publish status indicator */}
                     {publishStatus[approval.id] && (
                       <span style={{
                         fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700,
@@ -356,11 +361,9 @@ export default function AdminApprovals() {
                         style={{ width: "100%", minHeight: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem", lineHeight: 1.6, resize: "vertical" as const, boxSizing: "border-box" as const, outline: "none" }}
                       />
                     ) : (
-                      <p style={{ fontFamily: "'Inter', sans-serif", color: "#FFFFFF", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 }}>
-                        {(approval.edited_output || approval.output).split('
-
-').map((para, i) => (   <p key={i} style={{ margin: '0 0 0.75rem 0', fontFamily: "'Inter', sans-serif", color: '#FFFFFF', fontSize: '0.75rem', lineHeight: 1.6 }}>     {para}   </p> ))}
-                      </p>
+                      <div>
+                        {renderDraft(approval.edited_output || approval.output)}
+                      </div>
                     )}
                   </div>
                 </div>
