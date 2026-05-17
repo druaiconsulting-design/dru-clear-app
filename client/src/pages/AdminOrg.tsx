@@ -14,7 +14,7 @@ const PRIYA_PHOTO   = photo("women", 44);
 const DIVISIONS = [
   {
     name: "Legal & Finance", tag: "Internal",
-    border: "rgba(138,110,26,0.5)", headerBg: "#8A6E1A",   // Gold dark
+    border: "rgba(138,110,26,0.5)", headerBg: "#8A6E1A",
     agents: [
       { name: "Marcus Chen",  role: "Tax Strategist",           src: photo("men",   65) },
       { name: "Amara Okafor", role: "Legal Team",               src: photo("women", 31) },
@@ -24,7 +24,7 @@ const DIVISIONS = [
   },
   {
     name: "AI Governance", tag: "Internal",
-    border: "rgba(122,15,56,0.5)", headerBg: "#7A0F38",    // Magenta deep
+    border: "rgba(122,15,56,0.5)", headerBg: "#7A0F38",
     agents: [
       { name: "Isabella Moreno", role: "Director of Compliance ★", src: photo("women", 26) },
       { name: "Khalid Hassan",   role: "Disclaimer Writer",         src: photo("men",   55) },
@@ -36,7 +36,7 @@ const DIVISIONS = [
   },
   {
     name: "HR Division", tag: "Internal → Both",
-    border: "rgba(46,109,171,0.5)", headerBg: "#2E6DAB", fullWidth: true,  // Navy lighter
+    border: "rgba(46,109,171,0.5)", headerBg: "#2E6DAB", fullWidth: true,
     agents: [
       { name: "Naomi Williams",   role: "Recruiting",          src: photo("women", 36) },
       { name: "Aiden Park",       role: "Internal Onboarding", src: photo("men",   63) },
@@ -45,7 +45,7 @@ const DIVISIONS = [
   },
   {
     name: "Revenue & Growth + Sales", tag: "Internal", fullWidth: true,
-    border: "rgba(212,175,55,0.5)", headerBg: "#D4AF37",  // Gold primary
+    border: "rgba(212,175,55,0.5)", headerBg: "#D4AF37",
     agents: [
       { name: "Serena Jackson",  role: "Business Coach",        src: photo("women", 32) },
       { name: "Mateo Gonzalez",  role: "Sales Support",         src: photo("men",    6) },
@@ -61,7 +61,7 @@ const DIVISIONS = [
   },
   {
     name: "Marketing", tag: "Internal",
-    border: "rgba(22,61,110,0.5)", headerBg: "#163D6E",   // Navy mid
+    border: "rgba(22,61,110,0.5)", headerBg: "#163D6E",
     agents: [
       { name: "Nia Robinson",   role: "Content Creation",  src: photo("women", 35) },
       { name: "Luca Romano",    role: "Digital Marketing", src: photo("men",   18) },
@@ -71,7 +71,7 @@ const DIVISIONS = [
   },
   {
     name: "Content & Brand", tag: "Internal",
-    border: "rgba(194,24,91,0.5)", headerBg: "#C2185B",   // Magenta primary
+    border: "rgba(194,24,91,0.5)", headerBg: "#C2185B",
     agents: [
       { name: "Camila Flores",  role: "Social Media Strategist",   src: photo("women", 25) },
       { name: "Darius King",    role: "Viral Scripter",            src: photo("men",   43) },
@@ -82,7 +82,7 @@ const DIVISIONS = [
   },
   {
     name: "Client Delivery", tag: "Client-Facing", fullWidth: true,
-    border: "rgba(166,137,32,0.5)", headerBg: "#A68920",  // Gold medium
+    border: "rgba(166,137,32,0.5)", headerBg: "#A68920",
     agents: [
       { name: "Keisha Thompson", role: "Onboarding Coach",        src: photo("women", 34) },
       { name: "Marco Silva",     role: "Community Manager",       src: photo("men",   10) },
@@ -95,7 +95,7 @@ const DIVISIONS = [
   },
   {
     name: "Customer Support", tag: "Client-Facing", fullWidth: true,
-    border: "rgba(224,82,126,0.5)", headerBg: "#E0527E",  // Magenta lighter
+    border: "rgba(194,24,91,0.5)", headerBg: "#C2185B",
     agents: [
       { name: "Isaiah Carter",     role: "Issue Resolution",            src: photo("men",   45) },
       { name: "Priscilla Okonkwo", role: "Multi-Channel Communication", src: photo("women", 29) },
@@ -111,22 +111,18 @@ export default function AdminOrg() {
 
   const circleStyle = (size: number, border = "#D4AF37"): React.CSSProperties => ({
     width: size, height: size, borderRadius: "50%",
-    border: `2px solid ${border}`,
-    objectFit: "cover" as const,
-    flexShrink: 0,
-    background: "rgba(10,35,66,0.5)",
+    border: `2px solid ${border}`, objectFit: "cover" as const,
+    flexShrink: 0, background: "rgba(10,35,66,0.5)",
   });
 
   const fallback = (label: string, size: number, bg = "#0A2342"): React.CSSProperties => ({
-    ...circleStyle(size),
-    display: "flex", alignItems: "center", justifyContent: "center",
+    ...circleStyle(size), display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: size * 0.35, background: bg,
   });
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/admin-org" />
-
       <main style={{ flex: 1, padding: "2rem 1.5rem", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
 
         {/* Header */}
@@ -136,22 +132,14 @@ export default function AdminOrg() {
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
             <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>39 agents · 9 divisions · DeAnna → AI Twin → Raymond → Travis → Priya → 38 agents · All agents operate in Genius Mode</p>
           </div>
-          <div onClick={() => window.location.href = "/admin"}
-            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>
-            ← Command Center
-          </div>
+          <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Command Center</div>
         </div>
 
         {/* Hierarchy */}
         <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", marginBottom: "1.5rem", gap: 6 }}>
 
-          {/* DeAnna */}
           <div style={{ background: "#C2185B", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            {!deAnnaErr ? (
-              <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} />
-            ) : (
-              <div style={fallback("👑", 56, "#0A2342")}>👑</div>
-            )}
+            {!deAnnaErr ? <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} /> : <div style={fallback("👑", 56, "#0A2342")}>👑</div>}
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>DeAnna R. Upshaw</p>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.85)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>CEO & Founder · AI Authority</p>
@@ -160,7 +148,6 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* AI Twin */}
           <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
@@ -176,13 +163,8 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Raymond Holloway */}
           <div style={{ background: "rgba(10,35,66,0.95)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
-            {!raymondErr ? (
-              <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} />
-            ) : (
-              <div style={fallback("RH", 54)}>RH</div>
-            )}
+            {!raymondErr ? <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : <div style={fallback("RH", 54)}>RH</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
@@ -197,13 +179,8 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Travis Weston */}
           <div style={{ background: "rgba(10,35,66,0.75)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            {!travisErr ? (
-              <img src={TRAVIS_PHOTO} alt="Travis Weston" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} />
-            ) : (
-              <div style={fallback("TW", 48)}>TW</div>
-            )}
+            {!travisErr ? <img src={TRAVIS_PHOTO} alt="Travis Weston" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : <div style={fallback("TW", 48)}>TW</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Assistant Chief of Staff</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Weston</p>
@@ -213,13 +190,8 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Priya Sharma */}
           <div style={{ background: "rgba(10,35,66,0.6)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            {!priyaErr ? (
-              <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} />
-            ) : (
-              <div style={fallback("PS", 44)}>PS</div>
-            )}
+            {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
@@ -233,18 +205,15 @@ export default function AdminOrg() {
         {/* Division grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" }}>
           {DIVISIONS.map(div => (
-            <div key={div.name}
-              style={{ gridColumn: (div as any).fullWidth ? "1 / -1" : "auto", borderRadius: 10, overflow: "hidden", border: `1px solid ${div.border}`, background: "rgba(255,255,255,0.02)" }}>
+            <div key={div.name} style={{ gridColumn: (div as any).fullWidth ? "1 / -1" : "auto", borderRadius: 10, overflow: "hidden", border: `1px solid ${div.border}`, background: "rgba(255,255,255,0.02)" }}>
               <div style={{ background: div.headerBg, padding: "7px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.75rem", fontWeight: 700 }}>{div.name}</span>
                 <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.56rem", fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}>{div.tag}</span>
               </div>
               <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
                 {div.agents.map(agent => (
-                  <div key={agent.name}
-                    style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7, padding: "5px 9px", flex: (div as any).fullWidth ? "1 1 160px" : "1 1 100%" }}>
-                    <img src={agent.src} alt={agent.name}
-                      style={{ width: 54, height: 54, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
+                  <div key={agent.name} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7, padding: "5px 9px", flex: (div as any).fullWidth ? "1 1 160px" : "1 1 100%" }}>
+                    <img src={agent.src} alt={agent.name} style={{ width: 54, height: 54, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</p>
                       <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.58rem", margin: 0, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.role}</p>
@@ -256,7 +225,6 @@ export default function AdminOrg() {
           ))}
         </div>
 
-        {/* Footer */}
         <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,75,0.7)", margin: 0 }}>
             ★ Isabella Moreno auto-blocks all outputs violating Trademark Classes 35 · 41 · 42 · All agents operate in Genius Mode · Confidential · DRU AI Consulting © 2026
@@ -264,7 +232,6 @@ export default function AdminOrg() {
         </div>
 
       </main>
-
       <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem" }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
