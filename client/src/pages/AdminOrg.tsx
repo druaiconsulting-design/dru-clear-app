@@ -5,40 +5,31 @@ function photo(gender: "men" | "women", num: number) {
   return `https://randomuser.me/api/portraits/${gender}/${num}.jpg`;
 }
 
-// NOTE: Swap these URLs with custom headshots when available
-// Raymond Holloway: Black male, 40–55, bald, close-cut beard
-// Travis Weston: Black male, early 20s
-const RAYMOND_PHOTO = photo("men", 83); // bald with close-cut beard — original Travis photo
+const RAYMOND_PHOTO = photo("men", 83);
 const TRAVIS_PHOTO  = photo("men", 16);
+const PRIYA_PHOTO   = photo("women", 44);
 
 const DIVISIONS = [
-  {
-    name: "C-Suite / Operations", tag: "Internal",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
-    agents: [
-      { name: "Priya Sharma",    role: "Executive Assistant",      src: photo("women", 44) },
-      { name: "Isabella Moreno", role: "Director of Compliance ★", src: photo("women", 26) },
-      { name: "Marcus Chen",     role: "Tax Strategist",           src: photo("men",   65) },
-    ],
-  },
   {
     name: "Legal & Finance", tag: "Internal",
     border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
     agents: [
-      { name: "Amara Okafor", role: "Legal Team",          src: photo("women", 31) },
-      { name: "Diego Reyes",  role: "Expense Manager",     src: photo("men",    5) },
-      { name: "Yuki Tanaka",  role: "Financial Reporting", src: photo("women", 48) },
+      { name: "Marcus Chen",  role: "Tax Strategist",           src: photo("men",   65) },
+      { name: "Amara Okafor", role: "Legal Team",               src: photo("women", 31) },
+      { name: "Diego Reyes",  role: "Expense Manager",          src: photo("men",    5) },
+      { name: "Yuki Tanaka",  role: "Financial Reporting",      src: photo("women", 48) },
     ],
   },
   {
     name: "AI Governance", tag: "Internal",
     border: "rgba(212,175,55,0.35)", headerBg: "#112D4A",
     agents: [
-      { name: "Khalid Hassan",  role: "Disclaimer Writer",   src: photo("men",   55) },
-      { name: "Sofia Petrov",   role: "Privacy Policy",      src: photo("women",  5) },
-      { name: "James Osei",     role: "Contract Writer",     src: photo("men",   42) },
-      { name: "Mei Lin",        role: "Brand Protection",    src: photo("women", 49) },
-      { name: "Rafael Torres",  role: "Continuous Learning", src: photo("men",    7) },
+      { name: "Isabella Moreno", role: "Director of Compliance ★", src: photo("women", 26) },
+      { name: "Khalid Hassan",   role: "Disclaimer Writer",         src: photo("men",   55) },
+      { name: "Sofia Petrov",    role: "Privacy Policy",            src: photo("women",  5) },
+      { name: "James Osei",      role: "Contract Writer",           src: photo("men",   42) },
+      { name: "Mei Lin",         role: "Brand Protection",          src: photo("women", 49) },
+      { name: "Rafael Torres",   role: "Continuous Learning",       src: photo("men",    7) },
     ],
   },
   {
@@ -111,9 +102,10 @@ const DIVISIONS = [
 ];
 
 export default function AdminOrg() {
-  const [deAnnaErr, setDeAnnaErr]     = useState(false);
-  const [raymondErr, setRaymondErr]   = useState(false);
-  const [travisErr,  setTravisErr]    = useState(false);
+  const [deAnnaErr,  setDeAnnaErr]  = useState(false);
+  const [raymondErr, setRaymondErr] = useState(false);
+  const [travisErr,  setTravisErr]  = useState(false);
+  const [priyaErr,   setPriyaErr]   = useState(false);
 
   const circleStyle = (size: number, border = "#D4AF37"): React.CSSProperties => ({
     width: size, height: size, borderRadius: "50%",
@@ -140,7 +132,7 @@ export default function AdminOrg() {
           <div>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 2 · Confidential</p>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>39 agents · 10 divisions · DeAnna → AI Twin → Raymond → Travis → 37 agents · All agents operate in Genius Mode</p>
+            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>39 agents · 9 divisions · DeAnna → AI Twin → Raymond → Travis → Priya → 38 agents · All agents operate in Genius Mode</p>
           </div>
           <div onClick={() => window.location.href = "/admin"}
             style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>
@@ -182,19 +174,17 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Raymond Holloway — Chief of Staff */}
+          {/* Raymond Holloway */}
           <div style={{ background: "rgba(10,35,66,0.95)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             {!raymondErr ? (
-              <img src={RAYMOND_PHOTO} alt="Raymond Holloway"
-                onError={() => setRaymondErr(true)}
-                style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} />
+              <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} />
             ) : (
               <div style={fallback("RH", 54)}>RH</div>
             )}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Oversees all operations · 9 divisions · 37 agents</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Oversees all operations · 9 divisions · 38 agents</p>
               <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
                 {["Strategic Oversight", "Final Authority", "Operations Command"].map(b => (
                   <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.5rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#D4AF37" }}>{b}</span>
@@ -205,19 +195,33 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          {/* Travis Weston — Assistant Chief of Staff */}
+          {/* Travis Weston */}
           <div style={{ background: "rgba(10,35,66,0.75)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
             {!travisErr ? (
-              <img src={TRAVIS_PHOTO} alt="Travis Weston"
-                onError={() => setTravisErr(true)}
-                style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} />
+              <img src={TRAVIS_PHOTO} alt="Travis Weston" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} />
             ) : (
               <div style={fallback("TW", 48)}>TW</div>
             )}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Assistant Chief of Staff</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Weston</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Assistant to Raymond Holloway · 9 divisions · 37 agents</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Reports to Raymond · Organizes & packages for the Twin</p>
+            </div>
+          </div>
+
+          <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
+
+          {/* Priya Sharma */}
+          <div style={{ background: "rgba(10,35,66,0.6)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+            {!priyaErr ? (
+              <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} />
+            ) : (
+              <div style={fallback("PS", 44)}>PS</div>
+            )}
+            <div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Supports Raymond & Travis · Executive context & time-sensitive flags</p>
             </div>
           </div>
 
