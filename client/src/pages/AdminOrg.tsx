@@ -9,10 +9,12 @@ const RAYMOND_PHOTO = photo("men", 83);
 const TRAVIS_PHOTO  = photo("men", 16);
 const PRIYA_PHOTO   = photo("women", 44);
 
+// Division header colors match AdminApprovals.tsx DIVISION_COLORS exactly
+// Navy #0A2342 | Gold #D4AF37 | Magenta #C2185B — tints/shades only
 const DIVISIONS = [
   {
     name: "Legal & Finance", tag: "Internal",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
+    border: "rgba(138,110,26,0.5)", headerBg: "#8A6E1A",   // Gold dark
     agents: [
       { name: "Marcus Chen",  role: "Tax Strategist",           src: photo("men",   65) },
       { name: "Amara Okafor", role: "Legal Team",               src: photo("women", 31) },
@@ -22,7 +24,7 @@ const DIVISIONS = [
   },
   {
     name: "AI Governance", tag: "Internal",
-    border: "rgba(212,175,55,0.35)", headerBg: "#112D4A",
+    border: "rgba(122,15,56,0.5)", headerBg: "#7A0F38",    // Magenta deep
     agents: [
       { name: "Isabella Moreno", role: "Director of Compliance ★", src: photo("women", 26) },
       { name: "Khalid Hassan",   role: "Disclaimer Writer",         src: photo("men",   55) },
@@ -34,7 +36,7 @@ const DIVISIONS = [
   },
   {
     name: "HR Division", tag: "Internal → Both",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342", fullWidth: true,
+    border: "rgba(46,109,171,0.5)", headerBg: "#2E6DAB", fullWidth: true,  // Navy lighter
     agents: [
       { name: "Naomi Williams",   role: "Recruiting",          src: photo("women", 36) },
       { name: "Aiden Park",       role: "Internal Onboarding", src: photo("men",   63) },
@@ -43,7 +45,7 @@ const DIVISIONS = [
   },
   {
     name: "Revenue & Growth + Sales", tag: "Internal", fullWidth: true,
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
+    border: "rgba(212,175,55,0.5)", headerBg: "#D4AF37",  // Gold primary
     agents: [
       { name: "Serena Jackson",  role: "Business Coach",        src: photo("women", 32) },
       { name: "Mateo Gonzalez",  role: "Sales Support",         src: photo("men",    6) },
@@ -59,7 +61,7 @@ const DIVISIONS = [
   },
   {
     name: "Marketing", tag: "Internal",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
+    border: "rgba(22,61,110,0.5)", headerBg: "#163D6E",   // Navy mid
     agents: [
       { name: "Nia Robinson",   role: "Content Creation",  src: photo("women", 35) },
       { name: "Luca Romano",    role: "Digital Marketing", src: photo("men",   18) },
@@ -69,7 +71,7 @@ const DIVISIONS = [
   },
   {
     name: "Content & Brand", tag: "Internal",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
+    border: "rgba(194,24,91,0.5)", headerBg: "#C2185B",   // Magenta primary
     agents: [
       { name: "Camila Flores",  role: "Social Media Strategist",   src: photo("women", 25) },
       { name: "Darius King",    role: "Viral Scripter",            src: photo("men",   43) },
@@ -80,7 +82,7 @@ const DIVISIONS = [
   },
   {
     name: "Client Delivery", tag: "Client-Facing", fullWidth: true,
-    border: "rgba(194,24,91,0.4)", headerBg: "#C2185B",
+    border: "rgba(166,137,32,0.5)", headerBg: "#A68920",  // Gold medium
     agents: [
       { name: "Keisha Thompson", role: "Onboarding Coach",        src: photo("women", 34) },
       { name: "Marco Silva",     role: "Community Manager",       src: photo("men",   10) },
@@ -93,7 +95,7 @@ const DIVISIONS = [
   },
   {
     name: "Customer Support", tag: "Client-Facing", fullWidth: true,
-    border: "rgba(194,24,91,0.4)", headerBg: "#C2185B",
+    border: "rgba(224,82,126,0.5)", headerBg: "#E0527E",  // Magenta lighter
     agents: [
       { name: "Isaiah Carter",     role: "Issue Resolution",            src: photo("men",   45) },
       { name: "Priscilla Okonkwo", role: "Multi-Channel Communication", src: photo("women", 29) },
