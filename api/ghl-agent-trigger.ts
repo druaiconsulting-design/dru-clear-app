@@ -271,7 +271,13 @@ COMPLIANCE REQUIREMENTS (non-negotiable):
 - All content must stay within DRU AI Consulting's service classes:
   Class 35: Business consulting, AI strategy, leadership advisory
   Class 41: Training, coaching, educational services
-  Class 42: AI technology consulting, software-related services`;
+  Class 42: AI technology consulting, software-related services
+
+OUTPUT RULES — CRITICAL:
+- Output ONLY the corrected content. Nothing else.
+- Do NOT include any compliance notes, audit summaries, correction explanations, or metadata.
+- Do NOT include any section headers like "COMPLIANCE AUDIT" or "CORRECTION NOTES".
+- Just the clean, corrected content as it would appear to the reader.`;
 
     const output = await callAnthropic(correctionPrompt, 1500);
     await writeToCSQ({
@@ -804,6 +810,29 @@ Write as DeAnna would speak to herself — authoritative, clear, action-oriented
     // If this is Darius's LinkedIn post, create a separate social approval
     // so DeAnna can approve it individually and it posts directly to LinkedIn
     if (item.agent_id === 'darius' && item.category === 'linkedin_post') {
+      // Strip Isabella's compliance audit notes and format with paragraph breaks
+      let postContent = item.raw_output;
+      // Remove everything from compliance audit section onwards
+      const complianceCutoffs = [
+        '## COMPLIANCE AUDIT',
+        'COMPLIANCE AUDIT',
+        '## Isabella',
+        'CORRECTION REQUIRED',
+        'Isabella\'s',
+      ];
+      for (const cutoff of complianceCutoffs) {
+        const idx = postContent.indexOf(cutoff);
+        if (idx !== -1) postContent = postContent.slice(0, idx).trim();
+      }
+      // Clean markdown bold markers (**text** → text)
+      postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1');
+      // Normalize line breaks — ensure double line breaks between paragraphs
+      postContent = postContent
+        .split(/\n{2,}/)
+        .map((p: string) => p.replace(/\n/g, ' ').trim())
+        .filter((p: string) => p.length > 0)
+        .join('\n\n');
+
       await writeApproval({
         source:           'darius_linkedin',
         trigger_type:     'cron_darius_linkedin_post',
@@ -811,7 +840,7 @@ Write as DeAnna would speak to herself — authoritative, clear, action-oriented
         agent_role:       'Viral Scripter',
         division:         'Content & Brand',
         task_brief:       'Daily LinkedIn post — ready for approval and publishing',
-        output:           item.raw_output,
+        output:           postContent,
         status:           'pending',
         notify_deanna:    false,
         priority:         'normal',
