@@ -21,6 +21,7 @@ import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
+import AdminArchived from "./pages/AdminArchived";
 import Twin from "./pages/Twin";
 import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
@@ -158,6 +159,11 @@ function Router() {
     setTitle("Approval Queue · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminApprovals />;
+  }
+  if (path === "/admin-archived" || path === "/admin-archived/") {
+    setTitle("Archived Queue · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminArchived />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
