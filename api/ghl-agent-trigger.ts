@@ -195,8 +195,21 @@ async function writeApproval(record: Record<string, unknown>): Promise<string | 
 }
 
 // ─────────────────────────────────────────────────────────────
-// SHARED — Get CSQ items by status
+// SHARED — Fetch active brand marks from Supabase
+// Add new IP to brand_marks table — no code change needed
 // ─────────────────────────────────────────────────────────────
+
+async function fetchBrandMarks(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) return '';
+  const data = await res.json();
+  return (data as { mark: string }[]).map(m => m.mark).join(' | ');
+}
 
 async function getCSQItems(status: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL;
@@ -405,7 +418,21 @@ async function runDarius(): Promise<string | null> {
     }
   }
   if (!postContent) {
-    postContent = await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Use a ™ framework. 150–250 words. End with a CTA that naturally points to assessment.druaiconsulting.com. 3–5 hashtags. Sound like DeAnna R. Upshaw — AI Authority.`);
+    const brandMarks = await fetchBrandMarks();
+    postContent = await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll. Brand: "AI Mastery. Leadership Clarity. Measurable Results."
+
+TRADEMARK RULES — NON-NEGOTIABLE:
+Only use DRU framework names that are explicitly listed below. Never invent new framework names or add ™ to any phrase not listed here. Every framework name you use must appear exactly as listed with ™ attached.
+
+APPROVED FRAMEWORK NAMES (use only these, exactly as written):
+${brandMarks}
+
+SERVICE CLASS RULES:
+Write within AI strategy consulting and leadership advisory language only (Classes 35, 41, 42).
+Never use financial investment language, ROI framing, venture capital references, or accounting language.
+Never imply DRU provides financial or investment counsel.
+
+FORMAT: 150–250 words. Strong hook. End with a CTA that naturally points to assessment.druaiconsulting.com. 3–5 hashtags. Sound like DeAnna R. Upshaw — AI Authority.`);
   }
   const csqId = await writeToCSQ({ agent_id: 'darius', agent_name: 'Darius King', division: 'Content & Brand', task: 'generate_daily_linkedin_post', category: 'linkedin_post', raw_output: postContent, priority: 'normal', status: 'pending', retry_count: 0 });
   if (queueId && url && key) {
