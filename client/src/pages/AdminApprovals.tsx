@@ -183,10 +183,34 @@ export default function AdminApprovals() {
     setSaving(id);
     const { error } = await supabase
       .from("approvals")
-      .update({ edited_output: editText, status: "edited" })
+      .update({ edited_output: editText, status: "approved" })
       .eq("id", id);
-    if (error) { console.error("Edit save failed:", error); }
-    else        { setEditingId(null); }
+    if (error) { console.error("Edit save failed:", error); setSaving(null); return; }
+    setEditingId(null);
+
+    // Publish to LinkedIn if social post
+    const approval = approvals.find((a) => a.id === id);
+    if (approval?.category === "social") {
+      setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
+      try {
+        const res = await fetch("/api/social-publisher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content:     editText,
+            platform:    approval.platform,
+            approval_id: id,
+          }),
+        });
+        if (res.ok) {
+          setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
+        } else {
+          setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
+        }
+      } catch {
+        setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
+      }
+    }
     setSaving(null);
   };
 
