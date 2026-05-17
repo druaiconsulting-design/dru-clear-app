@@ -34,7 +34,7 @@ const DIVISIONS = [
   },
   {
     name: "HR Division", tag: "Internal → Both",
-    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342",
+    border: "rgba(212,175,55,0.4)", headerBg: "#0A2342", fullWidth: true,
     agents: [
       { name: "Naomi Williams",   role: "Recruiting",          src: photo("women", 36) },
       { name: "Aiden Park",       role: "Internal Onboarding", src: photo("men",   63) },
