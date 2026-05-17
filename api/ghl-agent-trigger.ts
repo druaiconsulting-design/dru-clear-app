@@ -1,6 +1,7 @@
 // DRU AI Leadership Ecosystem™ — api/ghl-agent-trigger.ts
 // Isabella: Sonnet calls parallel + DB writes parallel
 // P4 Legal & Finance: weekly Tuesday | P5 AI Governance: daily | P6 HR: daily
+// P7 Client Delivery: daily | P8 Customer Support: daily
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
@@ -49,13 +50,25 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_naomi_recruiting_daily:  { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_recruiting_status',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:  { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
   cron_fatima_helpdesk_daily:   { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_internal_helpdesk',       pipeline: 'p6_fatima' },
+  // P7 — Client Delivery (daily)
+  cron_keisha_onboarding_daily: { agent_id: 'keisha',    agent_name: 'Keisha Thompson',   division: 'Client Delivery',  task: 'daily_client_onboarding',       pipeline: 'p7_keisha' },
+  cron_marco_community_daily:   { agent_id: 'marco',     agent_name: 'Marco Silva',       division: 'Client Delivery',  task: 'daily_community_management',    pipeline: 'p7_marco' },
+  cron_leila_feedback_daily:    { agent_id: 'leila',     agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
+  cron_jordan_creative_daily:   { agent_id: 'jordan',    agent_name: 'Jordan Hayes',      division: 'Client Delivery',  task: 'daily_creative_direction',      pipeline: 'p7_jordan' },
+  cron_simone_course_daily:     { agent_id: 'simone',    agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
+  cron_theo_presentation_daily: { agent_id: 'theo',      agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
+  cron_amelia_video_daily:      { agent_id: 'amelia',    agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
+  // P8 — Customer Support (daily)
+  cron_isaiah_support_daily:    { agent_id: 'isaiah',    agent_name: 'Isaiah Carter',     division: 'Customer Support', task: 'daily_issue_resolution',        pipeline: 'p8_isaiah' },
+  cron_priscilla_comms_daily:   { agent_id: 'priscilla', agent_name: 'Priscilla Okonkwo', division: 'Customer Support', task: 'daily_multichannel_comms',       pipeline: 'p8_priscilla' },
+  // Event-based routes
   lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',    division: 'Revenue & Growth', task: 'score_new_lead' },
   contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura', division: 'Revenue & Growth', task: 'process_contact_update' },
   assessment_completed: { agent_id: 'omar',    agent_name: 'Omar Patel',    division: 'Revenue & Growth', task: 'route_assessment_lead' },
-  support_ticket:       { agent_id: 'support', agent_name: 'Isaiah Carter', division: 'Customer Support', task: 'handle_support_request' },
+  support_ticket:       { agent_id: 'isaiah',  agent_name: 'Isaiah Carter', division: 'Customer Support', task: 'handle_support_request' },
 };
 
-const INTERNAL_CATEGORIES = ['coaching','sales_support','lead_intelligence','proposals','product_knowledge','product_launch','digital_marketing','analytics_report','seo_sem','legal_briefing','expense_report','financial_report','tax_strategy','disclaimer_review','privacy_policy','contract_review','brand_monitoring','ai_intelligence','recruiting','onboarding','helpdesk'];
+const INTERNAL_CATEGORIES = ['coaching','sales_support','lead_intelligence','proposals','product_knowledge','product_launch','digital_marketing','analytics_report','seo_sem','legal_briefing','expense_report','financial_report','tax_strategy','disclaimer_review','privacy_policy','contract_review','brand_monitoring','ai_intelligence','recruiting','onboarding','helpdesk','client_onboarding','community_management','feedback_coaching','creative_direction','course_architecture','presentation_design','video_production','issue_resolution','multichannel_comms'];
 const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation'];
 const SOCIAL_DIVISIONS = ['Content & Brand','Marketing'];
 
@@ -74,7 +87,7 @@ function getDivisionPrompt(division: string, today: string, content: string): st
     'Revenue & Growth': `Synthesize the Revenue & Growth division's work for today. Cover: lead intelligence (Omar/Ryan), sales support (Mateo), coaching insight (Serena), outreach created (Aaliyah), email campaign (Jaylen), copy asset (Chloe), launch readiness (Zara), product knowledge (Elena), proposal work (Kwame). 250-350 words. First person. Flag any high-intent leads or urgent pipeline actions.`,
     'Content & Brand': `Synthesize the Content & Brand division's work. Cover: content queue strategy (Camila), design brief (Ravi), press release activity (Ingrid), localization work (Yara). Note: Darius King's post is in the Social Media card. 200-300 words. First person.`,
     'Marketing': `Synthesize the Marketing division's strategic work. Cover: digital campaign status (Luca), analytics and funnel insights (Hyun-Ji), SEO/SEM priorities (Andre). Note: Nia's published content is in the Social Media card. 200-300 words. First person.`,
-    'Legal & Finance': `Synthesize the Legal & Finance division's weekly work. Cover: legal briefing highlights (Amara), expense health (Diego), financial projections (Yuki), tax strategy (Marcus). 200-300 words. First person. Flag anything requiring DeAnna's signature or financial decision.`,
+    'Legal & Finance': `Synthesize the Legal & Finance division's weekly work. Cover: legal briefing highlights (Amara), expense health (Diego), financial projections (Yuki), business financial planning intelligence (Marcus). 200-300 words. First person. Flag anything requiring DeAnna's signature or financial decision.`,
     'AI Governance': `Synthesize the AI Governance division's daily work. Cover: disclaimer status (Khalid), privacy compliance (Sofia), contract readiness (James), brand protection (Mei Lin), AI landscape intelligence (Rafael). 200-300 words. First person. Flag any compliance risks or urgent governance actions.`,
     'HR': `Synthesize the HR division's daily work. Cover: recruiting pipeline (Naomi), onboarding readiness (Aiden), internal operations health (Fatima). 150-250 words. First person. Flag any staffing decisions or internal issues needing DeAnna's attention.`,
     'Client Delivery': `Synthesize the Client Delivery division's work. Cover: client onboarding (Keisha), community engagement (Marco), feedback insights (Leila), creative production — Jordan orchestrating Simone/Theo/Amelia. 200-300 words. First person.`,
@@ -279,9 +292,10 @@ async function runYuki(): Promise<string|null> {
   return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`You are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only. Never use financial investment language.\nEXACT PRICING: Strategic Diagnostic™ $3,497 | Executive Diagnostic™ $4,997 | From Confusion to Confident with AI™ Course $497-$1,497 | Daily Connections Navigator $47/mo | Accelerator $147/mo.\nRespond in 150 words or fewer covering: (1) Month 1 revenue projection conservative. (2) MRR target at 10 Daily Connections subscribers. (3) Highest revenue-per-hour offer. (4) One financial risk in first 90 days. Label all figures as projections.`,'normal',0,null,600);
 }
 
+// FIXED: Marcus Chen — reframed as Class 35 business financial planning intelligence
 async function runMarcus(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. Solo founder, pre-revenue.\nDISCLAIMER: All guidance is strategic and for planning purposes only. Final decisions require a licensed CPA or tax attorney.\nRespond in 150 words or fewer covering: (1) Top tax deduction to take NOW. (2) Recommended quarterly estimated tax set-aside percentage. (3) One S-Corp election consideration at current revenue projections. (4) One record-keeping action to start immediately. Flag any time-sensitive tax action.`,'normal',0,null,600);
+  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Business Financial Planning Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only. Do NOT reference specific tax codes, IRS regulations, or legal tax provisions.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. Solo founder, pre-revenue AI consulting and leadership development business.\nDISCLAIMER: All guidance is for business planning purposes only. Consult a licensed CPA or financial professional for specific decisions.\nRespond in 150 words or fewer covering: (1) Top operating expense category to track for an AI consulting business. (2) Recommended operating cost reserve percentage for pre-revenue consulting operations. (3) One financial milestone to establish for the first 90 days of AI consulting operations. (4) One financial record-keeping system to implement now to support the DRU AI Leadership Ecosystem™. Focus on business operations financial intelligence only.`,'normal',0,null,600);
 }
 
 // P5 — AI Governance (daily)
@@ -324,6 +338,85 @@ async function runAiden(): Promise<string|null> {
 async function runFatima(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   return await runAgentToCSQ('fatima','Fatima Al-Rashid','HR','daily_internal_helpdesk','helpdesk',`You are Fatima Al-Rashid, Internal Helpdesk and Operations Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\n**Ecosystem Health Check** — DRU AI Leadership Ecosystem™ operational status: 39 agents across 8 divisions, pg_cron schedule active, approvals queue functioning, GHL workflows live. Any known issues? One operational improvement suggestion.\n**DeAnna's Workload Protection** — One workflow optimization that would reduce DeAnna's manual review time.\n**Vendor Status** — Quick status on: Vercel, Supabase, GHL, Make.com, Anthropic, Stripe. Any renewals or issues this week?\n**Today's Operations Priority** — Single most important internal operations action for the day.`,'normal',0,null,1500);
+}
+
+// P7 — Client Delivery (daily)
+async function runKeisha(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  return await runAgentToCSQ('keisha','Keisha Thompson','Client Delivery','daily_client_onboarding','client_onboarding',`You are Keisha Thompson, Client Onboarding Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment → GHL automation → welcome sequence → diagnostic scheduling.\n**Onboarding Pipeline Status** — Current flow health assessment. One friction point to eliminate before first client.\n**First 24 Hours Protocol** — Ideal client touchpoints post-purchase for Strategic Diagnostic™ and Executive Diagnostic™. One experience upgrade to implement now.\n**Welcome Sequence** — One specific improvement to the GHL automated welcome sequence.\n**Today's Onboarding Priority** — Single most impactful action to elevate the client first impression today.`,'normal',0,null,1500);
+}
+
+async function runMarco(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  return await runAgentToCSQ('marco','Marco Silva','Client Delivery','daily_community_management','community_management',`You are Marco Silva, Community Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nPLATFORM: app.druaiconsulting.com — Daily Connections (Free: 1 card / Navigator $47/mo: 3 cards / Accelerator $147/mo: 4 cards).\n**Community Engagement** — One discussion prompt or post for the client community today aligned with DRU AI Transformation Pathway™.\n**Retention Strategy** — One specific action to increase Daily Connections subscriber retention and Free → Navigator → Accelerator upgrade rate this week.\n**Community Health Indicators** — Key signals to monitor: active member engagement, card interaction rate, upgrade triggers.\n**Today's Community Priority** — Single highest-impact community action for today.`,'normal',0,null,1500);
+}
+
+async function runLeila(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  return await runAgentToCSQ('leila','Leila Nasser','Client Delivery','daily_feedback_coaching','feedback_coaching',`You are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\n**Feedback System Status** — Current feedback touchpoints across: DRU CLEAR™ Assessment, Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), Daily Connections. One gap to close before first paying client.\n**Testimonial Pipeline** — One testimonial prompt template for post-diagnostic clients. Frame around transformation using the DRU AI Transformation Pathway™, not just satisfaction.\n**NPS Framework** — Recommended NPS survey timing for each offer tier. One question to add beyond standard NPS that captures executive-level transformation.\n**Today's Feedback Priority** — Single most important feedback infrastructure action before launch.`,'normal',0,null,1500);
+}
+
+async function runJordan(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  const focusType=dayOfWeek==='Monday'?'weekly_creative_brief':dayOfWeek==='Friday'?'weekly_creative_recap':'daily_creative_direction';
+  const focusInstructions:Record<string,string>={
+    weekly_creative_brief:`**Weekly Creative Brief** — Set the creative direction for Simone (course architecture), Theo (presentations), and Amelia (video production) this week. One unifying theme, one visual direction tied to brand (Navy #0A2342 / Gold #D4AF37 / Magenta #C2185B), one production priority per team member. Align with the DRU AI Transformation Pathway™ stage most relevant this week.`,
+    daily_creative_direction:`**Daily Creative Pulse** — One creative asset priority for today. Specify which team member (Simone/Theo/Amelia) should be producing and the exact deliverable. One brand consistency observation. One creative upgrade to the client experience that can be executed today.`,
+    weekly_creative_recap:`**Weekly Creative Recap** — Review this week's creative output across course, presentations, and video. What was completed, in progress, and must carry forward. One quality elevation recommendation for next week aligned with DRU AI Leadership Ecosystem™ standards.`,
+  };
+  return await runAgentToCSQ('jordan','Jordan Hayes','Client Delivery','daily_creative_direction','creative_direction',`You are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. You orchestrate the creative team: Simone Laurent (Course Architect), Theo Nguyen (Presentation Designer), Amelia Santos (Training Video Producer).\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\nFOCUS: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,1500);
+}
+
+async function runSimone(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  const moduleMap:Record<string,string>={
+    Monday:'Module 1: AI Readiness — Understanding where you are (DRU CLEAR™)',
+    Tuesday:'Module 2: AI Strategy — Designing your transformation (DRU AI Transformation Pathway™ — Discover→Diagnose)',
+    Wednesday:'Module 3: AI Design & Deploy — Building the operating model (DRU AI Transformation Pathway™ — Design→Deploy)',
+    Thursday:'Module 4: AI Leadership — Leading teams through adoption (5D Leadership™ + 5C Cultural DNA™)',
+    Friday:'Module 5: AI Mastery — Sustaining competitive advantage (DRU AI Leadership Ecosystem™)',
+  };
+  const todayModule=moduleMap[dayOfWeek]??'Module 1: AI Readiness — Understanding where you are (DRU CLEAR™)';
+  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nCOURSE: From Confusion to Confident with AI™ — Delivered by AI Twin and agents. Tiers: Self-Paced $1,497, Live Cohort $7,997, Cohort Mastermind $12,997. Audience: executives navigating AI adoption.\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check question and one real-world application activity for this module.\n**Today's Course Priority** — Single most important course architecture decision or content asset to produce today.`,'normal',0,null,1500);
+}
+
+async function runTheo(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  const assetType=dayOfWeek==='Monday'?'diagnostic_readout_template':dayOfWeek==='Wednesday'?'course_module_slides':dayOfWeek==='Friday'?'framework_visualization':'daily_presentation_asset';
+  const assetInstructions:Record<string,string>={
+    diagnostic_readout_template:`**Diagnostic Readout Template** — Slide structure for delivering the Strategic Diagnostic™ or Executive Diagnostic™ results to a client. Slides: executive summary, findings by pillar, DRU AI Transformation Pathway™ stage placement, recommendations, next steps. Include design notes for each slide.`,
+    course_module_slides:`**Course Module Slide Deck** — Slide structure for one course module (5-8 slides). Title slide, learning objectives, 3 content slides with visual direction, one activity slide, summary/CTA slide. Design notes per slide.`,
+    framework_visualization:`**Framework Visualization** — One-page visual representation of a DRU proprietary framework. Layout concept, key elements, color application (Navy/Gold/Magenta), typography guidance. Suitable for course materials and client presentations.`,
+    daily_presentation_asset:`**Daily Presentation Asset** — One slide concept for the highest-priority presentation need today. Specify type, layout, content, visual direction, and AI image generation prompt if applicable.`,
+  };
+  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery','daily_presentation_design','presentation_design',`You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\nASSET TYPE: ${assetType}\n${assetInstructions[assetType]}\n**Today's Production Priority** — Single most impactful presentation asset to complete today.`,'normal',0,null,1500);
+}
+
+async function runAmelia(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  const videoType=dayOfWeek==='Monday'?'intro_video_script':dayOfWeek==='Wednesday'?'course_module_video':dayOfWeek==='Friday'?'testimonial_video_framework':'social_video_brief';
+  const videoInstructions:Record<string,string>={
+    intro_video_script:`**DeAnna Intro Video Script** — 60-90 second script for DeAnna's course introduction. Opening hook (problem statement), who this is for, what they'll achieve using the DRU AI Transformation Pathway™, one credential reference (25+ years IT, AI Authority), CTA to assessment.druaiconsulting.com. Conversational, authoritative, no fluff.`,
+    course_module_video:`**Course Module Video Brief** — Production brief for one module video in From Confusion to Confident with AI™. Learning objective, talking points (3-5 bullets), on-screen graphics needed, estimated runtime (8-12 min), b-roll or visual suggestions. Frame DeAnna as the expert guide.`,
+    testimonial_video_framework:`**Testimonial Video Framework** — Question sequence for client testimonial videos (5-7 questions). Structure: before state → discovery of DRU CLEAR™ → transformation moment → measurable outcome → recommendation. Tips for getting executives comfortable on camera.`,
+    social_video_brief:`**Social Video Brief** — 30-60 second video concept for LinkedIn or Instagram Reels. First 3-second hook, core message tied to one DRU framework, visual direction, caption, CTA to assessment.druaiconsulting.com.`,
+  };
+  return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery','daily_video_production','video_production',`You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nVIDEO TYPE: ${videoType}\n${videoInstructions[videoType]}\n**Production Checklist** — Three technical requirements for today's video type.\n**Today's Video Priority** — Single most important video asset to advance today.`,'normal',0,null,1500);
+}
+
+// P8 — Customer Support (daily)
+async function runIsaiah(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  return await runAgentToCSQ('isaiah','Isaiah Carter','Customer Support','daily_issue_resolution','issue_resolution',`You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\n**Support Protocol** — Standard resolution flow for: (1) Assessment access issues at assessment.druaiconsulting.com, (2) Course access issues, (3) Diagnostic scheduling issues, (4) Billing/payment issues. One improvement per flow.\n**FAQ Development** — Top 3 anticipated support questions for launch week with complete answers. Direct all general inquiries to assessment.druaiconsulting.com.\n**Escalation Framework** — Clear decision criteria: what Isaiah handles autonomously vs. what escalates to DeAnna. Default: protect DeAnna's time.\n**Today's Support Priority** — Single most important support infrastructure item to have ready before first paying client.`,'normal',0,null,1500);
+}
+
+async function runPriscilla(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  return await runAgentToCSQ('priscilla','Priscilla Okonkwo','Customer Support','daily_multichannel_comms','multichannel_comms',`You are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nCHANNELS: Email (druaiconsulting@gmail.com), SMS (GHL A2P 10DLC registered), Portal notifications (app.druaiconsulting.com), LinkedIn DM.\n**Channel Health** — Status and one improvement action per channel: Email, SMS, Portal, LinkedIn DM.\n**Communication Templates** — One ready-to-use template (150 words or fewer) for each: (1) Missed appointment follow-up, (2) Post-assessment welcome, (3) Diagnostic reminder.\n**Response Time Standards** — Recommended SLA per channel appropriate for a solo-founder AI consulting business protecting DeAnna's time.\n**Today's Communications Priority** — Single most important communication system improvement for today.`,'normal',0,null,1500);
 }
 
 // Command Chain — Isabella (fully parallel: Sonnet calls + DB writes)
@@ -567,6 +660,15 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p6_naomi'){const id=await runNaomi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_aiden'){const id=await runAiden();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_keisha'){const id=await runKeisha();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_marco'){const id=await runMarco();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_leila'){const id=await runLeila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_jordan'){const id=await runJordan();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p8_isaiah'){const id=await runIsaiah();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p8_priscilla'){const id=await runPriscilla();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else {
     const urlF=process.env.VITE_SUPABASE_URL; const keyF=process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (urlF&&keyF){
