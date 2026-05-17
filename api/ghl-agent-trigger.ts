@@ -115,6 +115,11 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_ravi_design_brief:        { agent_id: 'ravi',       agent_name: 'Ravi Gupta',           division: 'Content & Brand',  task: 'generate_design_brief',          pipeline: 'p2_ravi' },
   cron_yara_localization:        { agent_id: 'yara',       agent_name: 'Yara Mansour',         division: 'Content & Brand',  task: 'spanish_localization',           pipeline: 'p2_yara' },
   cron_ingrid_press_release:     { agent_id: 'ingrid',     agent_name: 'Ingrid Larsen',        division: 'Content & Brand',  task: 'weekly_press_release',           pipeline: 'p2_ingrid' },
+  // Pipeline 3 — Marketing
+  cron_nia_content_daily:        { agent_id: 'nia',        agent_name: 'Nia Robinson',         division: 'Marketing',        task: 'daily_content_creation',         pipeline: 'p3_nia' },
+  cron_luca_digital_marketing:   { agent_id: 'luca',       agent_name: 'Luca Romano',          division: 'Marketing',        task: 'digital_marketing_briefing',     pipeline: 'p3_luca' },
+  cron_hyunji_analytics:         { agent_id: 'hyunji',     agent_name: 'Hyun-Ji Kim',          division: 'Marketing',        task: 'analytics_roi_briefing',         pipeline: 'p3_hyunji' },
+  cron_andre_seo:                { agent_id: 'andre',      agent_name: 'Andre Mitchell',       division: 'Marketing',        task: 'seo_sem_brand_briefing',         pipeline: 'p3_andre' },
   // Analytics
   cron_analytics_weekly:         { agent_id: 'analytics',  agent_name: 'Analytics Agent',      division: 'Analytics',        task: 'weekly_performance_summary' },
   // GHL Webhooks
@@ -442,6 +447,275 @@ FORMAT: 150–250 words. Strong hook. End with a CTA that naturally points to as
 }
 
 // ─────────────────────────────────────────────────────────────
+// PIPELINE 3 — NIA (Daily Content Creation → CSQ)
+// Fires at 9:30am CDT (14:30 UTC)
+// Produces one long-form thought leadership asset daily
+// Rotates: article, framework explainer, FAQ guide, client story content
+// ─────────────────────────────────────────────────────────────
+
+async function runNia(): Promise<string | null> {
+  const brandMarks = await fetchBrandMarks();
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+
+  // Rotate content type by day of week
+  const contentTypeMap: Record<string, string> = {
+    Monday:    'thought_leadership_article',
+    Tuesday:   'framework_explainer',
+    Wednesday: 'executive_faq_guide',
+    Thursday:  'client_transformation_story',
+    Friday:    'trend_analysis_piece',
+  };
+  const contentType = contentTypeMap[dayOfWeek] ?? 'thought_leadership_article';
+
+  const contentInstructions: Record<string, string> = {
+    thought_leadership_article: `Write a 600–800 word thought leadership article positioning DeAnna R. Upshaw as the AI Authority on organizational transformation. Topic: the hidden cost of AI adoption without leadership clarity. Include: a compelling headline, 3–4 substantive sections with subheadings, one DRU framework reference, and a natural CTA that directs readers to assessment.druaiconsulting.com to discover their AI readiness. Write in DeAnna's voice: authoritative, strategic, and results-focused.`,
+    framework_explainer: `Write a 500–700 word framework explainer article for one of DeAnna's proprietary frameworks. Choose the framework most relevant to current executive AI adoption challenges. Include: what the framework is, why it matters, the core components, a real-world application scenario, and a CTA directing readers to assessment.druaiconsulting.com to experience the framework firsthand.`,
+    executive_faq_guide: `Write a 600–800 word FAQ guide answering the 5 most pressing questions executives ask about AI adoption and leadership strategy. Format: question as subheading, 2–3 paragraph answer per question. Each answer should naturally weave in one DRU framework or principle. End with a CTA to assessment.druaiconsulting.com as the first step toward their AI clarity.`,
+    client_transformation_story: `Write a 500–700 word composite client transformation story (no real names — composite persona only) illustrating the journey from AI confusion to confident leadership using DeAnna's DRU AI Transformation Pathway™. Structure: before state, the intervention, the transformation, measurable outcomes, and a CTA to assessment.druaiconsulting.com for readers ready to begin their own journey.`,
+    trend_analysis_piece: `Write a 600–800 word trend analysis article on a current AI leadership or organizational AI adoption trend. Position DeAnna R. Upshaw as the authority interpreting what this trend means for executive leaders. Include: the trend, why it matters now, the strategic implication, what leaders should do, and a CTA to assessment.druaiconsulting.com to benchmark their current AI readiness against the trend.`,
+  };
+
+  const id = await runAgentToCSQ(
+    'nia', 'Nia Robinson', 'Marketing', 'daily_content_creation', 'content_creation',
+    `You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Today: ${today}.
+
+TRADEMARK RULES — NON-NEGOTIABLE:
+Only use DRU framework names explicitly listed below. Never invent framework names. Every framework you reference must appear exactly as listed with ™ attached.
+
+APPROVED FRAMEWORK NAMES (use only these, exactly as written):
+${brandMarks}
+
+SERVICE CLASS RULES:
+All content must stay within AI strategy consulting, leadership advisory, training, and coaching language (Classes 35, 41, 42).
+Never use financial investment language, ROI guarantees, or accounting terminology.
+
+AUDIENCE: Senior executives, directors, and C-suite leaders navigating AI adoption in their organizations.
+
+TODAY'S CONTENT TYPE: ${contentType}
+
+${contentInstructions[contentType]}
+
+ASSESSMENT CTA RULE: Every piece must include assessment.druaiconsulting.com as the primary CTA — this is the only ecosystem entry point.`,
+    'normal', 0, null, 2000
+  );
+  return id;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIPELINE 3 — LUCA (Digital Marketing Briefing → CSQ)
+// Fires at 9:35am CDT (14:35 UTC)
+// Produces daily digital marketing strategy briefing
+// Covers paid campaigns (LinkedIn, Meta, Google), funnel health, ad recommendations
+// ─────────────────────────────────────────────────────────────
+
+async function runLuca(): Promise<string | null> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+
+  const id = await runAgentToCSQ(
+    'luca', 'Luca Romano', 'Marketing', 'digital_marketing_briefing', 'digital_marketing',
+    `You are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Today: ${today}.
+
+Generate today's digital marketing briefing. All traffic and campaign objectives point to a single funnel entry: assessment.druaiconsulting.com — the DRU CLEAR™ AI Readiness Scorecard.
+
+OFFER LADDER (for campaign targeting context):
+- Free: DRU CLEAR™ AI Readiness Scorecard (assessment.druaiconsulting.com) — primary conversion goal for all paid campaigns
+- Strategic Diagnostic ($3,497) — warm retargeting for assessment completers
+- Executive Diagnostic ($4,997) — retargeting for high-score assessment completers
+- From Confusion to Confident with AI™ Course ($497–$1,497) — mid-funnel educational offer
+
+TARGET AUDIENCE: Senior executives, directors, C-suite leaders, and founders at mid-to-large organizations navigating AI adoption. Primary platforms: LinkedIn (primary), Meta (secondary), Google (brand/intent).
+
+BRIEFING STRUCTURE (produce all sections):
+
+**Campaign Status & Recommendations**
+- LinkedIn Ads: recommended campaign type for this week (Thought Leader Ads, Lead Gen Forms, or Sponsored Content), targeting parameters, budget allocation guidance, and one headline/ad copy variation to test
+- Meta Ads: retargeting strategy for assessment completers and website visitors, recommended creative direction
+- Google Ads: brand keyword protection priorities, one search intent keyword cluster to target this week
+
+**Funnel Optimization Focus**
+- One specific assessment.druaiconsulting.com landing page improvement recommendation
+- One A/B test hypothesis for the assessment entry point (headline, CTA button, or social proof element)
+
+**Retargeting Intelligence**
+- Recommended retargeting sequence for: (a) assessment completers who have not purchased, (b) website visitors who did not start assessment
+- Suggested retargeting window and ad frequency
+
+**This Week's Priority Action**
+- One highest-impact digital marketing move DeAnna should approve or act on this week, with rationale
+
+Write with precision and strategic depth. This briefing goes directly to DeAnna's AI Twin for synthesis.`,
+    'normal', 0, null, 2000
+  );
+  return id;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIPELINE 3 — HYUN-JI (Analytics & ROI Briefing → CSQ)
+// Fires at 9:40am CDT (14:40 UTC)
+// Produces daily analytics and ROI performance briefing
+// Covers funnel metrics, channel performance, conversion insights
+// ─────────────────────────────────────────────────────────────
+
+async function runHyunJi(): Promise<string | null> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+
+  // Monday: weekly recap + week-ahead focus. Other days: daily operational briefing.
+  const reportType = dayOfWeek === 'Monday' ? 'weekly_recap' : 'daily_operational';
+
+  const reportInstructions = reportType === 'weekly_recap'
+    ? `Today is Monday — produce the weekly analytics recap AND week-ahead measurement priorities.
+
+WEEKLY RECAP STRUCTURE:
+**Last Week's Performance Summary**
+- Assessment funnel: estimated completion rate benchmark (what a healthy funnel looks like at this stage), key drop-off point to monitor, and one optimization hypothesis
+- LinkedIn organic: engagement benchmarks for thought leadership content targeting executives, typical reach/impression ratios, and what signals indicate a post is performing above average
+- Email marketing: benchmark open rates (34% target), click-through benchmarks, and what a healthy unsubscribe rate looks like for executive audiences
+- Paid digital: ROAS benchmarks for executive consulting campaigns on LinkedIn vs Meta, and cost-per-assessment-completion targets to aim for
+
+**Week-Ahead Measurement Priorities**
+- 3 specific KPIs to track this week with target values
+- One analytics question to answer by Friday
+- One data gap in the current measurement setup that needs to be closed`
+    : `Produce today's daily analytics and ROI operational briefing.
+
+DAILY BRIEFING STRUCTURE:
+**Funnel Health Check**
+- Assessment funnel: what to monitor at assessment.druaiconsulting.com today (traffic quality signals, completion rate indicators, drop-off patterns to watch)
+- One specific funnel metric that, if it moved 10%, would most impact revenue — and what would drive that movement
+
+**Channel Performance Snapshot**
+- LinkedIn organic: engagement velocity benchmarks for DeAnna's audience tier (executives/directors), what a strong-performing day looks like vs average
+- Email: open rate target (34%+), click-through benchmark, and one segmentation insight for the current audience mix (Emerging/Developing/Advancing/Leading tiers)
+- Paid (if active): one optimization signal to look for in campaign data today
+
+**Conversion Intelligence**
+- One insight about the assessment-to-diagnostic conversion path — what behavioral signal most predicts a high-scoring lead becoming a diagnostic client
+- One recommendation for improving attribution between social content and assessment completions
+
+**Today's Analytics Priority**
+- The single most important number to check today and what action it should trigger if it is below benchmark`;
+
+  const id = await runAgentToCSQ(
+    'hyunji', 'Hyun-Ji Kim', 'Marketing', 'analytics_roi_briefing', 'analytics_report',
+    `You are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Today: ${today}.
+
+Your job is to translate data into decision-ready intelligence. DeAnna's full ecosystem funnels through one entry point: assessment.druaiconsulting.com. Every metric you analyze should connect back to assessment completions, diagnostic conversions, or client retention.
+
+OFFER LADDER (for conversion context):
+- DRU CLEAR™ Scorecard: free — primary funnel entry at assessment.druaiconsulting.com
+- Strategic Diagnostic: $3,497
+- Executive Diagnostic: $4,997 (BEST VALUE)
+- From Confusion to Confident with AI™ Course: $497–$1,497
+- Daily Connections: Free / Navigator $47/mo / Accelerator $147/mo
+
+REPORT TYPE: ${reportType}
+
+${reportInstructions}
+
+Write with analytical precision. Present data benchmarks and targets clearly. This briefing is synthesized by DeAnna's AI Twin — every insight must be actionable and decision-ready.`,
+    'normal', 0, null, 2000
+  );
+  return id;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIPELINE 3 — ANDRE (SEO/SEM Brand Briefing → CSQ)
+// Fires at 9:45am CDT (14:45 UTC)
+// Produces daily SEO/SEM brand management briefing
+// Covers search presence, keyword strategy, brand protection, competitor monitoring
+// ─────────────────────────────────────────────────────────────
+
+async function runAndre(): Promise<string | null> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+
+  // Tuesday: technical SEO focus. Friday: weekly search recap. Other days: daily operational.
+  const focusType = dayOfWeek === 'Tuesday' ? 'technical_seo' : dayOfWeek === 'Friday' ? 'weekly_search_recap' : 'daily_operational';
+
+  const focusInstructions: Record<string, string> = {
+    daily_operational: `Produce today's daily SEO/SEM brand briefing.
+
+DAILY BRIEFING STRUCTURE:
+**Brand Keyword Protection**
+- Primary brand terms to protect in paid search: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR", "AI Leadership Consulting" — recommended match types and bid strategy guidance
+- One competitor keyword threat scenario to watch and the defensive bid strategy to counter it
+
+**Organic Search Priorities**
+- Top 3 keyword clusters for DeAnna's target audience (C-suite/executive AI adoption) with search intent classification (informational, navigational, commercial)
+- One content gap: a high-intent keyword phrase that Nia Robinson should write content for this week
+- Internal linking recommendation: how to strengthen assessment.druaiconsulting.com's domain authority from druaiconsulting.com
+
+**Paid Search Recommendation**
+- One Google Ads search campaign structure recommendation targeting executives searching for AI consulting or leadership AI strategy
+- Recommended landing page: assessment.druaiconsulting.com (primary conversion goal)
+- One negative keyword list category to add to prevent irrelevant spend
+
+**Today's SEO Priority Action**
+- One specific, immediately actionable SEO or SEM move with the highest expected impact on assessment.druaiconsulting.com traffic`,
+
+    technical_seo: `Today is Tuesday — produce the weekly technical SEO audit focus.
+
+TECHNICAL SEO BRIEFING:
+**Site Health Priorities**
+- Core Web Vitals targets for assessment.druaiconsulting.com and app.druaiconsulting.com (LCP, FID/INP, CLS benchmarks for executive-audience expectations)
+- Subdomain SEO strategy: how assessment.druaiconsulting.com, app.druaiconsulting.com, and druaiconsulting.com should relate in domain authority and internal linking structure
+- One technical recommendation to improve crawlability and indexation of DeAnna's thought leadership content
+
+**Schema & Structured Data**
+- Recommended schema markup types for: consulting services pages, course pages, and DeAnna's author/expert profile
+- One structured data implementation that would improve rich snippet eligibility in search results
+
+**Local & Entity SEO**
+- DeAnna's entity strength: Google Knowledge Panel optimization priorities for "DeAnna R. Upshaw AI Authority"
+- One citation or external mention strategy to strengthen topical authority in AI consulting and leadership development
+
+**This Week's Technical Priority**
+- Single highest-impact technical SEO fix that would most improve organic visibility for assessment.druaiconsulting.com`,
+
+    weekly_search_recap: `Today is Friday — produce the weekly search performance recap and next-week priorities.
+
+WEEKLY SEARCH RECAP:
+**Organic Search Performance**
+- Benchmark targets for druaiconsulting.com and assessment.druaiconsulting.com (impressions growth trajectory, CTR targets by keyword type, position targets for branded vs non-branded terms)
+- One keyword position to monitor that, if it moved to page 1, would meaningfully increase assessment completions
+- Content performance: which content type (thought leadership, framework explainers, FAQs) typically drives the highest organic click-through for executive audiences
+
+**Paid Search Performance**
+- Brand campaign health check indicators: impression share targets, average CPC benchmarks for AI consulting keywords, quality score targets
+- One search query theme emerging from competitor analysis that DeAnna should address with content
+
+**Next Week's Search Priorities**
+- 3 SEO/SEM actions for next week ranked by expected impact
+- One keyword opportunity that Luca Romano should activate in paid search next week
+- One piece of content Nia Robinson should prioritize for organic search growth`,
+  };
+
+  const id = await runAgentToCSQ(
+    'andre', 'Andre Mitchell', 'Marketing', 'seo_sem_brand_briefing', 'seo_sem',
+    `You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: "AI Mastery. Leadership Clarity. Measurable Results." Today: ${today}.
+
+Your mandate: ensure that when decision-makers search for AI leadership consulting, organizational AI strategy, or executive AI adoption, DeAnna R. Upshaw and DRU AI Consulting appear at the top — organically and in paid search. The primary conversion destination for all search traffic is assessment.druaiconsulting.com.
+
+WEB PROPERTIES:
+- druaiconsulting.com — main brand site
+- assessment.druaiconsulting.com — primary funnel entry (DRU CLEAR™ AI Readiness Scorecard)
+- app.druaiconsulting.com — client ecosystem
+
+TARGET AUDIENCE IN SEARCH: Executives, directors, and C-suite leaders searching for AI consulting, AI leadership strategy, organizational AI adoption, and executive AI training.
+
+FOCUS TYPE: ${focusType}
+
+${focusInstructions[focusType]}
+
+Write with technical precision and strategic depth. Every recommendation should include rationale. This briefing is synthesized by DeAnna's AI Twin — make every insight immediately actionable.`,
+    'normal', 0, null, 2000
+  );
+  return id;
+}
+
+// ─────────────────────────────────────────────────────────────
 // COMMAND CHAIN — ISABELLA MORENO (Director of Compliance)
 // First gate — fires at 11:00am CDT
 // Checks all pending CSQ items for:
@@ -548,6 +822,9 @@ const INTERNAL_CATEGORIES = [
   'proposals',
   'product_knowledge',
   'product_launch',
+  'digital_marketing',
+  'analytics_report',
+  'seo_sem',
 ];
 
 // Categories the CODE classifies as client-facing (published or sent to clients)
@@ -559,6 +836,7 @@ const CLIENT_FACING_CATEGORIES = [
   'press_release',
   'localization',
   'design_brief',
+  'content_creation',
 ];
 
 async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number; blocked: number }> {
@@ -805,6 +1083,8 @@ Synthesize into ONE executive briefing in DeAnna's voice:
 **Revenue & Growth** (lead intelligence, sales activity, outreach)
 
 **Content & Brand** (today's content, design, press)
+
+**Marketing** (digital campaigns, analytics intelligence, search strategy, content pipeline)
 
 **Decisions Needed** (anything requiring DeAnna's personal action today)
 
@@ -1097,6 +1377,23 @@ Rotate daily: nurture email (Emerging/Developing/Advancing tier), re-engagement,
     const id = await runAgentToCSQ('ingrid', 'Ingrid Larsen', 'Content & Brand', 'weekly_press_release', 'press_release',
       `You are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's content: ${weekContent || 'AI leadership, DRU frameworks, executive AI adoption'}. Write a professional AP-style press release from the strongest story. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`);
     res.status(202).json({ success: true, agent: route.agent_name, csq_id: id });
+
+  // ── Pipeline 3 — Marketing ────────────────────────────────
+  } else if (route.pipeline === 'p3_nia') {
+    const id = await runNia();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id, message: 'Nia generated daily content asset — output in chief of staff queue' });
+
+  } else if (route.pipeline === 'p3_luca') {
+    const id = await runLuca();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id, message: 'Luca generated digital marketing briefing — output in chief of staff queue' });
+
+  } else if (route.pipeline === 'p3_hyunji') {
+    const id = await runHyunJi();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id, message: 'Hyun-Ji generated analytics & ROI briefing — output in chief of staff queue' });
+
+  } else if (route.pipeline === 'p3_andre') {
+    const id = await runAndre();
+    res.status(202).json({ success: true, agent: route.agent_name, csq_id: id, message: 'Andre generated SEO/SEM brand briefing — output in chief of staff queue' });
 
   // ── Standard dispatch ─────────────────────────────────────
   } else {
