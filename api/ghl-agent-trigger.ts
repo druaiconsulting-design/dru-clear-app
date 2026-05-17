@@ -18,6 +18,8 @@
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 
+export const config = { maxDuration: 60 };
+
 // ─────────────────────────────────────────────────────────────
 // GENIUS MODE — injected into every agent prompt
 // ─────────────────────────────────────────────────────────────
