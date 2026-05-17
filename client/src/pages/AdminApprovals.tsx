@@ -357,7 +357,9 @@ export default function AdminApprovals() {
                       />
                     ) : (
                       <p style={{ fontFamily: "'Inter', sans-serif", color: "#FFFFFF", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 }}>
-                        {approval.edited_output || approval.output}
+                        {(approval.edited_output || approval.output).split('
+
+').map((para, i) => (   <p key={i} style={{ margin: '0 0 0.75rem 0', fontFamily: "'Inter', sans-serif", color: '#FFFFFF', fontSize: '0.75rem', lineHeight: 1.6 }}>     {para}   </p> ))}
                       </p>
                     )}
                   </div>
