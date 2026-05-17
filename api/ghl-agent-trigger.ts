@@ -447,7 +447,7 @@ EXACT PRICING: DRU CLEAR™ (free) | Strategic Diagnostic $3,497 | Executive Dia
 **MRR Growth Framework** — Daily Connections MRR at 10/25/50 Navigator vs Accelerator. Subscription % at each milestone. Churn impact.
 **Key Financial Metrics to Track** — 5 KPIs once revenue begins, reporting cadence, one leading vs one lagging indicator.
 **Financial Intelligence Summary** — Highest revenue/hour product, one financial risk in first 90 days, one financial strength to amplify.
-Label all figures as projections or actuals. Every insight decision-ready.`, 'normal', 0, null, 2000);
+Respond in 150 words or fewer. Label all figures as projections or actuals.`, 'normal', 0, null, 600);
 }
 
 async function runMarcus(): Promise<string | null> {
@@ -462,7 +462,7 @@ DISCLAIMER: All guidance is strategic and for planning purposes only. Final deci
 **Deduction Opportunities** — Top 5 deductible expenses, home office deduction, AI tool/SaaS categorization, international facilitation deductions (Costa Rica, Dominican Republic, Papua New Guinea).
 **Quarterly Estimated Tax Planning** — 2025/2026 schedule, recommended set-aside %, cash flow strategy.
 **Pre-Revenue Tax Actions** — 3 actions to take NOW, one commonly missed deduction, record-keeping system.
-Flag any time-sensitive tax action clearly.`, 'normal', 0, null, 2000);
+Respond in 150 words or fewer. Flag any time-sensitive tax action clearly.`, 'normal', 0, null, 600);
 }
 
 // ─────────────────────────────────────────────────────────────
