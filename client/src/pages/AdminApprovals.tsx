@@ -1,6 +1,6 @@
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
-// UPDATED: Per-division cards, Social Media from C&B + Marketing, division badges
+// UPDATED: Per-division cards, Ask a Question feature, Customer Support base magenta
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -36,7 +36,21 @@ interface Approval {
   archived:         boolean;
 }
 
-// ─── Platform badge colors (social posts) ────────────────────
+interface ConversationMessage {
+  role: 'user' | 'agent';
+  agentName?: string;
+  text: string;
+}
+
+interface QuestionState {
+  open:          boolean;
+  selectedAgent: { agent_id: string; agent_name: string; role: string } | null;
+  input:         string;
+  messages:      ConversationMessage[];
+  loading:       boolean;
+}
+
+// ─── Platform badge colors ────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn:     "#0077B5",
   Instagram:    "#C2185B",
@@ -47,27 +61,26 @@ const PLATFORM_COLORS: Record<string, string> = {
   TikTok:       "#010101",
   YouTube:      "#FF0000",
   Pinterest:    "#E60023",
-  // Content-type badges for non-platform publishable content (DRU brand tints)
-  Content:      "#163D6E",  // Navy mid
-  Press:        "#8A6E1A",  // Gold dark
-  Design:       "#7A0F38",  // Magenta deep
-  Localization: "#A68920",  // Gold medium
-  Copy:         "#E0527E",  // Magenta lighter
-  Outreach:     "#2E6DAB",  // Navy lighter
+  // Content-type badges (DRU brand tints)
+  Content:      "#163D6E",
+  Press:        "#8A6E1A",
+  Design:       "#7A0F38",
+  Localization: "#A68920",
+  Copy:         "#E0527E",
+  Outreach:     "#2E6DAB",
 };
 
-// ─── Division badge colors (DRU brand tints/shades only) ─────
-// Navy #0A2342 | Gold #D4AF37 | Magenta #C2185B
+// ─── Division badge colors (DRU brand tints/shades) ───────────
 const DIVISION_COLORS: Record<string, string> = {
-  "Revenue & Growth":  "#D4AF37",  // Gold — primary
-  "Content & Brand":   "#C2185B",  // Magenta — primary
-  "Marketing":         "#163D6E",  // Navy — mid
-  "Legal & Finance":   "#8A6E1A",  // Gold — dark
-  "AI Governance":     "#7A0F38",  // Magenta — deep
-  "HR":                "#2E6DAB",  // Navy — lighter
-  "Client Delivery":   "#A68920",  // Gold — medium
-  "Customer Support":  "#E0527E",  // Magenta — lighter
-  "Command":           "#0A2342",  // Navy — primary
+  "Revenue & Growth":  "#D4AF37",  // Gold primary
+  "Content & Brand":   "#C2185B",  // Magenta primary
+  "Marketing":         "#163D6E",  // Navy mid
+  "Legal & Finance":   "#8A6E1A",  // Gold dark
+  "AI Governance":     "#7A0F38",  // Magenta deep
+  "HR":                "#2E6DAB",  // Navy lighter
+  "Client Delivery":   "#A68920",  // Gold medium
+  "Customer Support":  "#C2185B",  // Magenta base
+  "Command":           "#0A2342",  // Navy primary
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -78,7 +91,6 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 
 // ─── Category → filter tab labels ────────────────────────────
 const CATEGORY_LABELS: Record<string, string> = {
-  // Division briefing cards
   daily_briefing:   "Daily Briefing",
   revenue_growth:   "Revenue & Growth",
   content_brand:    "Content & Brand",
@@ -88,32 +100,82 @@ const CATEGORY_LABELS: Record<string, string> = {
   hr:               "HR",
   client_delivery:  "Client Delivery",
   customer_support: "Customer Support",
-  // Social Media
   social:           "Social Media",
-  // Legacy
   email:            "Email",
   proposal:         "Proposal",
   content:          "Content",
   other:            "Other",
 };
 
-// Preferred tab order
 const CATEGORY_ORDER = [
-  "daily_briefing",
-  "revenue_growth",
-  "content_brand",
-  "marketing",
-  "legal_finance",
-  "ai_governance",
-  "hr",
-  "client_delivery",
-  "customer_support",
-  "social",
-  "email",
-  "proposal",
-  "content",
-  "other",
+  "daily_briefing","revenue_growth","content_brand","marketing",
+  "legal_finance","ai_governance","hr","client_delivery","customer_support",
+  "social","email","proposal","content","other",
 ];
+
+// ─── Division agent roster (for briefing card selector) ───────
+const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
+  "Revenue & Growth": [
+    { agent_id: "omar",    agent_name: "Omar Patel",       role: "Lead Scoring" },
+    { agent_id: "ryan",    agent_name: "Ryan Nakamura",    role: "CRM Management" },
+    { agent_id: "serena",  agent_name: "Serena Jackson",   role: "Business Coach" },
+    { agent_id: "mateo",   agent_name: "Mateo Gonzalez",   role: "Sales Support" },
+    { agent_id: "aaliyah", agent_name: "Aaliyah Foster",   role: "Outreach" },
+    { agent_id: "jaylen",  agent_name: "Jaylen Brooks",    role: "Email Marketing" },
+    { agent_id: "chloe",   agent_name: "Chloe Dubois",     role: "Copy Writer" },
+    { agent_id: "zara",    agent_name: "Zara Ahmed",       role: "Product Launch" },
+    { agent_id: "elena",   agent_name: "Elena Vasquez",    role: "Product Knowledge" },
+    { agent_id: "kwame",   agent_name: "Kwame Asante",     role: "Proposal Writer" },
+  ],
+  "Content & Brand": [
+    { agent_id: "camila",  agent_name: "Camila Flores",    role: "Social Media Strategist" },
+    { agent_id: "darius",  agent_name: "Darius King",      role: "Viral Scripter" },
+    { agent_id: "ravi",    agent_name: "Ravi Gupta",       role: "Graphic Designer" },
+    { agent_id: "yara",    agent_name: "Yara Mansour",     role: "Translator" },
+    { agent_id: "ingrid",  agent_name: "Ingrid Larsen",    role: "Press Release" },
+  ],
+  "Marketing": [
+    { agent_id: "nia",     agent_name: "Nia Robinson",     role: "Content Creation" },
+    { agent_id: "luca",    agent_name: "Luca Romano",      role: "Digital Marketing" },
+    { agent_id: "hyunji",  agent_name: "Hyun-Ji Kim",      role: "Analytics & ROI" },
+    { agent_id: "andre",   agent_name: "Andre Mitchell",   role: "SEO/SEM" },
+  ],
+  "Legal & Finance": [
+    { agent_id: "amara",   agent_name: "Amara Okafor",     role: "Legal Advisor" },
+    { agent_id: "diego",   agent_name: "Diego Reyes",      role: "Expense Manager" },
+    { agent_id: "yuki",    agent_name: "Yuki Tanaka",      role: "Financial Reporting" },
+    { agent_id: "marcus",  agent_name: "Marcus Chen",      role: "Tax Strategist" },
+  ],
+  "AI Governance": [
+    { agent_id: "isabella", agent_name: "Isabella Moreno", role: "Director of Compliance" },
+    { agent_id: "khalid",   agent_name: "Khalid Hassan",   role: "Disclaimer Writer" },
+    { agent_id: "sofia",    agent_name: "Sofia Petrov",    role: "Privacy Policy" },
+    { agent_id: "james",    agent_name: "James Osei",      role: "Contract Writer" },
+    { agent_id: "meilin",   agent_name: "Mei Lin",         role: "Brand Protection" },
+    { agent_id: "rafael",   agent_name: "Rafael Torres",   role: "Continuous Learning" },
+  ],
+  "HR": [
+    { agent_id: "naomi",   agent_name: "Naomi Williams",      role: "Recruiting" },
+    { agent_id: "aiden",   agent_name: "Aiden Park",          role: "Onboarding" },
+    { agent_id: "fatima",  agent_name: "Fatima Al-Rashid",    role: "Internal Helpdesk" },
+  ],
+  "Client Delivery": [
+    { agent_id: "keisha",  agent_name: "Keisha Thompson",     role: "Onboarding Coach" },
+    { agent_id: "marco",   agent_name: "Marco Silva",         role: "Community Manager" },
+    { agent_id: "leila",   agent_name: "Leila Nasser",        role: "Feedback Coach" },
+    { agent_id: "jordan",  agent_name: "Jordan Hayes",        role: "Creative Director" },
+    { agent_id: "simone",  agent_name: "Simone Laurent",      role: "Course Architect" },
+    { agent_id: "theo",    agent_name: "Theo Nguyen",         role: "Presentation Designer" },
+    { agent_id: "amelia",  agent_name: "Amelia Santos",       role: "Training Video Producer" },
+  ],
+  "Customer Support": [
+    { agent_id: "isaiah",    agent_name: "Isaiah Carter",     role: "Issue Resolution" },
+    { agent_id: "priscilla", agent_name: "Priscilla Okonkwo", role: "Multi-Channel Communication" },
+  ],
+  "Command": [
+    { agent_id: "twin", agent_name: "DeAnna's AI Twin", role: "Master Orchestrator" },
+  ],
+};
 
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -132,38 +194,24 @@ function renderDraft(text: string) {
   ));
 }
 
-// Returns the primary badge text + color for a card
 function getBadgeInfo(approval: Approval): { text: string; color: string } {
-  // Social media cards — show platform or content-type badge
   if (approval.category === "social") {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
-  // Division briefing cards — show division name badge
   if (approval.division && DIVISION_COLORS[approval.division]) {
     return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   }
-  // Daily briefing
-  if (approval.category === "daily_briefing") {
-    return { text: "Daily Briefing", color: "#D4AF37" };
-  }
-  // Fallback
+  if (approval.category === "daily_briefing") return { text: "Daily Briefing", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
 }
 
-// Card body left-column heading and content
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
-  if (approval.category === "social") {
-    return { heading: "Original", content: approval.original_content || null };
-  }
-  if (approval.category === "daily_briefing") {
-    return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) };
-  }
-  // Division briefing — show agents who contributed
+  if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
+  if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
-// Card body right-column heading
 function getDraftHeading(approval: Approval): string {
   if (approval.category === "social") return `${approval.agent_name}'s Draft`;
   if (approval.category === "daily_briefing") return "Daily Briefing";
@@ -179,343 +227,315 @@ export default function AdminApprovals() {
   const [saving, setSaving]               = useState<string | null>(null);
   const [publishStatus, setPublishStatus] = useState<Record<string, "posting" | "posted" | "failed">>({});
 
+  // Ask a Question state — per card
+  const [questions, setQuestions] = useState<Record<string, QuestionState>>({});
+
   const fetchApprovals = async () => {
     const { data, error } = await supabase
-      .from("approvals")
-      .select("*")
-      .eq("archived", false)
-      .order("created_at", { ascending: false });
-    if (error) { console.error("Failed to fetch approvals:", error); }
-    else        { setApprovals((data as Approval[]) || []); }
+      .from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
+    if (error) console.error("Failed to fetch approvals:", error);
+    else setApprovals((data as Approval[]) || []);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchApprovals();
-    const channel = supabase
-      .channel("approvals-realtime")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "approvals" },
-        () => { fetchApprovals(); }
-      )
+    const channel = supabase.channel("approvals-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ── Approval actions ─────────────────────────────────────────
   const handleApprove = async (id: string) => {
     setSaving(id);
-    const { error } = await supabase
-      .from("approvals")
-      .update({ status: "approved" })
-      .eq("id", id);
-    if (error) { console.error("Approve failed:", error); setSaving(null); return; }
-
-    const approval = approvals.find((a) => a.id === id);
+    const { error } = await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
+    if (error) { setSaving(null); return; }
+    const approval = approvals.find(a => a.id === id);
     if (approval?.category === "social") {
-      setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       try {
-        const res = await fetch("/api/social-publisher", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content:     approval.edited_output || approval.output,
-            platform:    approval.platform,
-            approval_id: id,
-          }),
-        });
-        setPublishStatus((prev) => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
-      } catch {
-        setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
-      }
+        const res = await fetch("/api/social-publisher", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: approval.edited_output || approval.output, platform: approval.platform, approval_id: id }) });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     }
     setSaving(null);
   };
 
-  const handleReject = async (id: string) => {
-    setSaving(id);
-    await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
-    setSaving(null);
-  };
+  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status: "rejected" }).eq("id", id); setSaving(null); };
+  const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived: true }).eq("id", id); setSaving(null); };
 
-  const handleArchive = async (id: string) => {
+  const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
+  const handleEditSave  = async (id: string) => {
     setSaving(id);
-    await supabase.from("approvals").update({ archived: true }).eq("id", id);
-    setSaving(null);
-  };
-
-  const handleEditStart = (approval: Approval) => {
-    setEditingId(approval.id);
-    setEditText(approval.edited_output || approval.output);
-  };
-
-  const handleEditSave = async (id: string) => {
-    setSaving(id);
-    const { error } = await supabase
-      .from("approvals")
-      .update({ edited_output: editText, status: "approved" })
-      .eq("id", id);
-    if (error) { console.error("Edit save failed:", error); setSaving(null); return; }
+    await supabase.from("approvals").update({ edited_output: editText, status: "approved" }).eq("id", id);
     setEditingId(null);
-
-    const approval = approvals.find((a) => a.id === id);
+    const approval = approvals.find(a => a.id === id);
     if (approval?.category === "social") {
-      setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       try {
-        const res = await fetch("/api/social-publisher", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }),
-        });
-        setPublishStatus((prev) => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
-      } catch {
-        setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
-      }
+        const res = await fetch("/api/social-publisher", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }) });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     }
     setSaving(null);
   };
 
-  const pending      = approvals.filter(a => a.status === "pending").length;
-  const approvedToday = approvals.filter(a => {
-    const today = new Date().toDateString();
-    return a.status === "approved" && new Date(a.created_at).toDateString() === today;
-  }).length;
+  // ── Ask a Question ───────────────────────────────────────────
+  const getQS = (id: string): QuestionState =>
+    questions[id] ?? { open: false, selectedAgent: null, input: "", messages: [], loading: false };
 
-  // Build filter tabs in preferred order, only showing categories that exist in data
+  const setQS = (id: string, update: Partial<QuestionState>) =>
+    setQuestions(prev => ({ ...prev, [id]: { ...getQS(id), ...update } }));
+
+  const toggleQuestion = (approval: Approval) => {
+    const qs = getQS(approval.id);
+    if (!qs.open) {
+      // Social card: auto-select the agent
+      const autoAgent = approval.category === "social"
+        ? { agent_id: approval.source?.replace('_social', '') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
+        : approval.category === "daily_briefing"
+        ? { agent_id: "twin", agent_name: "DeAnna's AI Twin", role: "Master Orchestrator" }
+        : null;
+      setQS(approval.id, { open: true, selectedAgent: autoAgent });
+    } else {
+      setQS(approval.id, { open: false });
+    }
+  };
+
+  const handleAskQuestion = async (approval: Approval) => {
+    const qs = getQS(approval.id);
+    if (!qs.selectedAgent || !qs.input.trim()) return;
+
+    const question = qs.input.trim();
+    const newMessages: ConversationMessage[] = [...qs.messages, { role: 'user', text: question }];
+    setQS(approval.id, { messages: newMessages, input: "", loading: true });
+
+    try {
+      const res = await fetch("/api/ask-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent_id:             qs.selectedAgent.agent_id,
+          agent_name:           qs.selectedAgent.agent_name,
+          agent_role:           qs.selectedAgent.role,
+          question,
+          card_output:          approval.output,
+          conversation_history: qs.messages,
+        }),
+      });
+      const data = await res.json();
+      const agentReply: ConversationMessage = {
+        role: 'agent',
+        agentName: qs.selectedAgent.agent_name,
+        text: data.response ?? "I was unable to respond. Please try again.",
+      };
+      setQS(approval.id, { messages: [...newMessages, agentReply], loading: false });
+    } catch {
+      setQS(approval.id, { messages: [...newMessages, { role: 'agent', agentName: qs.selectedAgent.agent_name, text: "Something went wrong. Please try again." }], loading: false });
+    }
+  };
+
+  // ── Filter tabs ──────────────────────────────────────────────
   const presentCategories = [...new Set(approvals.map(a => a.category))];
   const orderedCategories = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
-  // Append any unknown categories not in the order list
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
   const allCategories = [...orderedCategories, ...remainingCategories];
 
-  const filtered = activeFilter === "all"
-    ? approvals
-    : approvals.filter(a => a.category === activeFilter);
+  const filtered = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
+
+  const pending       = approvals.filter(a => a.status === "pending").length;
+  const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+
+  const tabStyle = (active: boolean) => ({
+    fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700,
+    letterSpacing: "0.08em", textTransform: "uppercase" as const,
+    padding: "0.4rem 0.875rem", borderRadius: 20, cursor: "pointer", border: "none",
+    background: active ? "#D4AF37" : "rgba(255,255,255,0.06)",
+    color: active ? "#0A2342" : "rgba(255,255,255,0.6)",
+    transition: "all 0.15s ease",
+  });
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/admin-approvals" />
-
       <main style={{ flex: 1, padding: "2rem 1.5rem", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
 
         {/* Header */}
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>
-              Admin · Page 3 · Confidential
-            </p>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
-              Approval Queue
-            </h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>
-              Review and approve agent-drafted responses before they go live
-            </p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 3 · Confidential</p>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>Approval Queue</h1>
+            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>Review and approve agent-drafted responses before they go live</p>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" as const }}>
-            <div
-              onClick={() => window.location.href = "/admin-archived"}
-              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}
-            >
-              Archived →
-            </div>
-            <div
-              onClick={() => window.location.href = "/admin"}
-              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}
-            >
-              ← Command Center
-            </div>
+            <div onClick={() => window.location.href = "/admin-archived"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>Archived →</div>
+            <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Command Center</div>
           </div>
         </div>
 
-        {/* Stats Bar */}
+        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          {[
-            { label: "Awaiting Approval", value: pending,           color: "#D4AF37" },
-            { label: "Approved Today",    value: approvedToday,     color: "#4CAF50" },
-            { label: "Total in Queue",    value: approvals.length,  color: "rgba(255,255,255,0.6)" },
-          ].map(stat => (
-            <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "0.875rem 1rem" }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>{stat.value}</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "4px 0 0" }}>{stat.label}</p>
+          {[{ label: "Awaiting Approval", value: pending, color: "#D4AF37" }, { label: "Approved Today", value: approvedToday, color: "#4CAF50" }, { label: "Total in Queue", value: approvals.length, color: "rgba(255,255,255,0.6)" }].map(s => (
+            <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "0.875rem 1rem" }}>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: s.color, fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>{s.value}</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "4px 0 0" }}>{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Filter Tabs */}
         <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", flexWrap: "wrap" as const }}>
-          <button
-            onClick={() => setActiveFilter("all")}
-            style={{
-              fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700,
-              letterSpacing: "0.08em", textTransform: "uppercase" as const,
-              padding: "0.4rem 0.875rem", borderRadius: 20, cursor: "pointer", border: "none",
-              background: activeFilter === "all" ? "#D4AF37" : "rgba(255,255,255,0.06)",
-              color: activeFilter === "all" ? "#0A2342" : "rgba(255,255,255,0.6)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            All ({approvals.length})
-          </button>
+          <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>All ({approvals.length})</button>
           {allCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveFilter(cat)}
-              style={{
-                fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700,
-                letterSpacing: "0.08em", textTransform: "uppercase" as const,
-                padding: "0.4rem 0.875rem", borderRadius: 20, cursor: "pointer", border: "none",
-                background: activeFilter === cat ? "#D4AF37" : "rgba(255,255,255,0.06)",
-                color: activeFilter === cat ? "#0A2342" : "rgba(255,255,255,0.6)",
-                transition: "all 0.15s ease",
-              }}
-            >
+            <button key={cat} onClick={() => setActiveFilter(cat)} style={tabStyle(activeFilter === cat)}>
               {CATEGORY_LABELS[cat] || cat} ({approvals.filter(a => a.category === cat).length})
             </button>
           ))}
         </div>
 
-        {loading && (
-          <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.08em" }}>
-            LOADING QUEUE...
-          </div>
-        )}
-
-        {!loading && filtered.length === 0 && (
-          <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>
-            {activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}
-          </div>
-        )}
+        {loading && <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem" }}>LOADING QUEUE...</div>}
+        {!loading && filtered.length === 0 && <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>{activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}</div>}
 
         {!loading && (
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
             {filtered.map(approval => {
-              const badge       = getBadgeInfo(approval);
-              const origCol     = getOriginalColumn(approval);
-              const draftHead   = getDraftHeading(approval);
-              const isBriefing  = approval.category !== "social";
+              const badge      = getBadgeInfo(approval);
+              const origCol    = getOriginalColumn(approval);
+              const draftHead  = getDraftHeading(approval);
+              const isBriefing = approval.category !== "social";
+              const qs         = getQS(approval.id);
+              const divAgents  = DIVISION_AGENTS[approval.division] ?? [];
 
               return (
-                <div
-                  key={approval.id}
-                  style={{
-                    borderRadius: 12, overflow: "hidden",
-                    border: `1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`,
-                    background: approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
-                    opacity: approval.status !== "pending" ? 0.7 : 1,
-                    transition: "opacity 0.2s ease",
-                  }}
-                >
+                <div key={approval.id} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background: approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", opacity: approval.status !== "pending" ? 0.7 : 1 }}>
+
                   {/* Card Header */}
                   <div style={{ background: "#071A2E", padding: "0.65rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "0.5rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" as const }}>
-                      {/* Primary badge — platform for social, division for briefings */}
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, letterSpacing: "0.06em", background: badge.color, color: "#FFFFFF" }}>
-                        {badge.text}
-                      </span>
-                      {/* Priority badge */}
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, letterSpacing: "0.06em", background: "transparent", border: `1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color: PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>
-                        {approval.priority || "NORMAL"}
-                      </span>
-                      {/* Agent / Division label */}
-                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.62rem" }}>
-                        {isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}
-                      </span>
-                      {approval.source && (
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.25)", fontSize: "0.55rem", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>
-                          via {approval.source.toUpperCase().replace(/_/g, '_')}
-                        </span>
-                      )}
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: badge.color, color: "#FFFFFF" }}>{badge.text}</span>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "transparent", border: `1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color: PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
+                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
+                      {approval.source && <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.25)", fontSize: "0.55rem", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>via {approval.source.toUpperCase().replace(/_/g, '_')}</span>}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      {publishStatus[approval.id] && (
-                        <span style={{
-                          fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700,
-                          letterSpacing: "0.08em", textTransform: "uppercase" as const,
-                          color: publishStatus[approval.id] === "posted"  ? "#4CAF50"
-                               : publishStatus[approval.id] === "posting" ? "#D4AF37"
-                               : "#C2185B",
-                        }}>
-                          {publishStatus[approval.id] === "posted"  ? "✓ Posted"
-                         : publishStatus[approval.id] === "posting" ? "Posting..."
-                         : "⚠ Post Failed"}
-                        </span>
-                      )}
-                      {approval.status !== "pending" && !publishStatus[approval.id] && (
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: approval.status === "approved" ? "#4CAF50" : approval.status === "edited" ? "#D4AF37" : "#C2185B" }}>
-                          {approval.status}
-                        </span>
-                      )}
-                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.6rem" }}>
-                        {timeAgo(approval.created_at)}
-                      </span>
+                      {publishStatus[approval.id] && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: publishStatus[approval.id] === "posted" ? "#4CAF50" : publishStatus[approval.id] === "posting" ? "#D4AF37" : "#C2185B" }}>{publishStatus[approval.id] === "posted" ? "✓ Posted" : publishStatus[approval.id] === "posting" ? "Posting..." : "⚠ Post Failed"}</span>}
+                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: approval.status === "approved" ? "#4CAF50" : "#C2185B" }}>{approval.status}</span>}
+                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
 
                   {/* Card Body */}
                   <div style={{ padding: "1rem", display: "grid", gridTemplateColumns: isBriefing ? "1fr 2fr" : "1fr 1fr", gap: "1rem" }}>
-                    {/* Left column */}
                     <div>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>
-                        {origCol.heading}
-                      </p>
-                      {approval.context && (
-                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.6rem", marginBottom: "0.35rem", fontStyle: "italic" }}>
-                          {approval.context}
-                        </p>
-                      )}
-                      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 }}>
-                        {origCol.content
-                          ? origCol.content
-                          : <em style={{ color: "rgba(255,255,255,0.3)" }}>No original content</em>
-                        }
-                      </p>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>{origCol.heading}</p>
+                      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 }}>{origCol.content ?? <em style={{ color: "rgba(255,255,255,0.3)" }}>No original content</em>}</p>
                     </div>
-                    {/* Right column — draft / briefing output */}
                     <div>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>
-                        {draftHead}
-                      </p>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>{draftHead}</p>
                       {editingId === approval.id ? (
-                        <textarea
-                          value={editText}
-                          onChange={e => setEditText(e.target.value)}
-                          style={{ width: "100%", minHeight: isBriefing ? 200 : 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem", lineHeight: 1.6, resize: "vertical" as const, boxSizing: "border-box" as const, outline: "none" }}
-                        />
+                        <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width: "100%", minHeight: isBriefing ? 200 : 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem", lineHeight: 1.6, resize: "vertical" as const, boxSizing: "border-box" as const, outline: "none" }} />
                       ) : (
                         <div>{renderDraft(approval.edited_output || approval.output)}</div>
                       )}
                     </div>
                   </div>
 
+                  {/* ── Ask a Question Panel ───────────────────── */}
+                  {qs.open && approval.status === "pending" && (
+                    <div style={{ margin: "0 1rem", padding: "0.875rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, marginBottom: "0.5rem" }}>
+
+                      {/* Agent selector — briefing cards only */}
+                      {isBriefing && approval.category !== "daily_briefing" && (
+                        <div style={{ marginBottom: "0.75rem" }}>
+                          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Who are you asking?</p>
+                          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "0.4rem" }}>
+                            {divAgents.map(agent => (
+                              <button key={agent.agent_id} onClick={() => setQS(approval.id, { selectedAgent: agent })}
+                                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "0.3rem 0.75rem", borderRadius: 20, cursor: "pointer", border: `1px solid ${qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.2)"}`, background: qs.selectedAgent?.agent_id === agent.agent_id ? "rgba(212,175,55,0.15)" : "transparent", color: qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.5)", transition: "all 0.15s" }}>
+                                {agent.agent_name} <span style={{ opacity: 0.6, fontSize: "0.55rem" }}>· {agent.role}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Auto-selected agent label */}
+                      {(approval.category === "social" || approval.category === "daily_briefing") && qs.selectedAgent && (
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: "0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
+                      )}
+
+                      {/* Conversation thread */}
+                      {qs.messages.length > 0 && (
+                        <div style={{ marginBottom: "0.75rem", display: "flex", flexDirection: "column" as const, gap: "0.5rem", maxHeight: 300, overflowY: "auto" as const }}>
+                          {qs.messages.map((msg, i) => (
+                            <div key={i} style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: msg.role === "user" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.08)"}` }}>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", color: msg.role === "user" ? "#D4AF37" : "rgba(255,255,255,0.5)", marginBottom: "0.25rem", textTransform: "uppercase" as const }}>
+                                {msg.role === "user" ? "You" : msg.agentName}
+                              </p>
+                              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#FFFFFF", lineHeight: 1.6, margin: 0 }}>{msg.text}</p>
+                            </div>
+                          ))}
+                          {qs.loading && (
+                            <div style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, color: "rgba(212,175,55,0.6)", margin: 0, letterSpacing: "0.08em" }}>
+                                {qs.selectedAgent?.agent_name ?? "Agent"} is responding...
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Question input */}
+                      {qs.selectedAgent && (
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <input
+                            type="text"
+                            value={qs.input}
+                            onChange={e => setQS(approval.id, { input: e.target.value })}
+                            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(approval); } }}
+                            placeholder={`Ask ${qs.selectedAgent.agent_name} a question...`}
+                            disabled={qs.loading}
+                            style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem 0.75rem", outline: "none", opacity: qs.loading ? 0.6 : 1 }}
+                          />
+                          <button onClick={() => handleAskQuestion(approval)} disabled={qs.loading || !qs.input.trim()}
+                            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.5rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: (qs.loading || !qs.input.trim()) ? 0.5 : 1 }}>
+                            Send
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
-                  <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const }}>
+                    {/* Ask a Question toggle */}
                     {approval.status === "pending" && editingId !== approval.id && (
-                      <>
-                        <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>
-                          Reject
-                        </button>
-                        <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>
-                          Edit
-                        </button>
-                        <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
-                          {saving === approval.id ? "..." : "Approve ✓"}
-                        </button>
-                      </>
-                    )}
-                    {editingId === approval.id && (
-                      <>
-                        <button onClick={() => setEditingId(null)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>
-                          Cancel
-                        </button>
-                        <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
-                          {saving === approval.id ? "Saving..." : "Save & Approve"}
-                        </button>
-                      </>
-                    )}
-                    {approval.status !== "pending" && editingId !== approval.id && (
-                      <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
-                        Archive
+                      <button onClick={() => toggleQuestion(approval)}
+                        style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "0.4rem 0.875rem", borderRadius: 6, cursor: "pointer", border: `1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background: qs.open ? "rgba(212,175,55,0.1)" : "transparent", color: qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
+                        {qs.open ? "✕ Close Question" : "? Ask a Question"}
                       </button>
                     )}
+
+                    {/* Primary actions */}
+                    <div style={{ display: "flex", gap: "0.5rem", marginLeft: "auto" }}>
+                      {approval.status === "pending" && editingId !== approval.id && (
+                        <>
+                          <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>Reject</button>
+                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>Edit</button>
+                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "..." : "Approve ✓"}</button>
+                        </>
+                      )}
+                      {editingId === approval.id && (
+                        <>
+                          <button onClick={() => setEditingId(null)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>Cancel</button>
+                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "Saving..." : "Save & Approve"}</button>
+                        </>
+                      )}
+                      {approval.status !== "pending" && editingId !== approval.id && (
+                        <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>Archive</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -524,13 +544,9 @@ export default function AdminApprovals() {
         )}
 
         <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>
-            All responses reviewed and approved by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026
-          </p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>All responses reviewed and approved by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026</p>
         </div>
-
       </main>
-
       <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem" }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
