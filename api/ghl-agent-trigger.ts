@@ -790,9 +790,9 @@ OR: {"cleared":false,"flags":"specific issue","correction_notes":"Exact correcti
     })
   );
 
-  // Process results and update CSQ sequentially (DB writes)
-  for (const { item, result } of reviewResults) {
-    if (!result) continue;
+ // Process results and update CSQ in parallel
+  await Promise.all(reviewResults.map(async ({ item, result }) => {
+    if (!result) return;
     if (result.cleared) {
       cleared++;
       await updateCSQ(item.id, { isabella_flags: result.flags ?? 'none', isabella_cleared_at: new Date().toISOString(), status: 'isabella_cleared' });
@@ -804,10 +804,14 @@ OR: {"cleared":false,"flags":"specific issue","correction_notes":"Exact correcti
         console.warn(`[isabella] ⛔ HARD REJECT: ${item.agent_name} — ${result.flags}`);
       } else {
         sentBack++;
-        await updateCSQ(item.id, { isabella_flags: result.flags, correction_notes: result.correction_notes, status: 'needs_correction' });
-        await runCorrectionAgent(item, result.correction_notes, retryCount + 1);
+        await Promise.all([
+          updateCSQ(item.id, { isabella_flags: result.flags, correction_notes: result.correction_notes, status: 'needs_correction' }),
+          runCorrectionAgent(item, result.correction_notes, retryCount + 1),
+        ]);
         console.log(`[isabella] 🔄 Sent back to ${item.agent_name} (attempt ${retryCount + 1})`);
       }
+    }
+  }));
     }
   }
 
