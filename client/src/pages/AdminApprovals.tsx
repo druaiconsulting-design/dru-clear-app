@@ -1,6 +1,6 @@
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
-// UPDATED: Approve on social posts calls Vercel api/social-publisher
+// UPDATED: Filters archived items, Archive button, View Archived link
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -35,6 +35,7 @@ interface Approval {
   category:         ApprovalCategory;
   platform:         Platform;
   context:          string | null;
+  archived:         boolean;
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -89,6 +90,7 @@ export default function AdminApprovals() {
     const { data, error } = await supabase
       .from("approvals")
       .select("*")
+      .eq("archived", false)
       .order("created_at", { ascending: false });
     if (error) { console.error("Failed to fetch approvals:", error); }
     else        { setApprovals((data as Approval[]) || []); }
@@ -101,39 +103,21 @@ export default function AdminApprovals() {
       .channel("approvals-realtime")
       .on("postgres_changes",
         { event: "*", schema: "public", table: "approvals" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setApprovals((prev) => [payload.new as Approval, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            setApprovals((prev) =>
-              prev.map((a) => a.id === payload.new.id ? (payload.new as Approval) : a)
-            );
-          } else if (payload.eventType === "DELETE") {
-            setApprovals((prev) => prev.filter((a) => a.id !== payload.old.id));
-          }
-        }
+        () => { fetchApprovals(); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Approve — calls Vercel social-publisher for social posts ──────────────
   const handleApprove = async (id: string) => {
     setSaving(id);
-
     const { error } = await supabase
       .from("approvals")
       .update({ status: "approved" })
       .eq("id", id);
-
-    if (error) {
-      console.error("Approve failed:", error);
-      setSaving(null);
-      return;
-    }
+    if (error) { console.error("Approve failed:", error); setSaving(null); return; }
 
     const approval = approvals.find((a) => a.id === id);
-    console.log("DEBUG category:", approval?.category, "id:", id);
     if (approval?.category === "social") {
       setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
       try {
@@ -147,30 +131,26 @@ export default function AdminApprovals() {
           }),
         });
         if (res.ok) {
-          const data = await res.json();
-          console.log("Make.com response:", JSON.stringify(data));
           setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
         } else {
-          const err = await res.json();
-          console.error("Publish failed:", err);
           setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
         }
-      } catch (err) {
-        console.error("Publisher error:", err);
+      } catch {
         setPublishStatus((prev) => ({ ...prev, [id]: "failed" }));
       }
     }
-
     setSaving(null);
   };
 
   const handleReject = async (id: string) => {
     setSaving(id);
-    const { error } = await supabase
-      .from("approvals")
-      .update({ status: "rejected" })
-      .eq("id", id);
-    if (error) console.error("Reject failed:", error);
+    await supabase.from("approvals").update({ status: "rejected" }).eq("id", id);
+    setSaving(null);
+  };
+
+  const handleArchive = async (id: string) => {
+    setSaving(id);
+    await supabase.from("approvals").update({ archived: true }).eq("id", id);
     setSaving(null);
   };
 
@@ -188,7 +168,6 @@ export default function AdminApprovals() {
     if (error) { console.error("Edit save failed:", error); setSaving(null); return; }
     setEditingId(null);
 
-    // Publish to LinkedIn if social post
     const approval = approvals.find((a) => a.id === id);
     if (approval?.category === "social") {
       setPublishStatus((prev) => ({ ...prev, [id]: "posting" }));
@@ -196,11 +175,7 @@ export default function AdminApprovals() {
         const res = await fetch("/api/social-publisher", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content:     editText,
-            platform:    approval.platform,
-            approval_id: id,
-          }),
+          body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }),
         });
         if (res.ok) {
           setPublishStatus((prev) => ({ ...prev, [id]: "posted" }));
@@ -214,7 +189,6 @@ export default function AdminApprovals() {
     setSaving(null);
   };
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
   const pending = approvals.filter(a => a.status === "pending").length;
   const approvedToday = approvals.filter(a => {
     const today = new Date().toDateString();
@@ -226,7 +200,6 @@ export default function AdminApprovals() {
     ? approvals
     : approvals.filter(a => a.category === activeFilter);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
       <NavBar active="/admin-approvals" />
@@ -246,11 +219,19 @@ export default function AdminApprovals() {
               Review and approve agent-drafted responses before they go live
             </p>
           </div>
-          <div
-            onClick={() => window.location.href = "/admin"}
-            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}
-          >
-            ← Command Center
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" as const }}>
+            <div
+              onClick={() => window.location.href = "/admin-archived"}
+              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}
+            >
+              Archived →
+            </div>
+            <div
+              onClick={() => window.location.href = "/admin"}
+              style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}
+            >
+              ← Command Center
+            </div>
           </div>
         </div>
 
@@ -298,11 +279,10 @@ export default function AdminApprovals() {
 
         {!loading && filtered.length === 0 && (
           <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>
-            {activeFilter === "all" ? "No items in queue — agents are standing by" : "No items in this category"}
+            {activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}
           </div>
         )}
 
-        {/* Approval Cards */}
         {!loading && (
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
             {filtered.map(approval => (
@@ -312,7 +292,7 @@ export default function AdminApprovals() {
                   borderRadius: 12, overflow: "hidden",
                   border: `1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`,
                   background: approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
-                  opacity: approval.status !== "pending" ? 0.6 : 1,
+                  opacity: approval.status !== "pending" ? 0.7 : 1,
                   transition: "opacity 0.2s ease",
                 }}
               >
@@ -385,40 +365,42 @@ export default function AdminApprovals() {
                         style={{ width: "100%", minHeight: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem", lineHeight: 1.6, resize: "vertical" as const, boxSizing: "border-box" as const, outline: "none" }}
                       />
                     ) : (
-                      <div>
-                        {renderDraft(approval.edited_output || approval.output)}
-                      </div>
+                      <div>{renderDraft(approval.edited_output || approval.output)}</div>
                     )}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                {approval.status === "pending" && (
-                  <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                    {editingId === approval.id ? (
-                      <>
-                        <button onClick={() => setEditingId(null)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>
-                          Cancel
-                        </button>
-                        <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
-                          {saving === approval.id ? "Saving..." : "Save & Approve"}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>
-                          Reject
-                        </button>
-                        <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>
-                          Edit
-                        </button>
-                        <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
-                          {saving === approval.id ? "..." : "Approve ✓"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                  {approval.status === "pending" && editingId !== approval.id && (
+                    <>
+                      <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>
+                        Reject
+                      </button>
+                      <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
+                        {saving === approval.id ? "..." : "Approve ✓"}
+                      </button>
+                    </>
+                  )}
+                  {editingId === approval.id && (
+                    <>
+                      <button onClick={() => setEditingId(null)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>
+                        Cancel
+                      </button>
+                      <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
+                        {saving === approval.id ? "Saving..." : "Save & Approve"}
+                      </button>
+                    </>
+                  )}
+                  {approval.status !== "pending" && editingId !== approval.id && (
+                    <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
+                      Archive
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
