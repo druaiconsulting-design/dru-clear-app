@@ -812,20 +812,25 @@ Write as DeAnna would speak to herself — authoritative, clear, action-oriented
     if (item.agent_id === 'darius' && item.category === 'linkedin_post') {
       // Strip Isabella's compliance audit notes and format with paragraph breaks
       let postContent = item.raw_output;
-      // Remove everything from compliance audit section onwards
+      // Remove everything from compliance/correction section onwards
       const complianceCutoffs = [
         '## COMPLIANCE AUDIT',
         'COMPLIANCE AUDIT',
+        'COMPLIANCE CERTIFICATION',
         '## Isabella',
         'CORRECTION REQUIRED',
         'Isabella\'s',
+        '\n---\n',
+        '---\n',
       ];
       for (const cutoff of complianceCutoffs) {
         const idx = postContent.indexOf(cutoff);
         if (idx !== -1) postContent = postContent.slice(0, idx).trim();
       }
-      // Clean markdown bold markers (**text** → text)
+      // Clean double asterisk bold markers (**text** → text)
       postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1');
+      // Clean single asterisk italic markers (*text* → text)
+      postContent = postContent.replace(/\*(.*?)\*/g, '$1');
       // Normalize line breaks — ensure double line breaks between paragraphs
       postContent = postContent
         .split(/\n{2,}/)
