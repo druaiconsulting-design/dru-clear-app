@@ -538,8 +538,8 @@ async function sendDivisionNotification(division:string,approvalId:string,agentC
   const webhookUrl=process.env.GHL_NOTIFICATION_WEBHOOK_URL;
   if (!webhookUrl) return;
   const label=division==='Command'?'Daily Briefing':`${division} Briefing`;
-  const subject=`DRU AI™ — ${label} Ready for Review`;
-  const sms=`DRU AI™ | ${label} is ready. ${agentCount} agent${agentCount>1?'s':''} cleared through the full chain.\n\nReview: app.druaiconsulting.com/admin-approvals`;
+  const subject=`DRU AI Consulting — ${label} Ready for Review`;
+  const sms=`DRU AI Consulting | ${label} is ready. ${agentCount} agent${agentCount>1?'s':''} cleared through the full chain.\n\nReview: app.druaiconsulting.com/admin-approvals`;
   try {
     await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'druaiconsulting@gmail.com',phone:'+19796186671',first_name:'DeAnna',last_name:'Upshaw',agent_name:"DeAnna's AI Twin",division,task:label,approval_id:approvalId,summary:`${label} is ready for your review.`,triggered_at:triggeredAt,review_url:'https://app.druaiconsulting.com/admin-approvals',sms_body:sms,email_subject:subject,email_body:`${subject}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`})});
   } catch(error){console.warn(`[twin] Notification failed for ${division} (non-fatal):`,error);}
