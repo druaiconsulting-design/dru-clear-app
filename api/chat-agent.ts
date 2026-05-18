@@ -111,7 +111,7 @@ DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway�
 - لما لا يمكنك الإجابة عنه: "سؤال ممتاز — سيتواصل معك فريقنا مباشرة."`,
 };
 
-async function createGHLContact(email: string, phone: string): Promise<string | null> {
+async function createGHLContact(name: string, email: string, phone: string): Promise<string | null> {
   const ghlApiKey = process.env.GHL_API_KEY;
   if (!ghlApiKey) return null;
   try {
@@ -124,6 +124,8 @@ async function createGHLContact(email: string, phone: string): Promise<string | 
       },
       body: JSON.stringify({
         locationId: GHL_LOCATION_ID,
+        firstName: name ? name.split(' ')[0] : undefined,
+        lastName: name && name.includes(' ') ? name.split(' ').slice(1).join(' ') : undefined,
         email,
         phone,
         source: 'Website Chat Widget',
@@ -142,14 +144,15 @@ async function createGHLContact(email: string, phone: string): Promise<string | 
   }
 }
 
-async function getAIResponse(message: string, language: string, history: {role: string; content: string}[]): Promise<string> {
+async function getAIResponse(message: string, language: string, name: string, history: {role: string; content: string}[]): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
 
   const systemPrompt = PERSONAS[language] ?? PERSONAS['en'];
+  const nameContext = name ? `The visitor's name is ${name}. Address them by first name when natural.\n\n` : '';
   const messages = [
     ...history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
-    { role: 'user' as const, content: message },
+    { role: 'user' as const, content: `${nameContext}${message}` },
   ];
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -186,14 +189,14 @@ export default async function handler(req: any, res: any): Promise<void> {
     res.status(401).json({ error: 'Unauthorized' }); return;
   }
 
-  const { action, email, phone, message, language = 'en', history = [] } = req.body;
+  const { action, name = '', email, phone, message, language = 'en', history = [] } = req.body;
 
   if (!action) { res.status(400).json({ error: 'action is required' }); return; }
 
   // Register new chat visitor — create GHL contact
   if (action === 'register') {
     if (!email || !phone) { res.status(400).json({ error: 'email and phone required' }); return; }
-    const contactId = await createGHLContact(email, phone);
+    const contactId = await createGHLContact(name, email, phone);
     console.log(`[chat-agent] New contact registered — ${email} | GHL ID: ${contactId ?? 'failed'}`);
     res.status(200).json({ success: true, contact_id: contactId });
     return;
@@ -203,7 +206,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   if (action === 'message') {
     if (!message) { res.status(400).json({ error: 'message is required' }); return; }
     try {
-      const response = await getAIResponse(message, language, history);
+      const response = await getAIResponse(message, language, body.name || '', history);
       console.log(`[chat-agent] Response generated | lang: ${language} | message: ${message.slice(0, 50)}`);
       res.status(200).json({ success: true, response });
     } catch (err) {
