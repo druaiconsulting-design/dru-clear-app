@@ -295,7 +295,7 @@ async function runYuki(): Promise<string|null> {
 // FIXED: Marcus Chen — reframed as Class 35 business financial planning intelligence
 async function runMarcus(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Business Financial Planning Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only. Do NOT reference specific tax codes, IRS regulations, or legal tax provisions.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. Solo founder, pre-revenue AI consulting and leadership development business.\nDISCLAIMER: All guidance is for business planning purposes only. Consult a licensed CPA or financial professional for specific decisions.\nRespond in 150 words or fewer covering: (1) Top operating expense category to track for an AI consulting business. (2) Recommended operating cost reserve percentage for pre-revenue consulting operations. (3) One financial milestone to establish for the first 90 days of AI consulting operations. (4) One financial record-keeping system to implement now to support the DRU AI Leadership Ecosystem™. Focus on business operations financial intelligence only.`,'normal',0,null,600);
+  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. Solo founder, pre-revenue AI consulting and leadership development business.\nEXPERTISE: Small business taxation, consulting firm structures, self-employment strategy, offer pricing implications, entity structure optimization.\nDISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\nRespond in 150 words or fewer covering: (1) Top tax deduction to prioritize NOW for an AI consulting LLC. (2) Recommended quarterly estimated tax set-aside percentage for a solo consulting founder. (3) One S-Corp election consideration at current revenue projections. (4) One record-keeping action to start immediately. Flag any time-sensitive tax action.`,'normal',0,null,600);
 }
 
 // P5 — AI Governance (daily)
@@ -439,10 +439,14 @@ RESPONSIBILITIES:
 
 DRU PROPRIETARY MARKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
 
+BUSINESS NAME — NOT A TRADEMARK: 'DRU AI Consulting' is the registered business name. It does NOT require ™. Do NOT flag it. Never mark it as a compliance issue.
+
 CLEARING STANDARD:
 - All marks with ™ AND content within Classes 35/41/42 → cleared:true
 - Missing ™ → cleared:false, state exactly which mark and where
 - Outside classes → cleared:false, state exactly what
+
+LEGAL & FINANCE EXCEPTION: Content from the Legal & Finance division (Marcus Chen, Amara Okafor, Diego Reyes, Yuki Tanaka) is INTERNAL OPERATIONAL advisory for DeAnna only — never published to clients. For Legal & Finance items: (1) Check all DRU proprietary ™ marks are present and correctly marked as normal. (2) Verify ™ marks are used appropriately within their registered service classes (35, 41, 42) as normal. (3) Do NOT flag the surrounding operational subject matter (tax advice, financial planning, legal counsel) as a service class violation — this is internal business advisory, not a published service offering. If ™ marks are correct, return cleared:true.
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
