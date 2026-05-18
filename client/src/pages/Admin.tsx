@@ -94,27 +94,42 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
   {
     number: "4", title: "The AI Empire", status: "inprogress",
     items: [
-      { done: true,  label: "DeAnna's AI Twin - LIVE",                       sub: "Claude API - trained on all 4 frameworks - answers questions 24/7 - coaches members - master orchestrator - app.druaiconsulting.com/twin" },
-      { done: true,  label: "Daily Connections Accelerator Tier - LIVE",     sub: "navigator + accelerator tiers in Supabase - DeAnna's Strategic Edge 4th card - AI-generated in DeAnna's voice - daily - founder pricing active" },
-      { done: true,  label: "Auth Loading Fix - LIVE",                       sub: "Two-phase loading - instant session resolve - profile fetches in background - 3s safety timeout - no more splash screen hang" },
-      { done: true,  label: "New Logo - LIVE",                               sub: "DRU CLEAR enhanced logo - transparent background - deployed across app" },
-      { done: true,  label: "Revenue & Growth Agents - BUILT",               sub: "10 agents - Serena - Mateo - Zara - Jaylen - Chloe - Omar - Aaliyah - Ryan - Elena - Kwame - Supabase edge function deployed" },
-      { done: true,  label: "Content & Brand Agents - BUILT",                sub: "5 agents - Camila - Darius - Ingrid - Ravi - Yara - Supabase edge function deployed" },
-      { done: true,  label: "Client Delivery Agents + Creative Director - BUILT", sub: "7 agents - Keisha - Marco - Leila - Jordan Hayes (Creative Director) - Simone - Theo - Amelia - deployed" },
-      { done: true,  label: "Governance Agents - BUILT",                     sub: "C-Suite/Ops - Legal & Finance - AI Governance - HR Division - 14 agents - all 4 edge functions deployed" },
-      { done: true,  label: "Travis - Chief of Staff - BUILT",               sub: "Pure deterministic router - routes all 37 agents across 9 divisions - reports to Twin" },
-      { done: true,  label: "All 39 Agents - Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 10 divisions - all system prompts - all edge functions - Genius Mode default" },
-      { done: true,  label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table - register from Portal + Admin - sign in from login screen - 4 Vercel serverless API routes" },
-      { done: true,  label: "Twin Streaming Fix - LIVE",                     sub: "WallClockTime timeout on OPTIONS preflight resolved - routed via Vercel serverless function" },
-      { done: true,  label: "SMS Sequences - LIVE",                          sub: "GHL phone number provisioned - SMS automation workflows active" },
-      { done: true,  label: "course.druaiconsulting.com - LIVE",             sub: "Repo created - Vercel deployed - course landing page live" },
-      { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - May 10, 2026" },
+      { done: true, label: "DeAnna's AI Twin - LIVE",                       sub: "Claude API - trained on all 4 frameworks - answers questions 24/7 - coaches members - master orchestrator - app.druaiconsulting.com/twin" },
+      { done: true, label: "Daily Connections Accelerator Tier - LIVE",     sub: "navigator + accelerator tiers in Supabase - DeAnna's Strategic Edge 4th card - AI-generated in DeAnna's voice - daily - founder pricing active" },
+      { done: true, label: "Auth Loading Fix - LIVE",                       sub: "Two-phase loading - instant session resolve - profile fetches in background - 3s safety timeout - no more splash screen hang" },
+      { done: true, label: "New Logo - LIVE",                               sub: "DRU CLEAR enhanced logo - transparent background - deployed across app" },
+      { done: true, label: "Revenue & Growth Agents - BUILT",               sub: "10 agents - Serena - Mateo - Zara - Jaylen - Chloe - Omar - Aaliyah - Ryan - Elena - Kwame - Supabase edge function deployed" },
+      { done: true, label: "Content & Brand Agents - BUILT",                sub: "5 agents - Camila - Darius - Ingrid - Ravi - Yara - Supabase edge function deployed" },
+      { done: true, label: "Client Delivery Agents + Creative Director - BUILT", sub: "7 agents - Keisha - Marco - Leila - Jordan Hayes (Creative Director) - Simone - Theo - Amelia - deployed" },
+      { done: true, label: "Governance Agents - BUILT",                     sub: "C-Suite/Ops - Legal & Finance - AI Governance - HR Division - 14 agents - all 4 edge functions deployed" },
+      { done: true, label: "Travis - Chief of Staff - BUILT",               sub: "Pure deterministic router - routes all 37 agents across 9 divisions - reports to Twin" },
+      { done: true, label: "All 39 Agents - Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 10 divisions - all system prompts - all edge functions - Genius Mode default" },
+      { done: true, label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table - register from Portal + Admin - sign in from login screen - 4 Vercel serverless API routes" },
+      { done: true, label: "Twin Streaming Fix - LIVE",                     sub: "WallClockTime timeout on OPTIONS preflight resolved - routed via Vercel serverless function" },
+      { done: true, label: "SMS Sequences - LIVE",                          sub: "GHL phone number provisioned - SMS automation workflows active" },
+      { done: true, label: "course.druaiconsulting.com - LIVE",             sub: "Repo created - Vercel deployed - course landing page live" },
+      { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - June 6, 2026" },
     ],
   },
   {
-    number: "5", title: "Scale & License", status: "planned",
+    number: "5", title: "All Agents Live", status: "inprogress",
     items: [
-      { label: "90-Day Live Run", sub: "Real clients - real data - agent refinement - case studies building - Sprint 5 readiness gate" },
+      { done: true,  label: "Revenue & Growth Division — LIVE",    sub: "10 agents — Omar · Ryan · Serena · Mateo · Aaliyah · Jaylen · Chloe · Zara · Elena · Kwame — daily 8:00am CDT" },
+      { done: true,  label: "Content & Brand Division — LIVE",     sub: "5 agents — Camila · Darius · Ravi · Yara · Ingrid — daily" },
+      { done: true,  label: "Marketing Division — LIVE",           sub: "4 agents — Nia · Luca · Hyun-Ji · Andre — daily" },
+      { done: true,  label: "Legal & Finance Division — LIVE",     sub: "4 agents — Amara · Diego · Yuki · Marcus — weekly Tuesdays — Isabella Legal & Finance exception active" },
+      { done: true,  label: "AI Governance Division — LIVE",       sub: "5 agents — Khalid · Sofia · James · Mei Lin · Rafael — daily" },
+      { done: true,  label: "HR Division — LIVE",                  sub: "3 agents — Naomi · Aiden · Fatima — daily" },
+      { done: true,  label: "Client Delivery Division — LIVE",     sub: "7 agents — Keisha · Marco · Leila · Jordan · Simone · Theo · Amelia — daily 9:00am CDT" },
+      { done: true,  label: "Customer Support Division — LIVE",    sub: "2 agents — Isaiah · Priscilla — daily 9:21am CDT" },
+      { done: true,  label: "Full Command Chain — LIVE",           sub: "Isabella (11:00am) · Governance (11:10am) · Raymond/Travis/Priya (11:20am) · AI Twin (11:30am) — one daily briefing notification" },
+      { done: false, label: "Agent Refinements — IN PROGRESS",     sub: "Pending items from refinement list — ongoing optimization across all 8 divisions this week" },
+    ],
+  },
+  {
+    number: "6", title: "Scale & License", status: "planned",
+    items: [
+      { label: "90-Day Live Run", sub: "Real clients - real data - agent refinement - case studies building - Sprint 6 readiness gate" },
       { label: "DRU CLEAR Scale Your AI Business - LMS", sub: "Full course platform - 8 modules - video + workbooks - progress tracking" },
       { label: "White Label LMS Licensing - Licensed to the World", sub: "Other consultants pay monthly to use your platform - the final frontier" },
     ],
@@ -398,48 +413,21 @@ export default function Admin() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flex: 1, minWidth: 0 }}>
               <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
+                width: 36, height: 36, borderRadius: 8,
                 background: hasPasskey ? "rgba(67,160,71,0.12)" : "rgba(194,24,91,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                fontSize: "1.1rem",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem",
               }}>
                 {hasPasskey ? "✅" : "🔐"}
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  color: hasPasskey ? "#43A047" : "#FFFFFF",
-                  fontWeight: 700,
-                  fontSize: "0.78rem",
-                  letterSpacing: "0.04em",
-                  margin: 0,
-                  marginBottom: "0.1rem",
-                }}>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: hasPasskey ? "#43A047" : "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", margin: 0, marginBottom: "0.1rem" }}>
                   {hasPasskey ? "Passkey Active" : "Speed Up Your Login"}
                 </p>
-                <p style={{
-                  fontFamily: "'Inter', sans-serif",
-                  color: "rgba(230,230,230,0.45)",
-                  fontSize: "0.68rem",
-                  margin: 0,
-                  lineHeight: 1.4,
-                }}>
-                  {hasPasskey
-                    ? "Face ID or fingerprint sign-in is enabled."
-                    : "Set up Face ID or fingerprint to sign in instantly."}
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", margin: 0, lineHeight: 1.4 }}>
+                  {hasPasskey ? "Face ID or fingerprint sign-in is enabled." : "Set up Face ID or fingerprint to sign in instantly."}
                 </p>
                 {passkeyMessage && (
-                  <p style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: "0.68rem",
-                    margin: "0.35rem 0 0",
-                    color: hasPasskey ? "#43A047" : "#E53935",
-                  }}>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.68rem", margin: "0.35rem 0 0", color: hasPasskey ? "#43A047" : "#E53935" }}>
                     {passkeyMessage}
                   </p>
                 )}
@@ -447,40 +435,14 @@ export default function Admin() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
               {!hasPasskey && (
-                <button
-                  onClick={handleSetupPasskey}
-                  disabled={passkeyLoading}
-                  style={{
-                    background: "#C2185B",
-                    color: "#FFFFFF",
-                    border: "none",
-                    borderRadius: 6,
-                    padding: "0.55rem 1rem",
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    letterSpacing: "0.06em",
-                    cursor: passkeyLoading ? "default" : "pointer",
-                    opacity: passkeyLoading ? 0.7 : 1,
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <button onClick={handleSetupPasskey} disabled={passkeyLoading}
+                  style={{ background: "#C2185B", color: "#FFFFFF", border: "none", borderRadius: 6, padding: "0.55rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.06em", cursor: passkeyLoading ? "default" : "pointer", opacity: passkeyLoading ? 0.7 : 1, whiteSpace: "nowrap" }}>
                   {passkeyLoading ? "Setting up..." : "Set Up"}
                 </button>
               )}
               {hasPasskey && (
-                <button
-                  onClick={() => setPasskeyDismissed(true)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "rgba(255,255,255,0.3)",
-                    cursor: "pointer",
-                    fontSize: "1.1rem",
-                    lineHeight: 1,
-                    padding: "0.25rem",
-                  }}
-                >
+                <button onClick={() => setPasskeyDismissed(true)}
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0.25rem" }}>
                   x
                 </button>
               )}
@@ -607,7 +569,7 @@ export default function Admin() {
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
                           <span style={{ color: checkColor, fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
                           <div>
-                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4, textDecoration: "none" }}>{item.label}</p>
+                            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: textColor, margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
                             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: subColor, margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
                           </div>
                         </div>
@@ -620,7 +582,7 @@ export default function Admin() {
           </div>
           <div style={{ marginTop: "1.25rem", textAlign: "center" as const, padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#D4AF37" }}>
-              Launch Target - May 10, 2026 - app.druaiconsulting.com
+              Launch Target - June 6, 2026 - app.druaiconsulting.com
             </p>
           </div>
         </div>
