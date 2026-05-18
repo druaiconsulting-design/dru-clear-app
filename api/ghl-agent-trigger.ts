@@ -569,7 +569,12 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
     try {
       const synthesis=await callTwin(getDivisionPrompt(division,today,content),1500);
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division,task_brief:`${division} — ${divItems.length} agent${divItems.length>1?'s':''} | ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:divItems.some(i=>i.priority==='high')?'high':'normal',category:getDivisionCategory(division),platform:null});
-      if (id){approvalMap[division]=id;await sendDivisionNotification(division,id,divItems.length,triggeredAt);console.log(`[twin] ${division} card written`);}
+      if (id){approvalMap[division]=id;
+        // Only notify individually if division has high priority items needing attention
+        if (divItems.some(i=>i.priority==='high')){
+          await sendDivisionNotification(division,id,divItems.length,triggeredAt);
+        }
+        console.log(`[twin] ${division} card written`);}
     } catch(err){console.error(`[twin] ${division} synthesis failed:`,err);}
   });
 
