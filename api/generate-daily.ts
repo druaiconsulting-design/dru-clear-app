@@ -27,7 +27,7 @@ const PILLARS_BY_DAY = [
 ];
 
 const STAGE_CONTEXT: Record<string, string> = {
-  discover:  'The executive has just completed the DRU CLEAR™ AI Readiness Scorecard. They are in the awareness phase — understanding where they are, what is possible, and building confidence to begin.',
+  discover:  'The executive has just completed the DRU CLEAR™ AI Readiness Assessment. They are in the awareness phase — understanding where they are, what is possible, and building confidence to begin.',
   diagnose:  'The executive is doing deep diagnostic work on their organizational AI readiness. They are naming gaps, analyzing barriers, and gathering the intelligence needed to move forward.',
   design:    'The executive is architecting their AI transformation strategy. They are moving from diagnosis to building a concrete roadmap aligned with their business goals and team capacity.',
   deploy:    'The executive is actively implementing AI solutions. They are in execution mode — managing adoption, overcoming change resistance, and integrating AI into daily operations.',
@@ -186,4 +186,3 @@ export default async function handler(req: any, res: any): Promise<void> {
     res.status(500).json({ success: false, error: String(err) });
   }
 }
-
