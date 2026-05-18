@@ -300,7 +300,7 @@ export default function Daily() {
                     boxShadow: completed ? "0 0 18px rgba(212,175,55,0.45)" : "none",
                   }}
                 >
-                  {completed ? "✓  Completed" : completing ? "Saving..." : "Mark Completed"}
+                  {completed ? "✓  Completed" : completing ? "Saving..." : "MARK COMPLETE"}
                 </button>
                 {completed && streak.current_streak > 0 && (
                   <div style={{ marginTop: "0.75rem", textAlign: "center" as const }}>
