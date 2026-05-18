@@ -70,7 +70,7 @@ export default function NavBar({ active }: { active?: string }) {
   return (
     <nav style={{
       width: "100%",
-      background: "#071a30",
+      background: "#2E6DAB",
       borderBottom: "1px solid rgba(212,175,55,0.2)",
       padding: "0 1.25rem",
       display: "flex",
@@ -203,7 +203,7 @@ export default function NavBar({ active }: { active?: string }) {
 
       {/* ── Mobile dropdown ── */}
       {menuOpen && (
-        <div style={{ position: "absolute", top: 120, left: 0, right: 0, background: "#071a30", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
+        <div style={{ position: "absolute", top: 120, left: 0, right: 0, background: "#2E6DAB", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "0.75rem 1.25rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", zIndex: 999 }}>
 
           {/* Mobile user identity */}
           {isLoggedIn && user && userDisplay && (
