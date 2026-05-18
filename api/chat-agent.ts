@@ -206,7 +206,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   if (action === 'message') {
     if (!message) { res.status(400).json({ error: 'message is required' }); return; }
     try {
-      const response = await getAIResponse(message, language, body.name || '', history);
+      const response = await getAIResponse(message, language, name, history);
       console.log(`[chat-agent] Response generated | lang: ${language} | message: ${message.slice(0, 50)}`);
       res.status(200).json({ success: true, response });
     } catch (err) {
