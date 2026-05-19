@@ -33,15 +33,13 @@ const PAYMENT_LINKS = [
   { label: "From Confusion to Confident - Mastermind",       price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
 ];
 
-const PENDING_ITEMS = [
-  "Add 2 PDFs to app for user access - delegated to AI Agents (Sprint 4)",
-  "GHL webhook URL - wire into course waitlist form",
-  "From Confusion to Confident with AI - Course: Waitlist form built - 3 payment links live - course.druaiconsulting.com deploy next",
-  "Affiliate Dashboard: Track referrals - commissions - top referrer leaderboard - Supabase referrals table - unique referral links - Stripe payout integration",
-  "Navigator $97/mo + Accelerator $297/mo: Price increase from founder pricing after launch - lock in founding members now",
-  "Community AI Agents: Navigator + Accelerator communities - daily prompts - Q&A - member spotlights",
-  "Community - in-app: Launch when 20+ active clients - Supabase Realtime - Navigator + Accelerator separate spaces",
-  "Framework Agent Teams: One dedicated AI agent per framework - DRU CLEAR - 5D Leadership - 5C Cultural DNA - AI Sales Mastery",
+interface FocusPoint { label: string; sub: string; done?: boolean; }
+const FOCUS_POINTS: FocusPoint[] = [
+  { done: false, label: "GHL Webhook URL — wire into course waitlist form", sub: "Connect GHL webhook to course.druaiconsulting.com waitlist capture" },
+  { done: false, label: "From Confusion to Confident with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · course.druaiconsulting.com deploy next" },
+  { done: false, label: "Community Connection Division — Roster Complete", sub: "9th division · 10 agents · 4 Framework Support Teams — CLEAR Vision · 5D Elevation · Culture DNA · Revenue Intelligence + Zoe Beaumont · Micah Santos" },
+  { done: false, label: "Community Connection — 4-Layer Build", sub: "Layer 1: Database · Layer 2: Agent Infrastructure · Layer 3: Community Page · Layer 4: GHL Workflow · Est. 6–8 sessions" },
+  { done: false, label: "Community Connection Page — Fulfillment Updated", sub: "Navigator: daily cards + weekly framework training · Accelerator: + weekly PDF Downloadable + monthly DeAnna video" },
 ];
 
 interface SprintItem { label: string; sub: string; done?: boolean; }
@@ -94,20 +92,21 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
   {
     number: "4", title: "The AI Empire", status: "inprogress",
     items: [
-      { done: true, label: "DeAnna's AI Twin - LIVE",                       sub: "Claude API - trained on all 4 frameworks - answers questions 24/7 - coaches members - master orchestrator - app.druaiconsulting.com/twin" },
+      { done: true, label: "DeAnna's AI Twin - LIVE",                       sub: "Claude API - trained on all 4 frameworks - answers questions 24/7 - master orchestrator - app.druaiconsulting.com/twin" },
       { done: true, label: "Daily Connections Accelerator Tier - LIVE",     sub: "navigator + accelerator tiers in Supabase - DeAnna's Strategic Edge 4th card - AI-generated in DeAnna's voice - daily - founder pricing active" },
       { done: true, label: "Auth Loading Fix - LIVE",                       sub: "Two-phase loading - instant session resolve - profile fetches in background - 3s safety timeout - no more splash screen hang" },
       { done: true, label: "New Logo - LIVE",                               sub: "DRU CLEAR enhanced logo - transparent background - deployed across app" },
       { done: true, label: "Revenue & Growth Agents - BUILT",               sub: "10 agents - Serena - Mateo - Zara - Jaylen - Chloe - Omar - Aaliyah - Ryan - Elena - Kwame - Supabase edge function deployed" },
       { done: true, label: "Content & Brand Agents - BUILT",                sub: "5 agents - Camila - Darius - Ingrid - Ravi - Yara - Supabase edge function deployed" },
-      { done: true, label: "Client Delivery Agents + Creative Director - BUILT", sub: "7 agents - Keisha - Marco - Leila - Jordan Hayes (Creative Director) - Simone - Theo - Amelia - deployed" },
-      { done: true, label: "Governance Agents - BUILT",                     sub: "C-Suite/Ops - Legal & Finance - AI Governance - HR Division - 14 agents - all 4 edge functions deployed" },
-      { done: true, label: "Travis - Chief of Staff - BUILT",               sub: "Pure deterministic router - routes all 37 agents across 9 divisions - reports to Twin" },
-      { done: true, label: "All 39 Agents - Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 10 divisions - all system prompts - all edge functions - Genius Mode default" },
-      { done: true, label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table - register from Portal + Admin - sign in from login screen - 4 Vercel serverless API routes" },
+      { done: true, label: "Client Delivery Agents + Creative Director - BUILT", sub: "7 agents - Keisha - Marco - Leila - Jordan Hayes - Simone - Theo - Amelia - deployed" },
+      { done: true, label: "Governance Agents - BUILT",                     sub: "Legal & Finance - AI Governance - HR Division - 14 agents - all edge functions deployed" },
+      { done: true, label: "Travis - Chief of Staff - BUILT",               sub: "Pure deterministic router - routes all agents across 9 divisions - reports to Twin" },
+      { done: true, label: "All 39 Agents - Full Build COMPLETE",           sub: "Twin + Travis + 37 agents across 8 divisions - all system prompts - all edge functions - Genius Mode default" },
+      { done: true, label: "Passkeys / Face ID Login - LIVE",               sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table - register from Portal + Admin - sign in from login screen" },
       { done: true, label: "Twin Streaming Fix - LIVE",                     sub: "WallClockTime timeout on OPTIONS preflight resolved - routed via Vercel serverless function" },
       { done: true, label: "SMS Sequences - LIVE",                          sub: "GHL phone number provisioned - SMS automation workflows active" },
       { done: true, label: "course.druaiconsulting.com - LIVE",             sub: "Repo created - Vercel deployed - course landing page live" },
+      { done: true, label: "Add 2 PDFs to app for user access",             sub: "Delegated to AI Agents — complete" },
       { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - June 6, 2026" },
     ],
   },
@@ -123,13 +122,15 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Client Delivery Division — LIVE",     sub: "7 agents — Keisha · Marco · Leila · Jordan · Simone · Theo · Amelia — daily 9:00am CDT" },
       { done: true,  label: "Customer Support Division — LIVE",    sub: "2 agents — Isaiah · Priscilla — daily 9:21am CDT" },
       { done: true,  label: "Full Command Chain — LIVE",           sub: "Isabella (11:00am) · Governance (11:10am) · Raymond/Travis/Priya (11:20am) · AI Twin (11:30am) — one daily briefing notification" },
-      { done: false, label: "Agent Refinements — IN PROGRESS",     sub: "Pending items from refinement list — ongoing optimization across all 8 divisions this week" },
+      { done: false, label: "Agent Refinements — IN PROGRESS",     sub: "Ongoing optimization across all 9 divisions — Community Connection division added" },
+      { done: false, label: "Community Connection Division — BUILDING", sub: "9th division · 10 agents · 4 Framework Support Teams + Community Connection Leadership · 4-layer build in progress" },
     ],
   },
   {
     number: "6", title: "Scale & License", status: "planned",
     items: [
       { label: "90-Day Live Run", sub: "Real clients - real data - agent refinement - case studies building - Sprint 6 readiness gate" },
+      { label: "Affiliate Dashboard", sub: "Track referrals · commissions · top referrer leaderboard · Supabase referrals table · unique referral links · Stripe payout integration" },
       { label: "DRU CLEAR Scale Your AI Business - LMS", sub: "Full course platform - 8 modules - video + workbooks - progress tracking" },
       { label: "White Label LMS Licensing - Licensed to the World", sub: "Other consultants pay monthly to use your platform - the final frontier" },
     ],
@@ -287,7 +288,7 @@ function ClientIntelligenceDashboard() {
           <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,56,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
           <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
             {submissions.length === 0 ? "No submissions yet - data will appear here when clients complete the assessment." : "No results match your filter."}
           </p>
@@ -456,7 +457,7 @@ export default function Admin() {
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>AI Empire Org Chart</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>39 agents - 10 divisions - Full hierarchy with illustrated avatars - Page 2</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>49 agents · 9 divisions · Full hierarchy with illustrated avatars · Page 2</p>
             </div>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW</span>
           </div>
@@ -526,18 +527,26 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* ── Focus Points ── */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Pending Refinements</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {PENDING_ITEMS.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
-                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item}</p>
-              </div>
-            ))}
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Focus Points</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            {FOCUS_POINTS.map((item, i) => {
+              const isDone = item.done === true;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
+                  <span style={{ color: isDone ? "#43A047" : "#D4AF37", fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
+                  <div>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: isDone ? "rgba(230,230,230,0.35)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: isDone ? "rgba(230,230,230,0.2)" : "rgba(230,230,230,0.45)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
+        {/* ── Full Build Roadmap ── */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
