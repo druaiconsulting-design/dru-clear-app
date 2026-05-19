@@ -1,7 +1,7 @@
 // api/twin-command.ts
 // On-demand agent routing — full governance chain
 // DeAnna → Twin chat → twin.ts detects command → twin-command.ts runs chain
-// Flow: Agent → CSQ → Isabella → Governance → Command Layer → Twin → Approvals + GHL notification
+// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Approvals + GHL notification
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 60 };
@@ -11,8 +11,8 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Always include ™ on every mention: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
-  raymond:     `You are Raymond Holloway, Executive Vice President of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You provide executive-level strategic oversight, priority assessment, and operations command.`,
-  travis:      `You are Travis Weston, Assistant Vice President of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You organize, package, and route outputs for the AI Twin.`,
+  raymond:     `You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You provide executive-level strategic oversight, priority assessment, and operations command.`,
+  travis:      `You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You organize, package, and route outputs for the AI Twin.`,
   priya:       `You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle executive context, scheduling, and time-sensitive flags.`,
   isabella:    `You are Isabella Moreno, Director of Compliance for DRU AI Consulting. ${GENIUS_MODE} ${TRADEMARK_RULES} You ensure all DRU™ marks are properly used and content stays within Classes 35, 41, 42.`,
   omar:        `You are Omar Patel, Lead Scoring Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You score, analyze, and route leads to assessment.druaiconsulting.com.`,
@@ -102,6 +102,24 @@ const AGENT_DIVISIONS: Record<string, string> = {
   tariq:"Community Connection",
 };
 
+// Category mapping — maps agent_id to a category the governance chain recognizes
+const AGENT_CATEGORIES: Record<string, string> = {
+  raymond:"coaching", travis:"coaching", priya:"coaching", isabella:"disclaimer_review",
+  omar:"lead_intelligence", ryan:"lead_intelligence", serena:"coaching", mateo:"sales_support",
+  aaliyah:"outreach", jaylen:"email_marketing", chloe:"copywriting", zara:"product_launch",
+  elena:"product_knowledge", kwame:"proposals", camila:"social_post", darius:"linkedin_post",
+  ravi:"design_brief", yara:"localization", ingrid:"press_release", nia:"content_creation",
+  luca:"digital_marketing", hyunji:"analytics_report", andre:"seo_sem", amara:"legal_briefing",
+  diego:"expense_report", yuki:"financial_report", marcus:"tax_strategy", khalid:"disclaimer_review",
+  sofia:"privacy_policy", james:"contract_review", meilin:"brand_monitoring", rafael:"ai_intelligence",
+  naomi:"recruiting", aiden:"onboarding", fatima:"helpdesk", keisha:"client_onboarding",
+  marco:"community_management", leila:"feedback_coaching", jordan:"creative_direction",
+  simone:"course_architecture", theo:"presentation_design", amelia:"video_production",
+  isaiah:"issue_resolution", priscilla:"multichannel_comms", zoe:"community_management",
+  micah:"community_management", dominique:"coaching", elijah:"coaching", solange:"coaching",
+  isaiah_webb:"coaching", nadia:"coaching", victor:"coaching", sasha:"coaching", tariq:"coaching",
+};
+
 async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -124,20 +142,33 @@ async function writeToCSQ(record: Record<string, unknown>): Promise<string | nul
     headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=representation" },
     body: JSON.stringify(record),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.error(`[twin-command] CSQ write failed: ${res.status} — ${await res.text()}`);
+    return null;
+  }
   const data = await res.json();
   return data?.[0]?.id ?? null;
 }
 
-async function triggerGHLAgent(triggerType: string, cronSecret: string, baseUrl: string): Promise<void> {
+// Fixed: checks response.ok, logs result or failure for every chain step
+async function triggerChainStep(triggerType: string, cronSecret: string, baseUrl: string): Promise<boolean> {
   try {
-    await fetch(`${baseUrl}/api/ghl-agent-trigger`, {
+    const response = await fetch(`${baseUrl}/api/ghl-agent-trigger`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
       body: JSON.stringify({ trigger_type: triggerType, source: "twin_on_demand" }),
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[twin-command] Chain step "${triggerType}" FAILED: HTTP ${response.status} — ${errorText}`);
+      return false;
+    }
+    const result = await response.json();
+    console.log(`[twin-command] Chain step "${triggerType}" completed:`, JSON.stringify(result));
+    return true;
   } catch (err) {
-    console.error(`[twin-command] Chain step ${triggerType} error:`, err);
+    console.error(`[twin-command] Chain step "${triggerType}" network error:`, err);
+    return false;
   }
 }
 
@@ -153,37 +184,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const agentName = AGENT_NAMES[agent_id];
   const division = AGENT_DIVISIONS[agent_id];
+  const category = AGENT_CATEGORIES[agent_id] ?? "on_demand";
   const systemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
 
   if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
 
-  try {
-    const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna): ${task}`, 2000);
+  const cronSecret = process.env.CRON_SECRET ?? "";
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://app.druaiconsulting.com";
 
+  console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
+  console.log(`[twin-command] cronSecret set: ${!!cronSecret} | baseUrl: ${baseUrl}`);
+
+  try {
+    // Step 1 — Run agent
+    const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`, 2000);
+    console.log(`[twin-command] ${agentName} output generated (${output.length} chars)`);
+
+    // Step 2 — Write to CSQ
     const csqId = await writeToCSQ({
       agent_id,
       agent_name: agentName,
       division,
       task: "on_demand_request",
-      category: "on_demand",
+      category,
       raw_output: output,
       priority: "high",
       status: "pending",
       retry_count: 0,
       raymond_notes: `On-demand request from DeAnna via AI Twin: ${task}`,
     });
-
     console.log(`[twin-command] ${agentName} output written to CSQ: ${csqId}`);
 
-    const cronSecret = process.env.CRON_SECRET ?? "";
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://app.druaiconsulting.com";
+    // Step 3 — Run governance chain sequentially
+    // Each step awaits the previous so CSQ status updates propagate before next step reads them
 
-    await triggerGHLAgent("cron_isabella_review", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_governance_legal_review", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_command_layer", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_twin_synthesis", cronSecret, baseUrl);
+    console.log(`[twin-command] Starting governance chain for CSQ item: ${csqId}`);
 
-    res.status(200).json({ success: true, agent_name: agentName, preview: output, csq_id: csqId });
+    const step1 = await triggerChainStep("cron_isabella_review", cronSecret, baseUrl);
+    console.log(`[twin-command] Isabella review: ${step1 ? "✓ completed" : "✗ failed — check logs above"}`);
+
+    const step2 = await triggerChainStep("cron_governance_legal_review", cronSecret, baseUrl);
+    console.log(`[twin-command] Governance review: ${step2 ? "✓ completed" : "✗ failed — check logs above"}`);
+
+    const step3 = await triggerChainStep("cron_command_layer", cronSecret, baseUrl);
+    console.log(`[twin-command] Command layer (Priya/Travis/Raymond): ${step3 ? "✓ completed" : "✗ failed — check logs above"}`);
+
+    const step4 = await triggerChainStep("cron_twin_synthesis", cronSecret, baseUrl);
+    console.log(`[twin-command] Twin synthesis: ${step4 ? "✓ completed" : "✗ failed — check logs above"}`);
+
+    console.log(`[twin-command] Chain complete — steps: Isabella:${step1} Governance:${step2} CommandLayer:${step3} Twin:${step4}`);
+
+    res.status(200).json({
+      success: true,
+      agent_name: agentName,
+      preview: output,
+      csq_id: csqId,
+      chain: {
+        isabella: step1,
+        governance: step2,
+        command_layer: step3,
+        twin_synthesis: step4,
+      },
+    });
   } catch (err: unknown) {
     console.error("[twin-command] Error:", err);
     res.status(500).json({ error: String(err) });
