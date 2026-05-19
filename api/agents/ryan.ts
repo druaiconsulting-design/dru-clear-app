@@ -7,16 +7,15 @@
 // Task: Receive Omar's scored leads, update GHL CRM with tags
 // and pipeline stage, generate executive briefing card,
 // write final output to approvals table for DeAnna's review.
+//
+// NOTE: This is a pure module — imported by ghl-agent-trigger.ts
+// No default export handler — not a standalone Vercel function
 // ================================================================
 
 import type { OmarResult, ScoredLead } from './omar';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
-
-// ─────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────
 
 export interface RyanResult {
   success: boolean;
@@ -27,10 +26,6 @@ export interface RyanResult {
   high_intent_count: number;
   error?: string;
 }
-
-// ─────────────────────────────────────────────────────────────
-// Update GHL contact with lead score tags
-// ─────────────────────────────────────────────────────────────
 
 async function updateGHLContact(
   contactId: string,
@@ -57,10 +52,6 @@ async function updateGHLContact(
     console.warn(`[ryan] Failed to update contact ${contactId}: ${response.status}`);
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Generate executive briefing card with Anthropic
-// ─────────────────────────────────────────────────────────────
 
 async function generateBriefingCard(
   omarResult: OmarResult,
@@ -108,17 +99,11 @@ Keep it concise, actionable, and aligned with DRU AI Consulting's brand voice. D
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Anthropic API error ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
 
   const data = await response.json();
   return data.content?.[0]?.text ?? 'Briefing card generation failed.';
 }
-
-// ─────────────────────────────────────────────────────────────
-// Write final approval card to Supabase
-// ─────────────────────────────────────────────────────────────
 
 async function writeApprovalCard(
   briefingCard: string,
@@ -167,10 +152,6 @@ async function writeApprovalCard(
   return data?.[0]?.id ?? null;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Main Ryan function — importable by pipeline orchestrator
-// ─────────────────────────────────────────────────────────────
-
 export async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
   const ghlApiKey = process.env.GHL_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -189,7 +170,6 @@ export async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
     };
   }
 
-  // If Omar found no leads, write a brief "no leads today" card
   if (omarResult.total_leads_scanned === 0) {
     console.log('[ryan] No new leads today — writing status card');
     const noLeadsCard = `**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.\n\nNext scan: tomorrow at 8:00am CDT.`;
@@ -212,7 +192,6 @@ export async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
   }
 
   try {
-    // Update GHL CRM for all scored leads
     console.log(`[ryan] Updating GHL CRM for ${omarResult.scored_leads.length} leads...`);
     let crmUpdates = 0;
 
@@ -224,12 +203,9 @@ export async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
     }
 
     console.log(`[ryan] CRM updated for ${crmUpdates} contacts`);
-
-    // Generate briefing card
     console.log('[ryan] Generating executive briefing card...');
     const briefingCard = await generateBriefingCard(omarResult, anthropicApiKey);
 
-    // Write to approvals table
     console.log('[ryan] Writing approval card to Supabase...');
     const approvalId = await writeApprovalCard(
       briefingCard,
@@ -261,19 +237,4 @@ export async function runRyan(omarResult: OmarResult): Promise<RyanResult> {
       error: String(error),
     };
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-// HTTP Handler — standalone endpoint if needed
-// ─────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function handler(req: any, res: any): Promise<void> {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-  const omarResult: OmarResult = req.body;
-  const result = await runRyan(omarResult);
-  res.status(result.success ? 200 : 500).json(result);
 }
