@@ -150,8 +150,11 @@ async function writeToCSQ(record: Record<string, unknown>): Promise<string | nul
   return data?.[0]?.id ?? null;
 }
 
-// Fixed: checks response.ok, logs result or failure for every chain step
-async function triggerChainStep(triggerType: string, cronSecret: string, baseUrl: string): Promise<boolean> {
+// Triggers a chain step via ghl-agent-trigger, checks response, logs result
+async function triggerChainStep(triggerType: string, cronSecret: string): Promise<boolean> {
+  // Always use production domain — VERCEL_URL resolves to preview deployments
+  // which have Vercel SSO protection enabled and will return 401
+  const baseUrl = "https://app.druaiconsulting.com";
   try {
     const response = await fetch(`${baseUrl}/api/ghl-agent-trigger`, {
       method: "POST",
@@ -160,7 +163,7 @@ async function triggerChainStep(triggerType: string, cronSecret: string, baseUrl
     });
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[twin-command] Chain step "${triggerType}" FAILED: HTTP ${response.status} — ${errorText}`);
+      console.error(`[twin-command] Chain step "${triggerType}" FAILED: HTTP ${response.status} — ${errorText.slice(0, 200)}`);
       return false;
     }
     const result = await response.json();
@@ -190,10 +193,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
 
   const cronSecret = process.env.CRON_SECRET ?? "";
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://app.druaiconsulting.com";
 
   console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
-  console.log(`[twin-command] cronSecret set: ${!!cronSecret} | baseUrl: ${baseUrl}`);
+  console.log(`[twin-command] cronSecret set: ${!!cronSecret} | baseUrl: https://app.druaiconsulting.com`);
 
   try {
     // Step 1 — Run agent
@@ -217,22 +219,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Step 3 — Run governance chain sequentially
     // Each step awaits the previous so CSQ status updates propagate before next step reads them
-
     console.log(`[twin-command] Starting governance chain for CSQ item: ${csqId}`);
 
-    const step1 = await triggerChainStep("cron_isabella_review", cronSecret, baseUrl);
+    const step1 = await triggerChainStep("cron_isabella_review", cronSecret);
     console.log(`[twin-command] Isabella review: ${step1 ? "✓ completed" : "✗ failed — check logs above"}`);
 
-    const step2 = await triggerChainStep("cron_governance_legal_review", cronSecret, baseUrl);
+    const step2 = await triggerChainStep("cron_governance_legal_review", cronSecret);
     console.log(`[twin-command] Governance review: ${step2 ? "✓ completed" : "✗ failed — check logs above"}`);
 
-    const step3 = await triggerChainStep("cron_command_layer", cronSecret, baseUrl);
+    const step3 = await triggerChainStep("cron_command_layer", cronSecret);
     console.log(`[twin-command] Command layer (Priya/Travis/Raymond): ${step3 ? "✓ completed" : "✗ failed — check logs above"}`);
 
-    const step4 = await triggerChainStep("cron_twin_synthesis", cronSecret, baseUrl);
+    const step4 = await triggerChainStep("cron_twin_synthesis", cronSecret);
     console.log(`[twin-command] Twin synthesis: ${step4 ? "✓ completed" : "✗ failed — check logs above"}`);
 
-    console.log(`[twin-command] Chain complete — steps: Isabella:${step1} Governance:${step2} CommandLayer:${step3} Twin:${step4}`);
+    console.log(`[twin-command] Chain complete — Isabella:${step1} Governance:${step2} CommandLayer:${step3} Twin:${step4}`);
 
     res.status(200).json({
       success: true,
