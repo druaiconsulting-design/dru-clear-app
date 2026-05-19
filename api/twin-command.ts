@@ -4,7 +4,7 @@
 // Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Approvals + GHL notification
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
 
