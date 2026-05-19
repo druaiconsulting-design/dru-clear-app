@@ -6,21 +6,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-
   try {
     const user = await getUserFromToken(req);
     if (!user) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-
     const { rpName, rpID } = getRPConfig(req);
-
     const { data: existingCreds } = await supabaseAdmin
       .from("passkey_credentials")
       .select("credential_id")
       .eq("user_id", user.id);
 
-    const excludeCredentials = (existingCreds || []).map((cred) => ({
+    const excludeCredentials = (existingCreds || []).map((cred: { credential_id: string }) => ({
       id: cred.credential_id,
       type: "public-key" as const,
     }));
@@ -37,13 +34,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userVerification: "preferred",
       },
     });
-
     await supabaseAdmin.from("passkey_challenges").insert({
       challenge: options.challenge,
       user_id: user.id,
       type: "registration",
     });
-
     return res.json(options);
   } catch (error) {
     console.error("Register options error:", error);
