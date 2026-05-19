@@ -7,14 +7,13 @@
 // Task: Scan GHL for new contacts created in last 24 hours,
 // score each lead 1–10 using AI, flag high-intent leads (7+),
 // return scored data for Ryan to process.
+//
+// NOTE: This is a pure module — imported by ghl-agent-trigger.ts
+// No default export handler — not a standalone Vercel function
 // ================================================================
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
-
-// ─────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────
 
 export interface ScoredLead {
   contact_id: string;
@@ -36,10 +35,6 @@ export interface OmarResult {
   run_date: string;
   error?: string;
 }
-
-// ─────────────────────────────────────────────────────────────
-// Fetch new GHL contacts from last 24 hours
-// ─────────────────────────────────────────────────────────────
 
 async function fetchNewLeads(ghlApiKey: string): Promise<any[]> {
   const yesterday = new Date();
@@ -64,10 +59,6 @@ async function fetchNewLeads(ghlApiKey: string): Promise<any[]> {
   const data = await response.json();
   return data.contacts ?? [];
 }
-
-// ─────────────────────────────────────────────────────────────
-// Score leads with Anthropic
-// ─────────────────────────────────────────────────────────────
 
 async function scoreLeads(leads: any[], anthropicApiKey: string): Promise<ScoredLead[]> {
   if (leads.length === 0) return [];
@@ -118,9 +109,7 @@ Respond ONLY with a valid JSON array. No preamble, no markdown, no explanation. 
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Anthropic API error ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
 
   const data = await response.json();
   const text = data.content?.[0]?.text ?? '[]';
@@ -133,10 +122,6 @@ Respond ONLY with a valid JSON array. No preamble, no markdown, no explanation. 
     return [];
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Main Omar function — importable by pipeline orchestrator
-// ─────────────────────────────────────────────────────────────
 
 export async function runOmar(): Promise<OmarResult> {
   const ghlApiKey = process.env.GHL_API_KEY;
@@ -193,18 +178,4 @@ export async function runOmar(): Promise<OmarResult> {
       error: String(error),
     };
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-// HTTP Handler — standalone endpoint if needed
-// ─────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function handler(req: any, res: any): Promise<void> {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-  const result = await runOmar();
-  res.status(result.success ? 200 : 500).json(result);
 }
