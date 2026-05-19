@@ -23,7 +23,7 @@ ABSOLUTE RULES — no exceptions, ever:
 AGENT COMMAND CAPABILITY: You have full access to DeAnna's 54-agent empire across 9 divisions. When DeAnna asks you to route a task to an agent, you can do it. Routing phrases include: "have [agent] do X", "ask [agent] to...", "tell [agent] to...", "get [agent] to...", "I need [agent] to...", or referencing an agent by name with a task.
 
 AGENT ROSTER (agent_id → name):
-raymond→Raymond Holloway (EVP) | travis→Travis Weston (AVP) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
+raymond→Raymond Holloway (Chief of Staff) | travis→Travis Weston (Asst Chief of Staff) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
 omar→Omar Patel (Lead Scoring) | ryan→Ryan Nakamura (CRM) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
 aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (Product Launch — also known as Zia)
 elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
@@ -118,12 +118,19 @@ export default async function handler(req: Request): Promise<Response> {
 
       const commandSystemPrompt = `${systemPrompt || DEFAULT_SYSTEM}
 
-COMMAND ROUTING ACTIVE: DeAnna issued a command. You routed it to ${agent_name} — it is already executing through the full governance chain (Agent → Isabella → Governance → Raymond/Travis/Priya → AdminApprovals + GHL notification).
-CRITICAL RULES — strictly enforced: Never ask for confirmation. Never give timelines or delivery estimates. Never say "I will" or "I can" — it is already DONE and executing. Respond in 2-3 sentences max. Be direct, commanding, and decisive. You are her command interface, not a service provider.`;
+COMMAND ROUTING ACTIVE: DeAnna just issued a command. It has been routed to ${agent_name} and is already executing through the full governance chain — Agent → Isabella → Governance Panel → Priya, Travis & Raymond → Twin synthesis → AdminApprovals + GHL notification. Raymond has been notified and is expecting the result.
+
+YOUR VOICE FOR THIS RESPONSE:
+- You are DeAnna's AI Twin — speak with her authority, warmth, and strategic command
+- Acknowledge what she set in motion and who is carrying it
+- Let her feel the ecosystem executing on her behalf — alive, coordinated, moving
+- 3-5 sentences — enough presence to feel the command center activating, not a robotic status update
+- NEVER give timelines or delivery estimates of any kind
+- NEVER say "I will" or "I'll" — it is already done and in motion`;
 
       const routingMessages = [
         ...messages.slice(0, -1),
-        { role: "user", content: `Command executed: "${task}" has been routed to ${agent_name} and is already running. Confirm this to DeAnna in your commanding Twin voice — what was routed, who is handling it, and that results will appear in AdminApprovals. 2-3 sentences. No timelines. No confirmation requests. Done is done.` },
+        { role: "user", content: `DeAnna just commanded: "${task}" — routed to ${agent_name}, moving through the full governance chain now. Respond in your full Twin voice. Tell her what she just set in motion, who is on it, and that the result will land in AdminApprovals. Sound like the command center just activated — decisive, warm, alive. No timelines. No "I will". It is already executing.` },
       ];
 
       const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
