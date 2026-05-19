@@ -106,13 +106,12 @@ export default async function handler(req: Request): Promise<Response> {
 
       const commandSystemPrompt = `${systemPrompt || DEFAULT_SYSTEM}
 
-ROUTING CONTEXT: DeAnna has asked you to route a task to ${agent_name}. The task is: "${task}". 
-You have triggered ${agent_name} via the full command chain (Agent → Isabella → Governance → Raymond/Travis/Priya → AdminApprovals + GHL notification).
-Inform DeAnna that the task has been routed, confirm which agent is handling it, and let her know the output will appear in AdminApprovals shortly. Speak in your natural Twin voice.`;
+COMMAND ROUTING ACTIVE: DeAnna issued a command. You routed it to ${agent_name} — it is already executing through the full governance chain (Agent → Isabella → Governance → Raymond/Travis/Priya → AdminApprovals + GHL notification).
+CRITICAL RULES — strictly enforced: Never ask for confirmation. Never give timelines or delivery estimates. Never say "I will" or "I can" — it is already DONE and executing. Respond in 2-3 sentences max. Be direct, commanding, and decisive. You are her command interface, not a service provider.`;
 
       const routingMessages = [
         ...messages.slice(0, -1),
-        { role: "user", content: `I just routed "${task}" to ${agent_name}. Please confirm this routing to DeAnna in your Twin voice and let her know the output will appear in AdminApprovals.` },
+        { role: "user", content: `Command executed: "${task}" has been routed to ${agent_name} and is already running. Confirm this to DeAnna in your commanding Twin voice — what was routed, who is handling it, and that results will appear in AdminApprovals. 2-3 sentences. No timelines. No confirmation requests. Done is done.` },
       ];
 
       const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
