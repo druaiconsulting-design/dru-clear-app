@@ -1,27 +1,19 @@
 import NavBar from "../components/NavBar";
 
-// ─── GHL Payment Links ────────────────────────────────────────────────────────
 const NAVIGATOR_PAYMENT_LINK   = "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0";
 const ACCELERATOR_PAYMENT_LINK = "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1";
-// ─────────────────────────────────────────────────────────────────────────────
 
 const NAVIGATOR_FEATURES = [
-  "Access to the DRU CLEAR™ Community",
-  "Daily AI Leadership Insights & Prompts",
+  "Access to DRU AI Consulting — Community Connection",
+  "Daily AI Leadership Insights — 4 Cards Every Day",
   "Weekly Framework Training Content",
-  "Monthly Group Momentum Session",
-  "Peer Accountability & Community Challenges",
   "Exclusive Founder Pricing — Locked In Forever",
 ];
 
 const ACCELERATOR_FEATURES = [
   "Everything in Navigator — plus:",
-  "Private Accelerator Community Channel",
-  "Bi-Weekly Live Sessions with DeAnna",
-  "Priority Access to New Framework Releases",
-  "1:1 Onboarding Call with DeAnna",
-  "Advanced AI Tools & Implementation Guides",
-  "First Access to Cohort Programs & Courses",
+  "Weekly Branded Framework PDF Downloadable",
+  "Monthly 20-Min DeAnna Teach Video — Exclusive Access",
   "Exclusive Founder Pricing — Locked In Forever",
 ];
 
@@ -47,8 +39,8 @@ export default function Community() {
             🔥 Founders Special — Limited Time
           </p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "clamp(1.75rem, 5vw, 2.75rem)", fontWeight: 700, lineHeight: 1.2, marginBottom: "1rem", maxWidth: 640, margin: "0 auto 1rem" }}>
-            Join the DRU CLEAR™<br />
-            <span style={{ color: "#D4AF37" }}>Leadership Community</span>
+            Join the DRU AI Consulting<br />
+            <span style={{ color: "#D4AF37" }}>Community Connection</span>
           </h1>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.75)", fontSize: "0.95rem", lineHeight: 1.7, maxWidth: 520, margin: "0 auto 2rem" }}>
             A community built for leaders who are serious about navigating the AI era with clarity, confidence, and a concrete pathway forward.
@@ -106,19 +98,16 @@ export default function Community() {
             {/* Accelerator */}
             <div style={{ background: "rgba(194,24,91,0.06)", border: "2px solid rgba(194,24,91,0.5)", borderRadius: 14, overflow: "hidden" }}>
               <div style={{ background: "rgba(194,24,91,0.1)", borderBottom: "1px solid rgba(194,24,91,0.3)", padding: "1.25rem 1.5rem" }}>
-
-                {/* Best Value badge — sits above the price row, not overlapping */}
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
                   <div style={{ background: "#C2185B", borderRadius: 50, padding: "0.3rem 0.75rem", display: "inline-block" }}>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>Best Value</p>
                   </div>
                 </div>
-
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                   <div>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.35rem" }}>DRU CLEAR™</p>
                     <h3 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.4rem", fontWeight: 700, marginBottom: "0.25rem" }}>Accelerator</h3>
-                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem" }}>Full access + direct DeAnna engagement</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem" }}>Premium access + monthly DeAnna video</p>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <p style={{ fontFamily: "'Playfair Display', serif", color: "#C2185B", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1 }}>$147</p>
