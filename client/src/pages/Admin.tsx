@@ -33,12 +33,12 @@ const PAYMENT_LINKS = [
   { label: "From Confusion to Confident - Mastermind",       price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
 ];
 
-interface FocusPoint { label: string; }
+interface FocusPoint { label: string; sub: string; }
 const FOCAL_POINTS: FocusPoint[] = [
-  { label: "Community Connection — 4 Layer Build" },
-  { label: "Community Connection Page" },
-  { label: "GHL Webhook URL — wire into course waitlist form" },
-  { label: "From Confusion to Confident with AI™ — Course Build" },
+  { label: "Community Connection — 4 Layer Build", sub: "Layer 1: Database · Layer 2: Agent Infrastructure · Layer 3: Community Page · Layer 4: GHL Workflow · Est. 6–8 sessions" },
+  { label: "Community Connection Page", sub: "Fulfillment redesigned — Navigator: 4 daily cards + weekly framework training · Accelerator: + PDF Downloadables + monthly DeAnna's Leadership Lab! video" },
+  { label: "GHL Webhook URL — wire into course waitlist form", sub: "Connect GHL webhook to course.druaiconsulting.com waitlist capture" },
+  { label: "From Confusion to Confident with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · course.druaiconsulting.com deploy next" },
 ];
 
 interface SprintItem { label: string; sub: string; done?: boolean; }
@@ -532,8 +532,11 @@ export default function Admin() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {FOCAL_POINTS.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
-                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item.label}</p>
+                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5, margin: "0 0 1px" }}>{item.label}</p>
+                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", lineHeight: 1.4, margin: 0 }}>{item.sub}</p>
+                </div>
               </div>
             ))}
           </div>
