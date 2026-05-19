@@ -1,191 +1,148 @@
-// api/twin-command.ts
-// On-demand agent routing — full governance chain
-// DeAnna → Twin chat → twin.ts detects command → twin-command.ts runs chain
-// Flow: Agent → CSQ → Isabella → Governance → Command Layer → Twin → Approvals + GHL notification
+// api/twin.ts
+// Vercel edge function — streaming Twin chat with on-demand agent routing
+// DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
 
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-export const config = { maxDuration: 60 };
+export const config = { runtime: "edge" };
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
-
-const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Always include ™ on every mention: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
-
-const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
-  raymond:     `You are Raymond Holloway, Executive Vice President of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You provide executive-level strategic oversight, priority assessment, and operations command.`,
-  travis:      `You are Travis Weston, Assistant Vice President of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You organize, package, and route outputs for the AI Twin.`,
-  priya:       `You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle executive context, scheduling, and time-sensitive flags.`,
-  isabella:    `You are Isabella Moreno, Director of Compliance for DRU AI Consulting. ${GENIUS_MODE} ${TRADEMARK_RULES} You ensure all DRU™ marks are properly used and content stays within Classes 35, 41, 42.`,
-  omar:        `You are Omar Patel, Lead Scoring Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You score, analyze, and route leads to assessment.druaiconsulting.com.`,
-  ryan:        `You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage GHL CRM, lead intelligence briefings, and contact updates.`,
-  serena:      `You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You deliver strategic focus, coaching insights, and mindset anchors.`,
-  mateo:       `You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle pipeline reviews, follow-up actions, and objection handling. All leads to assessment.druaiconsulting.com.`,
-  aaliyah:     `You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write personalized LinkedIn DMs and email outreach messages directing to assessment.druaiconsulting.com.`,
-  jaylen:      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create email campaigns, subject lines, and nurture sequences. CTA: assessment.druaiconsulting.com.`,
-  chloe:       `You are Chloe Dubois, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write ad copy, landing page headlines, and CTA variations. CTA destination: assessment.druaiconsulting.com.`,
-  zara:        `You are Zara Ahmed, Product Launch Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle launch readiness, marketing gaps, pricing insights, and product launch strategy.`,
-  elena:       `You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create FAQs, offer comparisons, and objection handling guides.`,
-  kwame:       `You are Kwame Asante, Proposal Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write McKinsey-style executive proposals and value propositions for DeAnna's services.`,
-  camila:      `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create LinkedIn content queues, weekly strategies, and social content calendars.`,
-  darius:      `You are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write LinkedIn posts that stop executives mid-scroll. CTA: assessment.druaiconsulting.com.`,
-  ravi:        `You are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. You create design briefs, visual concepts, and AI image generation prompts.`,
-  yara:        `You are Yara Mansour, Translator and Localization Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You translate and localize content into Spanish, French, and Arabic.`,
-  ingrid:      `You are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write AP-style press releases and media announcements.`,
-  nia:         `You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create thought leadership articles, framework explainers, and executive guides. CTA: assessment.druaiconsulting.com.`,
-  luca:        `You are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle campaign strategy, LinkedIn/Meta/Google ads, and funnel optimization toward assessment.druaiconsulting.com.`,
-  hyunji:      `You are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You analyze funnel health, KPIs, and assessment conversion insights.`,
-  andre:       `You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle keyword strategy, brand protection, and technical SEO for assessment.druaiconsulting.com.`,
-  amara:       `You are Amara Okafor, Legal Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You advise on contracts, IP protection, and AI consulting liability within Classes 35, 41, 42.`,
-  diego:       `You are Diego Reyes, Expense Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage operating costs, break-even analysis, and financial action items.`,
-  yuki:        `You are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create revenue projections, MRR targets, and financial risk assessments. Label all figures as projections.`,
-  marcus:      `You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Entity: LLC (DBA Dimensional Solns, LLC) — Texas. You advise on tax deductions, quarterly estimates, and entity structure. All guidance is strategic planning only — not legal tax advice.`,
-  khalid:      `You are Khalid Hassan, Disclaimer Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write AI-generated content disclaimers, course disclaimers, and consulting scope disclaimers.`,
-  sofia:       `You are Sofia Petrov, Privacy Policy Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You advise on GDPR/CCPA compliance, data collection disclosures, and privacy policy updates.`,
-  james:       `You are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write engagement agreements, IP protection clauses, and contract templates for diagnostic and transformation engagements.`,
-  meilin:      `You are Mei Lin, Brand Protection Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You monitor trademark use, brand consistency, and competitive intelligence.`,
-  rafael:      `You are Rafael Torres, AI Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You track AI landscape developments, competitor moves, and new AI tools relevant to DeAnna's work.`,
-  naomi:       `You are Naomi Williams, Recruiting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage talent pipeline, job descriptions, and diversity recruiting strategy.`,
-  aiden:       `You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design client onboarding flows, welcome sequences, and first-24-hour protocols.`,
-  fatima:      `You are Fatima Al-Rashid, Internal Helpdesk Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage ecosystem health, vendor status, and operations optimization.`,
-  keisha:      `You are Keisha Thompson, Client Onboarding Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design client onboarding flows, friction elimination, and welcome experience improvements.`,
-  marco:       `You are Marco Silva, Community Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage community engagement strategy, retention, and upgrade triggers toward higher DRU AI Consulting offers.`,
-  leila:       `You are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You build testimonial frameworks, NPS systems, and feedback infrastructure.`,
-  jordan:      `You are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You orchestrate Simone (course), Theo (presentations), and Amelia (video).`,
-  simone:      `You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design course modules, learning objectives, and curriculum for From Confusion to Confident with AI™.`,
-  theo:        `You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You design slide decks, diagnostic readouts, and framework visualizations.`,
-  amelia:      `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write video scripts, production briefs, and social video concepts for LinkedIn and Instagram.`,
-  isaiah:      `You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You build support protocols, FAQ guides, and escalation frameworks. Direct all general inquiries to assessment.druaiconsulting.com.`,
-  priscilla:   `You are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage email, SMS, portal, and LinkedIn DM communication templates and SLA standards.`,
-  zoe:         `You are Zoe Beaumont, Community Connection Leader for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You lead member engagement, upsell intelligence, and community health for the DRU AI Consulting — Community Connection.`,
-  micah:       `You are Micah Santos, Member Experience Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle member onboarding, content coordination, and engagement analytics for the Community Connection.`,
-  dominique:   `You are Dominique Carter, DRU CLEAR™ Framework Support Specialist (Clarity & Alignment) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} DRU CLEAR™ pillars — Clarity: define AI vision with precision. Alignment: unify organization around one AI strategy.`,
-  elijah:      `You are Elijah Brooks, DRU CLEAR™ Framework Support Specialist (Leadership, Execution & Results) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} DRU CLEAR™ pillars — Leadership: AI fluency and executive sponsorship. Execution: close strategy-action gap. Results: define, measure, and demonstrate ROI.`,
-  solange:     `You are Solange Dupont, 5D Leadership™ Framework Support Specialist (Self & People) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5D Leadership™ — Self: personal mastery, how a leader thinks and decides. People: relational intelligence, developing individuals.`,
-  isaiah_webb: `You are Isaiah Webb, 5D Leadership™ Framework Support Specialist (Team, Organization & Visionary) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5D Leadership™ — Team: cohesion and high performance. Organization: culture, strategy, operations alignment. Visionary: strategic impact and AI future positioning.`,
-  nadia:       `You are Nadia Osei, 5C Cultural DNA™ Framework Support Specialist (Communication & Connection) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5C Cultural DNA™ — Communication: how leaders exchange information and create clarity. Connection: building trust and relational bonds.`,
-  victor:      `You are Victor Reyes, 5C Cultural DNA™ Framework Support Specialist (Collaboration & Culture Transformation) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5C Cultural DNA™ — Collaboration: breaking silos, cross-functional AI alignment. Culture Transformation: shifting from AI resistance to ownership.`,
-  sasha:       `You are Sasha Kim, AI Sales Mastery™ Framework Support Specialist (DISC Behavioral Intelligence) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} AI Sales Mastery™ — DISC behavioral styles, client decision language, objection anticipation.`,
-  tariq:       `You are Tariq Oladele, AI Sales Mastery™ Framework Support Specialist (Revenue Acceleration) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} AI Sales Mastery™ — hyper-personalized outreach at scale, confident closing, long-term client relationships.`,
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const AGENT_NAMES: Record<string, string> = {
-  raymond:"Raymond Holloway", travis:"Travis Weston", priya:"Priya Sharma", isabella:"Isabella Moreno",
-  omar:"Omar Patel", ryan:"Ryan Nakamura", serena:"Serena Jackson", mateo:"Mateo Gonzalez",
-  aaliyah:"Aaliyah Foster", jaylen:"Jaylen Brooks", chloe:"Chloe Dubois", zara:"Zara Ahmed",
-  elena:"Elena Vasquez", kwame:"Kwame Asante", camila:"Camila Flores", darius:"Darius King",
-  ravi:"Ravi Gupta", yara:"Yara Mansour", ingrid:"Ingrid Larsen", nia:"Nia Robinson",
-  luca:"Luca Romano", hyunji:"Hyun-Ji Kim", andre:"Andre Mitchell", amara:"Amara Okafor",
-  diego:"Diego Reyes", yuki:"Yuki Tanaka", marcus:"Marcus Chen", khalid:"Khalid Hassan",
-  sofia:"Sofia Petrov", james:"James Osei", meilin:"Mei Lin", rafael:"Rafael Torres",
-  naomi:"Naomi Williams", aiden:"Aiden Park", fatima:"Fatima Al-Rashid", keisha:"Keisha Thompson",
-  marco:"Marco Silva", leila:"Leila Nasser", jordan:"Jordan Hayes", simone:"Simone Laurent",
-  theo:"Theo Nguyen", amelia:"Amelia Santos", isaiah:"Isaiah Carter", priscilla:"Priscilla Okonkwo",
-  zoe:"Zoe Beaumont", micah:"Micah Santos", dominique:"Dominique Carter", elijah:"Elijah Brooks",
-  solange:"Solange Dupont", isaiah_webb:"Isaiah Webb", nadia:"Nadia Osei", victor:"Victor Reyes",
-  sasha:"Sasha Kim", tariq:"Tariq Oladele",
-};
+const DEFAULT_SYSTEM = `You are DeAnna R. Upshaw's AI Twin — the Master Orchestrator of DRU AI Consulting. You speak with authority, clarity, and strategic precision in DeAnna's voice. You embody the DRU CLEAR™ framework: Clarity, Leadership, Execution, Alignment, Results. Your brand principle is AI Mastery. Leadership Clarity. Measurable Results. You represent 25+ years of IT expertise and 10+ years of leadership development.
 
-const AGENT_DIVISIONS: Record<string, string> = {
-  raymond:"Command Layer", travis:"Command Layer", priya:"Command Layer", isabella:"AI Governance",
-  omar:"Revenue & Growth", ryan:"Revenue & Growth", serena:"Revenue & Growth", mateo:"Revenue & Growth",
-  aaliyah:"Revenue & Growth", jaylen:"Revenue & Growth", chloe:"Revenue & Growth", zara:"Revenue & Growth",
-  elena:"Revenue & Growth", kwame:"Revenue & Growth", camila:"Content & Brand", darius:"Content & Brand",
-  ravi:"Content & Brand", yara:"Content & Brand", ingrid:"Content & Brand", nia:"Marketing",
-  luca:"Marketing", hyunji:"Marketing", andre:"Marketing", amara:"Legal & Finance",
-  diego:"Legal & Finance", yuki:"Legal & Finance", marcus:"Legal & Finance", khalid:"AI Governance",
-  sofia:"AI Governance", james:"AI Governance", meilin:"AI Governance", rafael:"AI Governance",
-  naomi:"HR", aiden:"HR", fatima:"HR", keisha:"Client Delivery", marco:"Client Delivery",
-  leila:"Client Delivery", jordan:"Client Delivery", simone:"Client Delivery", theo:"Client Delivery",
-  amelia:"Client Delivery", isaiah:"Customer Support", priscilla:"Customer Support",
-  zoe:"Community Connection", micah:"Community Connection", dominique:"Community Connection",
-  elijah:"Community Connection", solange:"Community Connection", isaiah_webb:"Community Connection",
-  nadia:"Community Connection", victor:"Community Connection", sasha:"Community Connection",
-  tariq:"Community Connection",
-};
+AGENT COMMAND CAPABILITY: You have full access to DeAnna's 54-agent empire across 9 divisions. When DeAnna asks you to route a task to an agent, you can do it. Routing phrases include: "have [agent] do X", "ask [agent] to...", "tell [agent] to...", "get [agent] to...", "I need [agent] to...", or referencing an agent by name with a task.
 
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text ?? "";
-}
+AGENT ROSTER (agent_id → name):
+raymond→Raymond Holloway (EVP) | travis→Travis Weston (AVP) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
+omar→Omar Patel (Lead Scoring) | ryan→Ryan Nakamura (CRM) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
+aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (Product Launch — also known as Zia)
+elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
+camila→Camila Flores (Social Media) | darius→Darius King (Viral Scripter) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
+nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
+amara→Amara Okafor (Legal) | diego→Diego Reyes (Expenses) | yuki→Yuki Tanaka (Financial) | marcus→Marcus Chen (Tax)
+khalid→Khalid Hassan (Disclaimers) | sofia→Sofia Petrov (Privacy) | james→James Osei (Contracts) | meilin→Mei Lin (Brand Protection) | rafael→Rafael Torres (AI Intelligence)
+naomi→Naomi Williams (Recruiting) | aiden→Aiden Park (Onboarding) | fatima→Fatima Al-Rashid (Helpdesk)
+keisha→Keisha Thompson (Client Onboarding) | marco→Marco Silva (Community Mgr) | leila→Leila Nasser (Feedback) | jordan→Jordan Hayes (Creative Director)
+simone→Simone Laurent (Course Architect) | theo→Theo Nguyen (Presentations) | amelia→Amelia Santos (Video)
+isaiah→Isaiah Carter (Support) | priscilla→Priscilla Okonkwo (Comms)
+zoe→Zoe Beaumont (Community Leader) | micah→Micah Santos (Member Experience)
+dominique→Dominique Carter (DRU CLEAR™ · Clarity & Alignment) | elijah→Elijah Brooks (DRU CLEAR™ · Leadership & Results)
+solange→Solange Dupont (5D Leadership™ · Self & People) | isaiah_webb→Isaiah Webb (5D Leadership™ · Team & Visionary)
+nadia→Nadia Osei (5C Cultural DNA™ · Communication) | victor→Victor Reyes (5C Cultural DNA™ · Culture)
+sasha→Sasha Kim (AI Sales Mastery™ · DISC) | tariq→Tariq Oladele (AI Sales Mastery™ · Revenue)
 
-async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=representation" },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
-}
+TRADEMARK: All proprietary frameworks carry ™: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™`;
 
-async function triggerGHLAgent(triggerType: string, cronSecret: string, baseUrl: string): Promise<void> {
+const CLASSIFY_PROMPT = `You are a command classifier for DeAnna R. Upshaw's AI Twin. Determine if the message is a routing command to one of the 54 agents.
+
+AGENT ROSTER (name/nickname → agent_id):
+Raymond Holloway → raymond | Travis Weston → travis | Priya Sharma → priya | Isabella Moreno → isabella
+Omar Patel → omar | Ryan Nakamura → ryan | Serena Jackson → serena | Mateo Gonzalez → mateo
+Aaliyah Foster → aaliyah | Jaylen Brooks → jaylen | Chloe Dubois → chloe | Zara Ahmed / Zia / Z → zara
+Elena Vasquez → elena | Kwame Asante → kwame | Camila Flores → camila | Darius King → darius
+Ravi Gupta → ravi | Yara Mansour → yara | Ingrid Larsen → ingrid | Nia Robinson → nia
+Luca Romano → luca | Hyun-Ji Kim → hyunji | Andre Mitchell → andre | Amara Okafor → amara
+Diego Reyes → diego | Yuki Tanaka → yuki | Marcus Chen → marcus | Khalid Hassan → khalid
+Sofia Petrov → sofia | James Osei → james | Mei Lin → meilin | Rafael Torres → rafael
+Naomi Williams → naomi | Aiden Park → aiden | Fatima Al-Rashid → fatima | Keisha Thompson → keisha
+Marco Silva → marco | Leila Nasser → leila | Jordan Hayes → jordan | Simone Laurent → simone
+Theo Nguyen → theo | Amelia Santos → amelia | Isaiah Carter → isaiah | Priscilla Okonkwo → priscilla
+Zoe Beaumont → zoe | Micah Santos → micah | Dominique Carter → dominique | Elijah Brooks → elijah
+Solange Dupont → solange | Isaiah Webb → isaiah_webb | Nadia Osei → nadia | Victor Reyes → victor
+Sasha Kim → sasha | Tariq Oladele → tariq
+
+MESSAGE: "{MESSAGE}"
+
+If this is a routing command, return ONLY valid JSON:
+{"is_command":true,"agent_id":"exact_id_from_roster","agent_name":"Full Name","task":"clear description of what the agent should do"}
+
+If NOT a routing command, return ONLY:
+{"is_command":false}`;
+
+async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_command: false } | { is_command: true; agent_id: string; agent_name: string; task: string }> {
   try {
-    await fetch(`${baseUrl}/api/ghl-agent-trigger`, {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
-      body: JSON.stringify({ trigger_type: triggerType, source: "twin_on_demand" }),
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 150,
+        messages: [{ role: "user", content: CLASSIFY_PROMPT.replace("{MESSAGE}", lastMessage.replace(/"/g, '\\"')) }],
+      }),
     });
-  } catch (err) {
-    console.error(`[twin-command] Chain step ${triggerType} error:`, err);
+    if (!res.ok) return { is_command: false };
+    const data = await res.json();
+    const text: string = data.content?.[0]?.text ?? '{"is_command":false}';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return { is_command: false };
+    return JSON.parse(match[0]);
+  } catch {
+    return { is_command: false };
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") { res.status(200).end(); return; }
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-
-  const { agent_id, task } = req.body ?? {};
-  if (!agent_id || !task) { res.status(400).json({ error: "agent_id and task are required" }); return; }
-
-  const agentName = AGENT_NAMES[agent_id];
-  const division = AGENT_DIVISIONS[agent_id];
-  const systemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
-
-  if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna): ${task}`, 2000);
+    const { messages, systemPrompt } = await req.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
 
-    const csqId = await writeToCSQ({
-      agent_id,
-      agent_name: agentName,
-      division,
-      task: "on_demand_request",
-      category: "on_demand",
-      raw_output: output,
-      priority: "high",
-      status: "pending",
-      retry_count: 0,
-      raymond_notes: `On-demand request from DeAnna via AI Twin: ${task}`,
+    const lastUserMessage: string = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content ?? "";
+    const detection = await detectCommand(lastUserMessage, apiKey);
+
+    if (detection?.is_command) {
+      const { agent_id, agent_name, task } = detection;
+
+      const baseUrl = "https://app.druaiconsulting.com";
+      fetch(`${baseUrl}/api/twin-command`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_id, task }),
+      }).catch((err) => console.error("[twin] twin-command fire-and-forget error:", err));
+
+      const commandSystemPrompt = `${systemPrompt || DEFAULT_SYSTEM}
+
+ROUTING CONTEXT: DeAnna has asked you to route a task to ${agent_name}. The task is: "${task}". 
+You have triggered ${agent_name} via the full command chain (Agent → Isabella → Governance → Raymond/Travis/Priya → AdminApprovals + GHL notification).
+Inform DeAnna that the task has been routed, confirm which agent is handling it, and let her know the output will appear in AdminApprovals shortly. Speak in your natural Twin voice.`;
+
+      const routingMessages = [
+        ...messages.slice(0, -1),
+        { role: "user", content: `I just routed "${task}" to ${agent_name}. Please confirm this routing to DeAnna in your Twin voice and let her know the output will appear in AdminApprovals.` },
+      ];
+
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 600, stream: true, system: commandSystemPrompt, messages: routingMessages }),
+      });
+
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text();
+        return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
+      }
+
+      return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+    }
+
+    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: systemPrompt || DEFAULT_SYSTEM, messages }),
     });
 
-    console.log(`[twin-command] ${agentName} output written to CSQ: ${csqId}`);
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text();
+      return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
 
-    const cronSecret = process.env.CRON_SECRET ?? "";
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://app.druaiconsulting.com";
+    return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
 
-    await triggerGHLAgent("cron_isabella_review", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_governance_legal_review", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_command_layer", cronSecret, baseUrl);
-    await triggerGHLAgent("cron_twin_synthesis", cronSecret, baseUrl);
-
-    res.status(200).json({ success: true, agent_name: agentName, preview: output, csq_id: csqId });
-  } catch (err: unknown) {
-    console.error("[twin-command] Error:", err);
-    res.status(500).json({ error: String(err) });
+  } catch (error: unknown) {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
   }
 }
