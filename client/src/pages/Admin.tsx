@@ -33,13 +33,12 @@ const PAYMENT_LINKS = [
   { label: "From Confusion to Confident - Mastermind",       price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
 ];
 
-interface FocusPoint { label: string; sub: string; done?: boolean; }
-const FOCUS_POINTS: FocusPoint[] = [
-  { done: false, label: "GHL Webhook URL — wire into course waitlist form", sub: "Connect GHL webhook to course.druaiconsulting.com waitlist capture" },
-  { done: false, label: "From Confusion to Confident with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · course.druaiconsulting.com deploy next" },
-  { done: false, label: "Community Connection Division — Roster Complete", sub: "9th division · 10 agents · 4 Framework Support Teams — CLEAR Vision · 5D Elevation · Culture DNA · Revenue Intelligence + Zoe Beaumont · Micah Santos" },
-  { done: false, label: "Community Connection — 4-Layer Build", sub: "Layer 1: Database · Layer 2: Agent Infrastructure · Layer 3: Community Page · Layer 4: GHL Workflow · Est. 6–8 sessions" },
-  { done: false, label: "Community Connection Page — Fulfillment Updated", sub: "Navigator: daily cards + weekly framework training · Accelerator: + weekly PDF Downloadable + monthly DeAnna video" },
+interface FocusPoint { label: string; }
+const FOCAL_POINTS: FocusPoint[] = [
+  { label: "Community Connection — 4 Layer Build" },
+  { label: "Community Connection Page" },
+  { label: "GHL Webhook URL — wire into course waitlist form" },
+  { label: "From Confusion to Confident with AI™ — Course Build" },
 ];
 
 interface SprintItem { label: string; sub: string; done?: boolean; }
@@ -122,17 +121,17 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Client Delivery Division — LIVE",     sub: "7 agents — Keisha · Marco · Leila · Jordan · Simone · Theo · Amelia — daily 9:00am CDT" },
       { done: true,  label: "Customer Support Division — LIVE",    sub: "2 agents — Isaiah · Priscilla — daily 9:21am CDT" },
       { done: true,  label: "Full Command Chain — LIVE",           sub: "Isabella (11:00am) · Governance (11:10am) · Raymond/Travis/Priya (11:20am) · AI Twin (11:30am) — one daily briefing notification" },
-      { done: false, label: "Agent Refinements — IN PROGRESS",     sub: "Ongoing optimization across all 9 divisions — Community Connection division added" },
-      { done: false, label: "Community Connection Division — BUILDING", sub: "9th division · 10 agents · 4 Framework Support Teams + Community Connection Leadership · 4-layer build in progress" },
+      { done: true,  label: "Community Connection Division — Roster Complete", sub: "9th division · 10 agents · 4 Framework Support Teams · Community Connection Leadership — roster built and approved" },
+      { done: true,  label: "Community Connection Page — Updated",  sub: "Fulfillment redesigned — Navigator: 4 daily cards + weekly framework training · Accelerator: + PDF Downloadables + monthly DeAnna's Leadership Lab! video" },
     ],
   },
   {
     number: "6", title: "Scale & License", status: "planned",
     items: [
       { label: "90-Day Live Run", sub: "Real clients - real data - agent refinement - case studies building - Sprint 6 readiness gate" },
-      { label: "Affiliate Dashboard", sub: "Track referrals · commissions · top referrer leaderboard · Supabase referrals table · unique referral links · Stripe payout integration" },
       { label: "DRU CLEAR Scale Your AI Business - LMS", sub: "Full course platform - 8 modules - video + workbooks - progress tracking" },
       { label: "White Label LMS Licensing - Licensed to the World", sub: "Other consultants pay monthly to use your platform - the final frontier" },
+      { label: "Affiliate Dashboard", sub: "Track referrals · commissions · top referrer leaderboard · Supabase referrals table · unique referral links · Stripe payout integration" },
     ],
   },
 ];
@@ -457,7 +456,7 @@ export default function Admin() {
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>AI Empire Org Chart</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>49 agents · 9 divisions · Full hierarchy with illustrated avatars · Page 2</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>53 agents · 9 divisions · Raymond oversees all · Full hierarchy with illustrated avatars · Page 2</p>
             </div>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW</span>
           </div>
@@ -527,22 +526,16 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Focus Points ── */}
+        {/* ── Focal Points ── */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Focus Points</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            {FOCUS_POINTS.map((item, i) => {
-              const isDone = item.done === true;
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, opacity: isDone ? 0.7 : 1 }}>
-                  <span style={{ color: isDone ? "#43A047" : "#D4AF37", fontSize: "0.75rem", marginTop: 2, flexShrink: 0 }}>{isDone ? "✓" : "→"}</span>
-                  <div>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, color: isDone ? "rgba(230,230,230,0.35)" : "#FFFFFF", margin: "0 0 1px", lineHeight: 1.4 }}>{item.label}</p>
-                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: isDone ? "rgba(230,230,230,0.2)" : "rgba(230,230,230,0.45)", margin: 0, lineHeight: 1.4 }}>{item.sub}</p>
-                  </div>
-                </div>
-              );
-            })}
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Focal Points</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {FOCAL_POINTS.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
+                <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.78rem", lineHeight: 1.5 }}>{item.label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
