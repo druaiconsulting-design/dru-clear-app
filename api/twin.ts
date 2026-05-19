@@ -43,30 +43,34 @@ sasha→Sasha Kim (AI Sales Mastery™ · DISC) | tariq→Tariq Oladele (AI Sale
 
 TRADEMARK: All proprietary frameworks carry ™: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™`;
 
-const CLASSIFY_PROMPT = `You are a command classifier for DeAnna R. Upshaw's AI Twin. Determine if the message is a routing command to one of the 54 agents.
+const CLASSIFY_PROMPT = `You are a task router for DeAnna R. Upshaw's AI Twin. DeAnna is the CEO. You must detect if her message is asking for ANY work, content, or task to be created — even if she does not name a specific agent.
 
-AGENT ROSTER (name/nickname → agent_id):
-Raymond Holloway → raymond | Travis Weston → travis | Priya Sharma → priya | Isabella Moreno → isabella
-Omar Patel → omar | Ryan Nakamura → ryan | Serena Jackson → serena | Mateo Gonzalez → mateo
-Aaliyah Foster → aaliyah | Jaylen Brooks → jaylen | Chloe Dubois → chloe | Zara Ahmed / Zia / Z → zara
-Elena Vasquez → elena | Kwame Asante → kwame | Camila Flores → camila | Darius King → darius
-Ravi Gupta → ravi | Yara Mansour → yara | Ingrid Larsen → ingrid | Nia Robinson → nia
-Luca Romano → luca | Hyun-Ji Kim → hyunji | Andre Mitchell → andre | Amara Okafor → amara
-Diego Reyes → diego | Yuki Tanaka → yuki | Marcus Chen → marcus | Khalid Hassan → khalid
-Sofia Petrov → sofia | James Osei → james | Mei Lin → meilin | Rafael Torres → rafael
-Naomi Williams → naomi | Aiden Park → aiden | Fatima Al-Rashid → fatima | Keisha Thompson → keisha
-Marco Silva → marco | Leila Nasser → leila | Jordan Hayes → jordan | Simone Laurent → simone
-Theo Nguyen → theo | Amelia Santos → amelia | Isaiah Carter → isaiah | Priscilla Okonkwo → priscilla
-Zoe Beaumont → zoe | Micah Santos → micah | Dominique Carter → dominique | Elijah Brooks → elijah
-Solange Dupont → solange | Isaiah Webb → isaiah_webb | Nadia Osei → nadia | Victor Reyes → victor
-Sasha Kim → sasha | Tariq Oladele → tariq
+TASK TYPE → PRIMARY AGENT MAPPING:
+- PDF, downloadable, lead magnet, checklist, guide → theo (Presentation Designer)
+- LinkedIn post, viral content, social post → darius (Viral Scripter)
+- Article, thought leadership, written content, blog → nia (Content Creation)
+- Slide deck, presentation, pitch deck → theo (Presentation Designer)
+- Video script, reel script, training video → amelia (Training Video Producer)
+- Email, email sequence, newsletter → jaylen (Email Marketing)
+- Social media strategy, content calendar → camila (Social Media Strategist)
+- Proposal, client document → kwame (Proposal Writer)
+- Copy, ad copy, headlines, CTAs → chloe (Copy Writer)
+- Launch, product launch, offer → zara (Product Launch)
+- Legal, contract, agreement → amara (Legal Advisor)
+- Financial, revenue, expenses → yuki (Financial Reporting)
+- Tax, deductions → marcus (Tax Strategist)
+- Disclaimer, privacy → khalid (Disclaimer Writer)
+- Course content, module, curriculum → simone (Course Architect)
+- Outreach, DM, follow-up message → aaliyah (Personalized Outreach)
+- Lead scoring, new leads → omar (Lead Scoring)
+- Community content, member → zoe (Community Connection Leader)
 
 MESSAGE: "{MESSAGE}"
 
-If this is a routing command, return ONLY valid JSON:
-{"is_command":true,"agent_id":"exact_id_from_roster","agent_name":"Full Name","task":"clear description of what the agent should do"}
+If the message is asking for work/content/a task to be done — even described conversationally without naming an agent — return ONLY valid JSON:
+{"is_command":true,"agent_id":"best_agent_id","agent_name":"Full Name","task":"complete description of the full task including all details from the message"}
 
-If NOT a routing command, return ONLY:
+If it is a question, conversation, or NOT asking for work to be created, return ONLY:
 {"is_command":false}`;
 
 async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_command: false } | { is_command: true; agent_id: string; agent_name: string; task: string }> {
