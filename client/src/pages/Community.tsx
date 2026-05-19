@@ -5,7 +5,10 @@ const ACCELERATOR_PAYMENT_LINK = "https://link.druaiconsulting.com/payment-link/
 
 const NAVIGATOR_FEATURES = [
   "Access to DRU AI Consulting — Community Connection",
-  "Daily AI Leadership Insights — 4 Cards Every Day",
+  "Daily Leadership with AI Insights",
+  "Framework Micro-Lessons",
+  "Today's Action Challenge",
+  "DeAnna's Strategic Edge",
   "Weekly Framework Training Content",
   "Exclusive Founder Pricing — Locked In Forever",
 ];
@@ -13,7 +16,7 @@ const NAVIGATOR_FEATURES = [
 const ACCELERATOR_FEATURES = [
   "Everything in Navigator — plus:",
   "Weekly Branded Framework PDF Downloadable",
-  "Monthly 20-Min DeAnna Teach Video — Exclusive Access",
+  "Monthly DeAnna's Leadership Lab! Video Access",
   "Exclusive Founder Pricing — Locked In Forever",
 ];
 
