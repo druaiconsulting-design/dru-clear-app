@@ -419,8 +419,6 @@ function CommunityFeed({ tier }: { tier: Tier }) {
     return () => { mounted = false; supabase.removeChannel(channel); };
   }, [loadPosts, loadPdfs]);
 
-  const filteredPosts = filter === 'all' ? posts : posts.filter(p => p.post_type === filter);
-
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
