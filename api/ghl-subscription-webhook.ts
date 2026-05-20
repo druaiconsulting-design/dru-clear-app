@@ -24,8 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body.customer?.email ||
       null;
 
-    // Tier comes from query param — e.g. ?tier=NAVIGATOR or ?tier=ACCELERATOR
-    // This matches the existing pattern used in ghl-agent-trigger.ts
+    // Tier comes from query param — ?tier=navigator or ?tier=accelerator
     const tier = (req.query.tier as string)?.toLowerCase() || null;
 
     // Validate email
@@ -42,21 +41,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`[ghl-subscription-webhook] Updating tier → email: ${email} | tier: ${tier}`);
 
-    // Upsert profile — updates existing row or creates new one
-    const { error: upsertError } = await supabase
-      .from('profiles')
-      .upsert(
-        {
-          email: email.toLowerCase().trim(),
-          tier,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'email' }
-      );
+    // Call Supabase RPC — looks up auth user by email, then updates/inserts profile safely
+    const { data, error: rpcError } = await supabase.rpc('update_subscription_tier', {
+      user_email: email.toLowerCase().trim(),
+      new_tier: tier,
+    });
 
-    if (upsertError) {
-      console.error('[ghl-subscription-webhook] Supabase error:', upsertError);
-      return res.status(500).json({ error: 'Database update failed', details: upsertError.message });
+    if (rpcError) {
+      console.error('[ghl-subscription-webhook] RPC error:', rpcError);
+      return res.status(500).json({ error: 'Database update failed', details: rpcError.message });
+    }
+
+    if (!data?.success) {
+      console.error('[ghl-subscription-webhook] RPC returned failure:', data);
+      return res.status(404).json({ error: data?.error || 'User not found' });
     }
 
     console.log(`[ghl-subscription-webhook] ✅ Success — ${email} upgraded to ${tier}`);
