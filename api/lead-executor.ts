@@ -1,88 +1,91 @@
-// ================================================================
-// DRU AI Leadership Ecosystem™ — Lead Executor
-// File: api/lead-executor.ts
-// Runtime: Vercel Edge
-//
-// Called by admin-approvals when DeAnna approves a
-// Pipeline 1 (lead_intelligence) card.
-// Fires a GHL webhook to enroll high-intent leads
-// into the appropriate follow-up sequence.
-//
-// Pattern mirrors social-publisher.ts
-// ================================================================
+// api/lead-executor.ts
+// Vercel Edge function
+// Called by AdminApprovals when DeAnna approves a lead_intelligence card
+// Fires GHL webhook with direction so the workflow routes the lead correctly
+// Direction options: assessment_invite | follow_up_email | follow_up_sms | assign_task | nurture
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: "edge" };
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ─────────────────────────────────────────────────────────────
-// GHL Webhook — fires the lead follow-up workflow
-// Wire this to a GHL workflow that:
-//   1. Looks up the contact by ID
-//   2. Enrolls them in the recommended sequence
-//   3. Notifies DeAnna of enrollment
-//
-// TO SET UP: Create a GHL workflow with Inbound Webhook trigger,
-// add the URL here as GHL_LEAD_EXECUTOR_WEBHOOK in Vercel env vars.
-// ─────────────────────────────────────────────────────────────
-
 export default async function handler(req: Request): Promise<Response> {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: CORS });
+
+  const webhookUrl = process.env.GHL_LEAD_EXECUTOR_WEBHOOK;
+  if (!webhookUrl) {
+    console.error("[lead-executor] GHL_LEAD_EXECUTOR_WEBHOOK not set");
+    return new Response(JSON.stringify({ error: "GHL_LEAD_EXECUTOR_WEBHOOK not configured" }), {
+      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+    });
   }
 
-  if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    );
-  }
+  try {
+    const { approval_id, output, direction, agent_name } = await req.json();
 
-  const ghlWebhook = process.env.GHL_LEAD_EXECUTOR_WEBHOOK;
+    if (!approval_id || !direction) {
+      return new Response(JSON.stringify({ error: "approval_id and direction are required" }), {
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
 
-  if (!ghlWebhook) {
-    return new Response(
-      JSON.stringify({ error: 'GHL_LEAD_EXECUTOR_WEBHOOK not configured' }),
-      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    );
-  }
+    // Map direction value to human-readable label for GHL
+    const DIRECTION_LABELS: Record<string, string> = {
+      assessment_invite: "Assessment Invite — assessment.druaiconsulting.com",
+      follow_up_email:   "Follow-up Email Sequence",
+      follow_up_sms:     "Follow-up SMS",
+      assign_task:       "Assign Task — Follow Up",
+      nurture:           "Add to Nurture",
+    };
 
-  const {
-    approval_id,
-    ghl_contact_ids,       // comma-separated contact IDs from the approval card
-    recommended_action,    // Ryan's recommended action from the briefing card
-    priority,
-  } = await req.json();
-
-  // Fire GHL webhook with lead context
-  const res = await fetch(ghlWebhook, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    const payload = {
+      // Core routing
       approval_id,
-      ghl_contact_ids,
-      recommended_action,
-      priority,
-      approved_at: new Date().toISOString(),
-      action: 'enroll_lead_sequence',
-      location_id: 'gl07I4JnbkGgW8zJprSz',
-    }),
-  });
+      direction,
+      direction_label:  DIRECTION_LABELS[direction] ?? direction,
+      cta:              "assessment.druaiconsulting.com",
 
-  if (!res.ok) {
-    const err = await res.text();
-    return new Response(
-      JSON.stringify({ error: 'GHL webhook failed', detail: err, approval_id }),
-      { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    );
+      // Context for GHL workflow
+      agent_name:       agent_name ?? "Ryan Nakamura",
+      briefing_preview: typeof output === "string" ? output.slice(0, 600) : "",
+      triggered_at:     new Date().toISOString(),
+      triggered_by:     "DeAnna Upshaw",
+      location_id:      "gl07I4JnbkGgW8zJprSz",
+
+      // Tags to search for in GHL (Ryan already tagged leads during scoring)
+      search_tags:      ["ai-scored", "intent-high"],
+    };
+
+    console.log(`[lead-executor] Firing GHL webhook | direction: ${direction} | approval: ${approval_id}`);
+
+    const ghlRes = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!ghlRes.ok) {
+      const errText = await ghlRes.text();
+      console.error(`[lead-executor] GHL webhook failed: ${ghlRes.status} — ${errText.slice(0, 200)}`);
+      return new Response(JSON.stringify({ error: `GHL webhook failed: ${ghlRes.status}` }), {
+        status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`[lead-executor] ✓ GHL webhook fired | direction: ${direction}`);
+
+    return new Response(JSON.stringify({ success: true, direction, approval_id }), {
+      status: 200, headers: { ...CORS, "Content-Type": "application/json" },
+    });
+
+  } catch (err: unknown) {
+    console.error("[lead-executor] Error:", err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+    });
   }
-
-  return new Response(
-    JSON.stringify({ success: true, approval_id, contacts_enrolled: ghl_contact_ids }),
-    { headers: { ...CORS, 'Content-Type': 'application/json' } }
-  );
 }
