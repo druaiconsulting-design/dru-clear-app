@@ -1,6 +1,6 @@
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
-// UPDATED: Per-division cards, Ask a Question feature, Customer Support base magenta
+// UPDATED: Lead direction selector, Lead Intelligence → GHL, Client Delivery → PDF download
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -50,6 +50,22 @@ interface QuestionState {
   loading:       boolean;
 }
 
+// ─── Lead direction options ───────────────────────────────────
+const LEAD_DIRECTIONS = [
+  { value: "assessment_invite", label: "Assessment Invite" },
+  { value: "follow_up_email",   label: "Follow-up Email" },
+  { value: "follow_up_sms",     label: "Follow-up SMS" },
+  { value: "assign_task",       label: "Assign Task — Follow Up" },
+  { value: "nurture",           label: "Add to Nurture" },
+];
+
+// ─── Client Delivery categories that generate PDFs ───────────
+const PDF_CATEGORIES = new Set([
+  "presentation_design", "course_architecture", "video_production",
+  "creative_direction", "client_onboarding", "feedback_coaching",
+  "community_management", "client_delivery",
+]);
+
 // ─── Platform badge colors ────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn:     "#0077B5",
@@ -61,7 +77,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   TikTok:       "#010101",
   YouTube:      "#FF0000",
   Pinterest:    "#E60023",
-  // Content-type badges (DRU brand tints)
   Content:      "#163D6E",
   Press:        "#8A6E1A",
   Design:       "#7A0F38",
@@ -70,17 +85,17 @@ const PLATFORM_COLORS: Record<string, string> = {
   Outreach:     "#2E6DAB",
 };
 
-// ─── Division badge colors (DRU brand tints/shades) ───────────
+// ─── Division badge colors ────────────────────────────────────
 const DIVISION_COLORS: Record<string, string> = {
-  "Revenue & Growth":  "#D4AF37",  // Gold primary
-  "Content & Brand":   "#C2185B",  // Magenta primary
-  "Marketing":         "#163D6E",  // Navy mid
-  "Legal & Finance":   "#8A6E1A",  // Gold dark
-  "AI Governance":     "#7A0F38",  // Magenta deep
-  "HR":                "#2E6DAB",  // Navy lighter
-  "Client Delivery":   "#A68920",  // Gold medium
-  "Customer Support":  "#C2185B",  // Magenta base
-  "Command":           "#0A2342",  // Navy primary
+  "Revenue & Growth":  "#D4AF37",
+  "Content & Brand":   "#C2185B",
+  "Marketing":         "#163D6E",
+  "Legal & Finance":   "#8A6E1A",
+  "AI Governance":     "#7A0F38",
+  "HR":                "#2E6DAB",
+  "Client Delivery":   "#A68920",
+  "Customer Support":  "#C2185B",
+  "Command":           "#0A2342",
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -89,7 +104,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
   NORMAL: "rgba(255,255,255,0.3)",
 };
 
-// ─── Category → filter tab labels ────────────────────────────
+// ─── Category filter labels ───────────────────────────────────
 const CATEGORY_LABELS: Record<string, string> = {
   daily_briefing:   "Daily Briefing",
   revenue_growth:   "Revenue & Growth",
@@ -113,7 +128,7 @@ const CATEGORY_ORDER = [
   "social","email","proposal","content","other",
 ];
 
-// ─── Division agent roster (for briefing card selector) ───────
+// ─── Division agent roster ────────────────────────────────────
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
   "Revenue & Growth": [
     { agent_id: "omar",    agent_name: "Omar Patel",       role: "Lead Scoring" },
@@ -218,6 +233,17 @@ function getDraftHeading(approval: Approval): string {
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
+// ─── Status display text by card type ────────────────────────
+function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
+  if (approval.category === "lead_intelligence") {
+    return status === "posted" ? "✓ Routed to GHL" : status === "posting" ? "Routing..." : "⚠ Route Failed";
+  }
+  if (approval.division === "Client Delivery") {
+    return status === "posted" ? "✓ PDF Downloaded" : status === "posting" ? "Generating PDF..." : "⚠ PDF Failed";
+  }
+  return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
+}
+
 export default function AdminApprovals() {
   const [approvals, setApprovals]         = useState<Approval[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -226,6 +252,9 @@ export default function AdminApprovals() {
   const [editText, setEditText]           = useState("");
   const [saving, setSaving]               = useState<string | null>(null);
   const [publishStatus, setPublishStatus] = useState<Record<string, "posting" | "posted" | "failed">>({});
+
+  // Lead direction selection — per card, default to assessment_invite
+  const [leadDirection, setLeadDirection] = useState<Record<string, string>>({});
 
   // Ask a Question state — per card
   const [questions, setQuestions] = useState<Record<string, QuestionState>>({});
@@ -246,19 +275,95 @@ export default function AdminApprovals() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Approval actions ─────────────────────────────────────────
+  // ── PDF download helper ──────────────────────────────────────
+  const downloadPDF = async (approval: Approval): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/pdf-generator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          output:     approval.edited_output || approval.output,
+          agent_name: approval.agent_name,
+          task_brief: approval.task_brief,
+          division:   approval.division,
+          category:   approval.category,
+          approval_id: approval.id,
+        }),
+      });
+      if (!res.ok) return false;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dru-ai-${(approval.category || "briefing").replace(/_/g, "-")}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return true;
+    } catch (err) {
+      console.error("[pdf] Download error:", err);
+      return false;
+    }
+  };
+
+  // ── Lead executor helper ─────────────────────────────────────
+  const routeLead = async (approval: Approval, direction: string): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/lead-executor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approval_id: approval.id,
+          output:      approval.output,
+          direction,
+          agent_name:  approval.agent_name,
+        }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.error("[lead] Route error:", err);
+      return false;
+    }
+  };
+
+  // ── Approve ──────────────────────────────────────────────────
   const handleApprove = async (id: string) => {
     setSaving(id);
     const { error } = await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
     if (error) { setSaving(null); return; }
+
     const approval = approvals.find(a => a.id === id);
-    if (approval?.category === "social") {
+    if (!approval) { setSaving(null); return; }
+
+    // ── Social → post via social-publisher ───────────────────
+    if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       try {
-        const res = await fetch("/api/social-publisher", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: approval.edited_output || approval.output, platform: approval.platform, approval_id: id }) });
+        const res = await fetch("/api/social-publisher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: approval.edited_output || approval.output, platform: approval.platform, approval_id: id }),
+        });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     }
+
+    // ── Lead Intelligence → route to GHL via lead-executor ───
+    else if (approval.category === "lead_intelligence") {
+      const direction = leadDirection[id] || "assessment_invite";
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await routeLead(approval, direction);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    }
+
+    // ── Client Delivery → generate branded PDF download ──────
+    else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await downloadPDF(approval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    }
+
     setSaving(null);
   };
 
@@ -270,14 +375,32 @@ export default function AdminApprovals() {
     setSaving(id);
     await supabase.from("approvals").update({ edited_output: editText, status: "approved" }).eq("id", id);
     setEditingId(null);
+
     const approval = approvals.find(a => a.id === id);
-    if (approval?.category === "social") {
+    if (!approval) { setSaving(null); return; }
+
+    if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       try {
-        const res = await fetch("/api/social-publisher", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }) });
+        const res = await fetch("/api/social-publisher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }),
+        });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+    } else if (approval.category === "lead_intelligence") {
+      const direction = leadDirection[id] || "assessment_invite";
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await routeLead(approval, direction);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const editedApproval = { ...approval, edited_output: editText };
+      const ok = await downloadPDF(editedApproval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     }
+
     setSaving(null);
   };
 
@@ -291,7 +414,6 @@ export default function AdminApprovals() {
   const toggleQuestion = (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.open) {
-      // Social card: auto-select the agent
       const autoAgent = approval.category === "social"
         ? { agent_id: approval.source?.replace('_social', '') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "daily_briefing"
@@ -306,31 +428,17 @@ export default function AdminApprovals() {
   const handleAskQuestion = async (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.selectedAgent || !qs.input.trim()) return;
-
     const question = qs.input.trim();
     const newMessages: ConversationMessage[] = [...qs.messages, { role: 'user', text: question }];
     setQS(approval.id, { messages: newMessages, input: "", loading: true });
-
     try {
       const res = await fetch("/api/ask-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agent_id:             qs.selectedAgent.agent_id,
-          agent_name:           qs.selectedAgent.agent_name,
-          agent_role:           qs.selectedAgent.role,
-          question,
-          card_output:          approval.output,
-          conversation_history: qs.messages,
-        }),
+        body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages }),
       });
       const data = await res.json();
-      const agentReply: ConversationMessage = {
-        role: 'agent',
-        agentName: qs.selectedAgent.agent_name,
-        text: data.response ?? "I was unable to respond. Please try again.",
-      };
-      setQS(approval.id, { messages: [...newMessages, agentReply], loading: false });
+      setQS(approval.id, { messages: [...newMessages, { role: 'agent', agentName: qs.selectedAgent.agent_name, text: data.response ?? "Unable to respond. Please try again." }], loading: false });
     } catch {
       setQS(approval.id, { messages: [...newMessages, { role: 'agent', agentName: qs.selectedAgent.agent_name, text: "Something went wrong. Please try again." }], loading: false });
     }
@@ -341,9 +449,7 @@ export default function AdminApprovals() {
   const orderedCategories = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
   const allCategories = [...orderedCategories, ...remainingCategories];
-
   const filtered = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
-
   const pending       = approvals.filter(a => a.status === "pending").length;
   const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
@@ -406,6 +512,9 @@ export default function AdminApprovals() {
               const isBriefing = approval.category !== "social";
               const qs         = getQS(approval.id);
               const divAgents  = DIVISION_AGENTS[approval.division] ?? [];
+              const isLead     = approval.category === "lead_intelligence";
+              const isPDF      = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
+              const currentDir = leadDirection[approval.id] || "assessment_invite";
 
               return (
                 <div key={approval.id} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background: approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", opacity: approval.status !== "pending" ? 0.7 : 1 }}>
@@ -416,10 +525,17 @@ export default function AdminApprovals() {
                       <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: badge.color, color: "#FFFFFF" }}>{badge.text}</span>
                       <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "transparent", border: `1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color: PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
-                      {approval.source && <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.25)", fontSize: "0.55rem", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>via {approval.source.toUpperCase().replace(/_/g, '_')}</span>}
+                      {/* PDF indicator badge */}
+                      {isPDF && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(166,137,32,0.2)", border: "1px solid rgba(166,137,32,0.5)", color: "#A68920" }}>PDF on Approve</span>}
+                      {/* Lead indicator badge */}
+                      {isLead && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.4)", color: "#D4AF37" }}>Routes to GHL</span>}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      {publishStatus[approval.id] && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: publishStatus[approval.id] === "posted" ? "#4CAF50" : publishStatus[approval.id] === "posting" ? "#D4AF37" : "#C2185B" }}>{publishStatus[approval.id] === "posted" ? "✓ Posted" : publishStatus[approval.id] === "posting" ? "Posting..." : "⚠ Post Failed"}</span>}
+                      {publishStatus[approval.id] && (
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: publishStatus[approval.id] === "posted" ? "#4CAF50" : publishStatus[approval.id] === "posting" ? "#D4AF37" : "#C2185B" }}>
+                          {getStatusText(approval, publishStatus[approval.id])}
+                        </span>
+                      )}
                       {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: approval.status === "approved" ? "#4CAF50" : "#C2185B" }}>{approval.status}</span>}
                       <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
@@ -441,11 +557,34 @@ export default function AdminApprovals() {
                     </div>
                   </div>
 
-                  {/* ── Ask a Question Panel ───────────────────── */}
+                  {/* ── Lead Direction Selector ──────────────── */}
+                  {isLead && approval.status === "pending" && editingId !== approval.id && (
+                    <div style={{ margin: "0 1rem 0.75rem", padding: "0.75rem", background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Route this lead to:</p>
+                      <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "0.4rem" }}>
+                        {LEAD_DIRECTIONS.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setLeadDirection(prev => ({ ...prev, [approval.id]: opt.value }))}
+                            style={{
+                              fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700,
+                              padding: "0.3rem 0.875rem", borderRadius: 20, cursor: "pointer",
+                              border: `1px solid ${currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.18)"}`,
+                              background: currentDir === opt.value ? "rgba(212,175,55,0.18)" : "transparent",
+                              color: currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.5)",
+                              transition: "all 0.15s",
+                            }}>
+                            {opt.label}
+                            {opt.value === "assessment_invite" && <span style={{ marginLeft: 4, opacity: 0.6, fontSize: "0.52rem" }}>★ default</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Ask a Question Panel ─────────────────── */}
                   {qs.open && approval.status === "pending" && (
                     <div style={{ margin: "0 1rem", padding: "0.875rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, marginBottom: "0.5rem" }}>
-
-                      {/* Agent selector — briefing cards only */}
                       {isBriefing && approval.category !== "daily_briefing" && (
                         <div style={{ marginBottom: "0.75rem" }}>
                           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Who are you asking?</p>
@@ -459,49 +598,30 @@ export default function AdminApprovals() {
                           </div>
                         </div>
                       )}
-
-                      {/* Auto-selected agent label */}
                       {(approval.category === "social" || approval.category === "daily_briefing") && qs.selectedAgent && (
                         <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: "0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
                       )}
-
-                      {/* Conversation thread */}
                       {qs.messages.length > 0 && (
                         <div style={{ marginBottom: "0.75rem", display: "flex", flexDirection: "column" as const, gap: "0.5rem", maxHeight: 300, overflowY: "auto" as const }}>
                           {qs.messages.map((msg, i) => (
                             <div key={i} style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: msg.role === "user" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.08)"}` }}>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", color: msg.role === "user" ? "#D4AF37" : "rgba(255,255,255,0.5)", marginBottom: "0.25rem", textTransform: "uppercase" as const }}>
-                                {msg.role === "user" ? "You" : msg.agentName}
-                              </p>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", color: msg.role === "user" ? "#D4AF37" : "rgba(255,255,255,0.5)", marginBottom: "0.25rem", textTransform: "uppercase" as const }}>{msg.role === "user" ? "You" : msg.agentName}</p>
                               <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#FFFFFF", lineHeight: 1.6, margin: 0 }}>{msg.text}</p>
                             </div>
                           ))}
                           {qs.loading && (
                             <div style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, color: "rgba(212,175,55,0.6)", margin: 0, letterSpacing: "0.08em" }}>
-                                {qs.selectedAgent?.agent_name ?? "Agent"} is responding...
-                              </p>
+                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, color: "rgba(212,175,55,0.6)", margin: 0, letterSpacing: "0.08em" }}>{qs.selectedAgent?.agent_name ?? "Agent"} is responding...</p>
                             </div>
                           )}
                         </div>
                       )}
-
-                      {/* Question input */}
                       {qs.selectedAgent && (
                         <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <input
-                            type="text"
-                            value={qs.input}
-                            onChange={e => setQS(approval.id, { input: e.target.value })}
-                            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(approval); } }}
-                            placeholder={`Ask ${qs.selectedAgent.agent_name} a question...`}
-                            disabled={qs.loading}
-                            style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem 0.75rem", outline: "none", opacity: qs.loading ? 0.6 : 1 }}
-                          />
+                          <input type="text" value={qs.input} onChange={e => setQS(approval.id, { input: e.target.value })} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(approval); } }} placeholder={`Ask ${qs.selectedAgent.agent_name} a question...`} disabled={qs.loading}
+                            style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem 0.75rem", outline: "none", opacity: qs.loading ? 0.6 : 1 }} />
                           <button onClick={() => handleAskQuestion(approval)} disabled={qs.loading || !qs.input.trim()}
-                            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.5rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: (qs.loading || !qs.input.trim()) ? 0.5 : 1 }}>
-                            Send
-                          </button>
+                            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.5rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: (qs.loading || !qs.input.trim()) ? 0.5 : 1 }}>Send</button>
                         </div>
                       )}
                     </div>
@@ -509,21 +629,20 @@ export default function AdminApprovals() {
 
                   {/* Action Buttons */}
                   <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const }}>
-                    {/* Ask a Question toggle */}
                     {approval.status === "pending" && editingId !== approval.id && (
                       <button onClick={() => toggleQuestion(approval)}
                         style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "0.4rem 0.875rem", borderRadius: 6, cursor: "pointer", border: `1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background: qs.open ? "rgba(212,175,55,0.1)" : "transparent", color: qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
                         {qs.open ? "✕ Close Question" : "? Ask a Question"}
                       </button>
                     )}
-
-                    {/* Primary actions */}
                     <div style={{ display: "flex", gap: "0.5rem", marginLeft: "auto" }}>
                       {approval.status === "pending" && editingId !== approval.id && (
                         <>
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>Edit</button>
-                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "..." : "Approve ✓"}</button>
+                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
+                            {saving === approval.id ? "..." : isPDF ? "Approve + PDF ↓" : isLead ? `Approve + Route →` : "Approve ✓"}
+                          </button>
                         </>
                       )}
                       {editingId === approval.id && (
