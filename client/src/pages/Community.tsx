@@ -274,12 +274,9 @@ function UpgradeBanner({ userTier, lockedCounts }: { userTier: Tier; lockedCount
 }
 
 function PostCard({ post, index }: { post: CommunityPost; index: number }) {
-  const [expanded, setExpanded] = useState(false);
   const cfg = POST_TYPE_CONFIG[post.post_type] ?? POST_TYPE_CONFIG.daily_insight;
   const tierBadge = TIER_BADGE[post.tier_required];
   const paragraphs = formatContent(post.content);
-  const preview = paragraphs.slice(0, 2);
-  const hasMore = paragraphs.length > 2;
 
   return (
     <div style={{
@@ -327,36 +324,12 @@ function PostCard({ post, index }: { post: CommunityPost; index: number }) {
         {post.title}
       </h3>
 
-      {/* Content */}
+      {/* Full content — no truncation */}
       <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
-        {(expanded ? paragraphs : preview).map((p, i) => (
+        {paragraphs.map((p, i) => (
           <p key={i} style={{ marginBottom: '12px' }}>{p}</p>
         ))}
       </div>
-
-      {hasMore && (
-        <button onClick={() => setExpanded(!expanded)} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: cfg.color, fontFamily: "'Montserrat', sans-serif",
-          fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '4px 0', marginTop: '4px',
-        }}>
-          {expanded ? '↑ SHOW LESS' : '↓ READ MORE'}
-        </button>
-      )}
-
-      {/* PDF download */}
-      {post.post_type === 'pdf_downloadable' && post.pdf_url && (
-        <a href={post.pdf_url} target="_blank" rel="noopener noreferrer" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          marginTop: '16px', padding: '10px 18px',
-          background: '#FDF0F5', border: '1px solid #F0B8CF',
-          borderRadius: '6px', color: '#9B0D44',
-          fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700',
-          letterSpacing: '1px', textDecoration: 'none',
-        }}>
-          ⬡ DOWNLOAD PDF
-        </a>
-      )}
 
       {/* Footer */}
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0EDE8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -370,34 +343,7 @@ function PostCard({ post, index }: { post: CommunityPost; index: number }) {
   );
 }
 
-function FilterBar({ active, onChange }: { active: string; onChange: (v: string) => void }) {
-  const filters = [
-    { value: 'all', label: 'All Posts' },
-    { value: 'daily_insight', label: 'Insights' },
-    { value: 'framework_lesson', label: 'Lessons' },
-    { value: 'action_challenge', label: 'Challenges' },
-    { value: 'strategic_edge', label: 'Edge' },
-    { value: 'framework_training', label: 'Training' },
-    { value: 'pdf_downloadable', label: 'PDFs' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '28px' }}>
-      {filters.map(f => (
-        <button key={f.value} onClick={() => onChange(f.value)} style={{
-          background: active === f.value ? '#0A2342' : '#FFFFFF',
-          border: active === f.value ? '1px solid #0A2342' : '1px solid #DDD9D4',
-          color: active === f.value ? '#FFFFFF' : 'rgba(10,35,66,0.55)',
-          padding: '8px 16px', borderRadius: '6px', cursor: 'pointer',
-          fontFamily: "'Montserrat', sans-serif", fontSize: '12px',
-          fontWeight: active === f.value ? '700' : '500',
-          letterSpacing: '0.5px', transition: 'all 0.15s ease',
-        }}>
-          {f.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+
 
 function EmptyState({ filter }: { filter: string }) {
   return (
@@ -416,9 +362,24 @@ function EmptyState({ filter }: { filter: string }) {
 function CommunityFeed({ tier }: { tier: Tier }) {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
   const [liveCount, setLiveCount] = useState(0);
+  const [pdfs, setPdfs] = useState<{ name: string; url: string }[]>([]);
+  const [showArchives, setShowArchives] = useState(false);
   const lockedCounts = { navigator: 0, accelerator: tier === 'navigator' ? 2 : 0 };
+
+  const loadPdfs = useCallback(async () => {
+    const { data, error } = await supabase.storage.from('pdfs').list('', {
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
+    if (error || !data) return;
+    const files = data
+      .filter(f => f.name.startsWith('CC_Framework_Training'))
+      .map(f => ({
+        name: f.name.replace(/_/g, ' ').replace('.pdf', ''),
+        url: supabase.storage.from('pdfs').getPublicUrl(f.name).data.publicUrl,
+      }));
+    setPdfs(files);
+  }, []);
 
   const loadPosts = useCallback(async () => {
     const { data, error } = await supabase
@@ -434,6 +395,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
   useEffect(() => {
     let mounted = true;
     loadPosts().then(loaded => { if (mounted) { setPosts(loaded); setLoading(false); } });
+    loadPdfs();
 
     const channel = supabase
       .channel('community_posts_live')
@@ -455,7 +417,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
       .subscribe();
 
     return () => { mounted = false; supabase.removeChannel(channel); };
-  }, [loadPosts]);
+  }, [loadPosts, loadPdfs]);
 
   const filteredPosts = filter === 'all' ? posts : posts.filter(p => p.post_type === filter);
 
@@ -468,6 +430,21 @@ function CommunityFeed({ tier }: { tier: Tier }) {
 
           {/* Header */}
           <div style={{ marginBottom: '32px', animation: 'ccFadeIn 0.5s ease both' }}>
+
+            {/* Back to Portal */}
+            <a href="/portal" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600',
+              color: 'rgba(10,35,66,0.45)', textDecoration: 'none', letterSpacing: '0.5px',
+              marginBottom: '20px',
+              transition: 'color 0.15s ease',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#0A2342'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(10,35,66,0.45)'; }}
+            >
+              ← Back to Portal
+            </a>
+
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>
@@ -516,18 +493,100 @@ function CommunityFeed({ tier }: { tier: Tier }) {
           ) : (
             <>
               <UpgradeBanner userTier={tier} lockedCounts={lockedCounts} />
-              <FilterBar active={filter} onChange={setFilter} />
 
-              {filteredPosts.length > 0 && (
-                <div style={{ color: 'rgba(10,35,66,0.35)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', marginBottom: '16px' }}>
-                  {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}
-                  {filter !== 'all' && ` · ${filter.replace(/_/g, ' ')}`}
+              {/* Weekly Framework Training Content */}
+              {pdfs.length > 0 && (
+                <div style={{ marginBottom: '28px' }}>
+
+                  {/* Latest PDF — always the most recent upload */}
+                  <a
+                    href={pdfs[0].url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: '#FFFFFF', border: '1px solid #E8E4DF',
+                      borderLeft: '4px solid #0A2342', borderRadius: '10px',
+                      padding: '18px 24px', textDecoration: 'none',
+                      boxShadow: '0 1px 4px rgba(10,35,66,0.06)',
+                      transition: 'box-shadow 0.2s ease',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 16px rgba(10,35,66,0.1)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 1px 4px rgba(10,35,66,0.06)'; }}
+                  >
+                    <div>
+                      <div style={{ color: '#0A2342', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '2px', fontWeight: '600', marginBottom: '4px' }}>
+                        THIS WEEK
+                      </div>
+                      <div style={{ color: '#0A2342', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', fontWeight: '600' }}>
+                        Weekly Framework Training Content
+                      </div>
+                    </div>
+                    <div style={{
+                      background: '#0A2342', color: '#fff',
+                      padding: '8px 16px', borderRadius: '6px',
+                      fontFamily: "'Montserrat', sans-serif", fontSize: '11px',
+                      fontWeight: '700', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      DOWNLOAD ↓
+                    </div>
+                  </a>
+
+                  {/* Archives toggle — only show if there are past PDFs */}
+                  {pdfs.length > 1 && (
+                    <div style={{ marginTop: '10px' }}>
+                      <button
+                        onClick={() => setShowArchives(!showArchives)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif",
+                          fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px',
+                          padding: '6px 0', display: 'flex', alignItems: 'center', gap: '6px',
+                        }}
+                      >
+                        {showArchives ? '↑ Hide Archives' : '↓ Archives'}
+                      </button>
+
+                      {showArchives && (
+                        <div style={{
+                          background: '#FFFFFF', border: '1px solid #E8E4DF',
+                          borderRadius: '10px', overflow: 'hidden', marginTop: '8px',
+                        }}>
+                          {pdfs.slice(1).map((pdf, i) => (
+                            <a
+                              key={pdf.name}
+                              href={pdf.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '14px 20px',
+                                borderBottom: i < pdfs.length - 2 ? '1px solid #F0EDE8' : 'none',
+                                textDecoration: 'none',
+                                transition: 'background 0.15s ease',
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAF8'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FFFFFF'; }}
+                            >
+                              <span style={{ color: 'rgba(10,35,66,0.65)', fontFamily: "'Montserrat', sans-serif", fontSize: '13px' }}>
+                                {pdf.name}
+                              </span>
+                              <span style={{ color: '#B8941F', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
+                                DOWNLOAD ↓
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               )}
 
-              {filteredPosts.length === 0 ? <EmptyState filter={filter} /> : (
+              {posts.length === 0 ? <EmptyState filter="all" /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {filteredPosts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)}
+                  {posts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)}
                 </div>
               )}
 
