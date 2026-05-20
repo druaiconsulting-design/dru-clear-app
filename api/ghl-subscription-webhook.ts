@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Tier comes from query param — e.g. ?tier=NAVIGATOR or ?tier=ACCELERATOR
     // This matches the existing pattern used in ghl-agent-trigger.ts
-    const tier = (req.query.tier as string)?.toUpperCase() || null;
+    const tier = (req.query.tier as string)?.toLowerCase() || null;
 
     // Validate email
     if (!email) {
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Validate tier
-    if (!tier || !['NAVIGATOR', 'ACCELERATOR'].includes(tier)) {
+    if (!tier || !['navigator', 'accelerator'].includes(tier)) {
       console.error(`[ghl-subscription-webhook] Invalid or missing tier: ${tier}`);
       return res.status(400).json({ error: `Invalid or missing tier: ${tier}` });
     }
