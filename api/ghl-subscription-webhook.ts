@@ -6,14 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GHL product name → Supabase tier value
-const TIER_MAP: Record<string, string> = {
-  'NAVIGATOR_Tier': 'NAVIGATOR',
-  'ACCELERATOR_Tier': 'ACCELERATOR',
-};
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only accept POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -31,14 +24,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body.customer?.email ||
       null;
 
-    // Extract product name — GHL Order Submitted variations
-    const productName =
-      body.product?.name ||
-      body.productName ||
-      body.product_name ||
-      body.offer?.name ||
-      body.offerName ||
-      null;
+    // Tier comes from query param — e.g. ?tier=NAVIGATOR or ?tier=ACCELERATOR
+    // This matches the existing pattern used in ghl-agent-trigger.ts
+    const tier = (req.query.tier as string)?.toUpperCase() || null;
 
     // Validate email
     if (!email) {
@@ -46,18 +34,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No email found in payload' });
     }
 
-    // Validate product name
-    if (!productName) {
-      console.error('[ghl-subscription-webhook] No product name in payload');
-      return res.status(400).json({ error: 'No product name found in payload' });
-    }
-
-    // Map product to tier
-    const tier = TIER_MAP[productName];
-
-    if (!tier) {
-      console.error(`[ghl-subscription-webhook] Unknown product: ${productName}`);
-      return res.status(400).json({ error: `Unknown product: ${productName}` });
+    // Validate tier
+    if (!tier || !['NAVIGATOR', 'ACCELERATOR'].includes(tier)) {
+      console.error(`[ghl-subscription-webhook] Invalid or missing tier: ${tier}`);
+      return res.status(400).json({ error: `Invalid or missing tier: ${tier}` });
     }
 
     console.log(`[ghl-subscription-webhook] Updating tier → email: ${email} | tier: ${tier}`);
