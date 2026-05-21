@@ -768,10 +768,13 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req:any,res:any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers','Content-Type, x-cron-secret');
   if (req.method==='OPTIONS'){res.status(200).end();return;}
-  if (req.method!=='POST'){res.status(405).json({error:'Method not allowed'});return;}
+  // Vercel crons send GET — convert to POST-compatible payload
+  if (req.method==='GET'&&req.query?.trigger_type){
+    req.body={trigger_type:req.query.trigger_type,source:'vercel_cron'};
+  } else if (req.method!=='POST'){res.status(405).json({error:'Method not allowed'});return;}
   const incomingSecret=req.headers['x-cron-secret'];
   if (incomingSecret!==undefined&&incomingSecret!==process.env.CRON_SECRET){res.status(401).json({error:'Unauthorized'});return;}
   const payload:TriggerPayload=req.body;
