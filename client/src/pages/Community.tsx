@@ -118,7 +118,6 @@ function CommentSection({ postId, userId }: { postId: string; userId: string }) 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
 
-  // Lightweight count fetch on mount
   useEffect(() => {
     supabase
       .from('community_comments')
@@ -129,7 +128,6 @@ function CommentSection({ postId, userId }: { postId: string; userId: string }) 
       .then(({ count: c }) => { if (c !== null) setCount(c); });
   }, [postId]);
 
-  // Full load + realtime when opened
   useEffect(() => {
     if (!open) return;
     setLoadingComments(true);
@@ -378,10 +376,7 @@ function CommunityJoin() {
   return (
     <div style={{ minHeight: '100dvh', background: '#0A2342', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
-
       <main style={{ flex: 1, padding: '0 0 4rem' }}>
-
-        {/* Hero */}
         <div style={{
           background: 'linear-gradient(135deg, #0A2342 0%, #0d2d56 50%, #0A2342 100%)',
           borderBottom: '1px solid rgba(212,175,55,0.2)',
@@ -391,7 +386,6 @@ function CommunityJoin() {
           overflow: 'hidden',
         }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 300, background: 'radial-gradient(ellipse, rgba(194,24,91,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: '1rem' }}>
             \ud83d\udd25 Founders Special \u2014 Limited Time
           </p>
@@ -402,7 +396,6 @@ function CommunityJoin() {
           <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.75)', fontSize: '0.95rem', lineHeight: 1.7, maxWidth: 520, margin: '0 auto 2rem' }}>
             A community built for leaders who are serious about navigating the AI era with clarity, confidence, and a concrete pathway forward.
           </p>
-
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: 50, padding: '0.5rem 1.25rem' }}>
             <span style={{ color: '#D4AF37', fontSize: '0.75rem' }}>\u2b50</span>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#D4AF37', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -411,13 +404,10 @@ function CommunityJoin() {
           </div>
         </div>
 
-        {/* Pricing Tiers */}
         <div style={{ padding: '2.5rem 1.5rem', maxWidth: 720, margin: '0 auto' }}>
-
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#D4AF37', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center', marginBottom: '1.5rem' }}>
             Choose Your Path
           </p>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
             {/* Navigator */}
@@ -491,7 +481,6 @@ function CommunityJoin() {
 
           </div>
 
-          {/* Bottom note */}
           <div style={{ marginTop: '2rem', textAlign: 'center', padding: '1.25rem 1.5rem', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: 10 }}>
             <p style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
               The answers are already inside you.
@@ -501,7 +490,6 @@ function CommunityJoin() {
             </p>
           </div>
 
-          {/* Already purchased prompt */}
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.35)', fontSize: '0.75rem' }}>
               Already a member?
@@ -515,10 +503,8 @@ function CommunityJoin() {
               Log in to access your content \u2192
             </a>
           </div>
-
         </div>
       </main>
-
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.2)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em' }}>
         \u00a9 2026 DRU CLEAR\u2122 \u00b7 All Rights Reserved \u00b7 DRU AI Consulting
       </footer>
@@ -562,12 +548,37 @@ function UpgradeBanner({ userTier, lockedCounts }: { userTier: Tier; lockedCount
 }
 
 // =============================================================================
-// POST CARD — updated: accepts userId, renders CommentSection
+// POST CARD — updated: isAdmin prop + Ask Agent to Reply button
 // =============================================================================
-function PostCard({ post, index, userId }: { post: CommunityPost; index: number; userId: string }) {
+function PostCard({ post, index, userId, isAdmin }: { post: CommunityPost; index: number; userId: string; isAdmin: boolean }) {
   const cfg = POST_TYPE_CONFIG[post.post_type] ?? POST_TYPE_CONFIG.daily_insight;
   const tierBadge = TIER_BADGE[post.tier_required];
   const paragraphs = formatContent(post.content);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentQueued, setAgentQueued] = useState(false);
+
+  const handleAskAgent = async () => {
+    if (agentLoading || agentQueued) return;
+    setAgentLoading(true);
+    try {
+      await fetch('/api/ghl-agent-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trigger_type: 'cc_agent_reply',
+          post_id: post.id,
+          post_type: post.post_type,
+          post_title: post.title,
+          post_content: post.content,
+        }),
+      });
+      setAgentQueued(true);
+    } catch (err) {
+      console.error('[ask agent] error:', err);
+    } finally {
+      setAgentLoading(false);
+    }
+  };
 
   return (
     <div style={{
@@ -631,6 +642,51 @@ function PostCard({ post, index, userId }: { post: CommunityPost; index: number;
         </a>
       </div>
 
+      {/* Admin only: Ask Agent to Reply */}
+      {isAdmin && (
+        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={handleAskAgent}
+            disabled={agentLoading || agentQueued}
+            style={{
+              background: 'none',
+              border: `1px dashed ${agentQueued ? '#B8941F' : 'rgba(10,35,66,0.2)'}`,
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontFamily: "'Montserrat', sans-serif",
+              fontSize: '11px',
+              fontWeight: '600',
+              color: agentQueued ? '#B8941F' : 'rgba(10,35,66,0.35)',
+              cursor: agentQueued || agentLoading ? 'default' : 'pointer',
+              letterSpacing: '0.4px',
+              transition: 'all 0.15s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+            onMouseEnter={e => {
+              if (!agentQueued && !agentLoading) {
+                (e.currentTarget as HTMLButtonElement).style.color = '#0A2342';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.4)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (!agentQueued) {
+                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.2)';
+              }
+            }}
+          >
+            <span style={{ fontSize: '12px' }}>
+              {agentQueued ? '\u2713' : '\u21ba'}
+            </span>
+            <span>
+              {agentLoading ? 'Queuing...' : agentQueued ? 'Agent queued' : 'Ask Agent to Reply'}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Comments */}
       <CommentSection postId={post.id} userId={userId} />
     </div>
@@ -652,7 +708,7 @@ function EmptyState({ filter }: { filter: string }) {
 }
 
 // =============================================================================
-// COMMUNITY FEED — updated: userId state fetched and passed to PostCard
+// COMMUNITY FEED — updated: isAdmin state, passed to PostCard
 // =============================================================================
 function CommunityFeed({ tier }: { tier: Tier }) {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -661,6 +717,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
   const [pdfs, setPdfs] = useState<{ name: string; url: string }[]>([]);
   const [showArchives, setShowArchives] = useState(false);
   const [userId, setUserId] = useState<string>('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const lockedCounts = { navigator: 0, accelerator: tier === 'navigator' ? 2 : 0 };
 
   const loadPdfs = useCallback(async () => {
@@ -693,7 +750,10 @@ function CommunityFeed({ tier }: { tier: Tier }) {
     loadPosts().then(loaded => { if (mounted) { setPosts(loaded); setLoading(false); } });
     loadPdfs();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (mounted && user) setUserId(user.id);
+      if (mounted && user) {
+        setUserId(user.id);
+        setIsAdmin(user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase());
+      }
     });
 
     const channel = supabase
@@ -721,19 +781,16 @@ function CommunityFeed({ tier }: { tier: Tier }) {
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
-
       <main style={{ flex: 1, padding: '40px 24px 80px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
           {/* Header */}
           <div style={{ marginBottom: '32px', animation: 'ccFadeIn 0.5s ease both' }}>
-
             <a href="/portal" style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600',
               color: 'rgba(10,35,66,0.45)', textDecoration: 'none', letterSpacing: '0.5px',
-              marginBottom: '20px',
-              transition: 'color 0.15s ease',
+              marginBottom: '20px', transition: 'color 0.15s ease',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#0A2342'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(10,35,66,0.45)'; }}
@@ -790,83 +847,53 @@ function CommunityFeed({ tier }: { tier: Tier }) {
             <>
               <UpgradeBanner userTier={tier} lockedCounts={lockedCounts} />
 
-              {/* Weekly Framework Training Content */}
               {pdfs.length > 0 && (
                 <div style={{ marginBottom: '28px' }}>
-                  <a
-                    href={pdfs[0].url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a href={pdfs[0].url} target="_blank" rel="noopener noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       background: '#FFFFFF', border: '1px solid #E8E4DF',
                       borderLeft: '4px solid #0A2342', borderRadius: '10px',
                       padding: '18px 24px', textDecoration: 'none',
-                      boxShadow: '0 1px 4px rgba(10,35,66,0.06)',
-                      transition: 'box-shadow 0.2s ease',
+                      boxShadow: '0 1px 4px rgba(10,35,66,0.06)', transition: 'box-shadow 0.2s ease',
                     }}
                     onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 16px rgba(10,35,66,0.1)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 1px 4px rgba(10,35,66,0.06)'; }}
                   >
                     <div>
-                      <div style={{ color: '#0A2342', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '2px', fontWeight: '600', marginBottom: '4px' }}>
-                        THIS WEEK
-                      </div>
-                      <div style={{ color: '#0A2342', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', fontWeight: '600' }}>
-                        Weekly Framework Training Content
-                      </div>
+                      <div style={{ color: '#0A2342', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '2px', fontWeight: '600', marginBottom: '4px' }}>THIS WEEK</div>
+                      <div style={{ color: '#0A2342', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', fontWeight: '600' }}>Weekly Framework Training Content</div>
                     </div>
-                    <div style={{
-                      background: '#0A2342', color: '#fff',
-                      padding: '8px 16px', borderRadius: '6px',
-                      fontFamily: "'Montserrat', sans-serif", fontSize: '11px',
-                      fontWeight: '700', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
+                    <div style={{ background: '#0A2342', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       DOWNLOAD \u2193
                     </div>
                   </a>
 
                   {pdfs.length > 1 && (
                     <div style={{ marginTop: '10px' }}>
-                      <button
-                        onClick={() => setShowArchives(!showArchives)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif",
-                          fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px',
-                          padding: '6px 0', display: 'flex', alignItems: 'center', gap: '6px',
-                        }}
-                      >
+                      <button onClick={() => setShowArchives(!showArchives)} style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif",
+                        fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px',
+                        padding: '6px 0', display: 'flex', alignItems: 'center', gap: '6px',
+                      }}>
                         {showArchives ? '\u2191 Hide Archives' : '\u2193 Archives'}
                       </button>
-
                       {showArchives && (
-                        <div style={{
-                          background: '#FFFFFF', border: '1px solid #E8E4DF',
-                          borderRadius: '10px', overflow: 'hidden', marginTop: '8px',
-                        }}>
+                        <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '10px', overflow: 'hidden', marginTop: '8px' }}>
                           {pdfs.slice(1).map((pdf, i) => (
-                            <a
-                              key={pdf.name}
-                              href={pdf.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <a key={pdf.name} href={pdf.url} target="_blank" rel="noopener noreferrer"
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 padding: '14px 20px',
                                 borderBottom: i < pdfs.length - 2 ? '1px solid #F0EDE8' : 'none',
-                                textDecoration: 'none',
-                                transition: 'background 0.15s ease',
+                                textDecoration: 'none', transition: 'background 0.15s ease',
                               }}
                               onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAF8'; }}
                               onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FFFFFF'; }}
                             >
-                              <span style={{ color: 'rgba(10,35,66,0.65)', fontFamily: "'Montserrat', sans-serif", fontSize: '13px' }}>
-                                {pdf.name}
-                              </span>
-                              <span style={{ color: '#B8941F', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
-                                DOWNLOAD \u2193
-                              </span>
+                              <span style={{ color: 'rgba(10,35,66,0.65)', fontFamily: "'Montserrat', sans-serif", fontSize: '13px' }}>{pdf.name}</span>
+                              <span style={{ color: '#B8941F', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>DOWNLOAD \u2193</span>
                             </a>
                           ))}
                         </div>
@@ -878,7 +905,9 @@ function CommunityFeed({ tier }: { tier: Tier }) {
 
               {posts.length === 0 ? <EmptyState filter="all" /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {posts.map((post, i) => <PostCard key={post.id} post={post} index={i} userId={userId} />)}
+                  {posts.map((post, i) => (
+                    <PostCard key={post.id} post={post} index={i} userId={userId} isAdmin={isAdmin} />
+                  ))}
                 </div>
               )}
 
@@ -897,7 +926,6 @@ function CommunityFeed({ tier }: { tier: Tier }) {
           )}
         </div>
       </main>
-
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(10,35,66,0.25)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em', borderTop: '1px solid #E8E4DF' }}>
         \u00a9 2026 DRU CLEAR\u2122 \u00b7 All Rights Reserved \u00b7 DRU AI Consulting
       </footer>
