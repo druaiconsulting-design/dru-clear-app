@@ -1,16 +1,16 @@
 {
-  "buildCommand": "vite build",
-  "outputDirectory": "dist/public",
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "framework": null,
-  "functions": {
-    "api/ghl-agent-trigger.ts": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "_comment": "Add these entries into the 'crons' array in your existing vercel.json",
+  "_schedule_note": "All times UTC. CC agents fire 12:30–12:39 UTC = 7:30–7:39 AM CST daily",
+  "crons_to_add": [
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_dominique_daily_insight",  "schedule": "30 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_elijah_framework_lesson",  "schedule": "31 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_solange_action_challenge", "schedule": "32 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_isaiah_webb_framework",    "schedule": "33 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_nadia_strategic_edge",     "schedule": "34 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_victor_engagement",        "schedule": "35 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_sasha_sales_insight",      "schedule": "36 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_tariq_pdf_brief",          "schedule": "37 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_zoe_community_lead",       "schedule": "38 12 * * *" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_micah_member_experience",  "schedule": "39 12 * * *" }
   ]
 }
