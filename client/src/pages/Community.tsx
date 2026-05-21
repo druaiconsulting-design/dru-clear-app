@@ -7,28 +7,27 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ─── Payment links ─────────────────────────────────────────────────────────
 const NAVIGATOR_PAYMENT_LINK   = 'https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0';
 const ACCELERATOR_PAYMENT_LINK = 'https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1';
 
 const NAVIGATOR_FEATURES = [
-  'Access to DRU AI Consulting — Community Connection',
+  'Access to DRU AI Consulting \u2014 Community Connection',
   'Daily Leadership with AI Insights',
   'Framework Micro-Lessons',
   "Today's Action Challenge",
   "DeAnna's Strategic Edge",
   'Weekly Framework Training Content',
-  'Exclusive Founder Pricing — Locked In Forever',
+  'Exclusive Founder Pricing \u2014 Locked In Forever',
 ];
 
 const ACCELERATOR_FEATURES = [
-  'Everything in Navigator — plus:',
+  'Everything in Navigator \u2014 plus:',
   'Weekly Branded Framework PDF Downloadable',
   "Monthly DeAnna's Leadership Lab! Video Access",
-  'Exclusive Founder Pricing — Locked In Forever',
+  'Exclusive Founder Pricing \u2014 Locked In Forever',
 ];
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// --- Types ---
 type Tier = 'free' | 'paid' | 'navigator' | 'accelerator';
 type PostType = 'daily_insight' | 'framework_lesson' | 'action_challenge' | 'strategic_edge' | 'framework_training' | 'pdf_downloadable' | 'lab_video';
 type TierRequired = 'all' | 'navigator' | 'accelerator';
@@ -47,15 +46,26 @@ interface CommunityPost {
   video_url?: string;
 }
 
-// ─── Feed config ───────────────────────────────────────────────────────────
+interface CommunityComment {
+  id: string;
+  post_id: string;
+  member_id: string;
+  content: string;
+  is_flagged: boolean;
+  is_active: boolean;
+  created_at: string;
+  profiles?: { first_name?: string };
+}
+
+// --- Feed config ---
 const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: string; color: string; bg: string; border: string }> = {
-  daily_insight:      { label: 'Daily Insight',      icon: '◆', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
-  framework_lesson:   { label: 'Framework Lesson',   icon: '▣', color: '#0A2342', bg: '#EEF3FA', border: '#C0D0E8' },
-  action_challenge:   { label: 'Action Challenge',   icon: '▲', color: '#9B0D44', bg: '#FDF0F5', border: '#F0B8CF' },
-  strategic_edge:     { label: 'Strategic Edge',     icon: '◉', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
-  framework_training: { label: 'Framework Training', icon: '◫', color: '#0A2342', bg: '#EEF3FA', border: '#C0D0E8' },
-  pdf_downloadable:   { label: 'PDF Resource',       icon: '⬡', color: '#9B0D44', bg: '#FDF0F5', border: '#F0B8CF' },
-  lab_video:          { label: 'Lab Video',          icon: '▷', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
+  daily_insight:      { label: 'Daily Insight',      icon: '\u25c6', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
+  framework_lesson:   { label: 'Framework Lesson',   icon: '\u25a3', color: '#0A2342', bg: '#EEF3FA', border: '#C0D0E8' },
+  action_challenge:   { label: 'Action Challenge',   icon: '\u25b2', color: '#9B0D44', bg: '#FDF0F5', border: '#F0B8CF' },
+  strategic_edge:     { label: 'Strategic Edge',     icon: '\u25c9', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
+  framework_training: { label: 'Framework Training', icon: '\u25eb', color: '#0A2342', bg: '#EEF3FA', border: '#C0D0E8' },
+  pdf_downloadable:   { label: 'PDF Resource',       icon: '\u2b21', color: '#9B0D44', bg: '#FDF0F5', border: '#F0B8CF' },
+  lab_video:          { label: 'Lab Video',          icon: '\u25b7', color: '#B8941F', bg: '#FFFBEE', border: '#F0D980' },
 };
 
 const TIER_BADGE: Record<TierRequired, { label: string; color: string; bg: string } | null> = {
@@ -82,9 +92,288 @@ function formatContent(content: string): string[] {
   return content.split('\n\n').filter(p => p.trim().length > 0);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// JOIN PAGE — shown to free / not logged in users
-// ═══════════════════════════════════════════════════════════════════════════
+// --- Soft moderation ---
+const FLAGGED_KEYWORDS = [
+  'fuck', 'shit', 'bitch', 'asshole',
+  'spam', 'scam', 'fraud', 'fake',
+  'click here', 'buy now',
+];
+
+function checkFlagged(text: string): boolean {
+  const lower = text.toLowerCase();
+  return FLAGGED_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+// =============================================================================
+// COMMENT SECTION
+// =============================================================================
+
+function CommentSection({ postId, userId }: { postId: string; userId: string }) {
+  const [open, setOpen] = useState(false);
+  const [comments, setComments] = useState<CommunityComment[]>([]);
+  const [count, setCount] = useState<number | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+
+  // Lightweight count fetch on mount
+  useEffect(() => {
+    supabase
+      .from('community_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .eq('is_active', true)
+      .eq('is_flagged', false)
+      .then(({ count: c }) => { if (c !== null) setCount(c); });
+  }, [postId]);
+
+  // Full load + realtime when opened
+  useEffect(() => {
+    if (!open) return;
+    setLoadingComments(true);
+    supabase
+      .from('community_comments')
+      .select('*, profiles(first_name)')
+      .eq('post_id', postId)
+      .eq('is_active', true)
+      .eq('is_flagged', false)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setComments((data ?? []) as CommunityComment[]);
+        setLoadingComments(false);
+      });
+
+    const channel = supabase
+      .channel(`cc_comments_${postId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'community_comments',
+        filter: `post_id=eq.${postId}`,
+      }, (payload) => {
+        const c = payload.new as CommunityComment;
+        if (c.is_active && !c.is_flagged) {
+          setComments(prev => [...prev, c]);
+          setCount(n => (n ?? 0) + 1);
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'community_comments',
+        filter: `post_id=eq.${postId}`,
+      }, (payload) => {
+        const c = payload.new as CommunityComment;
+        if (!c.is_active || c.is_flagged) {
+          setComments(prev => prev.filter(x => x.id !== c.id));
+          setCount(n => Math.max(0, (n ?? 1) - 1));
+        } else {
+          setComments(prev => prev.map(x => x.id === c.id ? { ...x, content: c.content } : x));
+        }
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'community_comments',
+        filter: `post_id=eq.${postId}`,
+      }, (payload) => {
+        setComments(prev => prev.filter(x => x.id !== (payload.old as CommunityComment).id));
+        setCount(n => Math.max(0, (n ?? 1) - 1));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [open, postId]);
+
+  const handleSubmit = async () => {
+    if (!newComment.trim() || submitting || !userId) return;
+    setSubmitting(true);
+    const flagged = checkFlagged(newComment);
+    const { data, error } = await supabase
+      .from('community_comments')
+      .insert({ post_id: postId, member_id: userId, content: newComment.trim(), is_flagged: flagged })
+      .select('*, profiles(first_name)')
+      .single();
+    if (!error && data && !flagged) {
+      setComments(prev => [...prev, data as CommunityComment]);
+      setCount(n => (n ?? 0) + 1);
+    }
+    setNewComment('');
+    setSubmitting(false);
+  };
+
+  const handleEditSave = async (commentId: string) => {
+    if (!editContent.trim()) return;
+    const flagged = checkFlagged(editContent);
+    await supabase
+      .from('community_comments')
+      .update({ content: editContent.trim(), is_flagged: flagged })
+      .eq('id', commentId);
+    if (flagged) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      setCount(n => Math.max(0, (n ?? 1) - 1));
+    } else {
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editContent.trim() } : c));
+    }
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const handleDelete = async (commentId: string) => {
+    await supabase.from('community_comments').update({ is_active: false }).eq('id', commentId);
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    setCount(n => Math.max(0, (n ?? 1) - 1));
+  };
+
+  const getDisplayName = (c: CommunityComment): string => {
+    if (c.member_id === userId) return 'You';
+    const p = (c as any).profiles;
+    return p?.first_name ?? 'Member';
+  };
+
+  const countLabel = count === null ? '' : count > 0 ? ` \u00b7 ${count}` : '';
+
+  return (
+    <div style={{ marginTop: '16px', borderTop: '1px solid #F0EDE8', paddingTop: '14px' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif",
+          fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px',
+          padding: '0', display: 'flex', alignItems: 'center', gap: '6px',
+          transition: 'color 0.15s ease',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.45)'; }}
+      >
+        <span style={{ fontSize: '10px' }}>{open ? '\u25b2' : '\u25bc'}</span>
+        <span>Comments{countLabel}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: '16px' }}>
+          {loadingComments ? (
+            <div style={{ color: 'rgba(10,35,66,0.35)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', padding: '8px 0' }}>
+              Loading...
+            </div>
+          ) : comments.length === 0 ? (
+            <div style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', padding: '8px 0', fontStyle: 'italic' }}>
+              No comments yet \u2014 be the first.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {comments.map(comment => (
+                <div key={comment.id} style={{
+                  background: '#FAFAF8', border: '1px solid #F0EDE8',
+                  borderRadius: '8px', padding: '12px 14px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#0A2342' }}>
+                        {getDisplayName(comment)}
+                      </span>
+                      <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>
+                        {formatDate(comment.created_at)}
+                      </span>
+                    </div>
+                    {comment.member_id === userId && editingId !== comment.id && (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => { setEditingId(comment.id); setEditContent(comment.content); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(10,35,66,0.35)', fontSize: '13px', padding: '0', lineHeight: '1' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)'; }}
+                          title="Edit"
+                        >\u270e</button>
+                        <button
+                          onClick={() => handleDelete(comment.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(194,24,91,0.35)', fontSize: '13px', padding: '0', lineHeight: '1' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#C2185B'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(194,24,91,0.35)'; }}
+                          title="Delete"
+                        >\u2715</button>
+                      </div>
+                    )}
+                  </div>
+                  {editingId === comment.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <textarea
+                        value={editContent}
+                        onChange={e => setEditContent(e.target.value)}
+                        rows={2}
+                        style={{
+                          width: '100%', border: '1px solid #C0D0E8', borderRadius: '6px',
+                          padding: '8px 10px', fontFamily: "'Montserrat', sans-serif",
+                          fontSize: '13px', color: '#0A2342', background: '#fff',
+                          resize: 'vertical', outline: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleEditSave(comment.id)}
+                          style={{
+                            background: '#0A2342', color: '#fff', border: 'none', borderRadius: '5px',
+                            padding: '6px 14px', fontFamily: "'Montserrat', sans-serif",
+                            fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px', cursor: 'pointer',
+                          }}
+                        >Save</button>
+                        <button
+                          onClick={() => { setEditingId(null); setEditContent(''); }}
+                          style={{
+                            background: 'none', color: 'rgba(10,35,66,0.45)', border: '1px solid #E8E4DF',
+                            borderRadius: '5px', padding: '6px 14px', fontFamily: "'Montserrat', sans-serif",
+                            fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                          }}
+                        >Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.7)', lineHeight: '1.65', margin: '0' }}>
+                      {comment.content}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <textarea
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder="Add a comment..."
+              rows={2}
+              style={{
+                width: '100%', border: '1px solid #E8E4DF', borderRadius: '8px',
+                padding: '10px 12px', fontFamily: "'Montserrat', sans-serif",
+                fontSize: '13px', color: '#0A2342', background: '#fff',
+                resize: 'vertical', outline: 'none', transition: 'border-color 0.15s',
+                boxSizing: 'border-box',
+              }}
+              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#C0D0E8'; }}
+              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#E8E4DF'; }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSubmit(); } }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !newComment.trim()}
+                style={{
+                  background: newComment.trim() ? '#0A2342' : 'rgba(10,35,66,0.12)',
+                  color: newComment.trim() ? '#fff' : 'rgba(10,35,66,0.3)',
+                  border: 'none', borderRadius: '6px', padding: '8px 20px',
+                  fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700',
+                  letterSpacing: '0.5px', cursor: newComment.trim() ? 'pointer' : 'default',
+                  transition: 'all 0.15s ease',
+                }}
+              >{submitting ? 'Posting...' : 'Post'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// JOIN PAGE
+// =============================================================================
 function CommunityJoin() {
   return (
     <div style={{ minHeight: '100dvh', background: '#0A2342', display: 'flex', flexDirection: 'column' }}>
@@ -104,7 +393,7 @@ function CommunityJoin() {
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 300, background: 'radial-gradient(ellipse, rgba(194,24,91,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: '1rem' }}>
-            🔥 Founders Special — Limited Time
+            \ud83d\udd25 Founders Special \u2014 Limited Time
           </p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', fontSize: 'clamp(1.75rem, 5vw, 2.75rem)', fontWeight: 700, lineHeight: 1.2, marginBottom: '1rem', maxWidth: 640, margin: '0 auto 1rem' }}>
             Join the DRU AI Consulting<br />
@@ -115,7 +404,7 @@ function CommunityJoin() {
           </p>
 
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: 50, padding: '0.5rem 1.25rem' }}>
-            <span style={{ color: '#D4AF37', fontSize: '0.75rem' }}>⭐</span>
+            <span style={{ color: '#D4AF37', fontSize: '0.75rem' }}>\u2b50</span>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#D4AF37', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Founding Members Lock In Pricing Forever
             </p>
@@ -136,7 +425,7 @@ function CommunityJoin() {
               <div style={{ background: 'rgba(212,175,55,0.07)', borderBottom: '1px solid rgba(212,175,55,0.2)', padding: '1.25rem 1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                   <div>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#D4AF37', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>DRU CLEAR™</p>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#D4AF37', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>DRU CLEAR\u2122</p>
                     <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem' }}>Navigator</h3>
                     <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.55)', fontSize: '0.75rem' }}>Self-directed AI leadership transformation</p>
                   </div>
@@ -151,14 +440,14 @@ function CommunityJoin() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
                   {NAVIGATOR_FEATURES.map((f) => (
                     <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                      <span style={{ color: '#D4AF37', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>✓</span>
+                      <span style={{ color: '#D4AF37', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>\u2713</span>
                       <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.8)', fontSize: '0.78rem', lineHeight: 1.5 }}>{f}</p>
                     </div>
                   ))}
                 </div>
                 <a href={NAVIGATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer"
                   style={{ display: 'block', width: '100%', background: 'transparent', border: '1.5px solid #D4AF37', borderRadius: 8, padding: '0.85rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#D4AF37', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>
-                  Join as Navigator Founder →
+                  Join as Navigator Founder \u2192
                 </a>
               </div>
             </div>
@@ -173,7 +462,7 @@ function CommunityJoin() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                   <div>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>DRU CLEAR™</p>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>DRU CLEAR\u2122</p>
                     <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem' }}>Accelerator</h3>
                     <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.55)', fontSize: '0.75rem' }}>Premium access + monthly DeAnna video</p>
                   </div>
@@ -188,14 +477,14 @@ function CommunityJoin() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
                   {ACCELERATOR_FEATURES.map((f, i) => (
                     <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                      <span style={{ color: i === 0 ? 'rgba(230,230,230,0.4)' : '#C2185B', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>{i === 0 ? '—' : '✓'}</span>
+                      <span style={{ color: i === 0 ? 'rgba(230,230,230,0.4)' : '#C2185B', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>{i === 0 ? '\u2014' : '\u2713'}</span>
                       <p style={{ fontFamily: "'Inter', sans-serif", color: i === 0 ? 'rgba(230,230,230,0.5)' : 'rgba(230,230,230,0.85)', fontSize: '0.78rem', lineHeight: 1.5, fontStyle: i === 0 ? 'italic' : 'normal' }}>{f}</p>
                     </div>
                   ))}
                 </div>
                 <a href={ACCELERATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer"
                   style={{ display: 'block', width: '100%', background: '#C2185B', border: 'none', borderRadius: 8, padding: '0.85rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#FFFFFF', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>
-                  Join as Accelerator Founder →
+                  Join as Accelerator Founder \u2192
                 </a>
               </div>
             </div>
@@ -208,7 +497,7 @@ function CommunityJoin() {
               The answers are already inside you.
             </p>
             <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.55)', fontSize: '0.78rem', lineHeight: 1.6 }}>
-              This community is where you find the clarity, the tools, and the people to move forward — with confidence — in the AI era.
+              This community is where you find the clarity, the tools, and the people to move forward \u2014 with confidence \u2014 in the AI era.
             </p>
           </div>
 
@@ -223,7 +512,7 @@ function CommunityJoin() {
               textDecoration: 'none', borderBottom: '1px solid rgba(212,175,55,0.4)',
               paddingBottom: '1px',
             }}>
-              Log in to access your content →
+              Log in to access your content \u2192
             </a>
           </div>
 
@@ -231,16 +520,15 @@ function CommunityJoin() {
       </main>
 
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.2)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em' }}>
-        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
+        \u00a9 2026 DRU CLEAR\u2122 \u00b7 All Rights Reserved \u00b7 DRU AI Consulting
       </footer>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FEED PAGE — shown to navigator / accelerator subscribers
-// ═══════════════════════════════════════════════════════════════════════════
-
+// =============================================================================
+// UPGRADE BANNER
+// =============================================================================
 function UpgradeBanner({ userTier, lockedCounts }: { userTier: Tier; lockedCounts: { navigator: number; accelerator: number } }) {
   const userRank = TIER_RANK[userTier];
   const needsAccelerator = userRank < 3 && lockedCounts.accelerator > 0;
@@ -258,7 +546,7 @@ function UpgradeBanner({ userTier, lockedCounts }: { userTier: Tier; lockedCount
           ACCELERATOR EXCLUSIVE
         </div>
         <div style={{ color: 'rgba(10,35,66,0.65)', fontFamily: "'Montserrat', sans-serif", fontSize: '13px' }}>
-          {lockedCounts.accelerator} additional posts — AI Sales Mastery™ insights & premium PDF resources
+          {lockedCounts.accelerator} additional posts \u2014 AI Sales Mastery\u2122 insights & premium PDF resources
         </div>
       </div>
       <a href={ACCELERATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{
@@ -273,7 +561,10 @@ function UpgradeBanner({ userTier, lockedCounts }: { userTier: Tier; lockedCount
   );
 }
 
-function PostCard({ post, index }: { post: CommunityPost; index: number }) {
+// =============================================================================
+// POST CARD — updated: accepts userId, renders CommentSection
+// =============================================================================
+function PostCard({ post, index, userId }: { post: CommunityPost; index: number; userId: string }) {
   const cfg = POST_TYPE_CONFIG[post.post_type] ?? POST_TYPE_CONFIG.daily_insight;
   const tierBadge = TIER_BADGE[post.tier_required];
   const paragraphs = formatContent(post.content);
@@ -324,7 +615,7 @@ function PostCard({ post, index }: { post: CommunityPost; index: number }) {
         {post.title}
       </h3>
 
-      {/* Full content — no truncation */}
+      {/* Content */}
       <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
         {paragraphs.map((p, i) => (
           <p key={i} style={{ marginBottom: '12px' }}>{p}</p>
@@ -339,32 +630,37 @@ function PostCard({ post, index }: { post: CommunityPost; index: number }) {
           assessment.druaiconsulting.com
         </a>
       </div>
+
+      {/* Comments */}
+      <CommentSection postId={post.id} userId={userId} />
     </div>
   );
 }
-
-
 
 function EmptyState({ filter }: { filter: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-      <div style={{ color: '#D4AF37', fontSize: '40px', marginBottom: '16px' }}>◆</div>
+      <div style={{ color: '#D4AF37', fontSize: '40px', marginBottom: '16px' }}>\u25c6</div>
       <div style={{ fontFamily: "'Cinzel', serif", color: 'rgba(10,35,66,0.4)', fontSize: '13px', letterSpacing: '2px', marginBottom: '8px' }}>
         {filter === 'all' ? 'NO POSTS YET' : `NO ${filter.replace(/_/g, ' ').toUpperCase()} POSTS YET`}
       </div>
       <div style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.35)', fontSize: '13px', maxWidth: '320px', margin: '0 auto' }}>
-        Your agents are working — content will appear here once approved.
+        Your agents are working \u2014 content will appear here once approved.
       </div>
     </div>
   );
 }
 
+// =============================================================================
+// COMMUNITY FEED — updated: userId state fetched and passed to PostCard
+// =============================================================================
 function CommunityFeed({ tier }: { tier: Tier }) {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [liveCount, setLiveCount] = useState(0);
   const [pdfs, setPdfs] = useState<{ name: string; url: string }[]>([]);
   const [showArchives, setShowArchives] = useState(false);
+  const [userId, setUserId] = useState<string>('');
   const lockedCounts = { navigator: 0, accelerator: tier === 'navigator' ? 2 : 0 };
 
   const loadPdfs = useCallback(async () => {
@@ -396,6 +692,9 @@ function CommunityFeed({ tier }: { tier: Tier }) {
     let mounted = true;
     loadPosts().then(loaded => { if (mounted) { setPosts(loaded); setLoading(false); } });
     loadPdfs();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (mounted && user) setUserId(user.id);
+    });
 
     const channel = supabase
       .channel('community_posts_live')
@@ -429,7 +728,6 @@ function CommunityFeed({ tier }: { tier: Tier }) {
           {/* Header */}
           <div style={{ marginBottom: '32px', animation: 'ccFadeIn 0.5s ease both' }}>
 
-            {/* Back to Portal */}
             <a href="/portal" style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600',
@@ -440,13 +738,13 @@ function CommunityFeed({ tier }: { tier: Tier }) {
             onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#0A2342'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(10,35,66,0.45)'; }}
             >
-              ← Back to Portal
+              \u2190 Back to Portal
             </a>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>
-                  DRU AI LEADERSHIP ECOSYSTEM™
+                  DRU AI LEADERSHIP ECOSYSTEM\u2122
                 </div>
                 <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>
                   Community Connection
@@ -474,7 +772,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
                 fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600',
                 letterSpacing: '0.5px', display: 'inline-flex', alignItems: 'center', gap: '6px',
               }}>
-                ↑ {liveCount} new post{liveCount > 1 ? 's' : ''} just approved
+                \u2191 {liveCount} new post{liveCount > 1 ? 's' : ''} just approved
               </button>
             )}
           </div>
@@ -495,8 +793,6 @@ function CommunityFeed({ tier }: { tier: Tier }) {
               {/* Weekly Framework Training Content */}
               {pdfs.length > 0 && (
                 <div style={{ marginBottom: '28px' }}>
-
-                  {/* Latest PDF — always the most recent upload */}
                   <a
                     href={pdfs[0].url}
                     target="_blank"
@@ -526,11 +822,10 @@ function CommunityFeed({ tier }: { tier: Tier }) {
                       fontFamily: "'Montserrat', sans-serif", fontSize: '11px',
                       fontWeight: '700', letterSpacing: '1px', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
-                      DOWNLOAD ↓
+                      DOWNLOAD \u2193
                     </div>
                   </a>
 
-                  {/* Archives toggle — only show if there are past PDFs */}
                   {pdfs.length > 1 && (
                     <div style={{ marginTop: '10px' }}>
                       <button
@@ -542,7 +837,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
                           padding: '6px 0', display: 'flex', alignItems: 'center', gap: '6px',
                         }}
                       >
-                        {showArchives ? '↑ Hide Archives' : '↓ Archives'}
+                        {showArchives ? '\u2191 Hide Archives' : '\u2193 Archives'}
                       </button>
 
                       {showArchives && (
@@ -570,7 +865,7 @@ function CommunityFeed({ tier }: { tier: Tier }) {
                                 {pdf.name}
                               </span>
                               <span style={{ color: '#B8941F', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
-                                DOWNLOAD ↓
+                                DOWNLOAD \u2193
                               </span>
                             </a>
                           ))}
@@ -578,13 +873,12 @@ function CommunityFeed({ tier }: { tier: Tier }) {
                       )}
                     </div>
                   )}
-
                 </div>
               )}
 
               {posts.length === 0 ? <EmptyState filter="all" /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {posts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)}
+                  {posts.map((post, i) => <PostCard key={post.id} post={post} index={i} userId={userId} />)}
                 </div>
               )}
 
@@ -605,15 +899,15 @@ function CommunityFeed({ tier }: { tier: Tier }) {
       </main>
 
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(10,35,66,0.25)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em', borderTop: '1px solid #E8E4DF' }}>
-        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
+        \u00a9 2026 DRU CLEAR\u2122 \u00b7 All Rights Reserved \u00b7 DRU AI Consulting
       </footer>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SMART DETECTION — checks tier, renders the right page
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// SMART DETECTION (unchanged)
+// =============================================================================
 export default function Community() {
   const [tier, setTier] = useState<Tier | null>(null);
   const [checking, setChecking] = useState(true);
@@ -638,7 +932,6 @@ export default function Community() {
     check();
   }, []);
 
-  // Brief loading state while we check auth
   if (checking) {
     return (
       <>
@@ -649,7 +942,7 @@ export default function Community() {
           @keyframes ccPulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
         `}</style>
         <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ color: '#D4AF37', fontSize: '32px', animation: 'ccPulse 1.5s ease infinite' }}>◆</div>
+          <div style={{ color: '#D4AF37', fontSize: '32px', animation: 'ccPulse 1.5s ease infinite' }}>\u25c6</div>
           <div style={{ fontFamily: "'Cinzel', serif", color: 'rgba(10,35,66,0.4)', fontSize: '11px', letterSpacing: '3px' }}>LOADING</div>
         </div>
       </>
