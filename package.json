@@ -65,11 +65,13 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
+    "web-push": "^3.6.7",
     "wouter": "^3.3.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@vercel/node": "^3.0.0",    
+    "@types/web-push": "^3.6.4",
+    "@vercel/node": "^3.0.0",
     "@builder.io/vite-plugin-jsx-loc": "^0.1.1",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
