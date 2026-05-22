@@ -6,6 +6,9 @@
   "functions": {
     "api/ghl-agent-trigger.ts": {
       "maxDuration": 60
+    },
+    "api/send-notification.ts": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -15,7 +18,7 @@
   ],
   "crons": [
     { "path": "/api/ghl-agent-trigger?trigger_type=cron_dominique_daily_insight",  "schedule": "30 16 * * 1" },
-    { "path": "/api/ghl-agent-trigger?trigger_type=cron_tariq_pdf_brief",          "schedule": "31 16 * * 1" },
+    { "path": "/api/ghl-agent-trigger?trigger_type=cron_tariq_pdf_brief",          "schedule": "30 20 * * 1" },
     { "path": "/api/ghl-agent-trigger?trigger_type=cron_elijah_framework_lesson",  "schedule": "30 16 * * 2" },
     { "path": "/api/ghl-agent-trigger?trigger_type=cron_solange_action_challenge", "schedule": "30 16 * * 3" },
     { "path": "/api/ghl-agent-trigger?trigger_type=cron_isaiah_webb_framework",    "schedule": "30 16 * * 4" },
