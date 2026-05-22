@@ -1,8 +1,10 @@
-// DRU CLEAR™ Service Worker — v2
+// DRU CLEAR™ Service Worker — v3
+// v3: Added push notifications for Community Connection
 // Forces immediate activation, versioned cache, auto-cleans old caches,
-// and notifies the app when a new version is available.
+// notifies the app when a new version is available,
+// and handles Community Connection push notifications.
 
-const CACHE_NAME = "dru-clear-v2";
+const CACHE_NAME = "dru-clear-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -10,16 +12,14 @@ const STATIC_ASSETS = [
 
 // ── Install: cache static shell ───────────────────────────────────────────────
 self.addEventListener("install", (event) => {
-  // skipWaiting forces this SW to activate immediately (no waiting tab to close)
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
 });
 
-// ── Activate: delete old caches ───────────────────────────────────────────────
+// ── Activate: delete old caches ──────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
-  // clients.claim makes this SW take control of all open pages immediately
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -36,25 +36,19 @@ self.addEventListener("activate", (event) => {
 
 // ── Fetch: network-first with cache fallback ──────────────────────────────────
 self.addEventListener("fetch", (event) => {
-  // Only handle GET requests for same-origin or CDN assets
   if (event.request.method !== "GET") return;
-
   const url = new URL(event.request.url);
-
-  // Skip non-http(s) and cross-origin API calls (webhooks, DNS, etc.)
   if (!url.protocol.startsWith("http")) return;
   if (
     url.hostname.includes("leadconnectorhq.com") ||
     url.hostname.includes("cloudflare-dns.com") ||
     url.hostname.includes("aiforbusiness.com")
   ) {
-    return; // let these go to network directly
+    return;
   }
-
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache a clone of successful responses
         if (response && response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
@@ -65,9 +59,55 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// ── Message: listen for SKIP_WAITING from app ─────────────────────────────────
+// ── Message: listen for SKIP_WAITING from app ────────────────────────────────
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+// ── Push: Community Connection notifications ──────────────────────────────────
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  let data = {};
+  try { data = event.data.json(); } catch (e) { return; }
+
+  const title   = data.title || "Community Connection";
+  const options = {
+    body:               data.body || "You have a new notification",
+    icon:               "/new-dru-clear-transparent-logo.png",
+    badge:              "/new-dru-clear-transparent-logo.png",
+    data:               { url: data.url || "https://app.druaiconsulting.com/community" },
+    vibrate:            [100, 50, 100],
+    requireInteraction: false,
+    actions: [
+      { action: "view",    title: "View" },
+      { action: "dismiss", title: "Dismiss" },
+    ],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Notification click: open or focus community page ─────────────────────────
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  if (event.action === "dismiss") return;
+
+  const url = event.notification.data?.url || "https://app.druaiconsulting.com/community";
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes("app.druaiconsulting.com") && "focus" in client) {
+            client.postMessage({ type: "NOTIFICATION_CLICK", url });
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) return clients.openWindow(url);
+      })
+  );
 });
