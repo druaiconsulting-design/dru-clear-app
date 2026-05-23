@@ -127,7 +127,7 @@ export default function Login() {
         {mode === "choose" && (
           <div style={{ animation: "fadeSlideIn 0.5s ease both" }}>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, textAlign: "center", marginBottom: "0.75rem" }}>
-              Transformation Continues Here
+              Welcome — Transformation Continues Here
             </h1>
 
             {/* Animated gold line */}
