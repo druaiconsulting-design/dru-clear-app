@@ -30,3 +30,4 @@
     { "path": "/api/cc-agent-trigger?trigger_type=cron_sasha_sales_insight",      "schedule": "30 16 * * 0" }
   ]
 }
+
