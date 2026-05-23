@@ -6,22 +6,7 @@ import ComposeBox from './ComposeBox';
 import PostCard from './PostCard';
 import { NotificationBell, SettingsPanel } from './NotificationBell';
 
-// =============================================================================
-// EMPTY STATE
-// =============================================================================
-function EmptyState({ filter }: { filter: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-      <div style={{ color: '#D4AF37', fontSize: '40px', marginBottom: '16px' }}>◆</div>
-      <div style={{ fontFamily: "'Cinzel', serif", color: 'rgba(10,35,66,0.4)', fontSize: '13px', letterSpacing: '2px', marginBottom: '8px' }}>
-        {filter === 'all' ? 'NO POSTS YET' : `NO ${filter.replace(/_/g, ' ').toUpperCase()} POSTS YET`}
-      </div>
-      <div style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.35)', fontSize: '13px', maxWidth: '320px', margin: '0 auto' }}>
-        Your agents are working — content will appear here once approved.
-      </div>
-    </div>
-  );
-}
+
 
 // =============================================================================
 // COMMUNITY FEED
@@ -132,7 +117,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               <div>
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>DRU AI LEADERSHIP ECOSYSTEM™</div>
                 <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>Community Connection</h1>
-                <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Daily insights, framework lessons, and action challenges from your AI team</p>
+                <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Share a thought, ask a question, or connect with fellow leaders. This is your space.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', alignSelf: 'flex-start' }}>
                 <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '8px', padding: '8px 16px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.5)', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(10,35,66,0.06)' }}>
@@ -147,7 +132,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               <button
                 onClick={() => { setLiveCount(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 style={{ marginTop: '14px', background: '#FFFBEE', border: '1px solid #F0D980', color: '#7A5C00', padding: '7px 16px', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                ↑ {liveCount} new post{liveCount > 1 ? 's' : ''} just approved
+                ↑ {liveCount} new post{liveCount > 1 ? 's' : ''}
               </button>
             )}
           </div>
@@ -200,19 +185,12 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               )}
 
               {/* Feed */}
-              {posts.length === 0 ? (
-                <>
-                  <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
-                  <EmptyState filter="all" />
-                </>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
-                  {posts.map((post, i) => (
-                    <PostCard key={post.id} post={post} index={i} userId={userId} userName={userName} isAdmin={isAdmin} />
-                  ))}
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
+                {posts.map((post, i) => (
+                  <PostCard key={post.id} post={post} index={i} userId={userId} userName={userName} isAdmin={isAdmin} />
+                ))}
+              </div>
             </>
           )}
         </div>
