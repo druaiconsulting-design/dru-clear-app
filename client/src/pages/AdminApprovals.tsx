@@ -50,7 +50,6 @@ interface QuestionState {
   loading:       boolean;
 }
 
-// ─── Lead direction options ───────────────────────────────────
 const LEAD_DIRECTIONS = [
   { value: "assessment_invite", label: "Assessment Invite" },
   { value: "follow_up_email",   label: "Follow-up Email" },
@@ -59,67 +58,35 @@ const LEAD_DIRECTIONS = [
   { value: "nurture",           label: "Add to Nurture" },
 ];
 
-// ─── Client Delivery categories that generate PDFs ───────────
 const PDF_CATEGORIES = new Set([
   "presentation_design", "course_architecture", "video_production",
   "creative_direction", "client_onboarding", "feedback_coaching",
   "community_management", "client_delivery",
 ]);
 
-// ─── Platform badge colors ────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
-  LinkedIn:     "#0077B5",
-  Instagram:    "#C2185B",
-  Facebook:     "#1877F2",
-  Email:        "#D4AF37",
-  General:      "#0A2342",
-  X:            "#14171A",
-  TikTok:       "#010101",
-  YouTube:      "#FF0000",
-  Pinterest:    "#E60023",
-  Content:      "#163D6E",
-  Press:        "#8A6E1A",
-  Design:       "#7A0F38",
-  Localization: "#A68920",
-  Copy:         "#E0527E",
-  Outreach:     "#2E6DAB",
+  LinkedIn:"#0077B5", Instagram:"#C2185B", Facebook:"#1877F2", Email:"#D4AF37",
+  General:"#0A2342", X:"#14171A", TikTok:"#010101", YouTube:"#FF0000",
+  Pinterest:"#E60023", Content:"#163D6E", Press:"#8A6E1A", Design:"#7A0F38",
+  Localization:"#A68920", Copy:"#E0527E", Outreach:"#2E6DAB",
 };
 
-// ─── Division badge colors ────────────────────────────────────
 const DIVISION_COLORS: Record<string, string> = {
-  "Revenue & Growth":  "#D4AF37",
-  "Content & Brand":   "#C2185B",
-  "Marketing":         "#163D6E",
-  "Legal & Finance":   "#8A6E1A",
-  "AI Governance":     "#7A0F38",
-  "HR":                "#2E6DAB",
-  "Client Delivery":   "#A68920",
-  "Customer Support":  "#C2185B",
-  "Command":           "#0A2342",
+  "Revenue & Growth":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
+  "Legal & Finance":"#8A6E1A", "AI Governance":"#7A0F38", "HR":"#2E6DAB",
+  "Client Delivery":"#A68920", "Customer Support":"#C2185B", "Command":"#0A2342",
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
-  URGENT: "#C2185B",
-  HIGH:   "#D4AF37",
-  NORMAL: "rgba(255,255,255,0.3)",
+  URGENT:"#C2185B", HIGH:"#D4AF37", NORMAL:"rgba(255,255,255,0.3)",
 };
 
-// ─── Category filter labels ───────────────────────────────────
 const CATEGORY_LABELS: Record<string, string> = {
-  daily_briefing:   "Daily Briefing",
-  revenue_growth:   "Revenue & Growth",
-  content_brand:    "Content & Brand",
-  marketing:        "Marketing",
-  legal_finance:    "Legal & Finance",
-  ai_governance:    "AI Governance",
-  hr:               "HR",
-  client_delivery:  "Client Delivery",
-  customer_support: "Customer Support",
-  social:           "Social Media",
-  email:            "Email",
-  proposal:         "Proposal",
-  content:          "Content",
-  other:            "Other",
+  daily_briefing:"Daily Briefing", revenue_growth:"Revenue & Growth",
+  content_brand:"Content & Brand", marketing:"Marketing",
+  legal_finance:"Legal & Finance", ai_governance:"AI Governance",
+  hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
+  social:"Social Media", email:"Email", proposal:"Proposal", content:"Content", other:"Other",
 };
 
 const CATEGORY_ORDER = [
@@ -128,67 +95,66 @@ const CATEGORY_ORDER = [
   "social","email","proposal","content","other",
 ];
 
-// ─── Division agent roster ────────────────────────────────────
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
   "Revenue & Growth": [
-    { agent_id: "omar",    agent_name: "Omar Patel",       role: "Lead Scoring" },
-    { agent_id: "ryan",    agent_name: "Ryan Nakamura",    role: "CRM Management" },
-    { agent_id: "serena",  agent_name: "Serena Jackson",   role: "Business Coach" },
-    { agent_id: "mateo",   agent_name: "Mateo Gonzalez",   role: "Sales Support" },
-    { agent_id: "aaliyah", agent_name: "Aaliyah Foster",   role: "Outreach" },
-    { agent_id: "jaylen",  agent_name: "Jaylen Brooks",    role: "Email Marketing" },
-    { agent_id: "chloe",   agent_name: "Chloe Dubois",     role: "Copy Writer" },
-    { agent_id: "zara",    agent_name: "Zara Ahmed",       role: "Product Launch" },
-    { agent_id: "elena",   agent_name: "Elena Vasquez",    role: "Product Knowledge" },
-    { agent_id: "kwame",   agent_name: "Kwame Asante",     role: "Proposal Writer" },
+    { agent_id:"omar",    agent_name:"Omar Patel",       role:"Lead Scoring" },
+    { agent_id:"ryan",    agent_name:"Ryan Nakamura",    role:"CRM Management" },
+    { agent_id:"serena",  agent_name:"Serena Jackson",   role:"Business Coach" },
+    { agent_id:"mateo",   agent_name:"Mateo Gonzalez",   role:"Sales Support" },
+    { agent_id:"aaliyah", agent_name:"Aaliyah Foster",   role:"Outreach" },
+    { agent_id:"jaylen",  agent_name:"Jaylen Brooks",    role:"Email Marketing" },
+    { agent_id:"chloe",   agent_name:"Chloe Dubois",     role:"Copy Writer" },
+    { agent_id:"zara",    agent_name:"Zara Ahmed",       role:"Product Launch" },
+    { agent_id:"elena",   agent_name:"Elena Vasquez",    role:"Product Knowledge" },
+    { agent_id:"kwame",   agent_name:"Kwame Asante",     role:"Proposal Writer" },
   ],
   "Content & Brand": [
-    { agent_id: "camila",  agent_name: "Camila Flores",    role: "Social Media Strategist" },
-    { agent_id: "darius",  agent_name: "Darius King",      role: "Viral Scripter" },
-    { agent_id: "ravi",    agent_name: "Ravi Gupta",       role: "Graphic Designer" },
-    { agent_id: "yara",    agent_name: "Yara Mansour",     role: "Translator" },
-    { agent_id: "ingrid",  agent_name: "Ingrid Larsen",    role: "Press Release" },
+    { agent_id:"camila",  agent_name:"Camila Flores",    role:"Social Media Strategist" },
+    { agent_id:"darius",  agent_name:"Darius King",      role:"Viral Scripter" },
+    { agent_id:"ravi",    agent_name:"Ravi Gupta",       role:"Graphic Designer" },
+    { agent_id:"yara",    agent_name:"Yara Mansour",     role:"Translator" },
+    { agent_id:"ingrid",  agent_name:"Ingrid Larsen",    role:"Press Release" },
   ],
   "Marketing": [
-    { agent_id: "nia",     agent_name: "Nia Robinson",     role: "Content Creation" },
-    { agent_id: "luca",    agent_name: "Luca Romano",      role: "Digital Marketing" },
-    { agent_id: "hyunji",  agent_name: "Hyun-Ji Kim",      role: "Analytics & ROI" },
-    { agent_id: "andre",   agent_name: "Andre Mitchell",   role: "SEO/SEM" },
+    { agent_id:"nia",     agent_name:"Nia Robinson",     role:"Content Creation" },
+    { agent_id:"luca",    agent_name:"Luca Romano",      role:"Digital Marketing" },
+    { agent_id:"hyunji",  agent_name:"Hyun-Ji Kim",      role:"Analytics & ROI" },
+    { agent_id:"andre",   agent_name:"Andre Mitchell",   role:"SEO/SEM" },
   ],
   "Legal & Finance": [
-    { agent_id: "amara",   agent_name: "Amara Okafor",     role: "Legal Advisor" },
-    { agent_id: "diego",   agent_name: "Diego Reyes",      role: "Expense Manager" },
-    { agent_id: "yuki",    agent_name: "Yuki Tanaka",      role: "Financial Reporting" },
-    { agent_id: "marcus",  agent_name: "Marcus Chen",      role: "Tax Strategist" },
+    { agent_id:"amara",   agent_name:"Amara Okafor",     role:"Legal Advisor" },
+    { agent_id:"diego",   agent_name:"Diego Reyes",      role:"Expense Manager" },
+    { agent_id:"yuki",    agent_name:"Yuki Tanaka",      role:"Financial Reporting" },
+    { agent_id:"marcus",  agent_name:"Marcus Chen",      role:"Tax Strategist" },
   ],
   "AI Governance": [
-    { agent_id: "isabella", agent_name: "Isabella Moreno", role: "Director of Compliance" },
-    { agent_id: "khalid",   agent_name: "Khalid Hassan",   role: "Disclaimer Writer" },
-    { agent_id: "sofia",    agent_name: "Sofia Petrov",    role: "Privacy Policy" },
-    { agent_id: "james",    agent_name: "James Osei",      role: "Contract Writer" },
-    { agent_id: "meilin",   agent_name: "Mei Lin",         role: "Brand Protection" },
-    { agent_id: "rafael",   agent_name: "Rafael Torres",   role: "Continuous Learning" },
+    { agent_id:"isabella", agent_name:"Isabella Moreno", role:"Director of Compliance" },
+    { agent_id:"khalid",   agent_name:"Khalid Hassan",   role:"Disclaimer Writer" },
+    { agent_id:"sofia",    agent_name:"Sofia Petrov",    role:"Privacy Policy" },
+    { agent_id:"james",    agent_name:"James Osei",      role:"Contract Writer" },
+    { agent_id:"meilin",   agent_name:"Mei Lin",         role:"Brand Protection" },
+    { agent_id:"rafael",   agent_name:"Rafael Torres",   role:"Continuous Learning" },
   ],
   "HR": [
-    { agent_id: "naomi",   agent_name: "Naomi Williams",      role: "Recruiting" },
-    { agent_id: "aiden",   agent_name: "Aiden Park",          role: "Onboarding" },
-    { agent_id: "fatima",  agent_name: "Fatima Al-Rashid",    role: "Internal Helpdesk" },
+    { agent_id:"naomi",   agent_name:"Naomi Williams",      role:"Recruiting" },
+    { agent_id:"aiden",   agent_name:"Aiden Park",          role:"Onboarding" },
+    { agent_id:"fatima",  agent_name:"Fatima Al-Rashid",    role:"Internal Helpdesk" },
   ],
   "Client Delivery": [
-    { agent_id: "keisha",  agent_name: "Keisha Thompson",     role: "Onboarding Coach" },
-    { agent_id: "marco",   agent_name: "Marco Silva",         role: "Community Manager" },
-    { agent_id: "leila",   agent_name: "Leila Nasser",        role: "Feedback Coach" },
-    { agent_id: "jordan",  agent_name: "Jordan Hayes",        role: "Creative Director" },
-    { agent_id: "simone",  agent_name: "Simone Laurent",      role: "Course Architect" },
-    { agent_id: "theo",    agent_name: "Theo Nguyen",         role: "Presentation Designer" },
-    { agent_id: "amelia",  agent_name: "Amelia Santos",       role: "Training Video Producer" },
+    { agent_id:"keisha",  agent_name:"Keisha Thompson",     role:"Onboarding Coach" },
+    { agent_id:"marco",   agent_name:"Marco Silva",         role:"Community Manager" },
+    { agent_id:"leila",   agent_name:"Leila Nasser",        role:"Feedback Coach" },
+    { agent_id:"jordan",  agent_name:"Jordan Hayes",        role:"Creative Director" },
+    { agent_id:"simone",  agent_name:"Simone Laurent",      role:"Course Architect" },
+    { agent_id:"theo",    agent_name:"Theo Nguyen",         role:"Presentation Designer" },
+    { agent_id:"amelia",  agent_name:"Amelia Santos",       role:"Training Video Producer" },
   ],
   "Customer Support": [
-    { agent_id: "isaiah",    agent_name: "Isaiah Carter",     role: "Issue Resolution" },
-    { agent_id: "priscilla", agent_name: "Priscilla Okonkwo", role: "Multi-Channel Communication" },
+    { agent_id:"isaiah",    agent_name:"Isaiah Carter",     role:"Issue Resolution" },
+    { agent_id:"priscilla", agent_name:"Priscilla Okonkwo", role:"Multi-Channel Communication" },
   ],
   "Command": [
-    { agent_id: "twin", agent_name: "DeAnna's AI Twin", role: "Master Orchestrator" },
+    { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" },
   ],
 };
 
@@ -203,7 +169,7 @@ function timeAgo(timestamp: string): string {
 
 function renderDraft(text: string) {
   return text.split('\n\n').map((para, i) => (
-    <p key={i} style={{ margin: '0 0 0.75rem 0', fontFamily: "'Inter', sans-serif", color: '#FFFFFF', fontSize: '0.75rem', lineHeight: 1.6 }}>
+    <p key={i} style={{ margin:'0 0 0.75rem 0', fontFamily:"'Inter', sans-serif", color:'#FFFFFF', fontSize:'0.75rem', lineHeight:1.6 }}>
       {para.replace(/\n/g, ' ')}
     </p>
   ));
@@ -223,7 +189,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
 
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
-  if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) };
+  if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -233,7 +199,6 @@ function getDraftHeading(approval: Approval): string {
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
-// ─── Status display text by card type ────────────────────────
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
   if (approval.category === "lead_intelligence") {
     return status === "posted" ? "✓ Routed to GHL" : status === "posting" ? "Routing..." : "⚠ Route Failed";
@@ -252,12 +217,9 @@ export default function AdminApprovals() {
   const [editText, setEditText]           = useState("");
   const [saving, setSaving]               = useState<string | null>(null);
   const [publishStatus, setPublishStatus] = useState<Record<string, "posting" | "posted" | "failed">>({});
-
-  // Lead direction selection — per card, default to assessment_invite
   const [leadDirection, setLeadDirection] = useState<Record<string, string>>({});
-
-  // Ask a Question state — per card
-  const [questions, setQuestions] = useState<Record<string, QuestionState>>({});
+  const [questions, setQuestions]         = useState<Record<string, QuestionState>>({});
+  const [memberCounts, setMemberCounts]   = useState({ total: 0, navigator: 0, accelerator: 0 });
 
   const fetchApprovals = async () => {
     const { data, error } = await supabase
@@ -267,126 +229,65 @@ export default function AdminApprovals() {
     setLoading(false);
   };
 
+  const fetchMemberCounts = async () => {
+    const { data } = await supabase.from("profiles").select("tier").in("tier", ["navigator", "accelerator"]);
+    const nav = (data ?? []).filter(p => p.tier === "navigator").length;
+    const acc = (data ?? []).filter(p => p.tier === "accelerator").length;
+    setMemberCounts({ total: nav + acc, navigator: nav, accelerator: acc });
+  };
+
   useEffect(() => {
     fetchApprovals();
+    fetchMemberCounts();
     const channel = supabase.channel("approvals-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── PDF download helper ──────────────────────────────────────
   const downloadPDF = async (approval: Approval): Promise<boolean> => {
     try {
       const res = await fetch("/api/pdf-generator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          output:     approval.edited_output || approval.output,
-          agent_name: approval.agent_name,
-          task_brief: approval.task_brief,
-          division:   approval.division,
-          category:   approval.category,
-          approval_id: approval.id,
+          output: approval.edited_output || approval.output,
+          agent_name: approval.agent_name, task_brief: approval.task_brief,
+          division: approval.division, category: approval.category, approval_id: approval.id,
         }),
       });
       if (!res.ok) return false;
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
       a.href = url;
       a.download = `dru-ai-${(approval.category || "briefing").replace(/_/g, "-")}-${Date.now()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       return true;
-    } catch (err) {
-      console.error("[pdf] Download error:", err);
-      return false;
-    }
+    } catch (err) { console.error("[pdf]", err); return false; }
   };
 
-  // ── Lead executor helper ─────────────────────────────────────
   const routeLead = async (approval: Approval, direction: string): Promise<boolean> => {
     try {
       const res = await fetch("/api/lead-executor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          approval_id: approval.id,
-          output:      approval.output,
-          direction,
-          agent_name:  approval.agent_name,
-        }),
+        body: JSON.stringify({ approval_id: approval.id, output: approval.output, direction, agent_name: approval.agent_name }),
       });
       return res.ok;
-    } catch (err) {
-      console.error("[lead] Route error:", err);
-      return false;
-    }
+    } catch (err) { console.error("[lead]", err); return false; }
   };
 
-  // ── Approve ──────────────────────────────────────────────────
   const handleApprove = async (id: string) => {
     setSaving(id);
     const { error } = await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
     if (error) { setSaving(null); return; }
-
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
-
-    // ── Social → post via social-publisher ───────────────────
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       try {
-        const res = await fetch("/api/social-publisher", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: approval.edited_output || approval.output, platform: approval.platform, approval_id: id }),
-        });
-        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
-      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
-    }
-
-    // ── Lead Intelligence → route to GHL via lead-executor ───
-    else if (approval.category === "lead_intelligence") {
-      const direction = leadDirection[id] || "assessment_invite";
-      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = await routeLead(approval, direction);
-      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
-    }
-
-    // ── Client Delivery → generate branded PDF download ──────
-    else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
-      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = await downloadPDF(approval);
-      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
-    }
-
-    setSaving(null);
-  };
-
-  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status: "rejected" }).eq("id", id); setSaving(null); };
-  const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived: true }).eq("id", id); setSaving(null); };
-
-  const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
-  const handleEditSave  = async (id: string) => {
-    setSaving(id);
-    await supabase.from("approvals").update({ edited_output: editText, status: "approved" }).eq("id", id);
-    setEditingId(null);
-
-    const approval = approvals.find(a => a.id === id);
-    if (!approval) { setSaving(null); return; }
-
-    if (approval.category === "social") {
-      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      try {
-        const res = await fetch("/api/social-publisher", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }),
-        });
+        const res = await fetch("/api/social-publisher", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content: approval.edited_output || approval.output, platform: approval.platform, approval_id: id }) });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.category === "lead_intelligence") {
@@ -396,102 +297,134 @@ export default function AdminApprovals() {
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const editedApproval = { ...approval, edited_output: editText };
-      const ok = await downloadPDF(editedApproval);
+      const ok = await downloadPDF(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     }
-
     setSaving(null);
   };
 
-  // ── Ask a Question ───────────────────────────────────────────
-  const getQS = (id: string): QuestionState =>
-    questions[id] ?? { open: false, selectedAgent: null, input: "", messages: [], loading: false };
+  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected" }).eq("id", id); setSaving(null); };
+  const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
 
-  const setQS = (id: string, update: Partial<QuestionState>) =>
-    setQuestions(prev => ({ ...prev, [id]: { ...getQS(id), ...update } }));
+  const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
+  const handleEditSave  = async (id: string) => {
+    setSaving(id);
+    await supabase.from("approvals").update({ edited_output: editText, status:"approved" }).eq("id", id);
+    setEditingId(null);
+    const approval = approvals.find(a => a.id === id);
+    if (!approval) { setSaving(null); return; }
+    if (approval.category === "social") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      try {
+        const res = await fetch("/api/social-publisher", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }) });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+    } else if (approval.category === "lead_intelligence") {
+      const direction = leadDirection[id] || "assessment_invite";
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await routeLead(approval, direction);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await downloadPDF({ ...approval, edited_output: editText });
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    }
+    setSaving(null);
+  };
+
+  const getQS  = (id: string): QuestionState => questions[id] ?? { open:false, selectedAgent:null, input:"", messages:[], loading:false };
+  const setQS  = (id: string, update: Partial<QuestionState>) => setQuestions(prev => ({ ...prev, [id]: { ...getQS(id), ...update } }));
 
   const toggleQuestion = (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.open) {
       const autoAgent = approval.category === "social"
-        ? { agent_id: approval.source?.replace('_social', '') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
+        ? { agent_id: approval.source?.replace('_social','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "daily_briefing"
-        ? { agent_id: "twin", agent_name: "DeAnna's AI Twin", role: "Master Orchestrator" }
+        ? { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" }
         : null;
-      setQS(approval.id, { open: true, selectedAgent: autoAgent });
-    } else {
-      setQS(approval.id, { open: false });
-    }
+      setQS(approval.id, { open:true, selectedAgent:autoAgent });
+    } else { setQS(approval.id, { open:false }); }
   };
 
   const handleAskQuestion = async (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.selectedAgent || !qs.input.trim()) return;
     const question = qs.input.trim();
-    const newMessages: ConversationMessage[] = [...qs.messages, { role: 'user', text: question }];
-    setQS(approval.id, { messages: newMessages, input: "", loading: true });
+    const newMessages: ConversationMessage[] = [...qs.messages, { role:'user', text:question }];
+    setQS(approval.id, { messages:newMessages, input:"", loading:true });
     try {
-      const res = await fetch("/api/ask-agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages }),
-      });
+      const res  = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages }) });
       const data = await res.json();
-      setQS(approval.id, { messages: [...newMessages, { role: 'agent', agentName: qs.selectedAgent.agent_name, text: data.response ?? "Unable to respond. Please try again." }], loading: false });
-    } catch {
-      setQS(approval.id, { messages: [...newMessages, { role: 'agent', agentName: qs.selectedAgent.agent_name, text: "Something went wrong. Please try again." }], loading: false });
-    }
+      setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:data.response ?? "Unable to respond. Please try again." }], loading:false });
+    } catch { setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:"Something went wrong. Please try again." }], loading:false }); }
   };
 
-  // ── Filter tabs ──────────────────────────────────────────────
-  const presentCategories = [...new Set(approvals.map(a => a.category))];
-  const orderedCategories = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
-  const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
-  const allCategories = [...orderedCategories, ...remainingCategories];
-  const filtered = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
-  const pending       = approvals.filter(a => a.status === "pending").length;
-  const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+  const presentCategories  = [...new Set(approvals.map(a => a.category))];
+  const orderedCategories  = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
+  const remainingCategories= presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
+  const allCategories      = [...orderedCategories, ...remainingCategories];
+  const filtered           = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
+  const pending            = approvals.filter(a => a.status === "pending").length;
+  const approvedToday      = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
   const tabStyle = (active: boolean) => ({
-    fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700,
-    letterSpacing: "0.08em", textTransform: "uppercase" as const,
-    padding: "0.4rem 0.875rem", borderRadius: 20, cursor: "pointer", border: "none",
+    fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
+    letterSpacing:"0.08em", textTransform:"uppercase" as const,
+    padding:"0.4rem 0.875rem", borderRadius:20, cursor:"pointer", border:"none",
     background: active ? "#D4AF37" : "rgba(255,255,255,0.06)",
     color: active ? "#0A2342" : "rgba(255,255,255,0.6)",
-    transition: "all 0.15s ease",
+    transition:"all 0.15s ease",
   });
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight:"100dvh", background:"#0A2342", display:"flex", flexDirection:"column" }}>
       <NavBar active="/admin-approvals" />
-      <main style={{ flex: 1, padding: "2rem 1.5rem", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex:1, padding:"2rem 1.5rem", maxWidth:1100, margin:"0 auto", width:"100%" }}>
 
         {/* Header */}
-        <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
+        <div style={{ marginBottom:"1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"1rem" }}>
           <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 3 · Confidential</p>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>Approval Queue</h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>Review and approve agent-drafted responses before they go live</p>
+            <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.7rem", letterSpacing:"0.12em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Admin · Page 3 · Confidential</p>
+            <h1 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.75rem", fontWeight:700, lineHeight:1.2, marginBottom:"0.2rem" }}>Approval Queue</h1>
+            <p style={{ color:"rgba(230,230,230,0.5)", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem" }}>Review and approve agent-drafted responses before they go live</p>
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" as const }}>
-            <div onClick={() => window.location.href = "/admin-archived"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>Archived →</div>
-            <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Command Center</div>
+          <div style={{ display:"flex", gap:"0.75rem", flexWrap:"wrap" as const }}>
+            <div onClick={() => window.location.href = "/admin-archived"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>Archived →</div>
+            <div onClick={() => window.location.href = "/admin"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#D4AF37", border:"1px solid rgba(212,175,55,0.35)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>← Command Center</div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          {[{ label: "Awaiting Approval", value: pending, color: "#D4AF37" }, { label: "Approved Today", value: approvedToday, color: "#4CAF50" }, { label: "Total in Queue", value: approvals.length, color: "rgba(255,255,255,0.6)" }].map(s => (
-            <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "0.875rem 1rem" }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: s.color, fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>{s.value}</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "4px 0 0" }}>{s.label}</p>
+        {/* Queue Stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"0.75rem" }}>
+          {[
+            { label:"Awaiting Approval", value:pending,        color:"#D4AF37" },
+            { label:"Approved Today",    value:approvedToday,  color:"#4CAF50" },
+            { label:"Total in Queue",    value:approvals.length, color:"rgba(255,255,255,0.6)" },
+          ].map(s => (
+            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"0.875rem 1rem" }}>
+              <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
+              <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Community Member Stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
+          {[
+            { label:"CC Members",      value:memberCounts.total,       color:"#D4AF37" },
+            { label:"Navigator",       value:memberCounts.navigator,   color:"rgba(192,208,232,1)" },
+            { label:"Accelerator",     value:memberCounts.accelerator, color:"#B8941F" },
+          ].map(s => (
+            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"0.875rem 1rem" }}>
+              <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
+              <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Filter Tabs */}
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", flexWrap: "wrap" as const }}>
+        <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
           <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>All ({approvals.length})</button>
           {allCategories.map(cat => (
             <button key={cat} onClick={() => setActiveFilter(cat)} style={tabStyle(activeFilter === cat)}>
@@ -500,159 +433,147 @@ export default function AdminApprovals() {
           ))}
         </div>
 
-        {loading && <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem" }}>LOADING QUEUE...</div>}
-        {!loading && filtered.length === 0 && <div style={{ textAlign: "center" as const, padding: "3rem", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>{activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}</div>}
+        {loading && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(212,175,55,0.6)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>LOADING QUEUE...</div>}
+        {!loading && filtered.length === 0 && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(255,255,255,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>{activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}</div>}
 
         {!loading && (
-          <div style={{ display: "flex", flexDirection: "column" as const, gap: "1rem" }}>
+          <div style={{ display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
             {filtered.map(approval => {
-              const badge      = getBadgeInfo(approval);
-              const origCol    = getOriginalColumn(approval);
-              const draftHead  = getDraftHeading(approval);
-              const isBriefing = approval.category !== "social";
-              const qs         = getQS(approval.id);
-              const divAgents  = DIVISION_AGENTS[approval.division] ?? [];
-              const isLead     = approval.category === "lead_intelligence";
-              const isPDF      = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
-              const currentDir = leadDirection[approval.id] || "assessment_invite";
+              const badge     = getBadgeInfo(approval);
+              const origCol   = getOriginalColumn(approval);
+              const draftHead = getDraftHeading(approval);
+              const isBriefing= approval.category !== "social";
+              const qs        = getQS(approval.id);
+              const divAgents = DIVISION_AGENTS[approval.division] ?? [];
+              const isLead    = approval.category === "lead_intelligence";
+              const isPDF     = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
+              const currentDir= leadDirection[approval.id] || "assessment_invite";
 
               return (
-                <div key={approval.id} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background: approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", opacity: approval.status !== "pending" ? 0.7 : 1 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background:approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
 
                   {/* Card Header */}
-                  <div style={{ background: "#071A2E", padding: "0.65rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "0.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" as const }}>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: badge.color, color: "#FFFFFF" }}>{badge.text}</span>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "transparent", border: `1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color: PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
-                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
-                      {/* PDF indicator badge */}
-                      {isPDF && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(166,137,32,0.2)", border: "1px solid rgba(166,137,32,0.5)", color: "#A68920" }}>PDF on Approve</span>}
-                      {/* Lead indicator badge */}
-                      {isLead && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.4)", color: "#D4AF37" }}>Routes to GHL</span>}
+                  <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
+                      <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
+                      {isPDF && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
+                      {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
                       {publishStatus[approval.id] && (
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: publishStatus[approval.id] === "posted" ? "#4CAF50" : publishStatus[approval.id] === "posting" ? "#D4AF37" : "#C2185B" }}>
+                        <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:publishStatus[approval.id] === "posted" ? "#4CAF50" : publishStatus[approval.id] === "posting" ? "#D4AF37" : "#C2185B" }}>
                           {getStatusText(approval, publishStatus[approval.id])}
                         </span>
                       )}
-                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: approval.status === "approved" ? "#4CAF50" : "#C2185B" }}>{approval.status}</span>}
-                      <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "0.6rem" }}>{timeAgo(approval.created_at)}</span>
+                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : "#C2185B" }}>{approval.status}</span>}
+                      <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
 
                   {/* Card Body */}
-                  <div style={{ padding: "1rem", display: "grid", gridTemplateColumns: isBriefing ? "1fr 2fr" : "1fr 1fr", gap: "1rem" }}>
+                  <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
                     <div>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>{origCol.heading}</p>
-                      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(255,255,255,0.7)", fontSize: "0.75rem", lineHeight: 1.6, margin: 0 }}>{origCol.content ?? <em style={{ color: "rgba(255,255,255,0.3)" }}>No original content</em>}</p>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
+                      <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(255,255,255,0.3)" }}>No original content</em>}</p>
                     </div>
                     <div>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>{draftHead}</p>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{draftHead}</p>
                       {editingId === approval.id ? (
-                        <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width: "100%", minHeight: isBriefing ? 200 : 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem", lineHeight: 1.6, resize: "vertical" as const, boxSizing: "border-box" as const, outline: "none" }} />
+                        <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#FFFFFF", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
                       ) : (
                         <div>{renderDraft(approval.edited_output || approval.output)}</div>
                       )}
                     </div>
                   </div>
 
-                  {/* ── Lead Direction Selector ──────────────── */}
+                  {/* Lead Direction Selector */}
                   {isLead && approval.status === "pending" && editingId !== approval.id && (
-                    <div style={{ margin: "0 1rem 0.75rem", padding: "0.75rem", background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Route this lead to:</p>
-                      <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "0.4rem" }}>
+                    <div style={{ margin:"0 1rem 0.75rem", padding:"0.75rem", background:"rgba(212,175,55,0.04)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8 }}>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>Route this lead to:</p>
+                      <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.4rem" }}>
                         {LEAD_DIRECTIONS.map(opt => (
-                          <button
-                            key={opt.value}
-                            onClick={() => setLeadDirection(prev => ({ ...prev, [approval.id]: opt.value }))}
-                            style={{
-                              fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700,
-                              padding: "0.3rem 0.875rem", borderRadius: 20, cursor: "pointer",
-                              border: `1px solid ${currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.18)"}`,
-                              background: currentDir === opt.value ? "rgba(212,175,55,0.18)" : "transparent",
-                              color: currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.5)",
-                              transition: "all 0.15s",
-                            }}>
-                            {opt.label}
-                            {opt.value === "assessment_invite" && <span style={{ marginLeft: 4, opacity: 0.6, fontSize: "0.52rem" }}>★ default</span>}
+                          <button key={opt.value} onClick={() => setLeadDirection(prev => ({ ...prev, [approval.id]: opt.value }))}
+                            style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.3rem 0.875rem", borderRadius:20, cursor:"pointer", border:`1px solid ${currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.18)"}`, background:currentDir === opt.value ? "rgba(212,175,55,0.18)" : "transparent", color:currentDir === opt.value ? "#D4AF37" : "rgba(255,255,255,0.5)", transition:"all 0.15s" }}>
+                            {opt.label}{opt.value === "assessment_invite" && <span style={{ marginLeft:4, opacity:0.6, fontSize:"0.52rem" }}>★ default</span>}
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* ── Ask a Question Panel ─────────────────── */}
+                  {/* Ask a Question Panel */}
                   {qs.open && approval.status === "pending" && (
-                    <div style={{ margin: "0 1rem", padding: "0.875rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, marginBottom: "0.5rem" }}>
+                    <div style={{ margin:"0 1rem", padding:"0.875rem", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8, marginBottom:"0.5rem" }}>
                       {isBriefing && approval.category !== "daily_briefing" && (
-                        <div style={{ marginBottom: "0.75rem" }}>
-                          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Who are you asking?</p>
-                          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "0.4rem" }}>
+                        <div style={{ marginBottom:"0.75rem" }}>
+                          <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Who are you asking?</p>
+                          <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.4rem" }}>
                             {divAgents.map(agent => (
-                              <button key={agent.agent_id} onClick={() => setQS(approval.id, { selectedAgent: agent })}
-                                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "0.3rem 0.75rem", borderRadius: 20, cursor: "pointer", border: `1px solid ${qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.2)"}`, background: qs.selectedAgent?.agent_id === agent.agent_id ? "rgba(212,175,55,0.15)" : "transparent", color: qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.5)", transition: "all 0.15s" }}>
-                                {agent.agent_name} <span style={{ opacity: 0.6, fontSize: "0.55rem" }}>· {agent.role}</span>
+                              <button key={agent.agent_id} onClick={() => setQS(approval.id, { selectedAgent:agent })}
+                                style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.3rem 0.75rem", borderRadius:20, cursor:"pointer", border:`1px solid ${qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.2)"}`, background:qs.selectedAgent?.agent_id === agent.agent_id ? "rgba(212,175,55,0.15)" : "transparent", color:qs.selectedAgent?.agent_id === agent.agent_id ? "#D4AF37" : "rgba(255,255,255,0.5)", transition:"all 0.15s" }}>
+                                {agent.agent_name} <span style={{ opacity:0.6, fontSize:"0.55rem" }}>· {agent.role}</span>
                               </button>
                             ))}
                           </div>
                         </div>
                       )}
                       {(approval.category === "social" || approval.category === "daily_briefing") && qs.selectedAgent && (
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: "0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:"0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
                       )}
                       {qs.messages.length > 0 && (
-                        <div style={{ marginBottom: "0.75rem", display: "flex", flexDirection: "column" as const, gap: "0.5rem", maxHeight: 300, overflowY: "auto" as const }}>
+                        <div style={{ marginBottom:"0.75rem", display:"flex", flexDirection:"column" as const, gap:"0.5rem", maxHeight:300, overflowY:"auto" as const }}>
                           {qs.messages.map((msg, i) => (
-                            <div key={i} style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: msg.role === "user" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.08)"}` }}>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", color: msg.role === "user" ? "#D4AF37" : "rgba(255,255,255,0.5)", marginBottom: "0.25rem", textTransform: "uppercase" as const }}>{msg.role === "user" ? "You" : msg.agentName}</p>
-                              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#FFFFFF", lineHeight: 1.6, margin: 0 }}>{msg.text}</p>
+                            <div key={i} style={{ padding:"0.5rem 0.75rem", borderRadius:8, background:msg.role === "user" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.05)", border:`1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.08)"}` }}>
+                              <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", color:msg.role === "user" ? "#D4AF37" : "rgba(255,255,255,0.5)", marginBottom:"0.25rem", textTransform:"uppercase" as const }}>{msg.role === "user" ? "You" : msg.agentName}</p>
+                              <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", color:"#FFFFFF", lineHeight:1.6, margin:0 }}>{msg.text}</p>
                             </div>
                           ))}
                           {qs.loading && (
-                            <div style={{ padding: "0.5rem 0.75rem", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, color: "rgba(212,175,55,0.6)", margin: 0, letterSpacing: "0.08em" }}>{qs.selectedAgent?.agent_name ?? "Agent"} is responding...</p>
+                            <div style={{ padding:"0.5rem 0.75rem", borderRadius:8, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)" }}>
+                              <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, color:"rgba(212,175,55,0.6)", margin:0, letterSpacing:"0.08em" }}>{qs.selectedAgent?.agent_name ?? "Agent"} is responding...</p>
                             </div>
                           )}
                         </div>
                       )}
                       {qs.selectedAgent && (
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <input type="text" value={qs.input} onChange={e => setQS(approval.id, { input: e.target.value })} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(approval); } }} placeholder={`Ask ${qs.selectedAgent.agent_name} a question...`} disabled={qs.loading}
-                            style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 6, color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", padding: "0.5rem 0.75rem", outline: "none", opacity: qs.loading ? 0.6 : 1 }} />
+                        <div style={{ display:"flex", gap:"0.5rem" }}>
+                          <input type="text" value={qs.input} onChange={e => setQS(approval.id, { input:e.target.value })} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(approval); } }} placeholder={`Ask ${qs.selectedAgent.agent_name} a question...`} disabled={qs.loading}
+                            style={{ flex:1, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, color:"#FFFFFF", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem 0.75rem", outline:"none", opacity:qs.loading ? 0.6 : 1 }} />
                           <button onClick={() => handleAskQuestion(approval)} disabled={qs.loading || !qs.input.trim()}
-                            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.5rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: (qs.loading || !qs.input.trim()) ? 0.5 : 1 }}>Send</button>
+                            style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.5rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(qs.loading || !qs.input.trim()) ? 0.5 : 1 }}>Send</button>
                         </div>
                       )}
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div style={{ padding: "0 1rem 1rem", display: "flex", gap: "0.5rem", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const }}>
+                  <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
                     {approval.status === "pending" && editingId !== approval.id && (
                       <button onClick={() => toggleQuestion(approval)}
-                        style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "0.4rem 0.875rem", borderRadius: 6, cursor: "pointer", border: `1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background: qs.open ? "rgba(212,175,55,0.1)" : "transparent", color: qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
+                        style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:`1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background:qs.open ? "rgba(212,175,55,0.1)" : "transparent", color:qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>
                         {qs.open ? "✕ Close Question" : "? Ask a Question"}
                       </button>
                     )}
-                    <div style={{ display: "flex", gap: "0.5rem", marginLeft: "auto" }}>
+                    <div style={{ display:"flex", gap:"0.5rem", marginLeft:"auto" }}>
                       {approval.status === "pending" && editingId !== approval.id && (
                         <>
-                          <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(194,24,91,0.5)", background: "transparent", color: "#C2185B", letterSpacing: "0.06em" }}>Reject</button>
-                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(212,175,55,0.4)", background: "transparent", color: "#D4AF37", letterSpacing: "0.06em" }}>Edit</button>
-                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1.25rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>
-                            {saving === approval.id ? "..." : isPDF ? "Approve + PDF ↓" : isLead ? `Approve + Route →` : "Approve ✓"}
+                          <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
+                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
+                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                            {saving === approval.id ? "..." : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
                           </button>
                         </>
                       )}
                       {editingId === approval.id && (
                         <>
-                          <button onClick={() => setEditingId(null)} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>Cancel</button>
-                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "none", background: "#D4AF37", color: "#0A2342", letterSpacing: "0.06em", opacity: saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "Saving..." : "Save & Approve"}</button>
+                          <button onClick={() => setEditingId(null)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
+                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "Saving..." : "Save & Approve"}</button>
                         </>
                       )}
                       {approval.status !== "pending" && editingId !== approval.id && (
-                        <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, padding: "0.45rem 1rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>Archive</button>
+                        <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>Archive</button>
                       )}
                     </div>
                   </div>
@@ -662,11 +583,11 @@ export default function AdminApprovals() {
           </div>
         )}
 
-        <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>All responses reviewed and approved by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026</p>
+        <div style={{ marginTop:"1rem", textAlign:"center" as const, padding:"0.75rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8 }}>
+          <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", color:"rgba(212,175,55,0.7)", margin:0 }}>All responses reviewed and approved by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026</p>
         </div>
       </main>
-      <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem" }}>
+      <footer style={{ textAlign:"center" as const, padding:"0.75rem", color:"rgba(255,255,255,0.2)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem" }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
     </div>
