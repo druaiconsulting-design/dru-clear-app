@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase, checkFlagged, formatDate } from './types';
+import { supabase, checkFlagged, formatDate, formatRelativeTime } from './types';
 import type { CommunityComment, MemberProfile } from './types';
 import MemberAvatar from './MemberAvatar';
 
@@ -153,7 +153,7 @@ export default function CommentSection({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#0A2342' }}>{getDisplayName(comment)}</span>
-                    <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>{formatDate(comment.created_at)}</span>
+                    <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>{formatRelativeTime(comment.created_at)}</span>
                   </div>
                   {comment.member_id === userId && editingId !== comment.id && (
                     <div style={{ display: 'flex', gap: '10px' }}>
