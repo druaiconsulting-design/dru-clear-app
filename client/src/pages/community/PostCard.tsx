@@ -1,11 +1,28 @@
 import { useState, useEffect } from 'react';
-import { supabase, formatDate, formatRelativeTime, formatContent, POST_TYPE_CONFIG, TIER_BADGE, AGENT_FRAMEWORK_MAP, ZOE_POST_TYPES } from './types';
+import { supabase, formatRelativeTime, formatContent, POST_TYPE_CONFIG, TIER_BADGE, AGENT_FRAMEWORK_MAP, ZOE_POST_TYPES } from './types';
 import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 import CommentSection from './CommentSection';
 
+// ── Video embed detector ──────────────────────────────────────────────────────
+function getVideoEmbed(url: string): string | null {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  const loom = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
+  if (loom) return `https://www.loom.com/embed/${loom[1]}`;
+  return null;
+}
+
+function getPdfFilename(url: string): string {
+  const parts = url.split('/');
+  const raw = parts[parts.length - 1] || 'Document.pdf';
+  return decodeURIComponent(raw).replace(/^\d+_/, '');
+}
+
 // =============================================================================
-// POST CARD — heart + comments + Ask Agent to Reply (admin only)
+// POST CARD
 // =============================================================================
 export default function PostCard({
   post, index, userId, userName, userPhotoUrl, isAdmin,
@@ -73,6 +90,7 @@ export default function PostCard({
   };
 
   const countLabel = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
+  const videoEmbed = post.video_url ? getVideoEmbed(post.video_url) : null;
 
   return (
     <div
@@ -107,17 +125,51 @@ export default function PostCard({
         </div>
       )}
 
+      {/* Title — agent posts only */}
       {!isMemberPost && (
         <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>{post.title}</h3>
       )}
-      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
-        {paragraphs.map((p, i) => <p key={i} style={{ marginBottom: '12px' }}>{p}</p>)}
-      </div>
 
+      {/* Content */}
+      {post.content.trim() && (
+        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
+          {paragraphs.map((p, i) => <p key={i} style={{ marginBottom: '12px' }}>{p}</p>)}
+        </div>
+      )}
+
+      {/* Image / GIF */}
       {post.image_url && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
           <img src={post.image_url} alt="Post image" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }} />
         </div>
+      )}
+
+      {/* Video embed */}
+      {post.video_url && videoEmbed && (
+        <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8', position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+          <iframe src={videoEmbed} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="Video" />
+        </div>
+      )}
+
+      {/* Direct video upload */}
+      {post.video_url && !videoEmbed && (
+        <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
+          <video src={post.video_url} controls style={{ width: '100%', maxHeight: '400px', display: 'block', background: '#000' }} />
+        </div>
+      )}
+
+      {/* PDF download card */}
+      {post.pdf_url && (
+        <a href={post.pdf_url} target="_blank" rel="noopener noreferrer"
+          style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#FAFAF8', border: '1px solid #E8E4DF', borderRadius: '8px', textDecoration: 'none', transition: 'background 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#F0EDE8'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAF8'; }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '20px' }}>📄</span>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: '#0A2342' }}>{getPdfFilename(post.pdf_url)}</span>
+          </div>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#B8941F', letterSpacing: '0.5px' }}>DOWNLOAD ↓</span>
+        </a>
       )}
 
       {/* Footer */}
@@ -133,7 +185,6 @@ export default function PostCard({
           </div>
         )}
 
-        {/* Interaction row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={handleHeart} disabled={heartLoading}
@@ -153,7 +204,6 @@ export default function PostCard({
             </button>
           </div>
 
-          {/* Admin only */}
           {isAdmin && (
             <button onClick={handleAskAgent} disabled={agentLoading || agentQueued}
               style={{ background: 'none', border: `1px dashed ${agentQueued ? '#B8941F' : 'rgba(10,35,66,0.2)'}`, borderRadius: '6px', padding: '5px 12px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: agentQueued ? '#B8941F' : 'rgba(10,35,66,0.35)', cursor: agentQueued || agentLoading ? 'default' : 'pointer', letterSpacing: '0.4px', transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '5px' }}
