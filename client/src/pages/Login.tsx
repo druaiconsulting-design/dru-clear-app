@@ -56,18 +56,13 @@ export default function Login() {
   const strength = getPasswordStrength(password);
 
   const handleGoogleLogin = async () => {
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     const result = await loginWithGoogle();
-    if (!result.success) {
-      setError(result.error || "Google sign in failed.");
-      setLoading(false);
-    }
+    if (!result.success) { setError(result.error || "Google sign in failed."); setLoading(false); }
   };
 
   const handlePasskeyLogin = async () => {
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     const result = await loginWithPasskey();
     setLoading(false);
     if (!result.success) setError(result.error || "Passkey login failed.");
@@ -75,8 +70,7 @@ export default function Login() {
   };
 
   const handleClientLogin = async () => {
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     const result = await loginClient(email, password);
     setLoading(false);
     if (!result.success) setError(result.error || "Login failed.");
@@ -84,13 +78,8 @@ export default function Login() {
   };
 
   const handleClientRegister = async () => {
-    setError("");
-    setLoading(true);
-    if (!firstName) {
-      setError("Please enter your first name.");
-      setLoading(false);
-      return;
-    }
+    setError(""); setLoading(true);
+    if (!firstName) { setError("Please enter your first name."); setLoading(false); return; }
     const result = await registerClient(email, password, firstName);
     setLoading(false);
     if (!result.success) setError(result.error || "Registration failed.");
@@ -98,40 +87,61 @@ export default function Login() {
   };
 
   const handleForgotPassword = async () => {
-    setError("");
-    setLoading(true);
-    if (!email) {
-      setError("Please enter your email.");
-      setLoading(false);
-      return;
-    }
+    setError(""); setLoading(true);
+    if (!email) { setError("Please enter your email."); setLoading(false); return; }
     const result = await resetPassword(email);
     setLoading(false);
     if (!result.success) setError(result.error || "Could not send reset email.");
     else setMode("forgot-sent");
   };
 
-  const back = (to: Mode) => () => {
-    setMode(to);
-    setError("");
-    setPassword("");
-  };
+  const back = (to: Mode) => () => { setMode(to); setError(""); setPassword(""); };
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
 
+      <style>{`
+        @keyframes sweepLine {
+          0%   { transform: translateX(-100%); opacity: 0.4; }
+          50%  { opacity: 1; }
+          100% { transform: translateX(100%); opacity: 0.4; }
+        }
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {/* Logo */}
-      <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png" alt="DRU CLEAR" style={{ height: 120, width: "auto", margin: "0 auto" }} />
+      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+        <img
+          src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
+          alt="DRU CLEAR"
+          style={{ height: 120, width: "auto", margin: "0 auto" }}
+        />
       </div>
 
       <div style={{ width: "100%", maxWidth: 400 }}>
 
         {/* CHOOSE */}
         {mode === "choose" && (
-          <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, textAlign: "center", marginBottom: "0.5rem" }}>Welcome</h1>
-            <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", textAlign: "center", marginBottom: "2rem" }}>Sign in to your DRU AI ecosystem</p>
+          <div style={{ animation: "fadeSlideIn 0.5s ease both" }}>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, textAlign: "center", marginBottom: "0.75rem" }}>
+              Transformation Continues Here
+            </h1>
+
+            {/* Animated gold line */}
+            <div style={{ position: "relative", height: 2, background: "rgba(212,175,55,0.15)", borderRadius: 2, overflow: "hidden", marginBottom: "0.875rem" }}>
+              <div style={{
+                position: "absolute", top: 0, left: 0, height: "100%", width: "50%",
+                background: "linear-gradient(90deg, transparent, #D4AF37, transparent)",
+                animation: "sweepLine 2.4s ease-in-out infinite",
+              }} />
+            </div>
+
+            <p style={{ color: "rgba(212,175,55,0.7)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", textAlign: "center", marginBottom: "2rem", fontStyle: "italic", lineHeight: 1.6 }}>
+              Use the same email address you used to take the assessment.
+            </p>
 
             {/* Google */}
             <button onClick={handleGoogleLogin} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", background: "#FFFFFF", color: "#1a1a1a", border: "none", borderRadius: 8, padding: "0.85rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.04em", cursor: "pointer", marginBottom: "0.75rem" }}>
@@ -162,16 +172,13 @@ export default function Login() {
             </button>
 
             {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginTop: "1rem", textAlign: "center" }}>{error}</p>}
-            <p style={{ textAlign: "center", marginTop: "1.5rem" }}>
-              <a href="/" style={{ color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", textDecoration: "none" }}>Back to Assessment</a>
-            </p>
           </div>
         )}
 
         {/* CLIENT EMAIL */}
         {mode === "client-email" && (
           <div>
-            <button onClick={back("choose")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>Back</button>
+            <button onClick={back("choose")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Welcome</h1>
             <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Enter your email to continue</p>
             <input type="email" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...inputStyle, marginBottom: "1.25rem" }} />
@@ -186,7 +193,7 @@ export default function Login() {
         {/* CLIENT LOGIN */}
         {mode === "client-login" && (
           <div>
-            <button onClick={back("client-email")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>Back</button>
+            <button onClick={back("client-email")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Welcome Back</h1>
             <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Signing in as <span style={{ color: "#D4AF37" }}>{email}</span></p>
             <input type="password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleClientLogin()} style={{ ...inputStyle, marginBottom: "0.5rem" }} />
@@ -199,7 +206,7 @@ export default function Login() {
         {/* CLIENT REGISTER */}
         {mode === "client-register" && (
           <div>
-            <button onClick={back("client-email")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>Back</button>
+            <button onClick={back("client-email")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Create Account</h1>
             <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Setting up access for <span style={{ color: "#D4AF37" }}>{email}</span></p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", marginBottom: "0.5rem" }}>
@@ -211,7 +218,7 @@ export default function Login() {
                 <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: "0.35rem" }}>
                   <div style={{ height: "100%", width: strength.width, background: strength.color, borderRadius: 2, transition: "all 0.3s" }} />
                 </div>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: strength.color }}>{strength.label} - min 8 chars, 1 number, 1 special character</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: strength.color }}>{strength.label} — min 8 chars, 1 number, 1 special character</p>
               </div>
             )}
             {error && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.875rem" }}>{error}</p>}
@@ -222,7 +229,7 @@ export default function Login() {
         {/* FORGOT PASSWORD */}
         {mode === "forgot-password" && (
           <div>
-            <button onClick={back("client-login")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>Back</button>
+            <button onClick={back("client-login")} style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}>← Back</button>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>Reset Password</h1>
             <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", marginBottom: "1.75rem" }}>Enter your email and we will send you a reset link automatically.</p>
             <input type="email" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()} style={{ ...inputStyle, marginBottom: "1.25rem" }} />
@@ -248,7 +255,7 @@ export default function Login() {
       </div>
 
       <footer style={{ marginTop: "3rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em", textAlign: "center" }}>
-        &copy; 2026 DRU CLEAR - All Rights Reserved - DRU AI Consulting
+        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
     </div>
   );
