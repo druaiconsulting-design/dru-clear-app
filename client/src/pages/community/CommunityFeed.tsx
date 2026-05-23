@@ -70,7 +70,12 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       setUserId(user.id);
       setIsAdmin(user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase());
       supabase.from('profiles').select('first_name, photo_url').eq('id', user.id).single()
-        .then(({ data }) => { if (data) { setUserName(data.first_name ?? ''); setUserPhotoUrl(data.photo_url ?? undefined); } });
+        .then(({ data }) => {
+          if (data) {
+            setUserName(data.first_name ?? '');
+            setUserPhotoUrl(data.photo_url ?? user.user_metadata?.avatar_url ?? undefined);
+          }
+        });
       requestPushPermission(user.id);
       registerPush(user.id);
     });
@@ -117,8 +122,8 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               <div>
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>DRU AI LEADERSHIP ECOSYSTEM™</div>
                 <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>Community Connection</h1>
-                <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Share a thought, ask a question, or connect with fellow leaders. This is your space.</p>
-                <p style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', marginTop: '5px', fontStyle: 'italic' }}>This is a space for learning and connection. No soliciting or self-promotion.</p>
+                <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Share your thoughts, ask questions, connect and collaborate with like-minded leaders.</p>
+                <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', marginTop: '5px', fontWeight: '600' }}>Soliciting and self-promotion are prohibited; violation will result in removal from the membership.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', alignSelf: 'flex-start' }}>
                 <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '8px', padding: '8px 16px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.5)', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(10,35,66,0.06)' }}>
@@ -189,7 +194,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
                 {posts.map((post, i) => (
-                  <PostCard key={post.id} post={post} index={i} userId={userId} userName={userName} isAdmin={isAdmin} />
+                  <PostCard key={post.id} post={post} index={i} userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} isAdmin={isAdmin} />
                 ))}
               </div>
             </>
