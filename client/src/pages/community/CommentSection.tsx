@@ -47,7 +47,13 @@ export default function CommentSection({
     const channel = supabase.channel(`cc_comments_${postId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, (payload) => {
         const c = payload.new as CommunityComment;
-        if (c.is_active && !c.is_flagged) { setComments(prev => [...prev, c]); setCommentCount(n => (n ?? 0) + 1); }
+        if (c.is_active && !c.is_flagged) {
+          setComments(prev => {
+            if (prev.find(x => x.id === c.id)) return prev;
+            setCommentCount(n => (n ?? 0) + 1);
+            return [...prev, c];
+          });
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, (payload) => {
         const c = payload.new as CommunityComment;
