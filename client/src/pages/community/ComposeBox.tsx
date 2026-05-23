@@ -26,7 +26,6 @@ export default function ComposeBox({
       content:       text.trim(),
       post_type:     'member_post',
       tier_required: 'navigator',
-      user_id:       userId,
       agent_id:      userId,
       agent_name:    userName || 'Member',
       published_at:  new Date().toISOString(),
