@@ -16,7 +16,7 @@ import { ThankYouDruClear, ThankYou5D, ThankYou5C, ThankYouAISales } from "./pag
 import ThankYouFullEcosystem from "./pages/ThankYouFullEcosystem";
 import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
-import Community from "./pages/Community";
+import Community from "./pages/community";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
