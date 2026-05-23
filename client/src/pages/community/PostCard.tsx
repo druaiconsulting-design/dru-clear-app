@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, formatDate, formatContent, POST_TYPE_CONFIG, TIER_BADGE, AGENT_FRAMEWORK_MAP, ZOE_POST_TYPES } from './types';
+import { supabase, formatDate, formatRelativeTime, formatContent, POST_TYPE_CONFIG, TIER_BADGE, AGENT_FRAMEWORK_MAP, ZOE_POST_TYPES } from './types';
 import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 import CommentSection from './CommentSection';
@@ -8,9 +8,9 @@ import CommentSection from './CommentSection';
 // POST CARD — heart + comments + Ask Agent to Reply (admin only)
 // =============================================================================
 export default function PostCard({
-  post, index, userId, userName, isAdmin,
+  post, index, userId, userName, userPhotoUrl, isAdmin,
 }: {
-  post: CommunityPost; index: number; userId: string; userName: string; isAdmin: boolean;
+  post: CommunityPost; index: number; userId: string; userName: string; userPhotoUrl?: string; isAdmin: boolean;
 }) {
   const cfg        = POST_TYPE_CONFIG[post.post_type] ?? POST_TYPE_CONFIG.daily_insight;
   const tierBadge  = TIER_BADGE[post.tier_required];
@@ -84,10 +84,10 @@ export default function PostCard({
       {isMemberPost ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <MemberAvatar firstName={post.agent_name} size={36} />
+            <MemberAvatar firstName={post.agent_name} photoUrl={post.agent_id === userId ? userPhotoUrl : undefined} size={36} />
             <div>
               <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>{post.agent_name}</div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.35)' }}>{formatDate(post.published_at)}</div>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.35)' }}>{formatRelativeTime(post.published_at)}</div>
             </div>
           </div>
         </div>
@@ -103,14 +103,22 @@ export default function PostCard({
               </span>
             )}
           </div>
-          <div style={{ color: 'rgba(10,35,66,0.35)', fontSize: '12px', fontFamily: "'Montserrat', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>{formatDate(post.published_at)}</div>
+          <div style={{ color: 'rgba(10,35,66,0.35)', fontSize: '12px', fontFamily: "'Montserrat', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>{formatRelativeTime(post.published_at)}</div>
         </div>
       )}
 
-      <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>{post.title}</h3>
+      {!isMemberPost && (
+        <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>{post.title}</h3>
+      )}
       <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
         {paragraphs.map((p, i) => <p key={i} style={{ marginBottom: '12px' }}>{p}</p>)}
       </div>
+
+      {post.image_url && (
+        <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
+          <img src={post.image_url} alt="Post image" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }} />
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0EDE8' }}>
