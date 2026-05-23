@@ -1091,12 +1091,12 @@ export default function Community() {
   if (checking) {
     return (
       <>
-        <style>{\`
+        <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@500&display=swap');
           @keyframes ccFadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
           @keyframes ccShimmer { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
           @keyframes ccPulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
-        \`}</style>
+        `}</style>
         <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
           <div style={{ color: '#D4AF37', fontSize: '32px', animation: 'ccPulse 1.5s ease infinite' }}>◆</div>
           <div style={{ fontFamily: "'Cinzel', serif", color: 'rgba(10,35,66,0.4)', fontSize: '11px', letterSpacing: '3px' }}>LOADING</div>
@@ -1110,13 +1110,13 @@ export default function Community() {
 
   return (
     <>
-      <style>{\`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@700&family=Inter:wght@400;500&display=swap');
         @keyframes ccFadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes ccShimmer { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
         @keyframes ccPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-      \`}</style>
+      `}</style>
       {isMember ? <CommunityFeed tier={tier!} /> : <CommunityJoin />}
     </>
   );
