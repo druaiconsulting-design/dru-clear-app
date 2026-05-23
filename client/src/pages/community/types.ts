@@ -37,7 +37,7 @@ export interface CommunityPost {
   post_type: PostType; tier_required: TierRequired;
   agent_id: string; agent_name: string;
   published_at: string; is_active: boolean;
-  pdf_url?: string; video_url?: string;
+  pdf_url?: string; video_url?: string; image_url?: string;
 }
 export interface CommunityComment {
   id: string; post_id: string; member_id: string;
@@ -101,6 +101,18 @@ export function tierDotColor(t: Tier): string {
 }
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+export function formatRelativeTime(iso: string): string {
+  const diffMs   = Date.now() - new Date(iso).getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHrs  = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffSecs < 60)  return 'just now';
+  if (diffMins < 60)  return `${diffMins}m`;
+  if (diffHrs  < 24)  return `${diffHrs}h`;
+  if (diffDays < 7)   return `${diffDays}d`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 export function formatContent(content: string): string[] {
   return content.split('\n\n').filter(p => p.trim().length > 0);
