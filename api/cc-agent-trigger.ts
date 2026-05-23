@@ -27,6 +27,7 @@ const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
   cron_tariq_sales_content:      { agent_id: 'tariq',       agent_name: 'Tariq Oladele',    task: 'ai_revenue_acceleration',     pipeline: 'p9_tariq' },
   cron_zoe_community_lead:       { agent_id: 'zoe',         agent_name: 'Zoe Beaumont',     task: 'daily_community_facilitation',pipeline: 'p9_zoe' },
   cron_micah_member_experience:  { agent_id: 'micah',       agent_name: 'Micah Santos',     task: 'daily_member_experience',     pipeline: 'p9_micah' },
+  cc_agent_reply:                { agent_id: 'cc_agent',    agent_name: 'Community Agent',  task: 'community_reply',             pipeline: 'p9_cc_reply' },
 };
 
 // --- Shared utilities ---
@@ -257,8 +258,77 @@ CTA: assessment.druaiconsulting.com`);
 }
 
 // =============================================================================
-// MAIN HANDLER
+// CC AGENT REPLY — Zoe or Micah replies to a community post
+// Triggered by DeAnna tapping "Ask Agent to Reply" on any post card (admin only)
+// Auto-routes: strategic_edge/daily_insight/framework_training → Zoe, others → Micah
+// Full chain: CSQ → Isabella → Governance → Raymond → Twin → AdminApprovals
+// When DeAnna approves → writes to community_comments under original post
 // =============================================================================
+async function runCCAgentReply(
+  postId: string, postTitle: string, postContent: string,
+  postType: string, routeTo: 'zoe' | 'micah'
+): Promise<{ csq_id: string | null }> {
+  const isZoe     = routeTo === 'zoe';
+  const agentId   = isZoe ? 'zoe' : 'micah';
+  const agentName = isZoe ? 'Zoe Beaumont' : 'Micah Santos';
+  const today     = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+
+  const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor
+- Connect what the member or agent shared to a relevant DRU framework (DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™, DRU AI Transformation Pathway™)
+- Add one strategic insight or perspective that elevates the conversation
+- Invite further reflection or engagement from other community members
+- Your voice: grounded, clear, purposeful — DeAnna's trusted community leader`;
+
+  const micahInstructions = `- Acknowledge the member personally — make them feel genuinely seen and valued
+- Validate their experience, insight, or question with specificity (not generic praise)
+- Add warmth, encouragement, and a sense of belonging
+- Invite them to share more or connect their post to what others in the community are experiencing
+- Your voice: warm, engaged, human — the person who makes every member feel like they belong here`;
+
+  const prompt = `${GENIUS_MODE}
+
+You are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.
+
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+SERVICE CLASSES: All content within Classes 35, 41, 42 only.
+
+A post has been shared in the Community Connection that needs your response:
+
+POST TYPE: ${postType.replace(/_/g, ' ')}
+POST TITLE: ${postTitle}
+POST CONTENT:
+${postContent.slice(0, 800)}
+
+Write a reply comment (100-150 words) that:
+${isZoe ? zoeInstructions : micahInstructions}
+
+Write ONLY the reply. No labels, no headers, no metadata. Just the comment.
+${isZoe ? 'End with a question or invitation for the community.' : 'End with a warm, encouraging close.'}
+If the CTA fits naturally: assessment.druaiconsulting.com`;
+
+  try {
+    const raw    = await callAnthropic(prompt, 600);
+    const csq_id = await writeToCSQ({
+      agent_id:   agentId,
+      agent_name: agentName,
+      division:   'Community Connection',
+      task:       'community_reply',
+      category:   'community_comment_reply',
+      raw_output: raw,
+      priority:   'normal',
+      status:     'pending',
+      retry_count: 0,
+      // parent_csq_id carries the originating post_id so AdminApprovals
+      // knows which post to write the approved comment under
+      parent_csq_id: postId,
+    });
+    console.log(`[${agentId}] Community reply queued: CSQ ${csq_id ?? 'failed'} for post ${postId}`);
+    return { csq_id };
+  } catch (error) {
+    console.error(`[${agentId}] Community reply error:`, error);
+    return { csq_id: null };
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -299,7 +369,17 @@ export default async function handler(req: any, res: any): Promise<void> {
   };
 
   const runner = runners[route.pipeline];
-  if (!runner) { res.status(400).json({ error: `No runner for pipeline: ${route.pipeline}` }); return; }
+  if (!runner) {
+    // cc_agent_reply is handled separately — dynamic routing based on request body
+    if (route.pipeline === 'p9_cc_reply') {
+      const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
+      if (!post_id || !route_to) { res.status(400).json({ error: 'cc_agent_reply requires post_id and route_to' }); return; }
+      const result = await runCCAgentReply(post_id, post_title ?? '', post_content ?? '', post_type ?? 'community_post', route_to);
+      res.status(202).json({ success: true, agent: route_to === 'zoe' ? 'Zoe Beaumont' : 'Micah Santos', csq_id: result.csq_id, post_id });
+      return;
+    }
+    res.status(400).json({ error: `No runner for pipeline: ${route.pipeline}` }); return;
+  }
 
   const result = await runner();
   res.status(202).json({ success: true, agent: route.agent_name, csq_id: result.csq_id, post_id: result.post_id });
