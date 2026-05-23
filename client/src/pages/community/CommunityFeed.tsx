@@ -89,7 +89,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, (payload) => {
         const newPost = payload.new as CommunityPost;
-        if (newPost.is_active) { setLiveCount(c => c + 1); setPosts(prev => [newPost, ...prev]); }
+        if (newPost.is_active) { setPosts(prev => { if (prev.find(p => p.id === newPost.id)) return prev; setLiveCount(c => c + 1); return [newPost, ...prev]; }); }
       })
       .subscribe();
     return () => { mounted = false; supabase.removeChannel(channel); };
@@ -118,6 +118,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>DRU AI LEADERSHIP ECOSYSTEM™</div>
                 <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>Community Connection</h1>
                 <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Share a thought, ask a question, or connect with fellow leaders. This is your space.</p>
+                <p style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', marginTop: '5px', fontStyle: 'italic' }}>This is a space for learning and connection. No soliciting or self-promotion.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', alignSelf: 'flex-start' }}>
                 <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '8px', padding: '8px 16px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.5)', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(10,35,66,0.06)' }}>
