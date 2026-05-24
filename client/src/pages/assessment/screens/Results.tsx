@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/ResultsScreen.tsx — ResultsTransitionBlock + ResultsScreen
+ * screens/Results.tsx — ResultsTransitionBlock + ResultsScreen
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +13,7 @@ import {
 import {
   getPillarScore, getTier, sendWebhook, sendWebhookJson,
   normalizePhone, saveToLocalStorage, UTM_PARAMS,
-} from "../utils";
+} from "../Utils";
 
 // ─── Results Transition Block ─────────────────────────────────────────────────
 
