@@ -13,7 +13,7 @@ import {
   LeadData,
   Scores,
   Screen,
-} from "./types";
+} from "./Types";
 
 // ─── Expiry ───────────────────────────────────────────────────────────────────
 
