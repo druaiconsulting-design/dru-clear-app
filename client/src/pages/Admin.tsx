@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { registerPasskey } from "../lib/passkey";
 
+const GHL_LAB_WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/70d21e5b-66f9-4aa0-8eac-5c59ed55fcaa";
+
 const QUICK_LINKS = [
   { label: "GHL Dashboard",        href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
   { label: "Live Assessment",      href: "https://assessment.druaiconsulting.com", icon: "🚀" },
@@ -123,6 +125,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Full Command Chain — LIVE",           sub: "Isabella (11:00am) · Governance (11:10am) · Raymond/Travis/Priya (11:20am) · AI Twin (11:30am) — one daily briefing notification" },
       { done: true,  label: "Community Connection Division — Roster Complete", sub: "9th division · 10 agents · 4 Framework Support Teams · Community Connection Leadership — roster built and approved" },
       { done: true,  label: "Community Connection Page — Updated",  sub: "Fulfillment redesigned — Navigator: 4 daily cards + weekly framework training · Accelerator: + PDF Downloadables + monthly DeAnna's Leadership Lab! video" },
+      { done: true,  label: "Community Connection Division — All 4 Layers COMPLETE", sub: "Layer 1: DB · Layer 2: Agent Infrastructure · Layer 3: Community Page · Layer 4: Leadership Lab — /lab live · Accelerator-gated · publish card in Admin" },
     ],
   },
   {
@@ -145,10 +148,7 @@ const statusConfig = {
 };
 
 const TIER_COLORS: Record<string, string> = {
-  EMERGING:   "#E53935",
-  DEVELOPING: "#D4AF37",
-  ADVANCING:  "#1E88E5",
-  LEADING:    "#43A047",
+  EMERGING: "#E53935", DEVELOPING: "#D4AF37", ADVANCING: "#1E88E5", LEADING: "#43A047",
 };
 
 function getPillarColor(score: number): string {
@@ -158,10 +158,8 @@ function getPillarColor(score: number): string {
 }
 
 interface Stats {
-  assessments_completed: number;
-  leads_captured: number;
-  diagnostics_sold: number;
-  sessions_booked: number;
+  assessments_completed: number; leads_captured: number;
+  diagnostics_sold: number; sessions_booked: number;
 }
 
 function useStats() {
@@ -192,9 +190,9 @@ interface Submission {
 
 function ClientIntelligenceDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [tierFilter, setTierFilter] = useState("ALL");
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState("");
+  const [tierFilter, setTierFilter]   = useState("ALL");
 
   useEffect(() => {
     async function fetchSubmissions() {
@@ -229,20 +227,20 @@ function ClientIntelligenceDashboard() {
     const rows = filtered.map((s) => [new Date(s.created_at).toLocaleDateString("en-US"), s.first_name, s.last_name, s.email, s.company, s.role, s.country_name, s.total_score, s.tier, s.top_gaps, s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score]);
     const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell ?? ""}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a"); a.href = url;
     a.download = `dru-clear-submissions-${new Date().toISOString().split("T")[0]}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   const SUMMARY_CARDS = [
-    { label: "Total Submissions", value: totalSubmissions, color: "#D4AF37", icon: "📋" },
-    { label: "Avg Score", value: avgScore ? `${avgScore}/100` : "-", color: "#1E88E5", icon: "📊" },
-    { label: "Emerging",   value: tierCounts.EMERGING,   color: "#E53935", icon: "🔴" },
-    { label: "Developing", value: tierCounts.DEVELOPING, color: "#D4AF37", icon: "🟡" },
-    { label: "Advancing",  value: tierCounts.ADVANCING,  color: "#1E88E5", icon: "🔵" },
-    { label: "Leading",    value: tierCounts.LEADING,    color: "#43A047", icon: "🟢" },
+    { label: "Total Submissions", value: totalSubmissions,          color: "#D4AF37", icon: "📋" },
+    { label: "Avg Score",         value: avgScore ? `${avgScore}/100` : "-", color: "#1E88E5", icon: "📊" },
+    { label: "Emerging",          value: tierCounts.EMERGING,       color: "#E53935", icon: "🔴" },
+    { label: "Developing",        value: tierCounts.DEVELOPING,     color: "#D4AF37", icon: "🟡" },
+    { label: "Advancing",         value: tierCounts.ADVANCING,      color: "#1E88E5", icon: "🔵" },
+    { label: "Leading",           value: tierCounts.LEADING,        color: "#43A047", icon: "🟢" },
   ];
 
   return (
@@ -343,38 +341,67 @@ function ClientIntelligenceDashboard() {
 
 export default function Admin() {
   const { user } = useAuth();
-  const [copied, setCopied] = useState(false);
-  const { stats, loading } = useStats();
-
-  const [hasPasskey, setHasPasskey] = useState(false);
+  const [copied, setCopied]               = useState(false);
+  const { stats, loading }                = useStats();
+  const [hasPasskey, setHasPasskey]       = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
 
+  // ── Lab publish state ──────────────────────────────────────────────────────
+  const [labTitle, setLabTitle]       = useState("");
+  const [labMonth, setLabMonth]       = useState("");
+  const [labVideoUrl, setLabVideoUrl] = useState("");
+  const [labPublishing, setLabPublishing] = useState(false);
+  const [labPublished, setLabPublished]   = useState(false);
+  const [labError, setLabError]           = useState("");
+
   useEffect(() => {
     async function checkPasskey() {
       if (!user?.id) return;
-      const { data } = await supabase
-        .from("passkey_credentials")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
+      const { data } = await supabase.from("passkey_credentials").select("id").eq("user_id", user.id).limit(1);
       if (data && data.length > 0) setHasPasskey(true);
     }
     checkPasskey();
   }, [user?.id]);
 
   const handleSetupPasskey = async () => {
-    setPasskeyLoading(true);
-    setPasskeyMessage("");
+    setPasskeyLoading(true); setPasskeyMessage("");
     const result = await registerPasskey();
     setPasskeyLoading(false);
-    if (result.success) {
-      setHasPasskey(true);
-      setPasskeyMessage("Passkey saved - you can now sign in with biometrics.");
-    } else {
-      setPasskeyMessage(result.error || "Something went wrong.");
+    if (result.success) { setHasPasskey(true); setPasskeyMessage("Passkey saved - you can now sign in with biometrics."); }
+    else { setPasskeyMessage(result.error || "Something went wrong."); }
+  };
+
+  const handleLabPublish = async () => {
+    if (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) {
+      setLabError("All fields are required before publishing."); return;
     }
+    setLabPublishing(true); setLabError(""); setLabPublished(false);
+    try {
+      const { error } = await supabase.from("lab_videos").insert({
+        title: labTitle.trim(), month_year: labMonth.trim(),
+        video_url: labVideoUrl.trim(), is_active: true,
+      });
+      if (error) throw error;
+      await fetch(GHL_LAB_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          trigger_type: "lab_video_published",
+          video_title:  labTitle.trim(),
+          month_year:   labMonth.trim(),
+          lab_url:      "https://app.druaiconsulting.com/lab",
+          tier:         "accelerator",
+        }),
+      });
+      setLabPublished(true);
+      setLabTitle(""); setLabMonth(""); setLabVideoUrl("");
+      setTimeout(() => setLabPublished(false), 5000);
+    } catch (err: any) {
+      setLabError(err?.message || "Publish failed. Please try again.");
+    }
+    setLabPublishing(false);
   };
 
   const STAT_CARDS = [
@@ -386,6 +413,12 @@ export default function Admin() {
 
   const copyBundleLink = () => {
     navigator.clipboard.writeText(BUNDLE_PRICING_URL).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)",
+    borderRadius: 6, padding: "0.6rem 0.875rem", color: "#FFFFFF",
+    fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none", boxSizing: "border-box",
   };
 
   return (
@@ -400,51 +433,24 @@ export default function Admin() {
         </div>
 
         {!passkeyDismissed && (
-          <div style={{
-            background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(194,24,91,0.06)",
-            border: hasPasskey ? "1px solid rgba(67,160,71,0.3)" : "1px solid rgba(194,24,91,0.3)",
-            borderRadius: 10,
-            padding: "1rem 1.25rem",
-            marginBottom: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "1rem",
-          }}>
+          <div style={{ background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(194,24,91,0.06)", border: hasPasskey ? "1px solid rgba(67,160,71,0.3)" : "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flex: 1, minWidth: 0 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: hasPasskey ? "rgba(67,160,71,0.12)" : "rgba(194,24,91,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem",
-              }}>
-                {hasPasskey ? "✅" : "🔐"}
-              </div>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: hasPasskey ? "rgba(67,160,71,0.12)" : "rgba(194,24,91,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{hasPasskey ? "✅" : "🔐"}</div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: hasPasskey ? "#43A047" : "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", margin: 0, marginBottom: "0.1rem" }}>
-                  {hasPasskey ? "Passkey Active" : "Speed Up Your Login"}
-                </p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", margin: 0, lineHeight: 1.4 }}>
-                  {hasPasskey ? "Face ID or fingerprint sign-in is enabled." : "Set up Face ID or fingerprint to sign in instantly."}
-                </p>
-                {passkeyMessage && (
-                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.68rem", margin: "0.35rem 0 0", color: hasPasskey ? "#43A047" : "#E53935" }}>
-                    {passkeyMessage}
-                  </p>
-                )}
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: hasPasskey ? "#43A047" : "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", margin: 0, marginBottom: "0.1rem" }}>{hasPasskey ? "Passkey Active" : "Speed Up Your Login"}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", margin: 0, lineHeight: 1.4 }}>{hasPasskey ? "Face ID or fingerprint sign-in is enabled." : "Set up Face ID or fingerprint to sign in instantly."}</p>
+                {passkeyMessage && <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.68rem", margin: "0.35rem 0 0", color: hasPasskey ? "#43A047" : "#E53935" }}>{passkeyMessage}</p>}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
               {!hasPasskey && (
                 <button onClick={handleSetupPasskey} disabled={passkeyLoading}
-                  style={{ background: "#C2185B", color: "#FFFFFF", border: "none", borderRadius: 6, padding: "0.55rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.06em", cursor: passkeyLoading ? "default" : "pointer", opacity: passkeyLoading ? 0.7 : 1, whiteSpace: "nowrap" }}>
+                  style={{ background: "#C2185B", color: "#FFFFFF", border: "none", borderRadius: 6, padding: "0.55rem 1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.06em", cursor: passkeyLoading ? "default" : "pointer", opacity: passkeyLoading ? 0.7 : 1, whiteSpace: "nowrap" as const }}>
                   {passkeyLoading ? "Setting up..." : "Set Up"}
                 </button>
               )}
               {hasPasskey && (
-                <button onClick={() => setPasskeyDismissed(true)}
-                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0.25rem" }}>
-                  x
-                </button>
+                <button onClick={() => setPasskeyDismissed(true)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0.25rem" }}>x</button>
               )}
             </div>
           </div>
@@ -477,6 +483,7 @@ export default function Admin() {
 
         <ClientIntelligenceDashboard />
 
+        {/* ── Private Client Links ── */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Private Client Links</p>
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
@@ -493,6 +500,24 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* ── Leadership Lab — Publish ── */}
+        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
+            <input type="text" placeholder="Video Title — e.g. AI Leadership in Action" value={labTitle} onChange={e => { setLabTitle(e.target.value); setLabError(""); }} style={inputStyle} />
+            <input type="text" placeholder="Month — e.g. June 2026" value={labMonth} onChange={e => { setLabMonth(e.target.value); setLabError(""); }} style={inputStyle} />
+            <input type="text" placeholder="Supabase Video URL — paste from storage" value={labVideoUrl} onChange={e => { setLabVideoUrl(e.target.value); setLabError(""); }} style={inputStyle} />
+          </div>
+          {labError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{labError}</p>}
+          <button onClick={handleLabPublish}
+            disabled={labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()}
+            style={{ width: "100%", background: labPublished ? "#43A047" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.2)" : "#D4AF37", color: labPublished ? "#FFFFFF" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.4)" : "#0A2342", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
+            {labPublishing ? "Publishing..." : labPublished ? "✓ Published — Accelerator Members Notified" : "Publish + Notify Accelerator Members"}
+          </button>
+        </div>
+
+        {/* ── Quick Links ── */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Quick Links</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
@@ -508,9 +533,10 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* ── Payment Links ── */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Payment Links</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
             {PAYMENT_LINKS.map((link) => (
               <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
@@ -529,7 +555,7 @@ export default function Admin() {
         {/* ── Focal Points ── */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Focal Points</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
             {FOCAL_POINTS.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
                 <div style={{ width: 16, height: 16, border: "1.5px solid rgba(212,175,55,0.4)", borderRadius: 3, flexShrink: 0, marginTop: 2 }} />
@@ -549,7 +575,7 @@ export default function Admin() {
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Full Build Roadmap</p>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: "1.25rem" }}>
             {SPRINTS.map((sprint) => {
               const cfg = statusConfig[sprint.status as keyof typeof statusConfig];
               return (
@@ -564,7 +590,7 @@ export default function Admin() {
                     </div>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: cfg.dot, letterSpacing: "0.04em" }}>{cfg.label}</span>
                   </div>
-                  <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  <div style={{ padding: "0.875rem 1.25rem", display: "flex", flexDirection: "column" as const, gap: "0.6rem" }}>
                     {sprint.items.map((item, i) => {
                       const isDone = sprint.status === "completed" || (item as SprintItem).done === true;
                       const checkColor = isDone ? "#43A047" : cfg.dot;
@@ -594,7 +620,7 @@ export default function Admin() {
 
       </main>
       <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
-        &copy; 2026 DRU CLEAR - All Rights Reserved - DRU AI Consulting
+        &copy; 2026 DRU CLEAR™ - All Rights Reserved - DRU AI Consulting
       </footer>
     </div>
   );
