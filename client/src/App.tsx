@@ -3,7 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
-import DruClearApp from "./pages/assessment";
+import DruClearApp from "./pages/DruClearApp";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
 import Portal from "./pages/Portal";
