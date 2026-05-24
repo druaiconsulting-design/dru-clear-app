@@ -181,7 +181,8 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
   if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
-  if (approval.category === "community_comment_reply" || approval.category === "CC Post Triggers") return { heading: "Member Info", content: approval.task_brief || null };
+  if (approval.category === "community_comment_reply") return { heading: "Post Reference", content: approval.task_brief || null };
+  if (approval.category === "CC Post Triggers") return { heading: "Member Info", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -305,6 +306,9 @@ export default function AdminApprovals() {
     } else if (approval.category === "community_comment_reply") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postCCComment(approval, approval.edited_output || approval.output);
+      if (!ok) {
+        await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
+      }
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
