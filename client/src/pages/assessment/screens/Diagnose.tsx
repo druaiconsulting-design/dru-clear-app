@@ -1,11 +1,11 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/DiagnoseScreen.tsx
+ * screens/Diagnose.tsx
  */
 
 import { useState, useRef } from "react";
 import { LeadData, Scores, DruLogo } from "../types";
-import { getTier } from "../utils";
+import { getTier } from "../Utils";
 
 export function DiagnoseScreen({
   lead, scores, onSelectStrategic, onSelectExecutive, onSkipToTransformation,
