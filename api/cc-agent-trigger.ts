@@ -72,6 +72,22 @@ async function writeToCommunityPosts(record: Record<string, unknown>): Promise<s
   return data?.[0]?.id ?? null;
 }
 
+// Writes directly to approvals table — used for immediate community reply cards
+// Bypasses daily CSQ chain so DeAnna sees the card within seconds, not next morning
+async function writeToApprovals(record: Record<string, unknown>): Promise<string | null> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/approvals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) { console.error(`[approvals] Write failed: ${await res.text()}`); return null; }
+  const data = await res.json();
+  return data?.[0]?.id ?? null;
+}
+
 // --- CC Agent runner ---
 // All CC posts: tier_required = 'navigator' (badge/context only — both Nav and Acc see all posts)
 async function runCCAgent(
@@ -91,7 +107,7 @@ async function runCCAgent(
       content = parsed.content || raw;
     } catch {
       const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-      title   = `${agentName} \u2014 ${dateStr}`;
+      title   = `${agentName} — ${dateStr}`;
       content = raw;
     }
     const [csq_id, post_id] = await Promise.all([
@@ -123,91 +139,91 @@ async function runDominique(): Promise<{ csq_id: string | null; post_id: string 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('dominique', 'Dominique Carter', 'daily_leadership_insight', 'daily_insight', 'community_insight',
     `You are Dominique Carter, CLEAR Vision Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write a DAILY LEADERSHIP WITH AI INSIGHT applying the DRU CLEAR\u2122 framework — Clarity & Leadership — to a real AI leadership challenge executives face today. Audience: C-suite and senior leaders navigating AI adoption. 150-200 words. Structure: one sharp opening insight, DRU CLEAR\u2122 framework application (2-3 sentences), one executive reflection question. Close with: assessment.druaiconsulting.com`);
+Write a DAILY LEADERSHIP WITH AI INSIGHT applying the DRU CLEAR™ framework — Clarity & Leadership — to a real AI leadership challenge executives face today. Audience: C-suite and senior leaders navigating AI adoption. 150-200 words. Structure: one sharp opening insight, DRU CLEAR™ framework application (2-3 sentences), one executive reflection question. Close with: assessment.druaiconsulting.com`);
 }
 
 async function runElijah(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const components: Record<string, string> = {
-    Monday: 'Alignment \u2014 ensuring AI strategy aligns with organizational goals',
-    Tuesday: 'Execution \u2014 deploying AI systematically and at scale',
-    Wednesday: 'Results \u2014 measuring and communicating AI ROI and impact',
-    Thursday: 'Alignment \u2014 realigning teams when AI initiatives drift',
-    Friday: 'Execution & Results \u2014 closing the gap between AI strategy and outcomes',
+    Monday: 'Alignment — ensuring AI strategy aligns with organizational goals',
+    Tuesday: 'Execution — deploying AI systematically and at scale',
+    Wednesday: 'Results — measuring and communicating AI ROI and impact',
+    Thursday: 'Alignment — realigning teams when AI initiatives drift',
+    Friday: 'Execution & Results — closing the gap between AI strategy and outcomes',
   };
-  const component = components[dayOfWeek] ?? 'Alignment \u2014 ensuring AI strategy aligns with organizational goals';
+  const component = components[dayOfWeek] ?? 'Alignment — ensuring AI strategy aligns with organizational goals';
   return runCCAgent('elijah', 'Elijah Brooks', 'framework_micro_lesson', 'framework_lesson', 'community_lesson',
     `You are Elijah Brooks, Framework Educator for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write a FRAMEWORK MICRO-LESSON on today's DRU CLEAR\u2122 component: ${component}. 200-250 words. Cover: what this component means in practice, why executives consistently underinvest in it, one practical application exercise completable in under 10 minutes. End with "Today's Micro-Action:" (one sentence). CTA: assessment.druaiconsulting.com`);
+Write a FRAMEWORK MICRO-LESSON on today's DRU CLEAR™ component: ${component}. 200-250 words. Cover: what this component means in practice, why executives consistently underinvest in it, one practical application exercise completable in under 10 minutes. End with "Today's Micro-Action:" (one sentence). CTA: assessment.druaiconsulting.com`);
 }
 
 async function runSolange(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('solange', 'Solange Dupont', 'daily_action_challenge', 'action_challenge', 'community_challenge',
     `You are Solange Dupont, 5D Elevation Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write TODAY'S ACTION CHALLENGE using the 5D Leadership\u2122 framework. 150-200 words. Structure: bold Challenge Statement (one sentence), context explaining why this matters for AI-era leaders (2-3 sentences), 3-step challenge instructions numbered (each doable in under 10 minutes), expected outcome, 24-hour commitment close. CTA: assessment.druaiconsulting.com`);
+Write TODAY'S ACTION CHALLENGE using the 5D Leadership™ framework. 150-200 words. Structure: bold Challenge Statement (one sentence), context explaining why this matters for AI-era leaders (2-3 sentences), 3-step challenge instructions numbered (each doable in under 10 minutes), expected outcome, 24-hour commitment close. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runIsaiahWebb(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const dimensions: Record<string, string> = {
-    Monday: 'Direction \u2014 establishing clear AI vision and purpose',
-    Tuesday: 'Development \u2014 building AI capability and team fluency',
-    Wednesday: 'Discipline \u2014 creating AI governance and consistency',
-    Thursday: 'Distinction \u2014 differentiating through AI-powered leadership',
-    Friday: 'Dominance \u2014 achieving and sustaining AI competitive advantage',
+    Monday: 'Direction — establishing clear AI vision and purpose',
+    Tuesday: 'Development — building AI capability and team fluency',
+    Wednesday: 'Discipline — creating AI governance and consistency',
+    Thursday: 'Distinction — differentiating through AI-powered leadership',
+    Friday: 'Dominance — achieving and sustaining AI competitive advantage',
   };
-  const dimension = dimensions[dayOfWeek] ?? 'Direction \u2014 establishing clear AI vision and purpose';
+  const dimension = dimensions[dayOfWeek] ?? 'Direction — establishing clear AI vision and purpose';
   return runCCAgent('isaiah_webb', 'Isaiah Webb', 'weekly_framework_training', 'framework_training', 'community_training',
     `You are Isaiah Webb, 5D Elevation Trainer for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write FRAMEWORK TRAINING CONTENT on today's 5D Leadership\u2122 dimension: ${dimension}. 250-300 words. Include: concept deep-dive (what it really means for AI-era executives), one real-world scenario where this dimension is tested, one skill-building exercise, this week's leadership reflection journal prompt. Challenge the executive audience. CTA: assessment.druaiconsulting.com`);
+Write FRAMEWORK TRAINING CONTENT on today's 5D Leadership™ dimension: ${dimension}. 250-300 words. Include: concept deep-dive (what it really means for AI-era executives), one real-world scenario where this dimension is tested, one skill-building exercise, this week's leadership reflection journal prompt. Challenge the executive audience. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runNadia(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('nadia', 'Nadia Osei', 'strategic_edge_insight', 'strategic_edge', 'community_edge',
     `You are Nadia Osei, Culture DNA Strategist for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write DEANNA'S STRATEGIC EDGE \u2014 premium insider intelligence for community members. 200-250 words. Reveal one strategic insight about AI leadership culture that gives executives a genuine competitive edge. Apply the 5C Cultural DNA\u2122 framework lens. End with one specific action that DeAnna's clients take that executives operating without this framework do not. CTA: assessment.druaiconsulting.com`);
+Write DEANNA'S STRATEGIC EDGE — premium insider intelligence for community members. 200-250 words. Reveal one strategic insight about AI leadership culture that gives executives a genuine competitive edge. Apply the 5C Cultural DNA™ framework lens. End with one specific action that DeAnna's clients take that executives operating without this framework do not. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runVictor(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement',
     `You are Victor Reyes, Culture DNA Community Builder for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion among community members. 150-200 words. Include: one bold observation about AI leadership culture that most executives won't say out loud, a 5C Cultural DNA\u2122 framework lens applied to that observation, one community discussion question (formatted in bold). Make subscribers feel seen, challenged, and part of something significant. CTA: assessment.druaiconsulting.com`);
+Write a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion among community members. 150-200 words. Include: one bold observation about AI leadership culture that most executives won't say out loud, a 5C Cultural DNA™ framework lens applied to that observation, one community discussion question (formatted in bold). Make subscribers feel seen, challenged, and part of something significant. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runSasha(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('sasha', 'Sasha Kim', 'ai_sales_mastery_insight', 'framework_lesson', 'community_lesson',
     `You are Sasha Kim, Revenue Intelligence Specialist for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write an AI SALES MASTERY\u2122 INSIGHT focused on DISC Behavioral Intelligence for the community. 200-250 words. Cover: how understanding behavioral styles (D/I/S/C) changes how executives sell AI transformation internally and to clients, one behavioral pattern that blocks AI adoption and how to address it, one immediately applicable communication strategy. Frame through the AI Sales Mastery\u2122 framework. CTA: assessment.druaiconsulting.com`);
+Write an AI SALES MASTERY™ INSIGHT focused on DISC Behavioral Intelligence for the community. 200-250 words. Cover: how understanding behavioral styles (D/I/S/C) changes how executives sell AI transformation internally and to clients, one behavioral pattern that blocks AI adoption and how to address it, one immediately applicable communication strategy. Frame through the AI Sales Mastery™ framework. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runTariq(): Promise<{ csq_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('tariq', 'Tariq Oladele', 'ai_revenue_acceleration', 'framework_lesson', 'community_lesson',
     `You are Tariq Oladele, Revenue Intelligence Analyst for DRU AI Consulting's Community Connection division. Today: ${today}.
-You and Sasha Kim are the AI Sales Mastery\u2122 team in this community. Sasha covers DISC Behavioral Intelligence. Your lane is AI Revenue Acceleration.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+You and Sasha Kim are the AI Sales Mastery™ team in this community. Sasha covers DISC Behavioral Intelligence. Your lane is AI Revenue Acceleration.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-Write an AI REVENUE ACCELERATION insight for the community. 200-250 words. Cover: one AI-powered revenue strategy executives can deploy this week, one conversion or pipeline insight specific to B2B consulting and leadership development, one revenue metric every AI-era leader should be tracking. Frame through the AI Sales Mastery\u2122 framework. Make it tactical and immediately applicable. CTA: assessment.druaiconsulting.com`);
+Write an AI REVENUE ACCELERATION insight for the community. 200-250 words. Cover: one AI-powered revenue strategy executives can deploy this week, one conversion or pipeline insight specific to B2B consulting and leadership development, one revenue metric every AI-era leader should be tracking. Frame through the AI Sales Mastery™ framework. Make it tactical and immediately applicable. CTA: assessment.druaiconsulting.com`);
 }
 
 async function runZoe(): Promise<{ csq_id: string | null; post_id: string | null }> {
@@ -226,12 +242,12 @@ async function runZoe(): Promise<{ csq_id: string | null; post_id: string | null
   }
   return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'strategic_edge', 'community_edge',
     `You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 RECENT COMMUNITY ACTIVITY (last 48 hours):
 ${recentPostsSummary}
 Write a daily community leadership post (200-250 words) that: (1) Acknowledges the community's engagement with recent content, (2) Sets the tone and intention for today with one leadership frame, (3) Creates genuine connection between members. Voice: warm authority. You are DeAnna's representative in the community.
-After the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any pattern in today's community activity that suggests a Navigator subscriber is ready for Accelerator \u2014 route to Aaliyah Foster for outreach]"
+After the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any pattern in today's community activity that suggests a Navigator subscriber is ready for Accelerator — route to Aaliyah Foster for outreach]"
 CTA: assessment.druaiconsulting.com`);
 }
 
@@ -249,11 +265,11 @@ async function runMicah(): Promise<{ csq_id: string | null; post_id: string | nu
   }
   return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'daily_insight', 'community_engagement',
     `You are Micah Santos, Member Experience Manager for DRU AI Consulting's Community Connection division. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include \u2122: DRU CLEAR\u2122, DRU AI Leadership Ecosystem\u2122, DRU AI Transformation Pathway\u2122, 5C Cultural DNA\u2122, 5D Leadership\u2122, AI Sales Mastery\u2122, From Confusion to Confident with AI\u2122.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 MEMBER CONTEXT: ${memberContext}
-Write a DAILY MEMBER EXPERIENCE post (150-200 words) that makes every subscriber feel valued, seen, and motivated to engage. Rotate formats: (1) Warm welcome and community orientation for new members, (2) Member milestone acknowledgment and encouragement, (3) Community connection prompt that invites sharing, (4) Gratitude and momentum post celebrating community growth. Reference where subscribers likely are in the DRU AI Transformation Pathway\u2122. Voice: warm, encouraging, community-focused.
-After the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any behavioral pattern suggesting a navigator subscriber may be ready for Accelerator \u2014 route to Aaliyah Foster for outreach]"
+Write a DAILY MEMBER EXPERIENCE post (150-200 words) that makes every subscriber feel valued, seen, and motivated to engage. Rotate formats: (1) Warm welcome and community orientation for new members, (2) Member milestone acknowledgment and encouragement, (3) Community connection prompt that invites sharing, (4) Gratitude and momentum post celebrating community growth. Reference where subscribers likely are in the DRU AI Transformation Pathway™. Voice: warm, encouraging, community-focused.
+After the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any behavioral pattern suggesting a navigator subscriber may be ready for Accelerator — route to Aaliyah Foster for outreach]"
 CTA: assessment.druaiconsulting.com`);
 }
 
@@ -261,16 +277,17 @@ CTA: assessment.druaiconsulting.com`);
 // CC AGENT REPLY — Zoe or Micah replies to a community post
 // Triggered by DeAnna tapping "Ask Agent to Reply" on any post card (admin only)
 // Auto-routes: strategic_edge/daily_insight/framework_training → Zoe, others → Micah
-// Full chain: CSQ → Isabella → Governance → Raymond → Twin → AdminApprovals
-// When DeAnna approves → writes to community_comments under original post
+// DIRECT PATH: writes immediately to approvals table — bypasses daily CSQ chain
+// Card appears in AdminApprovals within seconds for DeAnna to approve + post
 // =============================================================================
 async function runCCAgentReply(
   postId: string, postTitle: string, postContent: string,
   postType: string, routeTo: 'zoe' | 'micah'
-): Promise<{ csq_id: string | null }> {
+): Promise<{ approval_id: string | null }> {
   const isZoe     = routeTo === 'zoe';
   const agentId   = isZoe ? 'zoe' : 'micah';
   const agentName = isZoe ? 'Zoe Beaumont' : 'Micah Santos';
+  const agentRole = isZoe ? 'Community Division Leader' : 'Member Experience Manager';
   const today     = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
 
   const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor
@@ -307,28 +324,37 @@ ${isZoe ? 'End with a question or invitation for the community.' : 'End with a w
 If the CTA fits naturally: assessment.druaiconsulting.com`;
 
   try {
-    const raw    = await callAnthropic(prompt, 600);
-    const csq_id = await writeToCSQ({
-      agent_id:   agentId,
-      agent_name: agentName,
-      division:   'Community Connection',
-      task:       'community_reply',
-      category:   'community_comment_reply',
-      raw_output: raw,
-      priority:   'normal',
-      status:     'pending',
-      retry_count: 0,
-      // parent_csq_id carries the originating post_id so AdminApprovals
-      // knows which post to write the approved comment under
-      parent_csq_id: postId,
+    const raw = await callAnthropic(prompt, 600);
+
+    // Write directly to approvals — immediate, no daily chain delay
+    const approval_id = await writeToApprovals({
+      source:           'cc_agent_reply',
+      trigger_type:     'cc_agent_reply',
+      agent_name:       agentName,
+      agent_role:       agentRole,
+      division:         'Community Connection',
+      task_brief:       `post_id:${postId}`,
+      original_content: postContent.slice(0, 500),
+      output:           raw,
+      edited_output:    null,
+      status:           'pending',
+      ghl_contact_id:   null,
+      notify_deanna:    true,
+      priority:         'NORMAL',
+      category:         'community_comment_reply',
+      platform:         null,
+      context:          null,
+      archived:         false,
     });
-    console.log(`[${agentId}] Community reply queued: CSQ ${csq_id ?? 'failed'} for post ${postId}`);
-    return { csq_id };
+
+    console.log(`[${agentId}] Community reply → approvals: ${approval_id ?? 'failed'} for post ${postId}`);
+    return { approval_id };
   } catch (error) {
     console.error(`[${agentId}] Community reply error:`, error);
-    return { csq_id: null };
+    return { approval_id: null };
   }
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -356,26 +382,26 @@ export default async function handler(req: any, res: any): Promise<void> {
   console.log(`[cc-agent-trigger] ${route.agent_name} | Community Connection | ${req.body?.source ?? 'webhook'}`);
 
   const runners: Record<string, () => Promise<{ csq_id: string | null; post_id: string | null }>> = {
-    p9_dominique:  runDominique,
-    p9_elijah:     runElijah,
-    p9_solange:    runSolange,
+    p9_dominique:   runDominique,
+    p9_elijah:      runElijah,
+    p9_solange:     runSolange,
     p9_isaiah_webb: runIsaiahWebb,
-    p9_nadia:      runNadia,
-    p9_victor:     runVictor,
-    p9_sasha:      runSasha,
-    p9_tariq:      runTariq,
-    p9_zoe:        runZoe,
-    p9_micah:      runMicah,
+    p9_nadia:       runNadia,
+    p9_victor:      runVictor,
+    p9_sasha:       runSasha,
+    p9_tariq:       runTariq,
+    p9_zoe:         runZoe,
+    p9_micah:       runMicah,
   };
 
   const runner = runners[route.pipeline];
   if (!runner) {
-    // cc_agent_reply is handled separately — dynamic routing based on request body
+    // cc_agent_reply — direct path, no daily chain
     if (route.pipeline === 'p9_cc_reply') {
       const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
       if (!post_id || !route_to) { res.status(400).json({ error: 'cc_agent_reply requires post_id and route_to' }); return; }
       const result = await runCCAgentReply(post_id, post_title ?? '', post_content ?? '', post_type ?? 'community_post', route_to);
-      res.status(202).json({ success: true, agent: route_to === 'zoe' ? 'Zoe Beaumont' : 'Micah Santos', csq_id: result.csq_id, post_id });
+      res.status(202).json({ success: true, agent: route_to === 'zoe' ? 'Zoe Beaumont' : 'Micah Santos', approval_id: result.approval_id, post_id });
       return;
     }
     res.status(400).json({ error: `No runner for pipeline: ${route.pipeline}` }); return;
