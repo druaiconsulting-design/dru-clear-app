@@ -260,8 +260,8 @@ export default function Portal() {
       key: "assessment",
       icon: "📋",
       label: "My Assessment",
-      sub: "View your scorecard results",
-      href: "https://assessment.druaiconsulting.com",
+      sub: "View your assessment results",
+      href: "/my-results",
       onClick: undefined as (() => void) | undefined,
     },
     {
