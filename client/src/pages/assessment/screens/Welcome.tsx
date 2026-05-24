@@ -3,7 +3,7 @@
  * screens/Welcome.tsx
  */
 
-import { DruLogo, HEADSHOT_CDN } from "../types";
+import { DruLogo, HEADSHOT_CDN } from "../Types";
 
 export function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
