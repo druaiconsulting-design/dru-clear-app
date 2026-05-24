@@ -11,19 +11,19 @@ import {
   flushWebhookQueue, sendWebhook, normalizePhone,
   loadProgress, saveProgress, clearProgress,
   RESUMABLE_SCREENS, UTM_PARAMS,
-} from "./utils";
+} from "./Utils";
 
-import { SplashScreen }             from "./screens/SplashScreen";
-import { WelcomeScreen }            from "./screens/WelcomeScreen";
-import { LeadCaptureScreen }        from "./screens/LeadCaptureScreen";
-import { PillarScreen }             from "./screens/PillarScreen";
-import { CalculatingScreen }        from "./screens/CalculatingScreen";
-import { ResultsScreen }            from "./screens/ResultsScreen";
-import { DiagnoseScreen }           from "./screens/DiagnoseScreen";
-import { PaymentScreen }            from "./screens/PaymentScreen";
-import { ThankYouPurchaseScreen }   from "./screens/ThankYouPurchaseScreen";
-import { ShareYourExcitementScreen } from "./screens/ShareYourExcitementScreen";
-import { ExpiredScreen }            from "./screens/ExpiredScreen";
+import { SplashScreen }              from "./screens/Splash";
+import { WelcomeScreen }             from "./screens/Welcome";
+import { LeadCaptureScreen }         from "./screens/LeadCapture";
+import { PillarScreen }              from "./screens/Pillar";
+import { CalculatingScreen }         from "./screens/Calculating";
+import { ResultsScreen }             from "./screens/Results";
+import { DiagnoseScreen }            from "./screens/Diagnose";
+import { PaymentScreen }             from "./screens/Payment";
+import { ThankYouPurchaseScreen }    from "./screens/ThankYouPurchase";
+import { ShareYourExcitementScreen } from "./screens/ShareYourExcitement";
+import { ExpiredScreen }             from "./screens/Expired";
 import {
   PAYMENT_STRATEGIC_URL, PAYMENT_EXECUTIVE_URL,
   CALENDAR_STRATEGIC_URL, CALENDAR_EXECUTIVE_URL,
@@ -92,7 +92,7 @@ export default function DruClearApp() {
     if (isIosEdge)      return { label: "Edge on iPhone/iPad",     steps: ["Tap the Share button (↑) at the bottom of Edge", "Scroll down and tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"] };
     if (isIosSafari)    return { label: "Safari on iPhone/iPad",   steps: ["Tap the Share button (↑) at the bottom of Safari", "Scroll down and tap \"Add to Home Screen\"", "Tap \"Add\" to confirm"] };
     if (isSamsungBrowser) return { label: "Samsung Internet",      steps: ["Tap the ☰ menu icon (bottom right)", "Tap \"Add page to\"", "Tap \"Home screen\" and confirm"] };
-    if (isFirefox && isAndroid)   return { label: "Firefox on Android", steps: ["Tap the ⋯ menu (top right)", "Tap \"Install\"", "Tap \"Add\" to confirm"] };
+    if (isFirefox && isAndroid)    return { label: "Firefox on Android", steps: ["Tap the ⋯ menu (top right)", "Tap \"Install\"", "Tap \"Add\" to confirm"] };
     if (isEdgeBrowser && isAndroid) return { label: "Edge on Android",  steps: ["Tap the ⋯ menu (bottom center)", "Tap \"Add to phone\"", "Tap \"Install\" to confirm"] };
     if (isOperaBrowser && isAndroid) return { label: "Opera on Android", steps: ["Tap the ⋯ menu (bottom right)", "Tap \"Home screen\"", "Tap \"Add\" to confirm"] };
     if (isDesktopChrome)  return { label: "Chrome on Desktop", steps: ["Click the install icon (⤓) in the address bar", "Click \"Install\" to confirm"], note: "If no install icon appears, click ⋮ → Save and share → Install page as app." };
@@ -101,7 +101,7 @@ export default function DruClearApp() {
     return null;
   };
 
-  const browserInstallInfo     = getBrowserInstallInfo();
+  const browserInstallInfo      = getBrowserInstallInfo();
   const needsManualInstructions = browserInstallInfo !== null;
 
   const [installPromptEvent,  setInstallPromptEvent]  = useState<Event | null>(null);
@@ -211,11 +211,11 @@ export default function DruClearApp() {
         {screen === "welcome"   && <WelcomeScreen onStart={() => goTo("lead-capture")} />}
         {screen === "lead-capture" && <LeadCaptureScreen onContinue={(data) => { setLead(data); goTo("clarity"); }} />}
 
-        {screen === "clarity" && <PillarScreen pillarLetter="C" pillarName="CLARITY" subtitle="AI Vision & Strategic Direction" progress={20} progressLabel="Pillar 1 of 5" questions={["Our organization has a clearly defined AI vision that connects to our overall business strategy.", "Leaders and teams across the organization understand why we are pursuing AI and what success looks like.", "We have identified specific strategic priorities where AI will have the greatest business impact."]} questionStartIndex={0} scores={scores} onScoreChange={updateScore} onNext={() => goTo("leadership")} />}
-        {screen === "leadership" && <PillarScreen pillarLetter="L" pillarName="LEADERSHIP" subtitle="Executive AI Fluency & Sponsorship" progress={40} progressLabel="Pillar 2 of 5" questions={["Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.", "There is a designated executive sponsor who is accountable for driving AI transformation.", "Our leadership team actively participates in AI learning, development, and decision-making."]} questionStartIndex={3} scores={scores} onScoreChange={updateScore} onNext={() => goTo("execution")} />}
-        {screen === "execution" && <PillarScreen pillarLetter="E" pillarName="EXECUTION" subtitle="Operational AI Implementation Capacity" progress={60} progressLabel="Pillar 3 of 5" questions={["We have identified specific business processes where AI can deliver measurable impact.", "Our teams have the skills, tools, and resources needed to implement AI solutions today.", "We have completed at least one AI pilot or proof of concept in the past 12 months."]} questionStartIndex={6} scores={scores} onScoreChange={updateScore} onNext={() => goTo("alignment")} />}
-        {screen === "alignment" && <PillarScreen pillarLetter="A" pillarName="ALIGNMENT" subtitle="Cross-Functional Strategic Coherence" progress={80} progressLabel="Pillar 4 of 5" questions={["Our AI initiatives are aligned with our overall business goals and strategic plan.", "There is clear and consistent communication between departments about AI priorities and progress.", "Our AI efforts are coordinated across teams and business units rather than operating in silos."]} questionStartIndex={9} scores={scores} onScoreChange={updateScore} onNext={() => goTo("results-pillar")} />}
-        {screen === "results-pillar" && <PillarScreen pillarLetter="R" pillarName="RESULTS" subtitle="Measurement, Tracking & Return on Investment" progress={100} progressLabel="Pillar 5 of 5" questions={["We have defined clear Key Performance Indicators to measure the success of our AI initiatives.", "We can demonstrate measurable return on investment from at least one AI-related initiative.", "We have a system in place to regularly track and report AI progress to leadership."]} questionStartIndex={12} scores={scores} onScoreChange={updateScore} onNext={() => goTo("calculating")} nextLabel="See My Results →" />}
+        {screen === "clarity"      && <PillarScreen pillarLetter="C" pillarName="CLARITY"    subtitle="AI Vision & Strategic Direction"                  progress={20}  progressLabel="Pillar 1 of 5" questions={["Our organization has a clearly defined AI vision that connects to our overall business strategy.", "Leaders and teams across the organization understand why we are pursuing AI and what success looks like.", "We have identified specific strategic priorities where AI will have the greatest business impact."]}                                                                                                                                        questionStartIndex={0}  scores={scores} onScoreChange={updateScore} onNext={() => goTo("leadership")} />}
+        {screen === "leadership"   && <PillarScreen pillarLetter="L" pillarName="LEADERSHIP" subtitle="Executive AI Fluency & Sponsorship"               progress={40}  progressLabel="Pillar 2 of 5" questions={["Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.", "There is a designated executive sponsor who is accountable for driving AI transformation.", "Our leadership team actively participates in AI learning, development, and decision-making."]}                                                                                                                          questionStartIndex={3}  scores={scores} onScoreChange={updateScore} onNext={() => goTo("execution")} />}
+        {screen === "execution"    && <PillarScreen pillarLetter="E" pillarName="EXECUTION"  subtitle="Operational AI Implementation Capacity"           progress={60}  progressLabel="Pillar 3 of 5" questions={["We have identified specific business processes where AI can deliver measurable impact.", "Our teams have the skills, tools, and resources needed to implement AI solutions today.", "We have completed at least one AI pilot or proof of concept in the past 12 months."]}                                                                                                                                           questionStartIndex={6}  scores={scores} onScoreChange={updateScore} onNext={() => goTo("alignment")} />}
+        {screen === "alignment"    && <PillarScreen pillarLetter="A" pillarName="ALIGNMENT"  subtitle="Cross-Functional Strategic Coherence"             progress={80}  progressLabel="Pillar 4 of 5" questions={["Our AI initiatives are aligned with our overall business goals and strategic plan.", "There is clear and consistent communication between departments about AI priorities and progress.", "Our AI efforts are coordinated across teams and business units rather than operating in silos."]}                                                                                                                             questionStartIndex={9}  scores={scores} onScoreChange={updateScore} onNext={() => goTo("results-pillar")} />}
+        {screen === "results-pillar" && <PillarScreen pillarLetter="R" pillarName="RESULTS"  subtitle="Measurement, Tracking & Return on Investment"     progress={100} progressLabel="Pillar 5 of 5" questions={["We have defined clear Key Performance Indicators to measure the success of our AI initiatives.", "We can demonstrate measurable return on investment from at least one AI-related initiative.", "We have a system in place to regularly track and report AI progress to leadership."]}                                                                                                                                      questionStartIndex={12} scores={scores} onScoreChange={updateScore} onNext={() => goTo("calculating")} nextLabel="See My Results →" />}
 
         {screen === "calculating" && <CalculatingScreen onDone={() => goTo("results")} />}
 
@@ -235,11 +235,11 @@ export default function DruClearApp() {
           </>
         )}
 
-        {screen === "payment-strategic" && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
-        {screen === "payment-executive" && <PaymentScreen tier="executive"  price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL}  onBack={() => goTo("diagnose")} />}
-        {screen === "thankyou-strategic" && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
-        {screen === "thankyou-executive" && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL}  onContinue={() => goTo("share-your-excitement")} />}
-        {screen === "expired"            && <ExpiredScreen onRetake={handleRetake} />}
+        {screen === "payment-strategic"    && <PaymentScreen tier="strategic" price="$3,497" paymentUrl={PAYMENT_STRATEGIC_URL} onBack={() => goTo("diagnose")} />}
+        {screen === "payment-executive"    && <PaymentScreen tier="executive"  price="$4,997" paymentUrl={PAYMENT_EXECUTIVE_URL}  onBack={() => goTo("diagnose")} />}
+        {screen === "thankyou-strategic"   && <ThankYouPurchaseScreen lead={lead} tier="strategic" calendarUrl={CALENDAR_STRATEGIC_URL} onContinue={() => goTo("share-your-excitement")} />}
+        {screen === "thankyou-executive"   && <ThankYouPurchaseScreen lead={lead} tier="executive" calendarUrl={CALENDAR_EXECUTIVE_URL}  onContinue={() => goTo("share-your-excitement")} />}
+        {screen === "expired"              && <ExpiredScreen onRetake={handleRetake} />}
         {screen === "share-your-excitement" && <ShareYourExcitementScreen lead={lead} scores={scores} onRevisit={() => goTo("diagnose")} />}
       </div>
 
@@ -263,8 +263,8 @@ export default function DruClearApp() {
             <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Add to Home Screen</div>
             <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em" }}>Save this app for instant access to your Leadership with AI transformation</div>
           </div>
-          <button onClick={handleInstall}         style={{ background: "#D4AF37", color: "#0A1628", border: "none", borderRadius: 4, padding: "0.45rem 0.9rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: "pointer", flexShrink: 0 }}>INSTALL</button>
-          <button onClick={dismissInstallBanner}  aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1 }}>×</button>
+          <button onClick={handleInstall}        style={{ background: "#D4AF37", color: "#0A1628", border: "none", borderRadius: 4, padding: "0.45rem 0.9rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: "pointer", flexShrink: 0 }}>INSTALL</button>
+          <button onClick={dismissInstallBanner} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1 }}>×</button>
         </div>
       )}
 
