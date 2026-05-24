@@ -23,6 +23,7 @@ import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminArchived from "./pages/AdminArchived";
 import Twin from "./pages/Twin";
+import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
@@ -192,6 +193,11 @@ function Router() {
     if (!isLoggedIn) return <Login />;
     return <Community />;
   }
+  if (path === "/lab" || path === "/lab/") {
+    setTitle("Leadership Lab · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Lab />;
+  }
   if (path === "/affiliate" || path === "/affiliate/") {
     setTitle("Affiliate · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
@@ -229,4 +235,3 @@ function App() {
 }
 
 export default App;
-
