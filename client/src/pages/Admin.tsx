@@ -37,8 +37,6 @@ const PAYMENT_LINKS = [
 
 interface FocusPoint { label: string; sub: string; }
 const FOCAL_POINTS: FocusPoint[] = [
-  { label: "Community Connection — 4 Layer Build", sub: "Layer 1: Database · Layer 2: Agent Infrastructure · Layer 3: Community Page · Layer 4: GHL Workflow · Est. 6–8 sessions" },
-  { label: "Community Connection Page", sub: "Fulfillment redesigned — Navigator: 4 daily cards + weekly framework training · Accelerator: + PDF Downloadables + monthly DeAnna's Leadership Lab! video" },
   { label: "GHL Webhook URL — wire into course waitlist form", sub: "Connect GHL webhook to course.druaiconsulting.com waitlist capture" },
   { label: "From Confusion to Confident with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · course.druaiconsulting.com deploy next" },
 ];
@@ -112,7 +110,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
     ],
   },
   {
-    number: "5", title: "All Agents Live", status: "inprogress",
+    number: "5", title: "All Agents Live", status: "completed",
     items: [
       { done: true,  label: "Revenue & Growth Division — LIVE",    sub: "10 agents — Omar · Ryan · Serena · Mateo · Aaliyah · Jaylen · Chloe · Zara · Elena · Kwame — daily 8:00am CDT" },
       { done: true,  label: "Content & Brand Division — LIVE",     sub: "5 agents — Camila · Darius · Ravi · Yara · Ingrid — daily" },
