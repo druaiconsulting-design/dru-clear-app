@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/ThankYouPurchaseScreen.tsx
+ * screens/ThankYouPurchase.tsx
  */
 
 import { LeadData, DruLogo } from "../types";
