@@ -25,6 +25,7 @@ import AdminArchived from "./pages/AdminArchived";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
+import MyResults from "./pages/MyResults";
 import { useEffect } from "react";
 import { supabase } from "./lib/supabase";
 
@@ -173,6 +174,11 @@ function Router() {
     if (!isLoggedIn) return <Login />;
     return <Portal />;
   }
+  if (path === "/my-results" || path === "/my-results/") {
+    setTitle("My Assessment Results · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <MyResults />;
+  }
   if (path === "/resources" || path === "/resources/") {
     setTitle("Resource Hub · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
@@ -235,4 +241,3 @@ function App() {
 }
 
 export default App;
-
