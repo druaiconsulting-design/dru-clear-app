@@ -355,6 +355,155 @@ If the CTA fits naturally: assessment.druaiconsulting.com`;
   }
 }
 
+
+// =============================================================================
+// UPSELL SCAN — Zoe scans recent navigator member posts every 3 hours
+// Fires Aaliyah card to AdminApprovals immediately when signal detected
+// DeAnna approves → CC_Accelerator_Outreach GHL webhook fires
+// =============================================================================
+
+async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const res = await fetch(
+    `${url}/rest/v1/approvals?category=eq.cc_upsell_outreach&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) return false;
+  const data = await res.json();
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function fireAaliyahUpsellCard(
+  memberId: string, firstName: string, email: string | null,
+  phone: string | null, signalReason: string, postTitle: string
+): Promise<void> {
+  const prompt = `${GENIUS_MODE}
+
+You are Aaliyah Foster, Outreach Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
+
+A Navigator community member named ${firstName} has been identified as showing strong signals of readiness to upgrade to the Accelerator tier. Community intelligence noted: "${signalReason}"
+
+Their recent community post: "${postTitle}"
+
+Write a warm, personalized outreach message (100-120 words) inviting ${firstName} to upgrade to the DRU AI Leadership Ecosystem™ Accelerator ($147/mo). The message should:
+- Feel personal and specific, not generic
+- Reference their community engagement naturally
+- Clearly articulate the added Accelerator value over Navigator (monthly Leadership Lab™ video, weekly branded framework PDF, exclusive strategic prompts)
+- Include a confident, soft call to action
+- Sound like it is from DeAnna's team
+- CTA: https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1
+
+Write ONLY the message. No subject line, no labels.`;
+
+  const outreach = await callAnthropic(prompt, 400);
+
+  const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found — manual lookup needed';
+  const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found — manual lookup needed';
+
+  await writeToApprovals({
+    source:           'cc_upsell_scan',
+    trigger_type:     'cc_upsell_scan',
+    agent_name:       'Aaliyah Foster',
+    agent_role:       'Outreach',
+    division:         'Community Connection',
+    task_brief:       `MEMBER_ID:${memberId} | ${emailLine} | ${phoneLine} | Signal: ${signalReason}`,
+    original_content: `Community post: "${postTitle}" — Navigator member showing Accelerator-ready signals`,
+    output:           outreach,
+    edited_output:    null,
+    status:           'pending',
+    ghl_contact_id:   null,
+    notify_deanna:    true,
+    priority:         'HIGH',
+    category:         'cc_upsell_outreach',
+    platform:         null,
+    context:          null,
+    archived:         false,
+  });
+
+  console.log(`[aaliyah] Upsell card written for member ${memberId} — ${firstName}`);
+}
+
+async function runUpsellScan(): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) { console.error('[upsell_scan] Missing env vars'); return; }
+
+  // Fetch member posts from last 3 hours
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const postsRes = await fetch(
+    `${url}/rest/v1/community_posts?post_type=eq.member_post&is_active=eq.true&published_at=gte.${threeHoursAgo}&order=published_at.desc&limit=20`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+  );
+  if (!postsRes.ok) { console.error('[upsell_scan] Failed to fetch posts:', await postsRes.text()); return; }
+  const posts = await postsRes.json();
+
+  if (!Array.isArray(posts) || !posts.length) {
+    console.log('[upsell_scan] No recent member posts — scan complete');
+    return;
+  }
+
+  let signalsFound = 0;
+  for (const post of posts) {
+    const memberId = post.agent_id;
+    if (!memberId) continue;
+
+    // Only target navigator tier members
+    const profileRes = await fetch(
+      `${url}/rest/v1/profiles?id=eq.${memberId}&tier=eq.navigator&select=id,first_name,email,phone&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!profileRes.ok) continue;
+    const profiles = await profileRes.json();
+    if (!Array.isArray(profiles) || !profiles.length) continue;
+    const profile = profiles[0];
+
+    // Deduplication — skip if card exists in last 7 days
+    const alreadyFlagged = await hasRecentUpsellCard(memberId);
+    if (alreadyFlagged) {
+      console.log(`[upsell_scan] ${profile.first_name} — card exists, skipping`);
+      continue;
+    }
+
+    // Signal detection via Zoe
+    const detectionPrompt = `${GENIUS_MODE}
+
+You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting.
+
+A Navigator member named ${profile.first_name} posted the following in the community:
+TITLE: ${post.title}
+CONTENT: ${(post.content || '').slice(0, 600)}
+
+Assess whether this member is showing signals of readiness to upgrade to the Accelerator tier ($147/mo from $47/mo).
+Accelerator-ready signals: desire for deeper content, asking about exclusive features, high engagement patterns, expressing Navigator limitations, advanced AI leadership application, or clear momentum and investment mindset.
+
+Respond with EXACTLY one of these formats — nothing else:
+UPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence]
+UPSELL SIGNAL: NO`;
+
+    const detection = await callAnthropic(detectionPrompt, 120);
+
+    if (!detection.includes('UPSELL SIGNAL: YES')) {
+      console.log(`[upsell_scan] No signal for ${profile.first_name}`);
+      continue;
+    }
+
+    const reasonMatch = detection.match(/REASON:\s*(.+)/);
+    const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
+
+    await fireAaliyahUpsellCard(
+      memberId, profile.first_name,
+      profile.email ?? null, profile.phone ?? null,
+      reason, post.title
+    );
+    signalsFound++;
+  }
+
+  console.log(`[upsell_scan] Complete — ${posts.length} posts scanned, ${signalsFound} signals fired`);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -396,6 +545,12 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const runner = runners[route.pipeline];
   if (!runner) {
+    // p9_upsell_scan — runs every 3 hours, no post returned
+    if (route.pipeline === 'p9_upsell_scan') {
+      await runUpsellScan();
+      res.status(202).json({ success: true, agent: 'Upsell Scanner', message: 'Scan complete' });
+      return;
+    }
     // cc_agent_reply — direct path, no daily chain
     if (route.pipeline === 'p9_cc_reply') {
       const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
