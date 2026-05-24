@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/WelcomeScreen.tsx
+ * screens/Welcome.tsx
  */
 
 import { DruLogo, HEADSHOT_CDN } from "../types";
