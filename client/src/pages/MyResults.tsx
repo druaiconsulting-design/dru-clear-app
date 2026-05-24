@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -101,7 +100,6 @@ function formatCompletedDate(createdAt: string, userTimezone: string): string {
 
 export default function MyResults() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,7 +198,7 @@ export default function MyResults() {
         <NavBar active="/my-results" />
         <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 480, margin: "0 auto", width: "100%" }}>
           <button
-            onClick={() => navigate("/portal")}
+            onClick={() => window.location.href = "/portal"}
             style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", letterSpacing: "0.08em", cursor: "pointer", padding: 0, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
           >
             ← Back to Portal
@@ -294,7 +292,7 @@ export default function MyResults() {
 
         {/* Back */}
         <button
-          onClick={() => navigate("/portal")}
+          onClick={() => window.location.href = "/portal"}
           style={{ background: "none", border: "none", color: "rgba(212,175,55,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", letterSpacing: "0.08em", cursor: "pointer", padding: 0, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
         >
           ← Back to Portal
