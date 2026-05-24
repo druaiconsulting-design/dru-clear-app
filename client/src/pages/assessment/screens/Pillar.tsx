@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/PillarScreen.tsx — ScoreRow + PillarScreen
+ * screens/Pillar.tsx — ScoreRow + PillarScreen
  */
 
 import { Scores, LIKERT_LABELS } from "../types";
