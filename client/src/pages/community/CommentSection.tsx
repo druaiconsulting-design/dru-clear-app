@@ -163,7 +163,7 @@ export default function CommentSection({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#0A2342' }}>{getDisplayName(comment)}</span>
                     {comment.agent_name && (
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'rgba(10,35,66,0.08)', color: '#0A2342', letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>DRU AI</span>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'rgba(10,35,66,0.08)', color: '#0A2342', letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>DRU AI Consulting Team</span>
                     )}
                     <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>{formatRelativeTime(comment.created_at)}</span>
                   </div>
