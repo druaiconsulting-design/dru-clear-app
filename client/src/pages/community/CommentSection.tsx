@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase, checkFlagged, formatDate, formatRelativeTime } from './types';
+import { supabase, checkFlagged, formatRelativeTime } from './types';
 import type { CommunityComment, MemberProfile } from './types';
 import MemberAvatar from './MemberAvatar';
 
@@ -24,15 +24,15 @@ export default function CommentSection({
   commentCount: number | null;
   setCommentCount: (fn: (n: number | null) => number | null) => void;
 }) {
-  const [comments, setComments]             = useState<CommunityComment[]>([]);
+  const [comments, setComments]               = useState<CommunityComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [newComment, setNewComment]         = useState('');
-  const [submitting, setSubmitting]         = useState(false);
-  const [editingId, setEditingId]           = useState<string | null>(null);
-  const [editContent, setEditContent]       = useState('');
-  const [mentionSearch, setMentionSearch]   = useState('');
-  const [mentionResults, setMentionResults] = useState<MemberProfile[]>([]);
-  const [showMentions, setShowMentions]     = useState(false);
+  const [newComment, setNewComment]           = useState('');
+  const [submitting, setSubmitting]           = useState(false);
+  const [editingId, setEditingId]             = useState<string | null>(null);
+  const [editContent, setEditContent]         = useState('');
+  const [mentionSearch, setMentionSearch]     = useState('');
+  const [mentionResults, setMentionResults]   = useState<MemberProfile[]>([]);
+  const [showMentions, setShowMentions]       = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -139,8 +139,11 @@ export default function CommentSection({
     setCommentCount(n => Math.max(0, (n ?? 1) - 1));
   };
 
-  const getDisplayName = (c: CommunityComment) => c.member_id === userId ? 'You' : (c as any).profiles?.first_name ?? 'Member';
-  const getPhoto      = (c: CommunityComment) => (c as any).profiles?.photo_url;
+  // ── Display helpers — agent_name takes priority over profiles join ──────────
+  const getDisplayName = (c: CommunityComment) =>
+    c.agent_name ? c.agent_name : c.member_id === userId ? 'You' : (c as any).profiles?.first_name ?? 'Member';
+  const getPhoto = (c: CommunityComment) =>
+    c.agent_name ? null : (c as any).profiles?.photo_url;
 
   if (!open) return null;
 
@@ -155,13 +158,16 @@ export default function CommentSection({
           {comments.map(comment => (
             <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <MemberAvatar firstName={getDisplayName(comment)} photoUrl={getPhoto(comment)} size={28} />
-              <div style={{ flex: 1, background: '#FAFAF8', border: '1px solid #F0EDE8', borderRadius: '8px', padding: '10px 12px' }}>
+              <div style={{ flex: 1, background: comment.agent_name ? '#EEF3FA' : '#FAFAF8', border: `1px solid ${comment.agent_name ? '#C0D0E8' : '#F0EDE8'}`, borderRadius: '8px', padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#0A2342' }}>{getDisplayName(comment)}</span>
+                    {comment.agent_name && (
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'rgba(10,35,66,0.08)', color: '#0A2342', letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>DRU AI</span>
+                    )}
                     <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>{formatRelativeTime(comment.created_at)}</span>
                   </div>
-                  {comment.member_id === userId && editingId !== comment.id && (
+                  {!comment.agent_name && comment.member_id === userId && editingId !== comment.id && (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={() => { setEditingId(comment.id); setEditContent(comment.content); }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(10,35,66,0.35)', fontSize: '13px', padding: '0' }}
