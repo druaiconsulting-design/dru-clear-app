@@ -1,6 +1,6 @@
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Approval Queue
-// UPDATED: Lead direction selector, Lead Intelligence → GHL, Client Delivery → PDF download
+// UPDATED: Flagged Comments section, CC Agent Reply handler, CC Post Triggers
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -15,39 +15,27 @@ type ApprovalStatus = "pending" | "approved" | "rejected" | "edited";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
 
 interface Approval {
-  id:               string;
-  created_at:       string;
-  source:           string;
-  trigger_type:     string;
-  agent_name:       string;
-  agent_role:       string;
-  division:         string;
-  task_brief:       string;
-  original_content: string;
-  output:           string;
-  edited_output:    string | null;
-  status:           ApprovalStatus;
-  ghl_contact_id:   string | null;
-  notify_deanna:    boolean;
-  priority:         Priority;
-  category:         string;
-  platform:         string | null;
-  context:          string | null;
-  archived:         boolean;
+  id: string; created_at: string; source: string; trigger_type: string;
+  agent_name: string; agent_role: string; division: string; task_brief: string;
+  original_content: string; output: string; edited_output: string | null;
+  status: ApprovalStatus; ghl_contact_id: string | null; notify_deanna: boolean;
+  priority: Priority; category: string; platform: string | null;
+  context: string | null; archived: boolean;
 }
 
-interface ConversationMessage {
-  role: 'user' | 'agent';
-  agentName?: string;
-  text: string;
+interface FlaggedComment {
+  id: string; post_id: string; member_id: string | null;
+  content: string; created_at: string;
+  profiles?: { first_name?: string | null } | null;
+  community_posts?: { title?: string | null } | null;
 }
+
+interface ConversationMessage { role: 'user' | 'agent'; agentName?: string; text: string; }
 
 interface QuestionState {
-  open:          boolean;
+  open: boolean;
   selectedAgent: { agent_id: string; agent_name: string; role: string } | null;
-  input:         string;
-  messages:      ConversationMessage[];
-  loading:       boolean;
+  input: string; messages: ConversationMessage[]; loading: boolean;
 }
 
 const LEAD_DIRECTIONS = [
@@ -59,9 +47,9 @@ const LEAD_DIRECTIONS = [
 ];
 
 const PDF_CATEGORIES = new Set([
-  "presentation_design", "course_architecture", "video_production",
-  "creative_direction", "client_onboarding", "feedback_coaching",
-  "community_management", "client_delivery",
+  "presentation_design","course_architecture","video_production",
+  "creative_direction","client_onboarding","feedback_coaching",
+  "community_management","client_delivery",
 ]);
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -75,6 +63,7 @@ const DIVISION_COLORS: Record<string, string> = {
   "Revenue & Growth":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
   "Legal & Finance":"#8A6E1A", "AI Governance":"#7A0F38", "HR":"#2E6DAB",
   "Client Delivery":"#A68920", "Customer Support":"#C2185B", "Command":"#0A2342",
+  "Community Connection":"#2D5A8E",
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -87,12 +76,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   legal_finance:"Legal & Finance", ai_governance:"AI Governance",
   hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
   social:"Social Media", email:"Email", proposal:"Proposal", content:"Content", other:"Other",
+  community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
   "social","email","proposal","content","other",
+  "community_comment_reply","CC Post Triggers",
 ];
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
@@ -136,18 +127,18 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"rafael",   agent_name:"Rafael Torres",   role:"Continuous Learning" },
   ],
   "HR": [
-    { agent_id:"naomi",   agent_name:"Naomi Williams",      role:"Recruiting" },
-    { agent_id:"aiden",   agent_name:"Aiden Park",          role:"Onboarding" },
-    { agent_id:"fatima",  agent_name:"Fatima Al-Rashid",    role:"Internal Helpdesk" },
+    { agent_id:"naomi",   agent_name:"Naomi Williams",   role:"Recruiting" },
+    { agent_id:"aiden",   agent_name:"Aiden Park",       role:"Onboarding" },
+    { agent_id:"fatima",  agent_name:"Fatima Al-Rashid", role:"Internal Helpdesk" },
   ],
   "Client Delivery": [
-    { agent_id:"keisha",  agent_name:"Keisha Thompson",     role:"Onboarding Coach" },
-    { agent_id:"marco",   agent_name:"Marco Silva",         role:"Community Manager" },
-    { agent_id:"leila",   agent_name:"Leila Nasser",        role:"Feedback Coach" },
-    { agent_id:"jordan",  agent_name:"Jordan Hayes",        role:"Creative Director" },
-    { agent_id:"simone",  agent_name:"Simone Laurent",      role:"Course Architect" },
-    { agent_id:"theo",    agent_name:"Theo Nguyen",         role:"Presentation Designer" },
-    { agent_id:"amelia",  agent_name:"Amelia Santos",       role:"Training Video Producer" },
+    { agent_id:"keisha",  agent_name:"Keisha Thompson",  role:"Onboarding Coach" },
+    { agent_id:"marco",   agent_name:"Marco Silva",      role:"Community Manager" },
+    { agent_id:"leila",   agent_name:"Leila Nasser",     role:"Feedback Coach" },
+    { agent_id:"jordan",  agent_name:"Jordan Hayes",     role:"Creative Director" },
+    { agent_id:"simone",  agent_name:"Simone Laurent",   role:"Course Architect" },
+    { agent_id:"theo",    agent_name:"Theo Nguyen",      role:"Presentation Designer" },
+    { agent_id:"amelia",  agent_name:"Amelia Santos",    role:"Training Video Producer" },
   ],
   "Customer Support": [
     { agent_id:"isaiah",    agent_name:"Isaiah Carter",     role:"Issue Resolution" },
@@ -180,50 +171,52 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
-  if (approval.division && DIVISION_COLORS[approval.division]) {
-    return { text: approval.division, color: DIVISION_COLORS[approval.division] };
-  }
-  if (approval.category === "daily_briefing") return { text: "Daily Briefing", color: "#D4AF37" };
+  if (approval.category === "community_comment_reply") return { text: "CC Agent Reply", color: "#2D5A8E" };
+  if (approval.category === "CC Post Triggers")        return { text: "CC Policy Violation", color: "#C2185B" };
+  if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
+  if (approval.category === "daily_briefing")          return { text: "Daily Briefing", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
 }
 
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
   if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
+  if (approval.category === "community_comment_reply" || approval.category === "CC Post Triggers") return { heading: "Member Info", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
 function getDraftHeading(approval: Approval): string {
-  if (approval.category === "social") return `${approval.agent_name}'s Draft`;
-  if (approval.category === "daily_briefing") return "Daily Briefing";
+  if (approval.category === "social")                   return `${approval.agent_name}'s Draft`;
+  if (approval.category === "daily_briefing")           return "Daily Briefing";
+  if (approval.category === "community_comment_reply")  return "Agent Reply";
+  if (approval.category === "CC Post Triggers")         return "Violation Report";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
-  if (approval.category === "lead_intelligence") {
-    return status === "posted" ? "✓ Routed to GHL" : status === "posting" ? "Routing..." : "⚠ Route Failed";
-  }
-  if (approval.division === "Client Delivery") {
-    return status === "posted" ? "✓ PDF Downloaded" : status === "posting" ? "Generating PDF..." : "⚠ PDF Failed";
-  }
+  if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"    : status === "posting" ? "Routing..."        : "⚠ Route Failed";
+  if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"   : status === "posting" ? "Generating PDF..."  : "⚠ PDF Failed";
+  if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"   : status === "posting" ? "Posting..."         : "⚠ Post Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
 export default function AdminApprovals() {
-  const [approvals, setApprovals]         = useState<Approval[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [activeFilter, setActiveFilter]   = useState<string>("all");
-  const [editingId, setEditingId]         = useState<string | null>(null);
-  const [editText, setEditText]           = useState("");
-  const [saving, setSaving]               = useState<string | null>(null);
-  const [publishStatus, setPublishStatus] = useState<Record<string, "posting" | "posted" | "failed">>({});
-  const [leadDirection, setLeadDirection] = useState<Record<string, string>>({});
-  const [questions, setQuestions]         = useState<Record<string, QuestionState>>({});
-  const [memberCounts, setMemberCounts]   = useState({ total: 0, navigator: 0, accelerator: 0 });
+  const [approvals, setApprovals]             = useState<Approval[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [activeFilter, setActiveFilter]       = useState<string>("all");
+  const [editingId, setEditingId]             = useState<string | null>(null);
+  const [editText, setEditText]               = useState("");
+  const [saving, setSaving]                   = useState<string | null>(null);
+  const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
+  const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
+  const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
+  const [memberCounts, setMemberCounts]       = useState({ total: 0, navigator: 0, accelerator: 0 });
+  const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([]);
+  const [flaggedLoading, setFlaggedLoading]   = useState(true);
+  const [savingComment, setSavingComment]     = useState<string | null>(null);
 
   const fetchApprovals = async () => {
-    const { data, error } = await supabase
-      .from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch approvals:", error);
     else setApprovals((data as Approval[]) || []);
     setLoading(false);
@@ -231,31 +224,37 @@ export default function AdminApprovals() {
 
   const fetchMemberCounts = async () => {
     const { data } = await supabase.from("profiles").select("tier").in("tier", ["navigator", "accelerator"]);
-    const nav = (data ?? []).filter(p => p.tier === "navigator").length;
-    const acc = (data ?? []).filter(p => p.tier === "accelerator").length;
+    const nav = (data ?? []).filter((p: any) => p.tier === "navigator").length;
+    const acc = (data ?? []).filter((p: any) => p.tier === "accelerator").length;
     setMemberCounts({ total: nav + acc, navigator: nav, accelerator: acc });
+  };
+
+  const fetchFlaggedComments = async () => {
+    const { data } = await supabase
+      .from("community_comments")
+      .select("*, profiles(first_name), community_posts(title)")
+      .eq("is_flagged", true).eq("is_active", true)
+      .order("created_at", { ascending: false });
+    setFlaggedComments((data as FlaggedComment[]) || []);
+    setFlaggedLoading(false);
   };
 
   useEffect(() => {
     fetchApprovals();
     fetchMemberCounts();
+    fetchFlaggedComments();
     const channel = supabase.channel("approvals-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const commentsChannel = supabase.channel("flagged-comments-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); };
   }, []);
 
   const downloadPDF = async (approval: Approval): Promise<boolean> => {
     try {
-      const res = await fetch("/api/pdf-generator", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          output: approval.edited_output || approval.output,
-          agent_name: approval.agent_name, task_brief: approval.task_brief,
-          division: approval.division, category: approval.category, approval_id: approval.id,
-        }),
-      });
+      const res = await fetch("/api/pdf-generator", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ output: approval.edited_output || approval.output, agent_name: approval.agent_name, task_brief: approval.task_brief, division: approval.division, category: approval.category, approval_id: approval.id }) });
       if (!res.ok) return false;
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
@@ -269,13 +268,21 @@ export default function AdminApprovals() {
 
   const routeLead = async (approval: Approval, direction: string): Promise<boolean> => {
     try {
-      const res = await fetch("/api/lead-executor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approval_id: approval.id, output: approval.output, direction, agent_name: approval.agent_name }),
-      });
+      const res = await fetch("/api/lead-executor", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ approval_id: approval.id, output: approval.output, direction, agent_name: approval.agent_name }) });
       return res.ok;
     } catch (err) { console.error("[lead]", err); return false; }
+  };
+
+  const postCCComment = async (approval: Approval, content: string): Promise<boolean> => {
+    const match  = (approval.task_brief || "").match(/post_id:([a-zA-Z0-9-]+)/);
+    const postId = match?.[1];
+    if (!postId) { console.error("[cc_reply] No post_id in task_brief:", approval.task_brief); return false; }
+    const { error } = await supabase.from("community_comments").insert({
+      post_id: postId, member_id: null, agent_name: approval.agent_name,
+      content, is_flagged: false, is_active: true,
+    });
+    if (error) { console.error("[cc_reply] Insert failed:", error); return false; }
+    return true;
   };
 
   const handleApprove = async (id: string) => {
@@ -295,6 +302,10 @@ export default function AdminApprovals() {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await routeLead(approval, direction);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "community_comment_reply") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await postCCComment(approval, approval.edited_output || approval.output);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await downloadPDF(approval);
@@ -305,6 +316,9 @@ export default function AdminApprovals() {
 
   const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected" }).eq("id", id); setSaving(null); };
   const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
+
+  const handleClearFlag     = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_flagged: false }).eq("id", id); setSavingComment(null); };
+  const handleRemoveComment = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_active: false }).eq("id", id); setSavingComment(null); };
 
   const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
   const handleEditSave  = async (id: string) => {
@@ -324,6 +338,10 @@ export default function AdminApprovals() {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await routeLead(approval, direction);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "community_comment_reply") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await postCCComment(approval, editText);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await downloadPDF({ ...approval, edited_output: editText });
@@ -332,8 +350,8 @@ export default function AdminApprovals() {
     setSaving(null);
   };
 
-  const getQS  = (id: string): QuestionState => questions[id] ?? { open:false, selectedAgent:null, input:"", messages:[], loading:false };
-  const setQS  = (id: string, update: Partial<QuestionState>) => setQuestions(prev => ({ ...prev, [id]: { ...getQS(id), ...update } }));
+  const getQS = (id: string): QuestionState => questions[id] ?? { open:false, selectedAgent:null, input:"", messages:[], loading:false };
+  const setQS = (id: string, update: Partial<QuestionState>) => setQuestions(prev => ({ ...prev, [id]: { ...getQS(id), ...update } }));
 
   const toggleQuestion = (approval: Approval) => {
     const qs = getQS(approval.id);
@@ -350,23 +368,23 @@ export default function AdminApprovals() {
   const handleAskQuestion = async (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.selectedAgent || !qs.input.trim()) return;
-    const question = qs.input.trim();
-    const newMessages: ConversationMessage[] = [...qs.messages, { role:'user', text:question }];
+    const question    = qs.input.trim();
+    const newMessages = [...qs.messages, { role:'user' as const, text:question }];
     setQS(approval.id, { messages:newMessages, input:"", loading:true });
     try {
       const res  = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages }) });
       const data = await res.json();
       setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:data.response ?? "Unable to respond. Please try again." }], loading:false });
-    } catch { setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:"Something went wrong. Please try again." }], loading:false }); }
+    } catch { setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent?.agent_name, text:"Something went wrong. Please try again." }], loading:false }); }
   };
 
-  const presentCategories  = [...new Set(approvals.map(a => a.category))];
-  const orderedCategories  = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
-  const remainingCategories= presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
-  const allCategories      = [...orderedCategories, ...remainingCategories];
-  const filtered           = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
-  const pending            = approvals.filter(a => a.status === "pending").length;
-  const approvedToday      = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+  const presentCategories   = [...new Set(approvals.map(a => a.category))];
+  const orderedCategories   = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
+  const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
+  const allCategories       = [...orderedCategories, ...remainingCategories];
+  const filtered            = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
+  const pending             = approvals.filter(a => a.status === "pending").length;
+  const approvedToday       = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
   const tabStyle = (active: boolean) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
@@ -398,9 +416,9 @@ export default function AdminApprovals() {
         {/* Queue Stats */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"0.75rem" }}>
           {[
-            { label:"Awaiting Approval", value:pending,        color:"#D4AF37" },
-            { label:"Approved Today",    value:approvedToday,  color:"#4CAF50" },
-            { label:"Total in Queue",    value:approvals.length, color:"rgba(255,255,255,0.6)" },
+            { label:"Awaiting Approval", value:pending,           color:"#D4AF37" },
+            { label:"Approved Today",    value:approvedToday,     color:"#4CAF50" },
+            { label:"Total in Queue",    value:approvals.length,  color:"rgba(255,255,255,0.6)" },
           ].map(s => (
             <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
@@ -412,15 +430,68 @@ export default function AdminApprovals() {
         {/* Community Member Stats */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
           {[
-            { label:"CC Members",      value:memberCounts.total,       color:"#D4AF37" },
-            { label:"Navigator",       value:memberCounts.navigator,   color:"rgba(192,208,232,1)" },
-            { label:"Accelerator",     value:memberCounts.accelerator, color:"#B8941F" },
+            { label:"CC Members",  value:memberCounts.total,       color:"#D4AF37" },
+            { label:"Navigator",   value:memberCounts.navigator,   color:"rgba(192,208,232,1)" },
+            { label:"Accelerator", value:memberCounts.accelerator, color:"#B8941F" },
           ].map(s => (
             <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
               <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>{s.label}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── Flagged Comments ──────────────────────────────────────────────── */}
+        <div style={{ marginBottom:"1.75rem" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
+            <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Flagged Comments</h2>
+            {flaggedComments.length > 0 && (
+              <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"#C2185B", color:"#FFFFFF" }}>{flaggedComments.length}</span>
+            )}
+          </div>
+          {flaggedLoading ? (
+            <div style={{ padding:"0.75rem 1rem", color:"rgba(212,175,55,0.6)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem" }}>Loading...</div>
+          ) : flaggedComments.length === 0 ? (
+            <div style={{ padding:"0.75rem 1rem", background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8 }}>
+              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.75rem", margin:0 }}>No flagged comments</p>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.5rem" }}>
+              {flaggedComments.map(fc => (
+                <div key={fc.id} style={{ background:"rgba(194,24,91,0.05)", border:"1px solid rgba(194,24,91,0.2)", borderRadius:10, padding:"0.875rem 1rem", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"1rem" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.4rem", flexWrap:"wrap" as const }}>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#FFFFFF" }}>
+                        {(fc as any).profiles?.first_name ?? "Unknown Member"}
+                      </span>
+                      {(fc as any).community_posts?.title && (
+                        <>
+                          <span style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>on</span>
+                          <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:"rgba(212,175,55,0.8)" }}>
+                            {String((fc as any).community_posts.title).slice(0, 60)}
+                          </span>
+                        </>
+                      )}
+                      <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(fc.created_at)}</span>
+                    </div>
+                    <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.65)", fontSize:"0.75rem", lineHeight:1.5, margin:0 }}>
+                      "{fc.content.slice(0, 200)}{fc.content.length > 200 ? "..." : ""}"
+                    </p>
+                  </div>
+                  <div style={{ display:"flex", gap:"0.5rem", flexShrink:0 }}>
+                    <button onClick={() => handleClearFlag(fc.id)} disabled={savingComment === fc.id}
+                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>
+                      Clear
+                    </button>
+                    <button onClick={() => handleRemoveComment(fc.id)} disabled={savingComment === fc.id}
+                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Filter Tabs */}
@@ -439,18 +510,20 @@ export default function AdminApprovals() {
         {!loading && (
           <div style={{ display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
             {filtered.map(approval => {
-              const badge     = getBadgeInfo(approval);
-              const origCol   = getOriginalColumn(approval);
-              const draftHead = getDraftHeading(approval);
-              const isBriefing= approval.category !== "social";
-              const qs        = getQS(approval.id);
-              const divAgents = DIVISION_AGENTS[approval.division] ?? [];
-              const isLead    = approval.category === "lead_intelligence";
-              const isPDF     = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
-              const currentDir= leadDirection[approval.id] || "assessment_invite";
+              const badge       = getBadgeInfo(approval);
+              const origCol     = getOriginalColumn(approval);
+              const draftHead   = getDraftHeading(approval);
+              const isBriefing  = approval.category !== "social";
+              const qs          = getQS(approval.id);
+              const divAgents   = DIVISION_AGENTS[approval.division] ?? [];
+              const isLead      = approval.category === "lead_intelligence";
+              const isPDF       = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
+              const isPostTrigger = approval.category === "CC Post Triggers";
+              const isCCReply     = approval.category === "community_comment_reply";
+              const currentDir  = leadDirection[approval.id] || "assessment_invite";
 
               return (
-                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background:approval.status !== "pending" ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.4)" : approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background:approval.status !== "pending" ? "rgba(255,255,255,0.02)" : isPostTrigger ? "rgba(194,24,91,0.04)" : "rgba(255,255,255,0.04)", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
 
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
@@ -458,8 +531,9 @@ export default function AdminApprovals() {
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
-                      {isPDF && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
+                      {isPDF && !isPostTrigger && !isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
+                      {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
                       {publishStatus[approval.id] && (
@@ -503,10 +577,10 @@ export default function AdminApprovals() {
                     </div>
                   )}
 
-                  {/* Ask a Question Panel */}
-                  {qs.open && approval.status === "pending" && (
+                  {/* Ask a Question Panel — hidden for CC Post Triggers */}
+                  {qs.open && approval.status === "pending" && !isPostTrigger && (
                     <div style={{ margin:"0 1rem", padding:"0.875rem", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8, marginBottom:"0.5rem" }}>
-                      {isBriefing && approval.category !== "daily_briefing" && (
+                      {isBriefing && approval.category !== "daily_briefing" && !isCCReply && (
                         <div style={{ marginBottom:"0.75rem" }}>
                           <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Who are you asking?</p>
                           <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.4rem" }}>
@@ -519,7 +593,7 @@ export default function AdminApprovals() {
                           </div>
                         </div>
                       )}
-                      {(approval.category === "social" || approval.category === "daily_briefing") && qs.selectedAgent && (
+                      {(approval.category === "social" || approval.category === "daily_briefing" || isCCReply) && qs.selectedAgent && (
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:"0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
                       )}
                       {qs.messages.length > 0 && (
@@ -550,19 +624,27 @@ export default function AdminApprovals() {
 
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
-                    {approval.status === "pending" && editingId !== approval.id && (
+                    {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                       <button onClick={() => toggleQuestion(approval)}
                         style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:`1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background:qs.open ? "rgba(212,175,55,0.1)" : "transparent", color:qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>
                         {qs.open ? "✕ Close Question" : "? Ask a Question"}
                       </button>
                     )}
                     <div style={{ display:"flex", gap:"0.5rem", marginLeft:"auto" }}>
-                      {approval.status === "pending" && editingId !== approval.id && (
+                      {/* CC Post Triggers — Dismiss only */}
+                      {isPostTrigger && approval.status === "pending" && editingId !== approval.id && (
+                        <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.5)", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                          {saving === approval.id ? "..." : "Dismiss"}
+                        </button>
+                      )}
+                      {/* Standard pending actions */}
+                      {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                         <>
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
                           <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
-                            {saving === approval.id ? "..." : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
+                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
                           </button>
                         </>
                       )}
