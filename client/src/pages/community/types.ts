@@ -40,9 +40,10 @@ export interface CommunityPost {
   pdf_url?: string; video_url?: string; image_url?: string;
 }
 export interface CommunityComment {
-  id: string; post_id: string; member_id: string;
+  id: string; post_id: string; member_id: string | null;
   content: string; is_flagged: boolean; is_active: boolean;
-  created_at: string; profiles?: { first_name?: string; photo_url?: string };
+  created_at: string; agent_name?: string | null;
+  profiles?: { first_name?: string; photo_url?: string };
 }
 export interface CommunityNotification {
   id: string; recipient_id: string; sender_id: string;
