@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/PaymentScreen.tsx
+ * screens/Payment.tsx
  */
 
 import { DruLogo } from "../types";
