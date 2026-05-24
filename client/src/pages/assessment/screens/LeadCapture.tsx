@@ -1,13 +1,13 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/LeadCaptureScreen.tsx
+ * screens/LeadCapture.tsx
  */
 
 import { useState, useRef } from "react";
 import { LeadData, WEBHOOK_LEAD_URL } from "../types";
-import { normalizePhone, saveToLocalStorage, sendWebhookJson } from "../utils";
-import { verifyEmail } from "../EmailVerification";
-import { CountryCode, CountryCodeSelector, detectCountryFromTimezone } from "../CountryCodeSelector";
+import { normalizePhone, saveToLocalStorage, sendWebhookJson } from "../Utils";
+import { verifyEmail } from "../emailVerification";
+import { CountryCode, CountryCodeSelector, detectCountryFromTimezone } from "../countryCodeSelector";
 
 export function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData) => void }) {
   const [form, setForm]                 = useState<LeadData>({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
@@ -134,7 +134,7 @@ export function LeadCaptureScreen({ onContinue }: { onContinue: (data: LeadData)
               className="dru-input" type="email" placeholder="your@email.com" value={form.email}
               onChange={(e) => handleEmailChange(e.target.value)} onBlur={handleEmailBlur}
               style={{
-                ...(emailError   ? { borderColor: "#E53935" } : {}),
+                ...(emailError    ? { borderColor: "#E53935" } : {}),
                 ...(emailVerified ? { borderColor: "#4CAF50" } : {}),
                 paddingRight: (emailVerifying || emailVerified) ? "2.5rem" : undefined,
               }}
