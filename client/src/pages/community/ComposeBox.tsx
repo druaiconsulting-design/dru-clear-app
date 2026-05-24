@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { supabase } from './types';
+import { supabase, checkFlagged } from './types';
 import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 
@@ -117,8 +117,9 @@ export default function ComposeBox({
       if (!error) pdf_url = supabase.storage.from('community-pdfs').getPublicUrl(path).data.publicUrl;
     }
 
-    const content = text.trim() || ' ';
-    const title   = content.slice(0, 80) + (content.length > 80 ? '...' : '');
+    const content    = text.trim() || ' ';
+    const isFlagged  = checkFlagged(content);
+    const title      = content.slice(0, 80) + (content.length > 80 ? '...' : '');
 
     const { data, error } = await supabase.from('community_posts').insert({
       title,
@@ -129,13 +130,38 @@ export default function ComposeBox({
       agent_name:    userName || 'Member',
       published_at:  new Date().toISOString(),
       is_active:     true,
+      is_flagged:    isFlagged,
       ...(image_url ? { image_url } : {}),
       ...(video_url ? { video_url } : {}),
       ...(pdf_url   ? { pdf_url }   : {}),
     }).select('*').single();
 
     if (!error && data) {
-      onPostSubmitted(data as CommunityPost);
+      if (isFlagged) {
+        // Write policy violation card to AdminApprovals — post is suppressed
+        await supabase.from('approvals').insert({
+          source:           'cc_post_flag',
+          trigger_type:     'cc_post_flag',
+          agent_name:       userName || 'Member',
+          agent_role:       'Community Member',
+          division:         'Community Connection',
+          task_brief:       `Member: ${userName}\nMember ID: ${userId}\nPost ID: ${data.id}`,
+          original_content: content,
+          output:           `⚠ Policy Violation Detected\n\nMember: ${userName}\nMember ID: ${userId}\nPost ID: ${data.id}\n\n"${content.slice(0, 500)}${content.length > 500 ? '...' : ''}"`,
+          edited_output:    null,
+          status:           'pending',
+          ghl_contact_id:   null,
+          notify_deanna:    true,
+          priority:         'HIGH',
+          category:         'CC Post Triggers',
+          platform:         null,
+          context:          null,
+          archived:         false,
+        });
+        // Silently close — post is suppressed, feed never receives it
+      } else {
+        onPostSubmitted(data as CommunityPost);
+      }
       setText('');
       resetMedia();
       setExpanded(false);
