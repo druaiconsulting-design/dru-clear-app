@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/SplashScreen.tsx
+ * screens/Splash.tsx
  */
 
 import { useEffect } from "react";
