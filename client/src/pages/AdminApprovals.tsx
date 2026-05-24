@@ -76,14 +76,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   legal_finance:"Legal & Finance", ai_governance:"AI Governance",
   hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
   social:"Social Media", email:"Email", proposal:"Proposal", content:"Content", other:"Other",
-  community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
+  community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation", cc_upsell_outreach:"CC Upsell Signal",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
   "social","email","proposal","content","other",
-  "community_comment_reply","CC Post Triggers",
+  "community_comment_reply","CC Post Triggers","cc_upsell_outreach",
 ];
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
@@ -173,6 +173,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   }
   if (approval.category === "community_comment_reply") return { text: "CC Agent Reply", color: "#2D5A8E" };
   if (approval.category === "CC Post Triggers")        return { text: "CC Policy Violation", color: "#C2185B" };
+  if (approval.category === "cc_upsell_outreach")      return { text: "CC Upsell Signal",   color: "#D4AF37" };
   if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   if (approval.category === "daily_briefing")          return { text: "Daily Briefing", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
@@ -181,8 +182,9 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
   if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
-  if (approval.category === "community_comment_reply") return { heading: "Post Reference", content: approval.task_brief || null };
-  if (approval.category === "CC Post Triggers") return { heading: "Member Info", content: approval.task_brief || null };
+  if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
+  if (approval.category === "CC Post Triggers")         return { heading: "Member Info",     content: approval.task_brief || null };
+  if (approval.category === "cc_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -191,6 +193,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "daily_briefing")           return "Daily Briefing";
   if (approval.category === "community_comment_reply")  return "Agent Reply";
   if (approval.category === "CC Post Triggers")         return "Violation Report";
+  if (approval.category === "cc_upsell_outreach")       return "Aaliyah Outreach Draft";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
@@ -198,6 +201,7 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
   if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"    : status === "posting" ? "Routing..."        : "⚠ Route Failed";
   if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"   : status === "posting" ? "Generating PDF..."  : "⚠ PDF Failed";
   if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"   : status === "posting" ? "Posting..."         : "⚠ Post Failed";
+  if (approval.category === "cc_upsell_outreach")       return status === "posted" ? "✓ Outreach Sent"    : status === "posting" ? "Sending..."         : "⚠ Send Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
@@ -310,6 +314,26 @@ export default function AdminApprovals() {
         await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
       }
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "cc_upsell_outreach") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      try {
+        const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
+        const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
+        const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trigger_type:      "cc_upsell_outreach",
+            agent_name:        "Aaliyah Foster",
+            outreach_message:  approval.edited_output || approval.output,
+            email:             emailMatch?.[1] ?? "",
+            phone:             phoneMatch?.[1] ?? "",
+            task_brief:        approval.task_brief,
+            approval_id:       id,
+          }),
+        });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await downloadPDF(approval);
@@ -346,6 +370,26 @@ export default function AdminApprovals() {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postCCComment(approval, editText);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "cc_upsell_outreach") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      try {
+        const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
+        const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
+        const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trigger_type:     "cc_upsell_outreach",
+            agent_name:       "Aaliyah Foster",
+            outreach_message: editText,
+            email:            emailMatch?.[1] ?? "",
+            phone:            phoneMatch?.[1] ?? "",
+            task_brief:       approval.task_brief,
+            approval_id:      id,
+          }),
+        });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await downloadPDF({ ...approval, edited_output: editText });
@@ -524,6 +568,7 @@ export default function AdminApprovals() {
               const isPDF       = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
               const isPostTrigger = approval.category === "CC Post Triggers";
               const isCCReply     = approval.category === "community_comment_reply";
+              const isUpsell      = approval.category === "cc_upsell_outreach";
               const currentDir  = leadDirection[approval.id] || "assessment_invite";
 
               return (
@@ -648,7 +693,7 @@ export default function AdminApprovals() {
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
                           <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
-                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
+                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
                           </button>
                         </>
                       )}
