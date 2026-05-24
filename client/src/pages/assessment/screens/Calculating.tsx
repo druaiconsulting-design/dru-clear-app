@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * screens/CalculatingScreen.tsx
+ * screens/Calculating.tsx
  */
 
 import { useEffect } from "react";
