@@ -1,6 +1,6 @@
 /**
  * DRU CLEAR™ AI Readiness Assessment
- * utils.ts — Expiry, webhooks, UTM, scoring, session progress
+ * Utils.ts — Expiry, webhooks, UTM, scoring, session progress
  */
 
 import {
