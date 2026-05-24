@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase";
-import { Screen, LeadData, Scores } from "./types";
+import { Screen, LeadData, Scores } from "./Types";
 import {
   getExpiryStatus, saveExpiryTimestamp, clearExpiryTimestamp,
   flushWebhookQueue, sendWebhook, normalizePhone,
@@ -27,7 +27,7 @@ import { ExpiredScreen }             from "./screens/Expired";
 import {
   PAYMENT_STRATEGIC_URL, PAYMENT_EXECUTIVE_URL,
   CALENDAR_STRATEGIC_URL, CALENDAR_EXECUTIVE_URL,
-} from "./types";
+} from "./Types";
 
 // ─── Nudge Banner ─────────────────────────────────────────────────────────────
 
