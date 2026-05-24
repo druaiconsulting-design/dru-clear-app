@@ -3,7 +3,7 @@
  * screens/Expired.tsx
  */
 
-import { DruLogo } from "../types";
+import { DruLogo } from "../Types";
 
 export function ExpiredScreen({ onRetake }: { onRetake: () => void }) {
   return (
