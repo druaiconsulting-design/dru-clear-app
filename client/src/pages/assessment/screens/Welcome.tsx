@@ -61,3 +61,4 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
     </div>
   );
 }
+
