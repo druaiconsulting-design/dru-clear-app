@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from "react";
-import { DruLogo } from "../types";
+import { DruLogo } from "../Types";
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   useEffect(() => {
