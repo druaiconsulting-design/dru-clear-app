@@ -18,16 +18,5 @@
     { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
     { "source": "/api/(.*)",          "destination": "/api/$1" },
     { "source": "/(.*)",              "destination": "/index.html" }
-  ],
-  "crons": [
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_dominique_daily_insight",  "schedule": "30 16 * * 1" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_tariq_sales_content",      "schedule": "30 20 * * 1" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_elijah_framework_lesson",  "schedule": "30 16 * * 2" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_solange_action_challenge", "schedule": "30 16 * * 3" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_isaiah_webb_framework",    "schedule": "30 16 * * 4" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_nadia_strategic_edge",     "schedule": "30 16 * * 5" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_victor_engagement",        "schedule": "30 16 * * 6" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_sasha_sales_insight",      "schedule": "30 16 * * 0" },
-    { "path": "/api/cc-agent-trigger?trigger_type=cron_cc_upsell_scan",           "schedule": "0 */3 * * *" }
   ]
 }
