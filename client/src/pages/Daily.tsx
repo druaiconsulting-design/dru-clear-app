@@ -241,7 +241,7 @@ export default function Daily() {
         {/* Dynamic access level badge — shown to all logged-in users */}
         {(() => {
           const tierConfig = hasStrategicEdge
-            ? { label: "Accelerator / Navigator Member", sub: "", dot: "#D4AF37", border: "rgba(212,175,55,0.35)", bg: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)" }
+            ? { label: "Navigator / Accelerator Member", sub: "", dot: "#D4AF37", border: "rgba(212,175,55,0.35)", bg: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)" }
             : isPaid
             ? { label: "Diagnostic Client", sub: "3 cards unlocked · upgrade to Navigator for full access", dot: "#1E88E5", border: "rgba(30,136,229,0.3)", bg: "rgba(30,136,229,0.05)" }
             : { label: "Free Member", sub: "1 card unlocked · book your diagnostic to unlock more", dot: "rgba(230,230,230,0.3)", border: "rgba(255,255,255,0.08)", bg: "rgba(255,255,255,0.02)" };
