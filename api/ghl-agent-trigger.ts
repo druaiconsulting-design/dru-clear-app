@@ -3,7 +3,7 @@
 // Isabella: Sonnet calls parallel + DB writes parallel
 // P4 Legal & Finance: weekly Tuesday | P5 AI Governance: daily | P6 HR: daily
 // P7 Client Delivery: daily | P8 Customer Support: daily
-// runCommandLayer: fully parallelized — all items + Raymond/Travis/Priya run simultaneously
+// runCommandLayer: FIXED — sequential processing to avoid 429 rate limits
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
@@ -173,6 +173,7 @@ Output ONLY the corrected content. No compliance notes or metadata.`,1500);
     console.log(`[isabella] Correction triggered for ${item.agent_name} (attempt ${newRetryCount})`);
   } catch(error){console.error(`[isabella] Correction failed for ${item.agent_name}:`,error);}
 }
+
 // P1
 async function runOmar(): Promise<OmarResult> {
   const ghlApiKey = process.env.GHL_API_KEY;
@@ -263,6 +264,7 @@ async function runAndre(): Promise<string|null> {
   const focusInstructions:Record<string,string>={daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR". One competitor threat. **Organic Search** — Top 3 keyword clusters. One content gap for Nia. **Today's SEO Action** — One immediately actionable move.`,technical_seo:`**Site Health** — Core Web Vitals targets for assessment + app subdomains. One crawlability recommendation. **Schema** — Recommended schema for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,weekly_search_recap:`**Organic Search Performance** — Benchmark targets. One keyword to monitor. **Paid Search** — Brand campaign health. **Next Week's Priorities** — 3 actions ranked by impact.`};
   return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,2000);
 }
+
 // P4
 async function runAmara(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -316,6 +318,7 @@ async function runFatima(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   return await runAgentToCSQ('fatima','Fatima Al-Rashid','HR','daily_internal_helpdesk','helpdesk',`You are Fatima Al-Rashid, Internal Helpdesk and Operations Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n**Ecosystem Health Check** — DRU AI Leadership Ecosystem™ operational status: 54 agents across 9 divisions. Any known issues? One operational improvement suggestion.\n**DeAnna's Workload Protection** — One workflow optimization that would reduce DeAnna's manual review time.\n**Vendor Status** — Quick status on: Vercel Pro, Supabase, GHL, Anthropic, HeyGen, Bunny Stream. Any renewals or issues this week?\n**Today's Operations Priority** — Single most important internal operations action for the day.`,'normal',0,null,1500);
 }
+
 // P7
 async function runKeisha(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -376,6 +379,7 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
     console.log(`[aaliyah_cc] Fired ${signalType} outreach for ${contactEmail}`);
   } catch (error) { console.error(`[aaliyah_cc] Webhook failed for ${signalType}:`, error); }
 }
+
 // Command Chain — Isabella
 async function runIsabella(): Promise<{reviewed:number;cleared:number;sent_back:number;rejected:number}> {
   const pending=await getCSQItems('pending');
@@ -468,12 +472,12 @@ async function runGovernancePanel(): Promise<{reviewed:number;cleared:number;blo
   return {reviewed:items.length,cleared,blocked};
 }
 
-// Command Chain — Command Layer
+// Command Chain — Command Layer (FIXED: sequential processing prevents 429 rate limit errors)
 async function runCommandLayer(): Promise<{reviewed:number}> {
   const items=await getCSQItems('governance_cleared');
-  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (fully parallel)...`);
+  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (sequential to avoid rate limits)...`);
   if (items.length===0) return {reviewed:0};
-  await Promise.all(items.map(async(item)=>{
+  for (const item of items){
     try {
       const [rawRaymond,rawTravis,rawPriya]=await Promise.all([
         callAnthropic(`${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Content cleared by Isabella and Governance. Assess strategic priority.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nNOTE: If content contains "UPSELL SIGNAL:" — this is from Community Connection facilitators Zoe Beaumont or Micah Santos. Flag priority as 'high' and note in your action to route to Aaliyah Foster in Revenue & Growth for outreach nurture.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`,400),
@@ -484,10 +488,11 @@ async function runCommandLayer(): Promise<{reviewed:number}> {
       const travis=JSON.parse(rawTravis.match(/\{[\s\S]*\}/)?.[0]??'null');
       await updateCSQ(item.id,{raymond_reviewed:true,raymond_notes:raymond?.notes??'',raymond_priority:raymond?.priority??'normal',raymond_action:raymond?.action??'route_to_twin',travis_notes:travis?.package_notes??'',priya_notes:rawPriya.trim(),command_approved_at:new Date().toISOString(),status:'command_approved',priority:raymond?.priority??'normal'});
     } catch(error){console.error(`[executive_leadership] Failed item ${item.id}:`,error);}
-  }));
+  }
   console.log(`[executive_leadership] ${items.length} items command-approved`);
   return {reviewed:items.length};
 }
+
 // Command Chain — AI Twin Synthesis
 async function sendDivisionNotification(division:string,approvalId:string,agentCount:number,triggeredAt:string): Promise<void> {
   const webhookUrl=process.env.GHL_NOTIFICATION_WEBHOOK_URL;
@@ -532,9 +537,6 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
 
   await Promise.all([dailySynthesisPromise,...divisionSynthesisPromises]);
 
-  // Social media cards — FIX: removed '\n---\n' from compliance cutoffs
-  // '\n---\n' is a standard markdown horizontal rule used in agent content
-  // Keeping it as a cutoff was stripping full content leaving only titles
   for (const item of items){
     if (SOCIAL_DIVISIONS.includes(item.division)&&CLIENT_FACING_CATEGORIES.includes(item.category)){
       try {
@@ -559,6 +561,7 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   console.log(`[twin] Synthesis complete — ${cardsCreated+1} division cards written`);
   return {cards_created:cardsCreated+1,items_synthesized:items.length};
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req:any,res:any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin','*');
