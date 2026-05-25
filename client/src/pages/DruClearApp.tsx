@@ -919,10 +919,53 @@ function ResultsScreen({ lead, scores, onBookCall }: { lead: LeadData; scores: S
     };
     saveToLocalStorage("assessment_completed", mergedPayload);
     sendWebhookJson(mergedPayload, WEBHOOK_COMPLETE_URL);
+
+    // ── Create Supabase auth account ──────────────────────────────────────────
     (async () => {
       try {
         const randomPassword = crypto.randomUUID() + crypto.randomUUID();
         await supabase.auth.signUp({ email: lead.email, password: randomPassword, options: { data: { first_name: lead.firstName, full_name: `${lead.firstName} ${lead.lastName}`.trim(), tier: "free" } } });
+      } catch {}
+    })();
+
+    // ── Write assessment data to Supabase submissions table ───────────────────
+    (async () => {
+      try {
+        const topGapsComputed = [...pillars]
+          .sort((a, b) => a.score - b.score)
+          .filter((p) => p.score < 12)
+          .slice(0, 2)
+          .map((p) => p.name)
+          .join(", ");
+        await supabase.from("submissions").insert({
+          first_name: lead.firstName,
+          last_name: lead.lastName,
+          email: lead.email,
+          phone: normalizePhone(lead.phone || ""),
+          company: lead.company,
+          role: lead.role,
+          country_name: lead.country_name || "",
+          country_iso: lead.country_iso || "",
+          total_score: scaledScore,
+          tier: tier.label,
+          score_category: scoreCategory,
+          top_gaps: topGapsComputed,
+          clarity_score: clarityScore,
+          leadership_score: leadershipScore,
+          execution_score: executionScore,
+          alignment_score: alignmentScore,
+          results_score: resultsScore,
+          q1: answerLabel(0), q2: answerLabel(1), q3: answerLabel(2),
+          q4: answerLabel(3), q5: answerLabel(4), q6: answerLabel(5),
+          q7: answerLabel(6), q8: answerLabel(7), q9: answerLabel(8),
+          q10: answerLabel(9), q11: answerLabel(10), q12: answerLabel(11),
+          q13: answerLabel(12), q14: answerLabel(13), q15: answerLabel(14),
+          completed_at_cst: formatTimestamp(now, "America/Chicago", "CST"),
+          user_timezone: userTz,
+          utm_source: UTM_PARAMS.utm_source,
+          utm_medium: UTM_PARAMS.utm_medium,
+          utm_campaign: UTM_PARAMS.utm_campaign,
+        });
       } catch {}
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
