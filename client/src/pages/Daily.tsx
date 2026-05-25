@@ -38,6 +38,8 @@ const FALLBACK_CONTENT: DailyContent = {
   strategic_edge: "Most leaders are asking the wrong question about AI. They ask 'What can AI do?' when the only question that matters is 'What does my organization need to become?' Your AI strategy is not a technology decision — it is a leadership identity decision. Make it from that place.",
 };
 
+const ASSESSMENT_URL = "https://assessment.druaiconsulting.com";
+
 // ── Locked Card ───────────────────────────────────────────────────────────────
 function LockedCard({
   title, icon, color, teaser, ctaText, ctaHref,
@@ -110,7 +112,15 @@ export default function Daily() {
   const [completed, setCompleted] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
   const today = getTodayCST();
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ASSESSMENT_URL).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
   // ── Fetch today's content ─────────────────────────────────────────────────
   useEffect(() => {
@@ -325,7 +335,6 @@ export default function Daily() {
                 position: "relative" as const,
                 overflow: "hidden",
               }}>
-                {/* Subtle glow top-right */}
                 <div style={{ position: "absolute" as const, top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.875rem" }}>
@@ -348,7 +357,6 @@ export default function Daily() {
                 </div>
               </div>
             ) : isPaid ? (
-              // Paid diagnostic clients see it locked with upgrade CTA
               <LockedCard
                 title="DeAnna's Strategic Edge"
                 icon="✦"
@@ -364,12 +372,18 @@ export default function Daily() {
 
         {/* Share footer */}
         <div style={{ marginTop: "2rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "1rem 1.25rem", textAlign: "center" as const }}>
-          <p style={{ color: "rgba(230,230,230,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>
-            Know a leader who needs this? Share the DRU CLEAR™ Scorecard and start the conversation.
+          <p style={{ color: "rgba(230,230,230,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6, marginBottom: "0.875rem" }}>
+            Do you know a leader who could benefit from the DRU CLEAR™ Assessment? Kindly share the link below and initiate a conversation.
           </p>
-          <a href="https://assessment.druaiconsulting.com" style={{ display: "inline-block", marginTop: "0.6rem", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none" }}>
-            Share the Assessment →
-          </a>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.625rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", maxWidth: 420, margin: "0 auto" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", flex: 1, textAlign: "left" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{ASSESSMENT_URL}</span>
+            <button
+              onClick={handleCopy}
+              style={{ background: copied ? "rgba(212,175,55,0.15)" : "transparent", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 4, color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.3rem 0.7rem", cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.2s ease", flexShrink: 0 }}
+            >
+              {copied ? "✓ Copied!" : "Copy Link"}
+            </button>
+          </div>
         </div>
 
       </main>
