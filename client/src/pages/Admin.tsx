@@ -339,20 +339,28 @@ function ClientIntelligenceDashboard() {
 
 export default function Admin() {
   const { user } = useAuth();
-  const [copied, setCopied]               = useState(false);
-  const { stats, loading }                = useStats();
-  const [hasPasskey, setHasPasskey]       = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
-  const [passkeyMessage, setPasskeyMessage] = useState("");
+  const [copied, setCopied]                     = useState(false);
+  const { stats, loading }                      = useStats();
+  const [hasPasskey, setHasPasskey]             = useState(false);
+  const [passkeyLoading, setPasskeyLoading]     = useState(false);
+  const [passkeyMessage, setPasskeyMessage]     = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
 
-  // ── Lab publish state ──────────────────────────────────────────────────────
-  const [labTitle, setLabTitle]       = useState("");
-  const [labMonth, setLabMonth]       = useState("");
-  const [labVideoUrl, setLabVideoUrl] = useState("");
-  const [labPublishing, setLabPublishing] = useState(false);
-  const [labPublished, setLabPublished]   = useState(false);
-  const [labError, setLabError]           = useState("");
+  // ── Lab video publish state ────────────────────────────────────────────────
+  const [labTitle, setLabTitle]         = useState("");
+  const [labMonth, setLabMonth]         = useState("");
+  const [labVideoUrl, setLabVideoUrl]   = useState("");
+  const [labPublishing, setLabPublishing]   = useState(false);
+  const [labPublished, setLabPublished]     = useState(false);
+  const [labError, setLabError]             = useState("");
+
+  // ── Weekly PDF publish state ───────────────────────────────────────────────
+  const [pdfTitle, setPdfTitle]         = useState("");
+  const [pdfWeekOf, setPdfWeekOf]       = useState("");
+  const [pdfUrl, setPdfUrl]             = useState("");
+  const [pdfPublishing, setPdfPublishing]   = useState(false);
+  const [pdfPublished, setPdfPublished]     = useState(false);
+  const [pdfError, setPdfError]             = useState("");
 
   useEffect(() => {
     async function checkPasskey() {
@@ -400,6 +408,28 @@ export default function Admin() {
       setLabError(err?.message || "Publish failed. Please try again.");
     }
     setLabPublishing(false);
+  };
+
+  const handlePdfPublish = async () => {
+    if (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) {
+      setPdfError("All fields are required before publishing."); return;
+    }
+    setPdfPublishing(true); setPdfError(""); setPdfPublished(false);
+    try {
+      const { error } = await supabase.from("weekly_pdfs").insert({
+        title:   pdfTitle.trim(),
+        week_of: pdfWeekOf.trim(),
+        pdf_url: pdfUrl.trim(),
+        is_active: true,
+      });
+      if (error) throw error;
+      setPdfPublished(true);
+      setPdfTitle(""); setPdfWeekOf(""); setPdfUrl("");
+      setTimeout(() => setPdfPublished(false), 5000);
+    } catch (err: any) {
+      setPdfError(err?.message || "Publish failed. Please try again.");
+    }
+    setPdfPublishing(false);
   };
 
   const STAT_CARDS = [
@@ -498,8 +528,8 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Leadership Lab — Publish ── */}
-        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+        {/* ── Leadership Lab — Publish Video ── */}
+        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
@@ -512,6 +542,23 @@ export default function Admin() {
             disabled={labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()}
             style={{ width: "100%", background: labPublished ? "#43A047" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.2)" : "#D4AF37", color: labPublished ? "#FFFFFF" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.4)" : "#0A2342", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
             {labPublishing ? "Publishing..." : labPublished ? "✓ Published — Accelerator Members Notified" : "Publish + Notify Accelerator Members"}
+          </button>
+        </div>
+
+        {/* ── Weekly PDF — Publish ── */}
+        <div style={{ background: "rgba(30,136,229,0.06)", border: "1px solid rgba(30,136,229,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>📄 Weekly Resource PDF</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
+            <input type="text" placeholder="PDF Title — e.g. DRU CLEAR™ AI Leadership Manual 101" value={pdfTitle} onChange={e => { setPdfTitle(e.target.value); setPdfError(""); }} style={inputStyle} />
+            <input type="text" placeholder="Week Of — e.g. May 26, 2026" value={pdfWeekOf} onChange={e => { setPdfWeekOf(e.target.value); setPdfError(""); }} style={inputStyle} />
+            <input type="text" placeholder="Supabase PDF URL — paste from storage" value={pdfUrl} onChange={e => { setPdfUrl(e.target.value); setPdfError(""); }} style={inputStyle} />
+          </div>
+          {pdfError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{pdfError}</p>}
+          <button onClick={handlePdfPublish}
+            disabled={pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()}
+            style={{ width: "100%", background: pdfPublished ? "#43A047" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.2)" : "#1E88E5", color: pdfPublished ? "#FFFFFF" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.4)" : "#FFFFFF", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
+            {pdfPublishing ? "Publishing..." : pdfPublished ? "✓ Published — Now Live on Resources Page" : "Publish to Resources Page"}
           </button>
         </div>
 
