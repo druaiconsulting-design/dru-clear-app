@@ -509,7 +509,7 @@ export default function Frameworks() {
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Engagement Pricing</p>
           <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>Available for on-site facilitation. Custom pricing varies with team size, location, and scope.</p>
           <button
-            onClick={() => window.open(CALENDAR_INPERSON_URL, "_blank")}
+            onClick={() => openModal(CALENDAR_INPERSON_URL, "In-Person Engagement — Schedule a Call")}
             style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", border: "none", cursor: "pointer", padding: 0 }}
           >
             Schedule a Call Today! →
