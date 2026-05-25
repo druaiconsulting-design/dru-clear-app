@@ -1,3 +1,4 @@
+import { useState } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -61,6 +62,8 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
 
 const NEW_THIS_WEEK: string | null = "DRU CLEAR™ AI Leadership Manual 101 — The AI Revolution & Why Leaders Can't Afford to Wait";
 
+const ASSESSMENT_URL = "https://assessment.druaiconsulting.com";
+
 function LockedResource({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "0.75rem 1rem", opacity: 0.6 }}>
@@ -81,6 +84,14 @@ function LockedResource({ title, subtitle }: { title: string; subtitle: string }
 
 export default function Resources() {
   const { isPaid } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ASSESSMENT_URL).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
@@ -95,17 +106,6 @@ export default function Resources() {
             Curated guides, frameworks, and tools to accelerate your AI leadership journey. Resources added weekly.
           </p>
         </div>
-
-        {!isPaid && (
-          <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.875rem 1.1rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" as const }}>
-            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.65)", fontSize: "0.78rem", lineHeight: 1.6, margin: 0 }}>
-              You have access to one free resource. Book your diagnostic to unlock the full library.
-            </p>
-            <a href="/frameworks" style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none", whiteSpace: "nowrap" as const, flexShrink: 0 }}>
-              Upgrade →
-            </a>
-          </div>
-        )}
 
         {NEW_THIS_WEEK && (
           <div style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.875rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", gap: "0.875rem" }}>
@@ -130,7 +130,7 @@ export default function Resources() {
                     {cat.resources && cat.resources.length > 0 && (
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         {cat.resources.map((resource, idx) => {
-                          const isAccessible = isPaid || (resource.free && idx < cat.freeLimit);
+                          const isAccessible = resource.free || isPaid;
                           if (isAccessible) {
                             return (
                               <a
@@ -172,11 +172,20 @@ export default function Resources() {
           </p>
         </div>
 
-        <div style={{ textAlign: "center" }}>
-          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", marginBottom: "0.75rem" }}>Haven't taken the assessment yet?</p>
-          <a href="/" style={{ display: "inline-block", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 6, padding: "0.65rem 1.25rem" }}>
-            Take the DRU CLEAR™ Scorecard →
-          </a>
+        {/* Share footer */}
+        <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "1rem 1.25rem", textAlign: "center" as const }}>
+          <p style={{ color: "rgba(230,230,230,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6, marginBottom: "0.875rem" }}>
+            Do you know a leader who could benefit from the DRU CLEAR™ Assessment? Kindly share the link below and initiate a conversation.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.625rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", maxWidth: 420, margin: "0 auto" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", flex: 1, textAlign: "left" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{ASSESSMENT_URL}</span>
+            <button
+              onClick={handleCopy}
+              style={{ background: copied ? "rgba(212,175,55,0.15)" : "transparent", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 4, color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.3rem 0.7rem", cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.2s ease", flexShrink: 0 }}
+            >
+              {copied ? "✓ Copied!" : "Copy Link"}
+            </button>
+          </div>
         </div>
 
       </main>
