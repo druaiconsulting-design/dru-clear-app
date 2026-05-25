@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { SplashScreen, WelcomeScreen, CalculatingScreen, ExpiredScreen, NudgeBanner } from "./screens/Utility";
 import LeadCapture from "./screens/LeadCapture";
 import Pillar from "./screens/Pillar";
