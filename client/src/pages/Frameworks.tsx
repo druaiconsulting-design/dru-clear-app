@@ -258,7 +258,7 @@ function TermsModal({ modal, onClose }: { modal: NonNullable<ModalConfig>; onClo
             </div>
           </div>
         ) : (
-          <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#FFFFFF" }} allow="payment" />
+          <iframe src={modal.url} title={modal.title} style={{ flex: 1, width: "100%", border: "none", background: "#0A2342" }} allow="payment" />
         )}
       </div>
     </div>
