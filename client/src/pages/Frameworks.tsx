@@ -13,7 +13,7 @@ const PAYMENT_DRU_CLEAR_URL   = "https://link.druaiconsulting.com/payment-link/6
 const PAYMENT_5D_URL          = "https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc";
 const PAYMENT_5C_URL          = "https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def";
 const PAYMENT_AI_SALES_URL    = "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe";
-const CALENDAR_URL            = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
+const CALENDAR_INPERSON_URL   = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation57zva0";
 
 const PAYMENT_FULL_ECOSYSTEM_SIGNING_URL = "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff";
 const PAYMENT_FULL_ECOSYSTEM_FINAL_URL   = "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6";
@@ -506,13 +506,13 @@ export default function Frameworks() {
 
         {/* In-person note */}
         <div style={{ marginTop: "2rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "center" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Workshop Pricing</p>
-          <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>Available for on-site facilitation. Custom pricing based on team size, location, and engagement scope.</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Engagement Pricing</p>
+          <p style={{ color: "rgba(230,230,230,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>Available for on-site facilitation. Custom pricing varies with team size, location, and scope.</p>
           <button
-            onClick={() => openModal(CALENDAR_URL, "Book a Strategy Call — In-Person Pricing")}
+            onClick={() => window.open(CALENDAR_INPERSON_URL, "_blank")}
             style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", border: "none", cursor: "pointer", padding: 0 }}
           >
-            Book a Strategy Call for Custom Pricing →
+            Schedule a Call Today! →
           </button>
         </div>
 
