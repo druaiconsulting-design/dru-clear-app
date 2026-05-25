@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
-interface Resource {
+interface WeeklyPdf {
+  id: string;
   title: string;
-  subtitle: string;
-  url: string;
-  free: boolean;
+  week_of: string;
+  pdf_url: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 interface ResourceCategory {
@@ -14,32 +17,15 @@ interface ResourceCategory {
   icon: string;
   description: string;
   comingSoon: boolean;
-  freeLimit: number;
-  resources: Resource[];
+  resources: { title: string; subtitle: string; url: string }[];
 }
 
 const RESOURCE_CATEGORIES: ResourceCategory[] = [
-  {
-    label: "AI Leadership Guides",
-    icon: "🧠",
-    description: "Strategic frameworks and playbooks for leading with AI",
-    comingSoon: false,
-    freeLimit: 1,
-    resources: [
-      {
-        title: "DRU CLEAR™ AI Leadership Manual 101",
-        subtitle: "The AI Revolution & Why Leaders Can't Afford to Wait",
-        url: "https://dsflijqygsegonwxauce.supabase.co/storage/v1/object/public/resources/DRU-CLEAR-AI-Leadership-Manual-101.pdf",
-        free: true,
-      },
-    ],
-  },
   {
     label: "White Papers",
     icon: "📄",
     description: "In-depth research and thought leadership from DRU AI Consulting",
     comingSoon: true,
-    freeLimit: 0,
     resources: [],
   },
   {
@@ -47,7 +33,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     icon: "📐",
     description: "Ready-to-use planning and strategy templates",
     comingSoon: true,
-    freeLimit: 0,
     resources: [],
   },
   {
@@ -55,36 +40,42 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     icon: "📊",
     description: "Real transformation stories from clients in the DRU ecosystem",
     comingSoon: true,
-    freeLimit: 0,
     resources: [],
   },
 ];
 
-const NEW_THIS_WEEK: string | null = "DRU CLEAR™ AI Leadership Manual 101 — The AI Revolution & Why Leaders Can't Afford to Wait";
-
 const ASSESSMENT_URL = "https://assessment.druaiconsulting.com";
-
-function LockedResource({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "0.75rem 1rem", opacity: 0.6 }}>
-      <div style={{ filter: "blur(2px)", flex: 1 }}>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", marginBottom: "0.2rem" }}>{title}</p>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.7rem", lineHeight: 1.5 }}>{subtitle}</p>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="11" width="18" height="11" rx="2" stroke="rgba(212,175,55,0.5)" strokeWidth="1.75"/>
-          <path d="M7 11V7a5 5 0 0110 0v4" stroke="rgba(212,175,55,0.5)" strokeWidth="1.75" strokeLinecap="round"/>
-        </svg>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.5)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Locked</span>
-      </div>
-    </div>
-  );
-}
 
 export default function Resources() {
   const { isPaid } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [currentPdf, setCurrentPdf] = useState<WeeklyPdf | null>(null);
+  const [archivePdfs, setArchivePdfs] = useState<WeeklyPdf[]>([]);
+  const [loadingPdfs, setLoadingPdfs] = useState(true);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
+  // ── Fetch PDFs ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchPdfs() {
+      try {
+        const { data } = await supabase
+          .from("weekly_pdfs")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (data && data.length > 0) {
+          setCurrentPdf(data[0]);
+          setArchivePdfs(data.slice(1));
+        }
+      } catch {
+        // silent fail
+      } finally {
+        setLoadingPdfs(false);
+      }
+    }
+    fetchPdfs();
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(ASSESSMENT_URL).then(() => {
@@ -99,6 +90,7 @@ export default function Resources() {
 
       <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
+        {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Knowledge Vault</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Resource Hub</h1>
@@ -107,16 +99,84 @@ export default function Resources() {
           </p>
         </div>
 
-        {NEW_THIS_WEEK && (
-          <div style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.875rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", gap: "0.875rem" }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#D4AF37", flexShrink: 0 }} />
-            <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 3 }}>New This Week</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.85)", fontSize: "0.8rem", lineHeight: 1.5 }}>{NEW_THIS_WEEK}</p>
+        {/* ── AI Leadership Guides — dynamic from weekly_pdfs ── */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
+            <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>🧠</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.3rem" }}>AI Leadership Guides</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: "0.875rem" }}>Strategic frameworks and playbooks for leading with AI</p>
+
+              {loadingPdfs ? (
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, height: 64 }} />
+              ) : currentPdf ? (
+                <>
+                  {/* Current / featured PDF */}
+                  <a
+                    href={currentPdf.pdf_url}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none", marginBottom: archivePdfs.length > 0 ? "0.5rem" : 0 }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#0A2342", background: "#D4AF37", borderRadius: 3, padding: "1px 6px" }}>Current</span>
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.03em", margin: 0 }}>{currentPdf.title}</p>
+                      </div>
+                      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem" }}>Week of {currentPdf.week_of}</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  </a>
+
+                  {/* Archive */}
+                  {archivePdfs.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setArchiveOpen(!archiveOpen)}
+                        style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 0", marginBottom: archiveOpen ? "0.5rem" : 0 }}
+                      >
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.6)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>
+                          {archiveOpen ? "▾" : "▸"} Archive ({archivePdfs.length})
+                        </span>
+                      </button>
+                      {archiveOpen && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {archivePdfs.map((pdf) => (
+                            <a
+                              key={pdf.id}
+                              href={pdf.pdf_url}
+                              download
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "0.65rem 1rem", textDecoration: "none" }}
+                            >
+                              <div>
+                                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.7)", fontWeight: 600, fontSize: "0.75rem", margin: "0 0 0.15rem" }}>{pdf.title}</p>
+                                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>Week of {pdf.week_of}</p>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+                                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.5)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="rgba(212,175,55,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.75rem", fontStyle: "italic" }}>No resources published yet.</p>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
+        {/* Coming Soon categories */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
           {RESOURCE_CATEGORIES.map((cat) => (
             <div key={cat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
@@ -125,35 +185,7 @@ export default function Resources() {
                   <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{cat.icon}</span>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.04em", marginBottom: "0.3rem" }}>{cat.label}</p>
-                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6, marginBottom: cat.resources && cat.resources.length > 0 ? "0.875rem" : 0 }}>{cat.description}</p>
-
-                    {cat.resources && cat.resources.length > 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                        {cat.resources.map((resource, idx) => {
-                          const isAccessible = resource.free || isPaid;
-                          if (isAccessible) {
-                            return (
-                              <a
-                                key={resource.title}
-                                href={resource.url}
-                                download
-                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
-                              >
-                                <div>
-                                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.03em", marginBottom: "0.2rem" }}>{resource.title}</p>
-                                  <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.7rem", lineHeight: 1.5 }}>{resource.subtitle}</p>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
-                                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Download</span>
-                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5.5L6 8.5L9 5.5M1.5 10.5h9" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                </div>
-                              </a>
-                            );
-                          }
-                          return <LockedResource key={resource.title} title={resource.title} subtitle={resource.subtitle} />;
-                        })}
-                      </div>
-                    )}
+                    <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.75rem", lineHeight: 1.6 }}>{cat.description}</p>
                   </div>
                 </div>
                 {cat.comingSoon && (
