@@ -238,15 +238,23 @@ export default function Daily() {
           </div>
         )}
 
-        {/* Navigator/Accelerator tier badge */}
-        {hasStrategicEdge && (
-          <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.65rem 1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ fontSize: "0.9rem" }}>✦</span>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: 0 }}>
-              Full Access — All 4 Cards Unlocked
-            </p>
-          </div>
-        )}
+        {/* Dynamic access level badge — shown to all logged-in users */}
+        {(() => {
+          const tierConfig = hasStrategicEdge
+            ? { label: "Accelerator / Navigator Member", sub: "All 4 cards unlocked", dot: "#D4AF37", border: "rgba(212,175,55,0.35)", bg: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)" }
+            : isPaid
+            ? { label: "Diagnostic Client", sub: "3 cards unlocked · upgrade to Navigator for full access", dot: "#1E88E5", border: "rgba(30,136,229,0.3)", bg: "rgba(30,136,229,0.05)" }
+            : { label: "Free Member", sub: "1 card unlocked · book your diagnostic to unlock more", dot: "rgba(230,230,230,0.3)", border: "rgba(255,255,255,0.08)", bg: "rgba(255,255,255,0.02)" };
+          return (
+            <div style={{ background: tierConfig.bg, border: `1px solid ${tierConfig.border}`, borderRadius: 8, padding: "0.65rem 1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: tierConfig.dot, flexShrink: 0 }} />
+              <div>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: 0 }}>{tierConfig.label}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", margin: "2px 0 0", lineHeight: 1.4 }}>{tierConfig.sub}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Cards */}
         {loading ? (
