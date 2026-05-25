@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 import { DruLogo, ResultsTransitionBlock } from "./Utility";
 import { GAP_MESSAGES, TIER_MESSAGES, STRENGTH_MESSAGES, TIER_ONE_LINERS, BADGE_URLS, BENCHMARK_PERCENTILES } from "../constants";
 import { getPillarScore, getTier, sendWebhook, sendWebhookJson, saveToLocalStorage, normalizePhone, UTM_PARAMS } from "../utils";
