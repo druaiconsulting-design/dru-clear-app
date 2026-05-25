@@ -1,6 +1,7 @@
 // client/src/pages/AdminApprovals.tsx
-// Admin · Page 3 · Approval Queue
-// UPDATED: Flagged Comments section, CC Agent Reply handler, CC Post Triggers
+// Admin · Page 3 · Intelligence Hub & Approval Queue
+// Knowledge cards: Read ✓ (archive) — division briefings, design briefs, etc.
+// Approval cards: Approve/Reject/Edit — social posts, CC replies, upsell outreach
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -52,6 +53,15 @@ const PDF_CATEGORIES = new Set([
   "community_management","client_delivery",
 ]);
 
+// Cards that gate a publishing/outreach action — full Approve/Reject/Edit
+const APPROVAL_CATEGORIES = new Set([
+  "social", "community_comment_reply", "cc_upsell_outreach",
+  "CC Post Triggers", "lead_intelligence",
+]);
+
+// Creative social platforms — show date + contributors, not "No original content"
+const CREATIVE_PLATFORMS = new Set(["Design", "Press", "Localization", "Copy"]);
+
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn:"#0077B5", Instagram:"#C2185B", Facebook:"#1877F2", Email:"#D4AF37",
   General:"#0A2342", X:"#14171A", TikTok:"#010101", YouTube:"#FF0000",
@@ -76,7 +86,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   legal_finance:"Legal & Finance", ai_governance:"AI Governance",
   hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
   social:"Social Media", email:"Email", proposal:"Proposal", content:"Content", other:"Other",
-  community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation", cc_upsell_outreach:"CC Upsell Signal",
+  community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
+  cc_upsell_outreach:"CC Upsell Signal",
 };
 
 const CATEGORY_ORDER = [
@@ -148,7 +159,6 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" },
   ],
 };
-
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -166,45 +176,54 @@ function renderDraft(text: string) {
   ));
 }
 
+function isApprovalCard(approval: Approval): boolean {
+  return APPROVAL_CATEGORIES.has(approval.category);
+}
+
 function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "social") {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
-  if (approval.category === "community_comment_reply") return { text: "CC Agent Reply", color: "#2D5A8E" };
-  if (approval.category === "CC Post Triggers")        return { text: "CC Policy Violation", color: "#C2185B" };
-  if (approval.category === "cc_upsell_outreach")      return { text: "CC Upsell Signal",   color: "#D4AF37" };
+  if (approval.category === "community_comment_reply") return { text: "CC Agent Reply",       color: "#2D5A8E" };
+  if (approval.category === "CC Post Triggers")        return { text: "CC Policy Violation",  color: "#C2185B" };
+  if (approval.category === "cc_upsell_outreach")      return { text: "CC Upsell Signal",     color: "#D4AF37" };
   if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
-  if (approval.category === "daily_briefing")          return { text: "Daily Briefing", color: "#D4AF37" };
+  if (approval.category === "daily_briefing")          return { text: "Daily Briefing",       color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
 }
 
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
-  if (approval.category === "social") return { heading: "Original", content: approval.original_content || null };
-  if (approval.category === "daily_briefing") return { heading: "Today's Date", content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
+  if (approval.category === "social") {
+    // Creative assets — show contributors + date, not empty "Original"
+    if (approval.platform && CREATIVE_PLATFORMS.has(approval.platform)) {
+      return { heading: "Contributors", content: approval.task_brief || null };
+    }
+    return { heading: "Original", content: approval.original_content || null };
+  }
+  if (approval.category === "daily_briefing")          return { heading: "Today's Date",    content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
   if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
-  if (approval.category === "CC Post Triggers")         return { heading: "Member Info",     content: approval.task_brief || null };
-  if (approval.category === "cc_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
+  if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
 function getDraftHeading(approval: Approval): string {
-  if (approval.category === "social")                   return `${approval.agent_name}'s Draft`;
-  if (approval.category === "daily_briefing")           return "Daily Briefing";
-  if (approval.category === "community_comment_reply")  return "Agent Reply";
-  if (approval.category === "CC Post Triggers")         return "Violation Report";
-  if (approval.category === "cc_upsell_outreach")       return "Aaliyah Outreach Draft";
+  if (approval.category === "social")                  return `${approval.agent_name}'s Draft`;
+  if (approval.category === "daily_briefing")          return "Daily Briefing";
+  if (approval.category === "community_comment_reply") return "Agent Reply";
+  if (approval.category === "CC Post Triggers")        return "Violation Report";
+  if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
-  if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"    : status === "posting" ? "Routing..."        : "⚠ Route Failed";
-  if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"   : status === "posting" ? "Generating PDF..."  : "⚠ PDF Failed";
-  if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"   : status === "posting" ? "Posting..."         : "⚠ Post Failed";
-  if (approval.category === "cc_upsell_outreach")       return status === "posted" ? "✓ Outreach Sent"    : status === "posting" ? "Sending..."         : "⚠ Send Failed";
+  if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"   : status === "posting" ? "Routing..."       : "⚠ Route Failed";
+  if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"  : status === "posting" ? "Generating PDF..." : "⚠ PDF Failed";
+  if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"  : status === "posting" ? "Posting..."        : "⚠ Post Failed";
+  if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"   : status === "posting" ? "Sending..."        : "⚠ Send Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
-
 export default function AdminApprovals() {
   const [approvals, setApprovals]             = useState<Approval[]>([]);
   const [loading, setLoading]                 = useState(true);
@@ -310,9 +329,7 @@ export default function AdminApprovals() {
     } else if (approval.category === "community_comment_reply") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postCCComment(approval, approval.edited_output || approval.output);
-      if (!ok) {
-        await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
-      }
+      if (!ok) await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "cc_upsell_outreach") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
@@ -320,17 +337,8 @@ export default function AdminApprovals() {
         const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
         const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
         const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            trigger_type:      "cc_upsell_outreach",
-            agent_name:        "Aaliyah Foster",
-            outreach_message:  approval.edited_output || approval.output,
-            email:             emailMatch?.[1] ?? "",
-            phone:             phoneMatch?.[1] ?? "",
-            task_brief:        approval.task_brief,
-            approval_id:       id,
-          }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trigger_type:"cc_upsell_outreach", agent_name:"Aaliyah Foster", outreach_message: approval.edited_output || approval.output, email: emailMatch?.[1] ?? "", phone: phoneMatch?.[1] ?? "", task_brief: approval.task_brief, approval_id: id }),
         });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
@@ -344,6 +352,7 @@ export default function AdminApprovals() {
 
   const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected" }).eq("id", id); setSaving(null); };
   const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
+  const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"approved" }).eq("id", id); setSaving(null); };
 
   const handleClearFlag     = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_flagged: false }).eq("id", id); setSavingComment(null); };
   const handleRemoveComment = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_active: false }).eq("id", id); setSavingComment(null); };
@@ -376,17 +385,8 @@ export default function AdminApprovals() {
         const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
         const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
         const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            trigger_type:     "cc_upsell_outreach",
-            agent_name:       "Aaliyah Foster",
-            outreach_message: editText,
-            email:            emailMatch?.[1] ?? "",
-            phone:            phoneMatch?.[1] ?? "",
-            task_brief:       approval.task_brief,
-            approval_id:      id,
-          }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trigger_type:"cc_upsell_outreach", agent_name:"Aaliyah Foster", outreach_message: editText, email: emailMatch?.[1] ?? "", phone: phoneMatch?.[1] ?? "", task_brief: approval.task_brief, approval_id: id }),
         });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
@@ -426,20 +426,38 @@ export default function AdminApprovals() {
     } catch { setQS(approval.id, { messages:[...newMessages, { role:'agent', agentName:qs.selectedAgent?.agent_name, text:"Something went wrong. Please try again." }], loading:false }); }
   };
 
+  // Filtering
   const presentCategories   = [...new Set(approvals.map(a => a.category))];
   const orderedCategories   = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
   const allCategories       = [...orderedCategories, ...remainingCategories];
-  const filtered            = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
-  const pending             = approvals.filter(a => a.status === "pending").length;
-  const approvedToday       = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
+  const filtered = (() => {
+    if (activeFilter === "all")       return approvals;
+    if (activeFilter === "knowledge") return approvals.filter(a => !isApprovalCard(a));
+    if (activeFilter === "approvals") return approvals.filter(a => isApprovalCard(a));
+    return approvals.filter(a => a.category === activeFilter);
+  })();
+
+  const pending       = approvals.filter(a => a.status === "pending" && isApprovalCard(a)).length;
+  const knowledge     = approvals.filter(a => !isApprovalCard(a)).length;
+  const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
   const tabStyle = (active: boolean) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
     letterSpacing:"0.08em", textTransform:"uppercase" as const,
     padding:"0.4rem 0.875rem", borderRadius:20, cursor:"pointer", border:"none",
     background: active ? "#D4AF37" : "rgba(255,255,255,0.06)",
     color: active ? "#0A2342" : "rgba(255,255,255,0.6)",
+    transition:"all 0.15s ease",
+  });
+
+  const sectionTabStyle = (active: boolean, color: string) => ({
+    fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
+    letterSpacing:"0.08em", textTransform:"uppercase" as const,
+    padding:"0.4rem 0.875rem", borderRadius:20, cursor:"pointer",
+    border: active ? "none" : `1px solid ${color}40`,
+    background: active ? color : "transparent",
+    color: active ? "#FFFFFF" : color,
     transition:"all 0.15s ease",
   });
 
@@ -452,8 +470,8 @@ export default function AdminApprovals() {
         <div style={{ marginBottom:"1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"1rem" }}>
           <div>
             <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.7rem", letterSpacing:"0.12em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Admin · Page 3 · Confidential</p>
-            <h1 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.75rem", fontWeight:700, lineHeight:1.2, marginBottom:"0.2rem" }}>Approval Queue</h1>
-            <p style={{ color:"rgba(230,230,230,0.5)", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem" }}>Review and approve agent-drafted responses before they go live</p>
+            <h1 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.75rem", fontWeight:700, lineHeight:1.2, marginBottom:"0.2rem" }}>Intelligence Hub</h1>
+            <p style={{ color:"rgba(230,230,230,0.5)", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem" }}>Knowledge cards to read and act on · Approval cards gate publishing and outreach</p>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", flexWrap:"wrap" as const }}>
             <div onClick={() => window.location.href = "/admin-archived"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>Archived →</div>
@@ -461,12 +479,12 @@ export default function AdminApprovals() {
           </div>
         </div>
 
-        {/* Queue Stats */}
+        {/* Stats */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"0.75rem" }}>
           {[
-            { label:"Awaiting Approval", value:pending,           color:"#D4AF37" },
-            { label:"Approved Today",    value:approvedToday,     color:"#4CAF50" },
-            { label:"Total in Queue",    value:approvals.length,  color:"rgba(255,255,255,0.6)" },
+            { label:"Pending Approval", value:pending,       color:"#D4AF37" },
+            { label:"Knowledge Items",  value:knowledge,     color:"rgba(192,208,232,1)" },
+            { label:"Approved Today",   value:approvedToday, color:"#4CAF50" },
           ].map(s => (
             <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
@@ -489,7 +507,7 @@ export default function AdminApprovals() {
           ))}
         </div>
 
-        {/* ── Flagged Comments ──────────────────────────────────────────────── */}
+        {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
             <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Flagged Comments</h2>
@@ -509,32 +527,15 @@ export default function AdminApprovals() {
                 <div key={fc.id} style={{ background:"rgba(194,24,91,0.05)", border:"1px solid rgba(194,24,91,0.2)", borderRadius:10, padding:"0.875rem 1rem", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"1rem" }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.4rem", flexWrap:"wrap" as const }}>
-                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#FFFFFF" }}>
-                        {(fc as any).profiles?.first_name ?? "Unknown Member"}
-                      </span>
-                      {(fc as any).community_posts?.title && (
-                        <>
-                          <span style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>on</span>
-                          <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:"rgba(212,175,55,0.8)" }}>
-                            {String((fc as any).community_posts.title).slice(0, 60)}
-                          </span>
-                        </>
-                      )}
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#FFFFFF" }}>{(fc as any).profiles?.first_name ?? "Unknown Member"}</span>
+                      {(fc as any).community_posts?.title && (<><span style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>on</span><span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:"rgba(212,175,55,0.8)" }}>{String((fc as any).community_posts.title).slice(0, 60)}</span></>)}
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(fc.created_at)}</span>
                     </div>
-                    <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.65)", fontSize:"0.75rem", lineHeight:1.5, margin:0 }}>
-                      "{fc.content.slice(0, 200)}{fc.content.length > 200 ? "..." : ""}"
-                    </p>
+                    <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.65)", fontSize:"0.75rem", lineHeight:1.5, margin:0 }}>"{fc.content.slice(0, 200)}{fc.content.length > 200 ? "..." : ""}"</p>
                   </div>
                   <div style={{ display:"flex", gap:"0.5rem", flexShrink:0 }}>
-                    <button onClick={() => handleClearFlag(fc.id)} disabled={savingComment === fc.id}
-                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>
-                      Clear
-                    </button>
-                    <button onClick={() => handleRemoveComment(fc.id)} disabled={savingComment === fc.id}
-                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>
-                      Remove
-                    </button>
+                    <button onClick={() => handleClearFlag(fc.id)} disabled={savingComment === fc.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>Clear</button>
+                    <button onClick={() => handleRemoveComment(fc.id)} disabled={savingComment === fc.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em", opacity:savingComment === fc.id ? 0.5 : 1 }}>Remove</button>
                   </div>
                 </div>
               ))}
@@ -542,45 +543,52 @@ export default function AdminApprovals() {
           )}
         </div>
 
-        {/* Filter Tabs */}
+        {/* Section Tabs — Knowledge vs Approvals */}
+        <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" as const }}>
+          <button onClick={() => setActiveFilter("all")} style={sectionTabStyle(activeFilter === "all", "#D4AF37")}>All ({approvals.length})</button>
+          <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "rgba(192,208,232,1)")}>Knowledge ({approvals.filter(a => !isApprovalCard(a)).length})</button>
+          <button onClick={() => setActiveFilter("approvals")} style={sectionTabStyle(activeFilter === "approvals", "#C2185B")}>Approvals ({approvals.filter(a => isApprovalCard(a)).length})</button>
+        </div>
+
+        {/* Category Filter Tabs */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
-          <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>All ({approvals.length})</button>
           {allCategories.map(cat => (
             <button key={cat} onClick={() => setActiveFilter(cat)} style={tabStyle(activeFilter === cat)}>
               {CATEGORY_LABELS[cat] || cat} ({approvals.filter(a => a.category === cat).length})
             </button>
           ))}
         </div>
-
-        {loading && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(212,175,55,0.6)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>LOADING QUEUE...</div>}
+        {loading && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(212,175,55,0.6)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>LOADING...</div>}
         {!loading && filtered.length === 0 && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(255,255,255,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>{activeFilter === "all" ? "Queue is clear — agents are standing by" : "No items in this category"}</div>}
 
         {!loading && (
           <div style={{ display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
             {filtered.map(approval => {
-              const badge       = getBadgeInfo(approval);
-              const origCol     = getOriginalColumn(approval);
-              const draftHead   = getDraftHeading(approval);
-              const isBriefing  = approval.category !== "social";
-              const qs          = getQS(approval.id);
-              const divAgents   = DIVISION_AGENTS[approval.division] ?? [];
-              const isLead      = approval.category === "lead_intelligence";
-              const isPDF       = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
+              const badge         = getBadgeInfo(approval);
+              const origCol       = getOriginalColumn(approval);
+              const draftHead     = getDraftHeading(approval);
+              const isBriefing    = approval.category !== "social";
+              const qs            = getQS(approval.id);
+              const divAgents     = DIVISION_AGENTS[approval.division] ?? [];
+              const isLead        = approval.category === "lead_intelligence";
+              const isPDF         = approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category);
               const isPostTrigger = approval.category === "CC Post Triggers";
               const isCCReply     = approval.category === "community_comment_reply";
               const isUpsell      = approval.category === "cc_upsell_outreach";
-              const currentDir  = leadDirection[approval.id] || "assessment_invite";
+              const isKnowledge   = !isApprovalCard(approval);
+              const currentDir    = leadDirection[approval.id] || "assessment_invite";
 
               return (
-                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.4)" : approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background:approval.status !== "pending" ? "rgba(255,255,255,0.02)" : isPostTrigger ? "rgba(194,24,91,0.04)" : "rgba(255,255,255,0.04)", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.4)" : isKnowledge ? "rgba(192,208,232,0.15)" : approval.status === "pending" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.08)"}`, background:approval.status !== "pending" ? "rgba(255,255,255,0.02)" : isPostTrigger ? "rgba(194,24,91,0.04)" : isKnowledge ? "rgba(192,208,232,0.02)" : "rgba(255,255,255,0.04)", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
 
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
+                      {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
-                      {isPDF && !isPostTrigger && !isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
+                      {isPDF && !isPostTrigger && !isCCReply && !isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                     </div>
@@ -626,7 +634,7 @@ export default function AdminApprovals() {
                     </div>
                   )}
 
-                  {/* Ask a Question Panel — hidden for CC Post Triggers */}
+                  {/* Ask a Question Panel */}
                   {qs.open && approval.status === "pending" && !isPostTrigger && (
                     <div style={{ margin:"0 1rem", padding:"0.875rem", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8, marginBottom:"0.5rem" }}>
                       {isBriefing && approval.category !== "daily_briefing" && !isCCReply && (
@@ -673,13 +681,25 @@ export default function AdminApprovals() {
 
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
+
+                    {/* Ask a Question button — available on all non-trigger cards */}
                     {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                       <button onClick={() => toggleQuestion(approval)}
                         style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:`1px solid ${qs.open ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.15)"}`, background:qs.open ? "rgba(212,175,55,0.1)" : "transparent", color:qs.open ? "#D4AF37" : "rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>
                         {qs.open ? "✕ Close Question" : "? Ask a Question"}
                       </button>
                     )}
+
                     <div style={{ display:"flex", gap:"0.5rem", marginLeft:"auto" }}>
+
+                      {/* KNOWLEDGE CARDS — Read ✓ only */}
+                      {isKnowledge && approval.status === "pending" && editingId !== approval.id && (
+                        <button onClick={() => handleRead(approval.id)} disabled={saving === approval.id}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(192,208,232,0.4)", background:"rgba(192,208,232,0.08)", color:"rgba(192,208,232,0.9)", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                          {saving === approval.id ? "..." : "Read ✓"}
+                        </button>
+                      )}
+
                       {/* CC Post Triggers — Dismiss only */}
                       {isPostTrigger && approval.status === "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id}
@@ -687,8 +707,9 @@ export default function AdminApprovals() {
                           {saving === approval.id ? "..." : "Dismiss"}
                         </button>
                       )}
-                      {/* Standard pending actions */}
-                      {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
+
+                      {/* APPROVAL CARDS — full Reject / Edit / Approve */}
+                      {!isKnowledge && approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                         <>
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
@@ -697,12 +718,16 @@ export default function AdminApprovals() {
                           </button>
                         </>
                       )}
+
+                      {/* Edit save/cancel */}
                       {editingId === approval.id && (
                         <>
                           <button onClick={() => setEditingId(null)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
                           <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "Saving..." : "Save & Approve"}</button>
                         </>
                       )}
+
+                      {/* Already actioned */}
                       {approval.status !== "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>Archive</button>
                       )}
@@ -715,7 +740,7 @@ export default function AdminApprovals() {
         )}
 
         <div style={{ marginTop:"1rem", textAlign:"center" as const, padding:"0.75rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8 }}>
-          <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", color:"rgba(212,175,55,0.7)", margin:0 }}>All responses reviewed and approved by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026</p>
+          <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", color:"rgba(212,175,55,0.7)", margin:0 }}>All responses reviewed by DeAnna R. Upshaw before posting · DRU AI Consulting © 2026</p>
         </div>
       </main>
       <footer style={{ textAlign:"center" as const, padding:"0.75rem", color:"rgba(255,255,255,0.2)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem" }}>
