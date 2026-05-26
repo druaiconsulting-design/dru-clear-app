@@ -21,16 +21,16 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_governance_legal_review:   { agent_id: 'governance',    agent_name: 'Governance Panel', division: 'AI Governance',        task: 'governance_panel_review',       pipeline: 'cmd_governance' },
   cron_command_layer:             { agent_id: 'command_layer', agent_name: 'Executive Leadership', division: 'Command',              task: 'executive_review',              pipeline: 'cmd_command_layer' },
   cron_twin_synthesis:            { agent_id: 'twin',          agent_name: "DeAnna's AI Twin", division: 'Command',              task: 'daily_synthesis_briefing',      pipeline: 'cmd_twin' },
-  cron_omar_lead_score:           { agent_id: 'omar',     agent_name: 'Omar Patel',        division: 'Revenue & Growth', task: 'scan_score_route_leads',        pipeline: 'p1_omar' },
-  cron_ryan_crm_update:           { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',     division: 'Revenue & Growth', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
-  cron_serena_coaching:           { agent_id: 'serena',   agent_name: 'Serena Jackson',    division: 'Revenue & Growth', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
-  cron_mateo_sales_support:       { agent_id: 'mateo',    agent_name: 'Mateo Gonzalez',    division: 'Revenue & Growth', task: 'sales_pipeline_review',         pipeline: 'p1_mateo' },
-  cron_aaliyah_outreach:          { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue & Growth', task: 'personalized_outreach_messages',pipeline: 'p1_aaliyah' },
-  cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue & Growth', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
-  cron_chloe_copy:                { agent_id: 'chloe',    agent_name: 'Chloe Dubois',      division: 'Revenue & Growth', task: 'daily_copy_asset',              pipeline: 'p1_chloe' },
-  cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Revenue & Growth', task: 'product_launch_readiness',      pipeline: 'p1_zara' },
-  cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue & Growth', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
-  cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue & Growth', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
+  cron_omar_lead_score:           { agent_id: 'omar',     agent_name: 'Omar Patel',        division: 'Revenue, Growth & Sales', task: 'scan_score_route_leads',        pipeline: 'p1_omar' },
+  cron_ryan_crm_update:           { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',     division: 'Revenue, Growth & Sales', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
+  cron_serena_coaching:           { agent_id: 'serena',   agent_name: 'Serena Jackson',    division: 'Revenue, Growth & Sales', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
+  cron_mateo_sales_support:       { agent_id: 'mateo',    agent_name: 'Mateo Gonzalez',    division: 'Revenue, Growth & Sales', task: 'sales_pipeline_review',         pipeline: 'p1_mateo' },
+  cron_aaliyah_outreach:          { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'personalized_outreach_messages',pipeline: 'p1_aaliyah' },
+  cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue, Growth & Sales', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
+  cron_chloe_copy:                { agent_id: 'chloe',    agent_name: 'Chloe Dubois',      division: 'Revenue, Growth & Sales', task: 'daily_copy_asset',              pipeline: 'p1_chloe' },
+  cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Revenue, Growth & Sales', task: 'product_launch_readiness',      pipeline: 'p1_zara' },
+  cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
+  cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
   cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
   cron_ravi_design_brief:         { agent_id: 'ravi',     agent_name: 'Ravi Gupta',        division: 'Content & Brand',  task: 'generate_design_brief',         pipeline: 'p2_ravi' },
@@ -61,11 +61,11 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
   cron_isaiah_support_daily:      { agent_id: 'isaiah',   agent_name: 'Isaiah Carter',     division: 'Customer Support', task: 'daily_issue_resolution',        pipeline: 'p8_isaiah' },
   cron_priscilla_comms_daily:     { agent_id: 'priscilla',agent_name: 'Priscilla Okonkwo', division: 'Customer Support', task: 'daily_multichannel_comms',      pipeline: 'p8_priscilla' },
-  lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue & Growth', task: 'score_new_lead' },
-  contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura',  division: 'Revenue & Growth', task: 'process_contact_update' },
-  assessment_completed: { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue & Growth', task: 'route_assessment_lead' },
+  lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'score_new_lead' },
+  contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura',  division: 'Revenue, Growth & Sales', task: 'process_contact_update' },
+  assessment_completed: { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'route_assessment_lead' },
   support_ticket:       { agent_id: 'isaiah',  agent_name: 'Isaiah Carter',  division: 'Customer Support', task: 'handle_support_request' },
-  cc_upsell_signal:     { agent_id: 'aaliyah', agent_name: 'Aaliyah Foster', division: 'Revenue & Growth', task: 'cc_upsell_outreach' },
+  cc_upsell_signal:     { agent_id: 'aaliyah', agent_name: 'Aaliyah Foster', division: 'Revenue, Growth & Sales', task: 'cc_upsell_outreach' },
 };
 
 const AALIYAH_CC_ROUTING: Record<string, string> = {
@@ -80,7 +80,7 @@ const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_pos
 const SOCIAL_DIVISIONS = ['Content & Brand','Marketing'];
 
 function getDivisionCategory(division: string): string {
-  const map: Record<string,string> = {'Revenue & Growth':'revenue_growth','Content & Brand':'content_brand','Marketing':'marketing','Legal & Finance':'legal_finance','AI Governance':'ai_governance','HR':'hr','Client Delivery':'client_delivery','Customer Support':'customer_support','Community Connection':'community_connection'};
+  const map: Record<string,string> = {'Revenue, Growth & Sales':'revenue_growth','Content & Brand':'content_brand','Marketing':'marketing','Legal & Finance':'legal_finance','AI Governance':'ai_governance','HR':'hr','Client Delivery':'client_delivery','Customer Support':'customer_support','Community Connection':'community_connection'};
   return map[division] ?? 'division_briefing';
 }
 function getPlatformLabel(category: string): string {
@@ -89,7 +89,7 @@ function getPlatformLabel(category: string): string {
 }
 function getDivisionPrompt(division: string, today: string, content: string): string {
   const instructions: Record<string,string> = {
-    'Revenue & Growth': `Synthesize the Revenue & Growth division's work for today. Cover: lead intelligence (Omar/Ryan), sales support (Mateo), coaching insight (Serena), outreach created (Aaliyah), email campaign (Jaylen), copy asset (Chloe), launch readiness (Zara), product knowledge (Elena), proposal work (Kwame). 250-350 words. First person. Flag any high-intent leads or urgent pipeline actions.`,
+    'Revenue, Growth & Sales': `Synthesize the Revenue, Growth & Sales division's work for today. Cover: lead intelligence (Omar/Ryan), sales support (Mateo), coaching insight (Serena), outreach created (Aaliyah), email campaign (Jaylen), copy asset (Chloe), launch readiness (Zara), product knowledge (Elena), proposal work (Kwame). 250-350 words. First person. Flag any high-intent leads or urgent pipeline actions.`,
     'Content & Brand': `Synthesize the Content & Brand division's work. Cover: content queue strategy (Camila), design brief (Ravi), press release activity (Ingrid), localization work (Yara). Note: Darius King's post is in the Social Media card. 200-300 words. First person.`,
     'Marketing': `Synthesize the Marketing division's strategic work. Cover: digital campaign status (Luca), analytics and funnel insights (Hyun-Ji), SEO/SEM priorities (Andre). Note: Nia's published content is in the Social Media card. 200-300 words. First person.`,
     'Legal & Finance': `Synthesize the Legal & Finance division's weekly work. Cover: legal briefing highlights (Amara), expense health (Diego), financial projections (Yuki), business financial planning intelligence (Marcus). 200-300 words. First person. Flag anything requiring DeAnna's signature or financial decision.`,
@@ -194,14 +194,14 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
   const ghlApiKey = process.env.GHL_API_KEY;
   if (!ghlApiKey) return {csq_id:null,crm_updates:0};
   if (omarResult.total_leads_scanned===0){
-    const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue & Growth',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:'**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.',priority:'normal',status:'pending',retry_count:0});
+    const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue, Growth & Sales',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:'**Daily Lead Intelligence — No New Leads**\n\nOmar scanned GHL and found no new contacts in the last 24 hours. No CRM updates required.',priority:'normal',status:'pending',retry_count:0});
     return {csq_id,crm_updates:0};
   }
   let crmUpdates=0;
   for (const lead of omarResult.scored_leads){if (lead.contact_id){await fetch(`${GHL_API_BASE}/contacts/${lead.contact_id}`,{method:'PUT',headers:{Authorization:`Bearer ${ghlApiKey}`,Version:'2021-07-28','Content-Type':'application/json'},body:JSON.stringify({tags:[`ai-scored`,`intent-${lead.intent_level}`,`score-${lead.score}`]})});crmUpdates++;}}
   const highIntentSummary = omarResult.high_intent_leads.map(l=>`* ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`).join('\n');
   const briefing = await callAnthropic(`${GENIUS_MODE}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing.\nDATA: Total:${omarResult.total_leads_scanned} | High-intent:${omarResult.high_intent_leads.length} | Medium:${omarResult.scored_leads.filter(l=>l.intent_level==='medium').length} | Low:${omarResult.scored_leads.filter(l=>l.intent_level==='low').length}\nHIGH-INTENT: ${highIntentSummary||'None today'}\nInclude: executive summary, high-intent leads with actions (all directed to assessment.druaiconsulting.com), CRM updates completed, strategic next steps.`);
-  const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue & Growth',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:briefing,priority:omarResult.high_intent_leads.length>0?'high':'normal',status:'pending',retry_count:0});
+  const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue, Growth & Sales',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:briefing,priority:omarResult.high_intent_leads.length>0?'high':'normal',status:'pending',retry_count:0});
   return {csq_id,crm_updates:crmUpdates};
 }
 
@@ -383,10 +383,10 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
 // Command Chain — Isabella
 async function runIsabella(): Promise<{reviewed:number;cleared:number;sent_back:number;rejected:number}> {
   const pending=await getCSQItems('pending');
-  console.log(`[isabella] Reviewing ${pending.length} pending items fully parallel (Sonnet)...`);
+  console.log(`[isabella] Reviewing ${pending.length} pending items sequentially (Sonnet)...`);
   if (pending.length===0) return {reviewed:0,cleared:0,sent_back:0,rejected:0};
   let cleared=0; let sentBack=0; let rejected=0;
-  const reviewResults=await Promise.all(pending.map(async(item)=>{
+  for (const item of pending){
     try {
       const raw=await callTwin(`${GENIUS_MODE}
 
@@ -417,30 +417,25 @@ Output ONLY this JSON:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
 OR: {"cleared":false,"flags":"specific issue","correction_notes":"Exact correction instruction"}`,600);
       const result=JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0]??'null');
-      return {item,result,error:null};
-    } catch(error){console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`,error);return {item,result:null,error};}
-  }));
-  await Promise.all(reviewResults.map(async({item,result})=>{
-    if (!result) return;
-    if (result.cleared){
-      cleared++;
-      await updateCSQ(item.id,{isabella_flags:result.flags??'none',isabella_cleared_at:new Date().toISOString(),status:'isabella_cleared'});
-    } else {
-      const retryCount=item.retry_count??0;
-      if (retryCount>=2){
-        rejected++;
-        await updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,governance_cleared:false,status:'rejected'});
-        console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
+      if (!result){console.error(`[isabella] No result for ${item.agent_name}`);continue;}
+      if (result.cleared){
+        cleared++;
+        await updateCSQ(item.id,{isabella_flags:result.flags??'none',isabella_cleared_at:new Date().toISOString(),status:'isabella_cleared'});
       } else {
-        sentBack++;
-        await Promise.all([
-          updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,status:'needs_correction'}),
-          runCorrectionAgent(item,result.correction_notes,retryCount+1),
-        ]);
-        console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount+1})`);
+        const retryCount=item.retry_count??0;
+        if (retryCount>=2){
+          rejected++;
+          await updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,governance_cleared:false,status:'rejected'});
+          console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
+        } else {
+          sentBack++;
+          await updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,status:'needs_correction'});
+          await runCorrectionAgent(item,result.correction_notes,retryCount+1);
+          console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount+1})`);
+        }
       }
-    }
-  }));
+    } catch(error){console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`,error);}
+  }
   console.log(`[isabella] ${pending.length} reviewed: ${cleared} cleared, ${sentBack} sent back, ${rejected} rejected`);
   return {reviewed:pending.length,cleared,sent_back:sentBack,rejected};
 }
@@ -480,7 +475,7 @@ async function runCommandLayer(): Promise<{reviewed:number}> {
   for (const item of items){
     try {
       const [rawRaymond,rawTravis,rawPriya]=await Promise.all([
-        callAnthropic(`${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Content cleared by Isabella and Governance. Assess strategic priority.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nNOTE: If content contains "UPSELL SIGNAL:" — this is from Community Connection facilitators Zoe Beaumont or Micah Santos. Flag priority as 'high' and note in your action to route to Aaliyah Foster in Revenue & Growth for outreach nurture.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`,400),
+        callAnthropic(`${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Content cleared by Isabella and Governance. Assess strategic priority.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nNOTE: If content contains "UPSELL SIGNAL:" — this is from Community Connection facilitators Zoe Beaumont or Micah Santos. Flag priority as 'high' and note in your action to route to Aaliyah Foster in Revenue, Growth & Sales for outreach nurture.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`,400),
         callAnthropic(`${GENIUS_MODE}\nYou are Travis Weston, Assistant Chief of Staff for DRU AI Consulting. Package this for the AI Twin.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON: {"organized":true,"package_notes":"one sentence on how this fits today's briefing"}`,400),
         callAnthropic(`${GENIUS_MODE}\nYou are Priya Sharma, Executive Assistant to DeAnna R. Upshaw. Flag anything time-sensitive or requiring DeAnna's personal action today.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nIn 1-2 sentences, add your executive perspective.`,200),
       ]);
@@ -585,18 +580,18 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='cmd_command_layer'){const r=await runCommandLayer();res.status(202).json({success:true,agent:route.agent_name,...r});}
   else if (route.pipeline==='cmd_twin'){const r=await runTwinSynthesis();res.status(202).json({success:true,agent:route.agent_name,...r});}
   else if (route.pipeline==='p1_omar'){const omar=await runOmar();const ryan=await runRyan(omar);res.status(202).json({success:true,agent:route.agent_name,leads_scanned:omar.total_leads_scanned,high_intent:omar.high_intent_leads.length,crm_updates:ryan.crm_updates});}
-  else if (route.pipeline==='p1_serena'){const id=await runAgentToCSQ('serena','Serena Jackson','Revenue & Growth','morning_coaching_briefing','coaching',`You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover Diagnose Design Deploy Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_mateo'){const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue & Growth','sales_pipeline_review','sales_support',`You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confident with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_serena'){const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover Diagnose Design Deploy Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_mateo'){const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confident with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
     const urlA=process.env.VITE_SUPABASE_URL; const keyA=process.env.SUPABASE_SERVICE_ROLE_KEY; let leadContext='No lead data available today.';
     if (urlA&&keyA){const todayA=new Date().toISOString().split('T')[0];const r=await fetch(`${urlA}/rest/v1/chief_of_staff_queue?run_date=eq.${todayA}&agent_id=eq.ryan&order=created_at.desc&limit=1`,{headers:{apikey:keyA,Authorization:`Bearer ${keyA}`}});if (r.ok){const d=await r.json();if (d?.[0]?.raw_output) leadContext=d[0].raw_output;}}
-    const id=await runAgentToCSQ('aaliyah','Aaliyah Foster','Revenue & Growth','personalized_outreach_messages','outreach',`You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nWrite personalized outreach for each high-intent lead — LinkedIn DM (150 words max) and email (subject + 200 word body). Mention DRU CLEAR™ AI Readiness Assessment and assessment.druaiconsulting.com. If no high-intent leads, write a warm outreach template.\nLead Intelligence:\n${leadContext}`,'high');
+    const id=await runAgentToCSQ('aaliyah','Aaliyah Foster','Revenue, Growth & Sales','personalized_outreach_messages','outreach',`You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nWrite personalized outreach for each high-intent lead — LinkedIn DM (150 words max) and email (subject + 200 word body). Mention DRU CLEAR™ AI Readiness Assessment and assessment.druaiconsulting.com. If no high-intent leads, write a warm outreach template.\nLead Intelligence:\n${leadContext}`,'high');
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_jaylen'){const id=await runAgentToCSQ('jaylen','Jaylen Brooks','Revenue & Growth','email_campaign_content','email_marketing',`You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course ($1,497-$12,997).\nRotate: nurture email, re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max). CTA: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_chloe'){const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue & Growth','daily_copy_asset','copywriting',`You are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_zara'){const id=await runAgentToCSQ('zara','Zara Ahmed','Revenue & Growth','product_launch_readiness','product_launch',`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course, Community Connection Navigator $47/mo / Accelerator $147/mo. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing insight, next week priority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue & Growth','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue & Growth','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_jaylen'){const id=await runAgentToCSQ('jaylen','Jaylen Brooks','Revenue, Growth & Sales','email_campaign_content','email_marketing',`You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course ($1,497-$12,997).\nRotate: nurture email, re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max). CTA: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_chloe'){const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`You are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_zara'){const id=await runAgentToCSQ('zara','Zara Ahmed','Revenue, Growth & Sales','product_launch_readiness','product_launch',`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course, Community Connection Navigator $47/mo / Accelerator $147/mo. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing insight, next week priority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_camila'){const count=await runCamila();res.status(202).json({success:true,agent:route.agent_name,posts_generated:count});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const today4=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});const id=await runAgentToCSQ('ravi','Ravi Gupta','Content & Brand','generate_design_brief','design_brief',`You are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout, color palette, image direction, typography, AI image generation prompt. Today: ${today4}. CTA destination: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
