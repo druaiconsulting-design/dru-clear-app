@@ -1,9 +1,10 @@
 // DRU AI Leadership Ecosystem™ — api/ghl-agent-trigger.ts
 // 44 agents · 8 divisions (P9 Community Connection moved to cc-agent-trigger.ts)
-// Isabella: Sonnet calls parallel + DB writes parallel
+// Isabella: Sonnet calls sequential + DB writes sequential
 // P4 Legal & Finance: weekly Tuesday | P5 AI Governance: daily | P6 HR: daily
 // P7 Client Delivery: daily | P8 Customer Support: daily
 // runCommandLayer: FIXED — sequential processing to avoid 429 rate limits
+// Isabella 2.0: date filter (48hr window) + limit 25 per run — two runs at 16:10 + 16:30 UTC
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
@@ -15,11 +16,10 @@ interface TriggerPayload { trigger_type: string; source?: string; [key: string]:
 interface ScoredLead { contact_id: string; name: string; email: string; phone: string; source: string; score: number; intent_level: 'high' | 'medium' | 'low'; recommended_action: string; notes: string; }
 interface OmarResult { success: boolean; total_leads_scanned: number; scored_leads: ScoredLead[]; high_intent_leads: ScoredLead[]; run_date: string; error?: string; }
 interface CSQItem { id: string; agent_id: string; agent_name: string; division: string; task: string; category: string; raw_output: string; priority: string; retry_count?: number; correction_notes?: string; parent_csq_id?: string; raymond_notes?: string; raymond_action?: string; raymond_priority?: string; travis_notes?: string; priya_notes?: string; governance_notes?: string; legal_notes?: string; isabella_flags?: string; compliance_score?: number; }
-
 const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_isabella_review:           { agent_id: 'isabella',      agent_name: 'Isabella Moreno',  division: 'AI Governance',        task: 'trademark_compliance_review',   pipeline: 'cmd_isabella' },
   cron_governance_legal_review:   { agent_id: 'governance',    agent_name: 'Governance Panel', division: 'AI Governance',        task: 'governance_panel_review',       pipeline: 'cmd_governance' },
-  cron_command_layer:             { agent_id: 'command_layer', agent_name: 'Executive Leadership', division: 'Command',              task: 'executive_review',              pipeline: 'cmd_command_layer' },
+  cron_command_layer:             { agent_id: 'command_layer', agent_name: 'Executive Leadership', division: 'Command',          task: 'executive_review',              pipeline: 'cmd_command_layer' },
   cron_twin_synthesis:            { agent_id: 'twin',          agent_name: "DeAnna's AI Twin", division: 'Command',              task: 'daily_synthesis_briefing',      pipeline: 'cmd_twin' },
   cron_omar_lead_score:           { agent_id: 'omar',     agent_name: 'Omar Patel',        division: 'Revenue, Growth & Sales', task: 'scan_score_route_leads',        pipeline: 'p1_omar' },
   cron_ryan_crm_update:           { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',     division: 'Revenue, Growth & Sales', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
@@ -144,12 +144,23 @@ async function fetchBrandMarks(): Promise<string> {
   if (!res.ok) return '';
   const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
 }
-async function getCSQItems(status: string): Promise<CSQItem[]> {
+
+// ─── Isabella 2.0 — 48hr window + limit 25 per run ───────────────────────────
+// Two pg_cron runs: 16:10 UTC (Run 1) and 16:30 UTC (Run 2)
+// Each run processes up to 25 items × ~7s Sonnet = ~175s — well under 300s limit
+// 48hr window captures today's agent items AND any correction items from prior day
+// Correction loop fully preserved: agents learn, hard reject after 3 retries,
+// rejections surface on Intelligence Hub card so DeAnna sees full picture
+async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return [];
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  let query = `${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`;
+  if (afterDate) query += `&created_at=gte.${afterDate}`;
+  if (limit) query += `&limit=${limit}`;
+  const res = await fetch(query,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
   if (!res.ok) return []; return await res.json();
 }
+
 async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return;
@@ -380,10 +391,17 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
   } catch (error) { console.error(`[aaliyah_cc] Webhook failed for ${signalType}:`, error); }
 }
 
-// Command Chain — Isabella
+// Command Chain — Isabella 2.0
+// WHAT CHANGED: getCSQItems now receives (status, limit=25, afterDate=48hr ago)
+// - Limit 25: each run takes max 25×7s=175s — well under 300s maxDuration
+// - 48hr window: today's fresh items + any correction items from prior day
+// - Two pg_cron runs (16:10 UTC Run 1, 16:30 UTC Run 2) catch all 44+ agents
+// WHAT IS UNCHANGED: Sonnet review, sequential processing, correction loop,
+// hard reject after 3 retries, rejection surfaced on Intelligence Hub card
 async function runIsabella(): Promise<{reviewed:number;cleared:number;sent_back:number;rejected:number}> {
-  const pending=await getCSQItems('pending');
-  console.log(`[isabella] Reviewing ${pending.length} pending items sequentially (Sonnet)...`);
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const pending=await getCSQItems('pending', 25, cutoff);
+  console.log(`[isabella] Reviewing ${pending.length} pending items (max 25, 48hr window, Sonnet sequential)...`);
   if (pending.length===0) return {reviewed:0,cleared:0,sent_back:0,rejected:0};
   let cleared=0; let sentBack=0; let rejected=0;
   for (const item of pending){
@@ -467,7 +485,7 @@ async function runGovernancePanel(): Promise<{reviewed:number;cleared:number;blo
   return {reviewed:items.length,cleared,blocked};
 }
 
-// Command Chain — Command Layer (FIXED: sequential processing prevents 429 rate limit errors)
+// Command Chain — Command Layer (sequential processing prevents 429 rate limit errors)
 async function runCommandLayer(): Promise<{reviewed:number}> {
   const items=await getCSQItems('governance_cleared');
   console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (sequential to avoid rate limits)...`);
@@ -507,7 +525,6 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const byDivision:Record<string,CSQItem[]>={};
   for (const item of items){if (!byDivision[item.division]) byDivision[item.division]=[];byDivision[item.division].push(item);}
-  // Fetch compliance flags — rejected and needs_correction agents for division footer
   const [rejectedItems,correctionItems]=await Promise.all([getCSQItems('rejected'),getCSQItems('needs_correction')]);
   const flagsByDivision:Record<string,string[]>={};
   for (const r of rejectedItems){if (!flagsByDivision[r.division]) flagsByDivision[r.division]=[];flagsByDivision[r.division].push(`${r.agent_name} — REJECTED after max retries: ${r.isabella_flags??r.correction_notes??'compliance issue'}`);}
@@ -519,7 +536,7 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const dailySynthesisPromise=callTwin(`You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,1200)
     .then(async synthesis=>{
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division:'Command',task_brief:`Daily Briefing — ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:items.some(i=>i.priority==='high')?'high':'normal',category:'daily_briefing',platform:null});
-      if (id){approvalMap['Command']=id;await sendDivisionNotification('Command',id,items.length,triggeredAt);}
+      if (id){approvalMap['Command']=id;}
       console.log(`[twin] Daily Briefing card written`);
     })
     .catch(err=>{console.error('[twin] Daily Briefing synthesis failed:',err);});
@@ -532,12 +549,37 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
       const synthesis=await callTwin(getDivisionPrompt(division,today,content)+flagsSection,1500);
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division,task_brief:`${division} — ${divItems.length} agent${divItems.length>1?'s':''} | ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:divItems.some(i=>i.priority==='high')?'high':'normal',category:getDivisionCategory(division),platform:null});
       if (id){approvalMap[division]=id;
-        if (divItems.some(i=>i.priority==='high')){await sendDivisionNotification(division,id,divItems.length,triggeredAt);}
         console.log(`[twin] ${division} card written`);}
     } catch(err){console.error(`[twin] ${division} synthesis failed:`,err);}
   });
 
   await Promise.all([dailySynthesisPromise,...divisionSynthesisPromises]);
+
+  // ONE notification per day — fires after ALL cards are written
+  // High alert only if a genuine high-priority item exists
+  const hasHighPriority = items.some(i=>i.priority==='high');
+  const commandApprovalId = approvalMap['Command'] ?? null;
+  if (commandApprovalId) {
+    const divisionCount = Object.keys(approvalMap).length;
+    const label = hasHighPriority
+      ? `🚨 HIGH ALERT — Intelligence Hub ready. ${divisionCount} division cards + 1 Daily Briefing. Action required.`
+      : `Intelligence Hub is ready. ${divisionCount} division cards + 1 Daily Briefing waiting for review.`;
+    const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          email:'druaiconsulting@gmail.com',phone:'+19796186671',first_name:'DeAnna',last_name:'Upshaw',
+          agent_name:"DeAnna's AI Twin",division:'Command',task:'Daily Briefing',
+          approval_id:commandApprovalId,summary:label,triggered_at:triggeredAt,
+          review_url:'https://app.druaiconsulting.com/admin-approvals',
+          sms_body:`DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
+          email_subject:`DRU AI Consulting — ${hasHighPriority?'🚨 High Alert — ':''}Intelligence Hub Ready`,
+          email_body:`${label}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`
+        })});
+        console.log(`[twin] ONE daily notification sent — ${hasHighPriority?'HIGH ALERT':'standard'}`);
+      } catch(error){console.warn('[twin] Daily notification failed (non-fatal):',error);}
+    }
+  }
 
   for (const item of items){
     if (SOCIAL_DIVISIONS.includes(item.division)&&CLIENT_FACING_CATEGORIES.includes(item.category)){
