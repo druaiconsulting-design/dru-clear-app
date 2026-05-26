@@ -507,6 +507,11 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const byDivision:Record<string,CSQItem[]>={};
   for (const item of items){if (!byDivision[item.division]) byDivision[item.division]=[];byDivision[item.division].push(item);}
+  // Fetch compliance flags — rejected and needs_correction agents for division footer
+  const [rejectedItems,correctionItems]=await Promise.all([getCSQItems('rejected'),getCSQItems('needs_correction')]);
+  const flagsByDivision:Record<string,string[]>={};
+  for (const r of rejectedItems){if (!flagsByDivision[r.division]) flagsByDivision[r.division]=[];flagsByDivision[r.division].push(`${r.agent_name} — REJECTED after max retries: ${r.isabella_flags??r.correction_notes??'compliance issue'}`);}
+  for (const c of correctionItems){if (!flagsByDivision[c.division]) flagsByDivision[c.division]=[];flagsByDivision[c.division].push(`${c.agent_name} — CORRECTION PENDING: ${c.correction_notes??c.isabella_flags??'compliance review'}`);}
   const triggeredAt=new Date().toISOString();
   const approvalMap:Record<string,string>={};
   const allSummary=items.map(i=>`${i.agent_name} (${i.division}): ${i.raw_output.slice(0,150)}... Raymond: ${i.raymond_notes??''} | Priya: ${i.priya_notes??''}`).join('\n');
@@ -522,7 +527,9 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const divisionSynthesisPromises=Object.entries(byDivision).map(async([division,divItems])=>{
     const content=divItems.map(i=>`**${i.agent_name}** (${i.task.replace(/_/g,' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes??''} | Travis: ${i.travis_notes??''} | Priya: ${i.priya_notes??''}`).join('\n\n---\n\n');
     try {
-      const synthesis=await callTwin(getDivisionPrompt(division,today,content),1500);
+      const divFlags=flagsByDivision[division]??[];
+      const flagsSection=divFlags.length>0?`\n\nCOMPLIANCE FLAGS — include at end of card as "## Compliance Flags" section:\n${divFlags.map(f=>`- ${f}`).join('\n')}`:'';
+      const synthesis=await callTwin(getDivisionPrompt(division,today,content)+flagsSection,1500);
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division,task_brief:`${division} — ${divItems.length} agent${divItems.length>1?'s':''} | ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:divItems.some(i=>i.priority==='high')?'high':'normal',category:getDivisionCategory(division),platform:null});
       if (id){approvalMap[division]=id;
         if (divItems.some(i=>i.priority==='high')){await sendDivisionNotification(division,id,divItems.length,triggeredAt);}
