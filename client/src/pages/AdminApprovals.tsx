@@ -635,7 +635,7 @@ export default function AdminApprovals() {
 
         {/* Section Tabs — Knowledge vs Approvals (All removed — redundant) */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" as const }}>
-          <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "rgba(192,208,232,1)")}>Knowledge ({approvals.filter(a => !isApprovalCard(a)).length})</button>
+          <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "#4A90D9")}>Knowledge ({approvals.filter(a => !isApprovalCard(a)).length})</button>
           <button onClick={() => setActiveFilter("approvals")} style={sectionTabStyle(activeFilter === "approvals", "#C2185B")}>Approvals ({approvals.filter(a => isApprovalCard(a)).length})</button>
         </div>
 
