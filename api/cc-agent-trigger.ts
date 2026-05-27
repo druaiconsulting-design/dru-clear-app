@@ -1,9 +1,12 @@
 // DRU AI Leadership Ecosystem™ — api/cc-agent-trigger.ts
 // P9 Community Connection Division — 10 agents
-// Separated from ghl-agent-trigger.ts for isolation and maintainability
-// All posts write to community_posts (is_active: false) pending DeAnna approval
-// tier_required: 'navigator' on all posts = context badge only, not a content gate
-// Both Navigator and Accelerator members see all community content
+// ARCHITECTURE v2:
+// - CC agents write DIRECTLY to approvals table (community_post category) — bypass daily CSQ chain
+// - Inline ™ compliance check + auto-correction replaces Isabella chain step for CC posts
+// - community_posts record pre-created (is_active: false) → activated on DeAnna's approval
+// - post_id stored in approval task_brief → AdminApprovals activates the right record
+// - Keeps DeAnna in control: approve → post goes live in community immediately
+// - cc_agent_reply and upsell scan unchanged (already direct path)
 
 export const config = { maxDuration: 60 };
 
@@ -30,7 +33,28 @@ const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
   cc_agent_reply:                { agent_id: 'cc_agent',    agent_name: 'Community Agent',  task: 'community_reply',             pipeline: 'p9_cc_reply' },
 };
 
-// --- Shared utilities ---
+// ─── Inline ™ Compliance — replaces Isabella for CC posts ────────────────────
+// Fast auto-correction: no API call needed, no chain delay
+// Marks appear without ™ → auto-replaced before writing to approvals
+const TM_PAIRS: [RegExp, string][] = [
+  [/DRU CLEAR(?!™)/g,                       'DRU CLEAR™'],
+  [/DRU AI Leadership Ecosystem(?!™)/g,     'DRU AI Leadership Ecosystem™'],
+  [/DRU AI Transformation Pathway(?!™)/g,   'DRU AI Transformation Pathway™'],
+  [/5C Cultural DNA(?!™)/g,                 '5C Cultural DNA™'],
+  [/5D Leadership(?!™)/g,                   '5D Leadership™'],
+  [/AI Sales Mastery(?!™)/g,                'AI Sales Mastery™'],
+  [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
+];
+
+function enforceTM(content: string): string {
+  let corrected = content;
+  for (const [pattern, replacement] of TM_PAIRS) {
+    corrected = corrected.replace(pattern, replacement);
+  }
+  return corrected;
+}
+
+// ─── Shared utilities ─────────────────────────────────────────────────────────
 async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
@@ -42,20 +66,6 @@ async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> 
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
   return data.content?.[0]?.text ?? '';
-}
-
-async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) { console.error(`[csq] Write failed: ${await res.text()}`); return null; }
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
 }
 
 async function writeToCommunityPosts(record: Record<string, unknown>): Promise<string | null> {
@@ -72,8 +82,6 @@ async function writeToCommunityPosts(record: Record<string, unknown>): Promise<s
   return data?.[0]?.id ?? null;
 }
 
-// Writes directly to approvals table — used for immediate community reply cards
-// Bypasses daily CSQ chain so DeAnna sees the card within seconds, not next morning
 async function writeToApprovals(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -88,17 +96,19 @@ async function writeToApprovals(record: Record<string, unknown>): Promise<string
   return data?.[0]?.id ?? null;
 }
 
-// --- CC Agent runner ---
-// All CC posts: tier_required = 'navigator' (badge/context only — both Nav and Acc see all posts)
+// ─── CC Agent Runner v2 ───────────────────────────────────────────────────────
+// Direct path: generate → enforce ™ → write community_posts (inactive) →
+// write approvals (community_post category) → DeAnna approves → post goes live
 async function runCCAgent(
   agentId: string, agentName: string, task: string,
   postType: string, category: string, prompt: string
-): Promise<{ csq_id: string | null; post_id: string | null }> {
+): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
     const raw = await callAnthropic(
       `${GENIUS_MODE}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
       1500
     );
+
     let title = '';
     let content = '';
     try {
@@ -110,32 +120,54 @@ async function runCCAgent(
       title   = `${agentName} — ${dateStr}`;
       content = raw;
     }
-    const [csq_id, post_id] = await Promise.all([
-      writeToCSQ({
-        agent_id: agentId, agent_name: agentName, division: 'Community Connection',
-        task, category, raw_output: `${title}\n\n${content}`,
-        priority: 'normal', status: 'pending', retry_count: 0,
-      }),
-      writeToCommunityPosts({
-        title, content, post_type: postType,
-        tier_required: 'navigator',
-        agent_id: agentId, agent_name: agentName,
-        published_at: new Date().toISOString(), is_active: false,
-      }),
-    ]);
-    console.log(`[${agentId}] CC post created: ${post_id ?? 'failed'} | CSQ: ${csq_id ?? 'failed'}`);
-    return { csq_id, post_id };
+
+    // Enforce ™ marks inline — fast auto-correction, no chain needed
+    title   = enforceTM(title);
+    content = enforceTM(content);
+
+    // Pre-create community_posts record (is_active: false) — activated on DeAnna's approval
+    const post_id = await writeToCommunityPosts({
+      title, content, post_type: postType,
+      tier_required: 'navigator',
+      agent_id: agentId, agent_name: agentName,
+      published_at: new Date().toISOString(), is_active: false,
+    });
+
+    // Write directly to approvals — community_post category, bypass daily chain
+    // task_brief stores post_id so AdminApprovals can activate the right record on approve
+    const approval_id = await writeToApprovals({
+      source:           `${agentId}_cc`,
+      trigger_type:     category,
+      agent_name:       agentName,
+      agent_role:       'Community Connection',
+      division:         'Community Connection',
+      task_brief:       post_id ? `post_id:${post_id} | ${agentName} | ${task.replace(/_/g, ' ')}` : `${agentName} | ${task.replace(/_/g, ' ')}`,
+      original_content: null,
+      output:           `${title}\n\n${content}`,
+      edited_output:    null,
+      status:           'pending',
+      ghl_contact_id:   null,
+      notify_deanna:    false,
+      priority:         'NORMAL',
+      category:         'community_post',
+      platform:         'Community',
+      context:          null,
+      archived:         false,
+    });
+
+    console.log(`[${agentId}] CC post → approvals: ${approval_id ?? 'failed'} | community_posts: ${post_id ?? 'failed'}`);
+    return { approval_id, post_id };
   } catch (error) {
     console.error(`[${agentId}] CC agent error:`, error);
-    return { csq_id: null, post_id: null };
+    return { approval_id: null, post_id: null };
   }
 }
 
 // =============================================================================
-// P9 AGENTS
+// P9 AGENTS — unchanged prompts, new runner signature
 // =============================================================================
 
-async function runDominique(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runDominique(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('dominique', 'Dominique Carter', 'daily_leadership_insight', 'daily_insight', 'community_insight',
     `You are Dominique Carter, CLEAR Vision Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -144,7 +176,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write a DAILY LEADERSHIP WITH AI INSIGHT applying the DRU CLEAR™ framework — Clarity & Leadership — to a real AI leadership challenge executives face today. Audience: C-suite and senior leaders navigating AI adoption. 150-200 words. Structure: one sharp opening insight, DRU CLEAR™ framework application (2-3 sentences), one executive reflection question. Close with: assessment.druaiconsulting.com`);
 }
 
-async function runElijah(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runElijah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const components: Record<string, string> = {
@@ -162,7 +194,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write a FRAMEWORK MICRO-LESSON on today's DRU CLEAR™ component: ${component}. 200-250 words. Cover: what this component means in practice, why executives consistently underinvest in it, one practical application exercise completable in under 10 minutes. End with "Today's Micro-Action:" (one sentence). CTA: assessment.druaiconsulting.com`);
 }
 
-async function runSolange(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runSolange(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('solange', 'Solange Dupont', 'daily_action_challenge', 'action_challenge', 'community_challenge',
     `You are Solange Dupont, 5D Elevation Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -171,7 +203,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write TODAY'S ACTION CHALLENGE using the 5D Leadership™ framework. 150-200 words. Structure: bold Challenge Statement (one sentence), context explaining why this matters for AI-era leaders (2-3 sentences), 3-step challenge instructions numbered (each doable in under 10 minutes), expected outcome, 24-hour commitment close. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runIsaiahWebb(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runIsaiahWebb(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const dimensions: Record<string, string> = {
@@ -189,7 +221,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write FRAMEWORK TRAINING CONTENT on today's 5D Leadership™ dimension: ${dimension}. 250-300 words. Include: concept deep-dive (what it really means for AI-era executives), one real-world scenario where this dimension is tested, one skill-building exercise, this week's leadership reflection journal prompt. Challenge the executive audience. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runNadia(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runNadia(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('nadia', 'Nadia Osei', 'strategic_edge_insight', 'strategic_edge', 'community_edge',
     `You are Nadia Osei, Culture DNA Strategist for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -198,7 +230,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write DEANNA'S STRATEGIC EDGE — premium insider intelligence for community members. 200-250 words. Reveal one strategic insight about AI leadership culture that gives executives a genuine competitive edge. Apply the 5C Cultural DNA™ framework lens. End with one specific action that DeAnna's clients take that executives operating without this framework do not. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runVictor(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runVictor(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement',
     `You are Victor Reyes, Culture DNA Community Builder for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -207,7 +239,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion among community members. 150-200 words. Include: one bold observation about AI leadership culture that most executives won't say out loud, a 5C Cultural DNA™ framework lens applied to that observation, one community discussion question (formatted in bold). Make subscribers feel seen, challenged, and part of something significant. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runSasha(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('sasha', 'Sasha Kim', 'ai_sales_mastery_insight', 'framework_lesson', 'community_lesson',
     `You are Sasha Kim, Revenue Intelligence Specialist for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -216,7 +248,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write an AI SALES MASTERY™ INSIGHT focused on DISC Behavioral Intelligence for the community. 200-250 words. Cover: how understanding behavioral styles (D/I/S/C) changes how executives sell AI transformation internally and to clients, one behavioral pattern that blocks AI adoption and how to address it, one immediately applicable communication strategy. Frame through the AI Sales Mastery™ framework. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runTariq(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runTariq(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('tariq', 'Tariq Oladele', 'ai_revenue_acceleration', 'framework_lesson', 'community_lesson',
     `You are Tariq Oladele, Revenue Intelligence Analyst for DRU AI Consulting's Community Connection division. Today: ${today}.
@@ -226,7 +258,7 @@ SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 Write an AI REVENUE ACCELERATION insight for the community. 200-250 words. Cover: one AI-powered revenue strategy executives can deploy this week, one conversion or pipeline insight specific to B2B consulting and leadership development, one revenue metric every AI-era leader should be tracking. Frame through the AI Sales Mastery™ framework. Make it tactical and immediately applicable. CTA: assessment.druaiconsulting.com`);
 }
 
-async function runZoe(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runZoe(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -251,7 +283,7 @@ After the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying a
 CTA: assessment.druaiconsulting.com`);
 }
 
-async function runMicah(): Promise<{ csq_id: string | null; post_id: string | null }> {
+async function runMicah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -274,11 +306,7 @@ CTA: assessment.druaiconsulting.com`);
 }
 
 // =============================================================================
-// CC AGENT REPLY — Zoe or Micah replies to a community post
-// Triggered by DeAnna tapping "Ask Agent to Reply" on any post card (admin only)
-// Auto-routes: strategic_edge/daily_insight/framework_training → Zoe, others → Micah
-// DIRECT PATH: writes immediately to approvals table — bypasses daily CSQ chain
-// Card appears in AdminApprovals within seconds for DeAnna to approve + post
+// CC AGENT REPLY — unchanged, already on direct path
 // =============================================================================
 async function runCCAgentReply(
   postId: string, postTitle: string, postContent: string,
@@ -325,8 +353,8 @@ If the CTA fits naturally: assessment.druaiconsulting.com`;
 
   try {
     const raw = await callAnthropic(prompt, 600);
+    const corrected = enforceTM(raw);
 
-    // Write directly to approvals — immediate, no daily chain delay
     const approval_id = await writeToApprovals({
       source:           'cc_agent_reply',
       trigger_type:     'cc_agent_reply',
@@ -335,7 +363,7 @@ If the CTA fits naturally: assessment.druaiconsulting.com`;
       division:         'Community Connection',
       task_brief:       `post_id:${postId}`,
       original_content: postContent.slice(0, 500),
-      output:           raw,
+      output:           corrected,
       edited_output:    null,
       status:           'pending',
       ghl_contact_id:   null,
@@ -355,13 +383,9 @@ If the CTA fits naturally: assessment.druaiconsulting.com`;
   }
 }
 
-
 // =============================================================================
-// UPSELL SCAN — Zoe scans recent navigator member posts every 3 hours
-// Fires Aaliyah card to AdminApprovals immediately when signal detected
-// DeAnna approves → CC_Accelerator_Outreach GHL webhook fires
+// UPSELL SCAN — unchanged
 // =============================================================================
-
 async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -398,8 +422,7 @@ Write a warm, personalized outreach message (100-120 words) inviting ${firstName
 
 Write ONLY the message. No subject line, no labels.`;
 
-  const outreach = await callAnthropic(prompt, 400);
-
+  const outreach = enforceTM(await callAnthropic(prompt, 400));
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found — manual lookup needed';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found — manual lookup needed';
 
@@ -431,7 +454,6 @@ async function runUpsellScan(): Promise<void> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) { console.error('[upsell_scan] Missing env vars'); return; }
 
-  // Fetch member posts from last 3 hours
   const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   const postsRes = await fetch(
     `${url}/rest/v1/community_posts?post_type=eq.member_post&is_active=eq.true&published_at=gte.${threeHoursAgo}&order=published_at.desc&limit=20`,
@@ -450,7 +472,6 @@ async function runUpsellScan(): Promise<void> {
     const memberId = post.agent_id;
     if (!memberId) continue;
 
-    // Only target navigator tier members
     const profileRes = await fetch(
       `${url}/rest/v1/profiles?id=eq.${memberId}&tier=eq.navigator&select=id,first_name,email,phone&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } }
@@ -460,14 +481,9 @@ async function runUpsellScan(): Promise<void> {
     if (!Array.isArray(profiles) || !profiles.length) continue;
     const profile = profiles[0];
 
-    // Deduplication — skip if card exists in last 7 days
     const alreadyFlagged = await hasRecentUpsellCard(memberId);
-    if (alreadyFlagged) {
-      console.log(`[upsell_scan] ${profile.first_name} — card exists, skipping`);
-      continue;
-    }
+    if (alreadyFlagged) { console.log(`[upsell_scan] ${profile.first_name} — card exists, skipping`); continue; }
 
-    // Signal detection via Zoe
     const detectionPrompt = `${GENIUS_MODE}
 
 You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting.
@@ -484,26 +500,21 @@ UPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence]
 UPSELL SIGNAL: NO`;
 
     const detection = await callAnthropic(detectionPrompt, 120);
-
-    if (!detection.includes('UPSELL SIGNAL: YES')) {
-      console.log(`[upsell_scan] No signal for ${profile.first_name}`);
-      continue;
-    }
+    if (!detection.includes('UPSELL SIGNAL: YES')) { console.log(`[upsell_scan] No signal for ${profile.first_name}`); continue; }
 
     const reasonMatch = detection.match(/REASON:\s*(.+)/);
     const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
 
-    await fireAaliyahUpsellCard(
-      memberId, profile.first_name,
-      profile.email ?? null, profile.phone ?? null,
-      reason, post.title
-    );
+    await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title);
     signalsFound++;
   }
 
   console.log(`[upsell_scan] Complete — ${posts.length} posts scanned, ${signalsFound} signals fired`);
 }
 
+// =============================================================================
+// HANDLER
+// =============================================================================
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -530,7 +541,7 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   console.log(`[cc-agent-trigger] ${route.agent_name} | Community Connection | ${req.body?.source ?? 'webhook'}`);
 
-  const runners: Record<string, () => Promise<{ csq_id: string | null; post_id: string | null }>> = {
+  const runners: Record<string, () => Promise<{ approval_id: string | null; post_id: string | null }>> = {
     p9_dominique:   runDominique,
     p9_elijah:      runElijah,
     p9_solange:     runSolange,
@@ -545,13 +556,11 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const runner = runners[route.pipeline];
   if (!runner) {
-    // p9_upsell_scan — runs every 3 hours, no post returned
     if (route.pipeline === 'p9_upsell_scan') {
       await runUpsellScan();
       res.status(202).json({ success: true, agent: 'Upsell Scanner', message: 'Scan complete' });
       return;
     }
-    // cc_agent_reply — direct path, no daily chain
     if (route.pipeline === 'p9_cc_reply') {
       const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
       if (!post_id || !route_to) { res.status(400).json({ error: 'cc_agent_reply requires post_id and route_to' }); return; }
@@ -563,5 +572,5 @@ export default async function handler(req: any, res: any): Promise<void> {
   }
 
   const result = await runner();
-  res.status(202).json({ success: true, agent: route.agent_name, csq_id: result.csq_id, post_id: result.post_id });
+  res.status(202).json({ success: true, agent: route.agent_name, approval_id: result.approval_id, post_id: result.post_id });
 }
