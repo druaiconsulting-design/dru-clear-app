@@ -533,7 +533,17 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const approvalMap:Record<string,string>={};
   const allSummary=items.map(i=>`${i.agent_name} (${i.division}): ${i.raw_output.slice(0,150)}... Raymond: ${i.raymond_notes??''} | Priya: ${i.priya_notes??''}`).join('\n');
 
-  const dailySynthesisPromise=callTwin(`You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,1200)
+  // Check if daily briefing already exists for today — prevents duplicates from on-demand Twin chat
+  const dailyBriefingPromise=(async()=>{
+    const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (sbUrl&&sbKey){
+      const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+      const chk=await fetch(`${sbUrl}/rest/v1/approvals?category=eq.daily_briefing&created_at=gte.${todayStart.toISOString()}&limit=1`,{headers:{apikey:sbKey,Authorization:`Bearer ${sbKey}`}});
+      if (chk.ok){const ex=await chk.json();if (Array.isArray(ex)&&ex.length>0){console.log('[twin] Daily briefing already exists for today — skipping duplicate');return;}}
+    }
+    await dailySynthesisCore();
+  })();
+  const dailySynthesisCore=()=>callTwin(`You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,1200)
     .then(async synthesis=>{
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division:'Command',task_brief:`Daily Briefing — ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:items.some(i=>i.priority==='high')?'high':'normal',category:'daily_briefing',platform:null});
       if (id){approvalMap['Command']=id;}
@@ -541,7 +551,8 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
     })
     .catch(err=>{console.error('[twin] Daily Briefing synthesis failed:',err);});
 
-  const divisionSynthesisPromises=Object.entries(byDivision).map(async([division,divItems])=>{
+  // Exclude Community Connection — CC posts now go directly to approvals via cc-agent-trigger.ts
+  const divisionSynthesisPromises=Object.entries(byDivision).filter(([division])=>division!=='Community Connection').map(async([division,divItems])=>{
     const content=divItems.map(i=>`**${i.agent_name}** (${i.task.replace(/_/g,' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes??''} | Travis: ${i.travis_notes??''} | Priya: ${i.priya_notes??''}`).join('\n\n---\n\n');
     try {
       const divFlags=flagsByDivision[division]??[];
@@ -553,7 +564,7 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
     } catch(err){console.error(`[twin] ${division} synthesis failed:`,err);}
   });
 
-  await Promise.all([dailySynthesisPromise,...divisionSynthesisPromises]);
+  await Promise.all([dailyBriefingPromise,...divisionSynthesisPromises]);
 
   // ONE notification per day — fires after ALL cards are written
   // High alert only if a genuine high-priority item exists
