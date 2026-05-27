@@ -340,22 +340,30 @@ export default function AdminApprovals() {
   };
 
   // Post CC agent content directly to community_posts table
+  // Activate existing community_posts record created by CC agent (is_active: false → true)
+  // post_id stored in task_brief as "post_id:UUID | ..." — also updates content if DeAnna edited
   const postToCommunity = async (approval: Approval, content: string): Promise<boolean> => {
     try {
-      const lines  = content.split('\n').filter(l => l.trim());
-      const title  = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || approval.task_brief || 'Community Post';
-      const { error } = await supabase.from("community_posts").insert({
-        title,
-        content,
-        agent_name:  approval.agent_name,
-        division:    "Community Connection",
-        category:    approval.trigger_type || approval.category,
-        is_active:   true,
-        min_tier:    "navigator",
+      const postIdMatch = (approval.task_brief || '').match(/post_id:([a-zA-Z0-9-]+)/);
+      const postId = postIdMatch?.[1];
+      if (postId) {
+        const { error } = await supabase.from('community_posts')
+          .update({ is_active: true, content, published_at: new Date().toISOString() })
+          .eq('id', postId);
+        if (error) { console.error('[community_post] Activate failed:', error); return false; }
+        return true;
+      }
+      // Fallback: no post_id — insert new record
+      const lines = content.split('\n').filter(l => l.trim());
+      const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || approval.task_brief || 'Community Post';
+      const { error } = await supabase.from('community_posts').insert({
+        title, content, agent_name: approval.agent_name,
+        division: 'Community Connection', category: approval.trigger_type || approval.category,
+        is_active: true, tier_required: 'navigator',
       });
-      if (error) { console.error("[community_post] Insert failed:", error); return false; }
+      if (error) { console.error('[community_post] Insert failed:', error); return false; }
       return true;
-    } catch (err) { console.error("[community_post]", err); return false; }
+    } catch (err) { console.error('[community_post]', err); return false; }
   };
 
   const handleApprove = async (id: string) => {
