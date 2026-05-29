@@ -5,6 +5,9 @@
 // P7 Client Delivery: daily | P8 Customer Support: daily
 // runCommandLayer: FIXED — sequential processing to avoid 429 rate limits
 // Isabella 2.0: date filter (48hr window) + limit 25 per run — two runs at 16:10 + 16:30 UTC
+// KNOWLEDGE INJECTION: getAgentKnowledge() added to runAgentToCSQ + runCorrectionAgent
+
+import { getAgentKnowledge } from './lib/agentKnowledge';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
@@ -144,13 +147,6 @@ async function fetchBrandMarks(): Promise<string> {
   if (!res.ok) return '';
   const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
 }
-
-// ─── Isabella 2.0 — 48hr window + limit 25 per run ───────────────────────────
-// Two pg_cron runs: 16:10 UTC (Run 1) and 16:30 UTC (Run 2)
-// Each run processes up to 25 items × ~7s Sonnet = ~175s — well under 300s limit
-// 48hr window captures today's agent items AND any correction items from prior day
-// Correction loop fully preserved: agents learn, hard reject after 3 retries,
-// rejections surface on Intelligence Hub card so DeAnna sees full picture
 async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return [];
@@ -160,25 +156,31 @@ async function getCSQItems(status: string, limit?: number, afterDate?: string): 
   const res = await fetch(query,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
   if (!res.ok) return []; return await res.json();
 }
-
 async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return;
   await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(updates)});
 }
+
+// ─── runAgentToCSQ — UPDATED: knowledge block injected into every agent prompt ─
+// One getAgentKnowledge() call per agent run. Fetches live ™ list from brand_marks
+// + full framework meanings. Add IP #8 to brand_marks → all agents know instantly.
 async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500): Promise<string|null> {
   try {
-    const output = await callAnthropic(`${GENIUS_MODE}\n\n${prompt}`,maxTokens);
+    const agentKnowledge = await getAgentKnowledge();
+    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}`,maxTokens);
     return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{})});
   } catch(error){console.error(`[${agentId}] Error:`,error);return null;}
 }
+
+// ─── runCorrectionAgent — UPDATED: knowledge block ensures corrections respect ™ ─
 async function runCorrectionAgent(item:CSQItem,correctionNotes:string,newRetryCount:number): Promise<void> {
   try {
-    const output = await callAnthropic(`${GENIUS_MODE}
-You are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:
+    const agentKnowledge = await getAgentKnowledge();
+    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:
 CORRECTION NOTES: ${correctionNotes}
 YOUR PREVIOUS OUTPUT: ${item.raw_output}
-Produce a corrected version. COMPLIANCE: All DRU framework names MUST include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™. Stay within Classes 35, 41, 42.
+Produce a corrected version. All protected marks require ™ — the full list is in the knowledge base above.
 Output ONLY the corrected content. No compliance notes or metadata.`,1500);
     await writeToCSQ({agent_id:item.agent_id,agent_name:item.agent_name,division:item.division,task:item.task,category:item.category,raw_output:output,priority:item.priority,status:'pending',retry_count:newRetryCount,parent_csq_id:item.id,correction_notes:correctionNotes});
     console.log(`[isabella] Correction triggered for ${item.agent_name} (attempt ${newRetryCount})`);
@@ -323,7 +325,7 @@ async function runNaomi(): Promise<string|null> {
 }
 async function runAiden(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n**Client Onboarding Status** — Current flow: DRU CLEAR™ Assessment → GHL automation → welcome sequence → diagnostic scheduling. One specific improvement before first paying client.\n**Client First 24 Hours** — Ideal touchpoints for a new diagnostic client. One experience upgrade.\n**Internal Team Onboarding** — One onboarding document to create now.\n**Today's Onboarding Priority** — Single most impactful onboarding improvement for the day.`,'normal',0,null,1500);
+  return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment → GHL automation → welcome sequence → diagnostic scheduling.\n**Client First 24 Hours** — Ideal touchpoints for a new diagnostic client. One experience upgrade.\n**Internal Team Onboarding** — One onboarding document to create now.\n**Today's Onboarding Priority** — Single most impactful onboarding improvement for the day.`,'normal',0,null,1500);
 }
 async function runFatima(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -392,12 +394,6 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
 }
 
 // Command Chain — Isabella 2.0
-// WHAT CHANGED: getCSQItems now receives (status, limit=25, afterDate=48hr ago)
-// - Limit 25: each run takes max 25×7s=175s — well under 300s maxDuration
-// - 48hr window: today's fresh items + any correction items from prior day
-// - Two pg_cron runs (16:10 UTC Run 1, 16:30 UTC Run 2) catch all 44+ agents
-// WHAT IS UNCHANGED: Sonnet review, sequential processing, correction loop,
-// hard reject after 3 retries, rejection surfaced on Intelligence Hub card
 async function runIsabella(): Promise<{reviewed:number;cleared:number;sent_back:number;rejected:number}> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const pending=await getCSQItems('pending', 25, cutoff);
@@ -485,7 +481,7 @@ async function runGovernancePanel(): Promise<{reviewed:number;cleared:number;blo
   return {reviewed:items.length,cleared,blocked};
 }
 
-// Command Chain — Command Layer (sequential processing prevents 429 rate limit errors)
+// Command Chain — Command Layer
 async function runCommandLayer(): Promise<{reviewed:number}> {
   const items=await getCSQItems('governance_cleared');
   console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (sequential to avoid rate limits)...`);
@@ -533,7 +529,6 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
   const approvalMap:Record<string,string>={};
   const allSummary=items.map(i=>`${i.agent_name} (${i.division}): ${i.raw_output.slice(0,150)}... Raymond: ${i.raymond_notes??''} | Priya: ${i.priya_notes??''}`).join('\n');
 
-  // Check if daily briefing already exists for today — prevents duplicates from on-demand Twin chat
   const dailyBriefingPromise=(async()=>{
     const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (sbUrl&&sbKey){
@@ -551,7 +546,6 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
     })
     .catch(err=>{console.error('[twin] Daily Briefing synthesis failed:',err);});
 
-  // Exclude Community Connection — CC posts now go directly to approvals via cc-agent-trigger.ts
   const divisionSynthesisPromises=Object.entries(byDivision).filter(([division])=>division!=='Community Connection').map(async([division,divItems])=>{
     const content=divItems.map(i=>`**${i.agent_name}** (${i.task.replace(/_/g,' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes??''} | Travis: ${i.travis_notes??''} | Priya: ${i.priya_notes??''}`).join('\n\n---\n\n');
     try {
@@ -559,15 +553,12 @@ async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesiz
       const flagsSection=divFlags.length>0?`\n\nCOMPLIANCE FLAGS — include at end of card as "## Compliance Flags" section:\n${divFlags.map(f=>`- ${f}`).join('\n')}`:'';
       const synthesis=await callTwin(getDivisionPrompt(division,today,content)+flagsSection,1500);
       const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division,task_brief:`${division} — ${divItems.length} agent${divItems.length>1?'s':''} | ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:divItems.some(i=>i.priority==='high')?'high':'normal',category:getDivisionCategory(division),platform:null});
-      if (id){approvalMap[division]=id;
-        console.log(`[twin] ${division} card written`);}
+      if (id){approvalMap[division]=id;console.log(`[twin] ${division} card written`);}
     } catch(err){console.error(`[twin] ${division} synthesis failed:`,err);}
   });
 
   await Promise.all([dailyBriefingPromise,...divisionSynthesisPromises]);
 
-  // ONE notification per day — fires after ALL cards are written
-  // High alert only if a genuine high-priority item exists
   const hasHighPriority = items.some(i=>i.priority==='high');
   const commandApprovalId = approvalMap['Command'] ?? null;
   if (commandApprovalId) {
