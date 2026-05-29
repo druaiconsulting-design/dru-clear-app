@@ -10,6 +10,8 @@
 
 export const config = { maxDuration: 60 };
 
+import { getAgentKnowledge } from './lib/agentKnowledge';
+
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
 
 interface CCAgentRoute {
@@ -104,8 +106,14 @@ async function runCCAgent(
   postType: string, category: string, prompt: string
 ): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
+    // ─── KNOWLEDGE INJECTION ─────────────────────────────────────────────────
+    // Fetches live ™ list + full framework meanings from brand_marks table.
+    // All 10 CC agents receive this context on every run.
+    const agentKnowledge = await getAgentKnowledge();
+    // ─────────────────────────────────────────────────────────────────────────
+
     const raw = await callAnthropic(
-      `${GENIUS_MODE}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
+      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
       1500
     );
 
