@@ -155,13 +155,16 @@ function getPillarColor(score: number): string {
   return "#43A047";
 }
 
+// CHANGE 1: Updated Stats interface — agent-powered metrics
 interface Stats {
-  assessments_completed: number; leads_captured: number;
-  diagnostics_sold: number; sessions_booked: number;
+  leads_scored_today: number; high_intent_today: number;
+  sessions_booked: number;
+  diagnostics_sd_sold: number; diagnostics_ed_sold: number;
 }
 
 function useStats() {
-  const [stats, setStats] = useState<Stats>({ assessments_completed: 0, leads_captured: 0, diagnostics_sold: 0, sessions_booked: 0 });
+  // CHANGE 2: Updated initial state
+  const [stats, setStats] = useState<Stats>({ leads_scored_today: 0, high_intent_today: 0, sessions_booked: 0, diagnostics_sd_sold: 0, diagnostics_ed_sold: 0 });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     async function fetchStats() {
@@ -170,7 +173,8 @@ function useStats() {
         if (error) throw error;
         const map: Record<string, number> = {};
         data?.forEach((row: { id: string; value: number }) => { map[row.id] = row.value; });
-        setStats({ assessments_completed: map["assessments_completed"] || 0, leads_captured: map["leads_captured"] || 0, diagnostics_sold: map["diagnostics_sold"] || 0, sessions_booked: map["sessions_booked"] || 0 });
+        // CHANGE 3: Updated setStats with new stat IDs
+        setStats({ leads_scored_today: map["leads_scored_today"] || 0, high_intent_today: map["high_intent_today"] || 0, sessions_booked: map["sessions_booked"] || 0, diagnostics_sd_sold: map["diagnostics_sd_sold"] || 0, diagnostics_ed_sold: map["diagnostics_ed_sold"] || 0 });
       } catch (err) { console.error("Failed to fetch stats:", err); }
       finally { setLoading(false); }
     }
@@ -346,18 +350,16 @@ export default function Admin() {
   const [passkeyMessage, setPasskeyMessage]     = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
 
-  // ── Lab video publish state ────────────────────────────────────────────────
-  const [labTitle, setLabTitle]         = useState("");
-  const [labMonth, setLabMonth]         = useState("");
-  const [labVideoUrl, setLabVideoUrl]   = useState("");
+  const [labTitle, setLabTitle]             = useState("");
+  const [labMonth, setLabMonth]             = useState("");
+  const [labVideoUrl, setLabVideoUrl]       = useState("");
   const [labPublishing, setLabPublishing]   = useState(false);
   const [labPublished, setLabPublished]     = useState(false);
   const [labError, setLabError]             = useState("");
 
-  // ── Weekly PDF publish state ───────────────────────────────────────────────
-  const [pdfTitle, setPdfTitle]         = useState("");
-  const [pdfWeekOf, setPdfWeekOf]       = useState("");
-  const [pdfUrl, setPdfUrl]             = useState("");
+  const [pdfTitle, setPdfTitle]             = useState("");
+  const [pdfWeekOf, setPdfWeekOf]           = useState("");
+  const [pdfUrl, setPdfUrl]                 = useState("");
   const [pdfPublishing, setPdfPublishing]   = useState(false);
   const [pdfPublished, setPdfPublished]     = useState(false);
   const [pdfError, setPdfError]             = useState("");
@@ -391,22 +393,13 @@ export default function Admin() {
       });
       if (error) throw error;
       await fetch(GHL_LAB_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trigger_type: "lab_video_published",
-          video_title:  labTitle.trim(),
-          month_year:   labMonth.trim(),
-          lab_url:      "https://app.druaiconsulting.com/lab",
-          tier:         "accelerator",
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trigger_type: "lab_video_published", video_title: labTitle.trim(), month_year: labMonth.trim(), lab_url: "https://app.druaiconsulting.com/lab", tier: "accelerator" }),
       });
       setLabPublished(true);
       setLabTitle(""); setLabMonth(""); setLabVideoUrl("");
       setTimeout(() => setLabPublished(false), 5000);
-    } catch (err: any) {
-      setLabError(err?.message || "Publish failed. Please try again.");
-    }
+    } catch (err: any) { setLabError(err?.message || "Publish failed. Please try again."); }
     setLabPublishing(false);
   };
 
@@ -417,26 +410,22 @@ export default function Admin() {
     setPdfPublishing(true); setPdfError(""); setPdfPublished(false);
     try {
       const { error } = await supabase.from("weekly_pdfs").insert({
-        title:   pdfTitle.trim(),
-        week_of: pdfWeekOf.trim(),
-        pdf_url: pdfUrl.trim(),
-        is_active: true,
+        title: pdfTitle.trim(), week_of: pdfWeekOf.trim(), pdf_url: pdfUrl.trim(), is_active: true,
       });
       if (error) throw error;
       setPdfPublished(true);
       setPdfTitle(""); setPdfWeekOf(""); setPdfUrl("");
       setTimeout(() => setPdfPublished(false), 5000);
-    } catch (err: any) {
-      setPdfError(err?.message || "Publish failed. Please try again.");
-    }
+    } catch (err: any) { setPdfError(err?.message || "Publish failed. Please try again."); }
     setPdfPublishing(false);
   };
 
+  // CHANGE 4: Updated STAT_CARDS — agent-powered metrics
   const STAT_CARDS = [
-    { label: "Assessments Completed", value: loading ? "..." : String(stats.assessments_completed), sub: "Total completed assessments", icon: "📋", color: "#D4AF37" },
-    { label: "Leads Captured",        value: loading ? "..." : String(stats.leads_captured),        sub: "Total in funnel",           icon: "👤", color: "#C2185B" },
-    { label: "Diagnostics Sold",      value: loading ? "..." : String(stats.diagnostics_sold),      sub: "Strategic + Executive",     icon: "💰", color: "#43A047" },
-    { label: "Sessions Booked",       value: loading ? "..." : String(stats.sessions_booked),       sub: "Upcoming calls",            icon: "📅", color: "#1E88E5" },
+    { label: "Leads Scored Today",        value: loading ? "..." : String(stats.leads_scored_today),  sub: "Omar's daily GHL scan",      icon: "📊", color: "#D4AF37" },
+    { label: "High Intent Today",         value: loading ? "..." : String(stats.high_intent_today),   sub: "Ready for outreach",         icon: "🎯", color: "#C2185B" },
+    { label: "Strategic Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_sd_sold), sub: "SD · $3,497 · running total", icon: "💰", color: "#43A047" },
+    { label: "Executive Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_ed_sold), sub: "ED · $4,997 · running total", icon: "💎", color: "#D4AF37" },
   ];
 
   const copyBundleLink = () => {
@@ -496,7 +485,8 @@ export default function Admin() {
           </div>
         </a>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "2rem" }}>
+        {/* CHANGE 4 APPLIED: 4 agent-powered stat cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "0.875rem" }}>
           {STAT_CARDS.map((stat) => (
             <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
@@ -509,9 +499,19 @@ export default function Admin() {
           ))}
         </div>
 
+        {/* CHANGE 5: Sessions Booked — standalone full-width card */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 10, padding: "1.1rem 1rem", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>📅</span>
+            <p style={{ fontFamily: "'Playfair Display', serif", color: "#1E88E5", fontWeight: 700, fontSize: "1.4rem" }}>{loading ? "..." : String(stats.sessions_booked)}</p>
+          </div>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>Sessions Booked</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>Running total · updates in real time on booking</p>
+        </div>
+
         <ClientIntelligenceDashboard />
 
-        {/* ── Private Client Links ── */}
+        {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Private Client Links</p>
           <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
@@ -528,7 +528,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Leadership Lab — Publish Video ── */}
+        {/* Leadership Lab — Publish Video */}
         <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
@@ -538,14 +538,13 @@ export default function Admin() {
             <input type="text" placeholder="Supabase Video URL — paste from storage" value={labVideoUrl} onChange={e => { setLabVideoUrl(e.target.value); setLabError(""); }} style={inputStyle} />
           </div>
           {labError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{labError}</p>}
-          <button onClick={handleLabPublish}
-            disabled={labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()}
+          <button onClick={handleLabPublish} disabled={labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()}
             style={{ width: "100%", background: labPublished ? "#43A047" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.2)" : "#D4AF37", color: labPublished ? "#FFFFFF" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.4)" : "#0A2342", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
             {labPublishing ? "Publishing..." : labPublished ? "✓ Published — Accelerator Members Notified" : "Publish + Notify Accelerator Members"}
           </button>
         </div>
 
-        {/* ── Weekly PDF — Publish ── */}
+        {/* Weekly PDF — Publish */}
         <div style={{ background: "rgba(30,136,229,0.06)", border: "1px solid rgba(30,136,229,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>📄 Weekly Resource PDF</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
@@ -555,14 +554,13 @@ export default function Admin() {
             <input type="text" placeholder="Supabase PDF URL — paste from storage" value={pdfUrl} onChange={e => { setPdfUrl(e.target.value); setPdfError(""); }} style={inputStyle} />
           </div>
           {pdfError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{pdfError}</p>}
-          <button onClick={handlePdfPublish}
-            disabled={pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()}
+          <button onClick={handlePdfPublish} disabled={pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()}
             style={{ width: "100%", background: pdfPublished ? "#43A047" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.2)" : "#1E88E5", color: pdfPublished ? "#FFFFFF" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.4)" : "#FFFFFF", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
             {pdfPublishing ? "Publishing..." : pdfPublished ? "✓ Published — Now Live on Resources Page" : "Publish to Resources Page"}
           </button>
         </div>
 
-        {/* ── Quick Links ── */}
+        {/* Quick Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Quick Links</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
@@ -578,7 +576,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Payment Links ── */}
+        {/* Payment Links */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Payment Links</p>
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
@@ -597,7 +595,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Focal Points ── */}
+        {/* Focal Points */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Focal Points</p>
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
@@ -613,7 +611,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* ── Full Build Roadmap ── */}
+        {/* Full Build Roadmap */}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
             <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
