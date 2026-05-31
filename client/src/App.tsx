@@ -41,6 +41,7 @@ function Router() {
   const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
 
   useEffect(() => {
+    // ── Handle hash-based tokens (password reset, magic link) ──────────────
     if (hash && hash.includes("access_token")) {
       if (hash.includes("type=recovery") || hash.includes("type=signup")) {
         window.location.href = "/reset-password" + window.location.hash;
@@ -50,6 +51,26 @@ function Router() {
         if (session) {
           const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
           window.location.href = isAdminUser ? "/admin" : "/portal";
+        }
+      });
+      return;
+    }
+
+    // ── Handle PKCE code exchange (Google OAuth) ────────────────────────────
+    // After Google login, Supabase redirects back with ?code= in the URL.
+    // We must exchange that code for a session before the app can detect the user.
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data: { session }, error }) => {
+        if (session) {
+          const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          // Clean the ?code= from the URL then navigate
+          window.history.replaceState({}, document.title, "/");
+          window.location.href = isAdminUser ? "/admin" : "/portal";
+        } else if (error) {
+          console.error("OAuth code exchange failed:", error.message);
+          window.location.href = "/login";
         }
       });
     }
@@ -241,5 +262,3 @@ function App() {
 }
 
 export default App;
-
-
