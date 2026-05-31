@@ -81,6 +81,21 @@ export default function PostCard({
           route_to:      ZOE_POST_TYPES.includes(post.post_type) ? 'zoe' : 'micah',
         }),
       });
+
+      // ── Write to community_comments with is_flagged: true ─────────────────
+      // Hidden from members (CommentSection excludes is_flagged: true).
+      // Surfaces immediately in Intelligence Hub → Zoe/Micah CC Reply Queue.
+      // DeAnna can Clear it after approving the agent reply card.
+      const routedTo = ZOE_POST_TYPES.includes(post.post_type) ? 'Zoe Beaumont' : 'Micah Santos';
+      await supabase.from('community_comments').insert({
+        post_id:    post.id,
+        member_id:  null,
+        content:    `Reply requested — ${routedTo} queued to respond`,
+        is_flagged: true,
+        is_active:  true,
+      });
+      // ─────────────────────────────────────────────────────────────────────
+
       setAgentQueued(true);
     } catch (err) {
       console.error('[ask agent]', err);
