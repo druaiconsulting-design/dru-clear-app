@@ -26,7 +26,7 @@ import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
 import MyResults from "./pages/MyResults";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 
 function setTitle(title: string) {
@@ -39,6 +39,11 @@ function Router() {
   const hash = window.location.hash;
   const hostname = window.location.hostname;
   const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
+
+  // Tracks whether we are mid-OAuth-exchange so we keep the splash up
+  // until the session is actually established (no premature redirect to /login).
+  const params = new URLSearchParams(window.location.search);
+  const [exchangingCode, setExchangingCode] = useState(!!params.get("code"));
 
   useEffect(() => {
     // ── Handle hash-based tokens (password reset, magic link) ──────────────
@@ -57,24 +62,34 @@ function Router() {
     }
 
     // ── Handle PKCE code exchange (Google OAuth) ────────────────────────────
-    // With flowType: 'pkce' + detectSessionInUrl: true, Supabase auto-exchanges
-    // the ?code= param. We just need to wait for onAuthStateChange to fire in
-    // AuthContext, then redirect once the session is established.
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+    // We exchange the code EXPLICITLY and wait for it to finish. We do NOT
+    // strip the code from the URL first (that was racing Supabase and causing
+    // the exchange to fail, dumping the user back to /login).
+    const sp = new URLSearchParams(window.location.search);
+    const code = sp.get("code");
     if (code) {
-      // Clean the URL immediately so a page refresh doesn't re-trigger
-      window.history.replaceState({}, document.title, window.location.pathname);
-      // Session will be picked up by onAuthStateChange in AuthContext automatically.
-      // The Router will re-render once isLoggedIn becomes true.
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        // Clean the URL now that the code has been consumed.
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        if (error || !data?.session) {
+          // Exchange failed — let the user retry from the login screen.
+          setExchangingCode(false);
+          return;
+        }
+
+        // Session established. onAuthStateChange in AuthContext will also fire,
+        // but we redirect explicitly here so it's deterministic.
+        const isAdminUser =
+          data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+        window.location.replace(isAdminUser ? "/admin" : "/portal");
+      });
     }
-  }, [hash]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ── While loading or processing OAuth code, show splash ────────────────────
-  const params = new URLSearchParams(window.location.search);
-  const hasCode = params.get("code");
-
-  if (loading || hasCode) {
+  // ── While loading auth OR exchanging an OAuth code, show splash ────────────
+  if (loading || exchangingCode) {
     setTitle("DRU CLEAR™");
     return (
       <div style={{
