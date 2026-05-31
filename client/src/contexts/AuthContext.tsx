@@ -115,31 +115,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // ── Safety timeout: if onAuthStateChange never fires, unblock the app ────
-    // Prevents the splash screen from hanging indefinitely under any condition.
     const safetyTimeout = setTimeout(() => {
       setLoading(false);
     }, 3000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      clearTimeout(safetyTimeout); // fired successfully — cancel the timeout
+      clearTimeout(safetyTimeout);
 
       setSession(session);
 
       if (session?.user) {
         try {
-          // Phase 1: resolve loading immediately from session data
           const basicUser = buildBasicUser(session.user);
           setUser(basicUser);
           setLoading(false);
 
-          // Phase 2: update with real profile data silently in background
           if (basicUser.role !== "admin") {
             fetchProfileData(session.user.id).then(({ tier, pathwayStage }) => {
               setUser((prev) => prev ? { ...prev, tier, pathwayStage } : null);
             });
           }
         } catch {
-          // Even if something goes wrong, never stay stuck on splash
           setLoading(false);
         }
       } else {
@@ -191,7 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: {
+        redirectTo: `${window.location.origin}/`,  // ← FIXED: redirect to root, not /login
+      },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
