@@ -600,7 +600,7 @@ export default function AdminApprovals() {
         {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
-            <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Flagged Comments</h2>
+            <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Zoe/Micah CC Reply Queue</h2>
             {flaggedComments.length > 0 && (
               <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"#C2185B", color:"#FFFFFF" }}>{flaggedComments.length}</span>
             )}
