@@ -57,26 +57,24 @@ function Router() {
     }
 
     // ── Handle PKCE code exchange (Google OAuth) ────────────────────────────
-    // After Google login, Supabase redirects back with ?code= in the URL.
-    // We must exchange that code for a session before the app can detect the user.
+    // With flowType: 'pkce' + detectSessionInUrl: true, Supabase auto-exchanges
+    // the ?code= param. We just need to wait for onAuthStateChange to fire in
+    // AuthContext, then redirect once the session is established.
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ data: { session }, error }) => {
-        if (session) {
-          const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
-          // Clean the ?code= from the URL then navigate
-          window.history.replaceState({}, document.title, "/");
-          window.location.href = isAdminUser ? "/admin" : "/portal";
-        } else if (error) {
-          console.error("OAuth code exchange failed:", error.message);
-          window.location.href = "/login";
-        }
-      });
+      // Clean the URL immediately so a page refresh doesn't re-trigger
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Session will be picked up by onAuthStateChange in AuthContext automatically.
+      // The Router will re-render once isLoggedIn becomes true.
     }
   }, [hash]);
 
-  if (loading) {
+  // ── While loading or processing OAuth code, show splash ────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const hasCode = params.get("code");
+
+  if (loading || hasCode) {
     setTitle("DRU CLEAR™");
     return (
       <div style={{
