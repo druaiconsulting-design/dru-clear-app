@@ -287,6 +287,15 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
   const highIntentSummary = omarResult.high_intent_leads.map(l=>`* ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`).join('\n');
   const briefing = await callAnthropic(`${GENIUS_MODE}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing.\nDATA: Total:${omarResult.total_leads_scanned} | High-intent:${omarResult.high_intent_leads.length} | Medium:${omarResult.scored_leads.filter(l=>l.intent_level==='medium').length} | Low:${omarResult.scored_leads.filter(l=>l.intent_level==='low').length}\nHIGH-INTENT: ${highIntentSummary||'None today'}\nInclude: executive summary, high-intent leads with actions (all directed to assessment.druaiconsulting.com), CRM updates completed, strategic next steps.`);
   const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue, Growth & Sales',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:briefing,priority:omarResult.high_intent_leads.length>0?'high':'normal',status:'pending',retry_count:0});
+  // Write daily lead stats to stats table — powers Command Center stat cards
+  const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (sbUrl&&sbKey){
+    await Promise.all([
+      fetch(`${sbUrl}/rest/v1/stats?id=eq.leads_scored_today`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:sbKey,Authorization:`Bearer ${sbKey}`,Prefer:'return=minimal'},body:JSON.stringify({value:omarResult.total_leads_scanned})}),
+      fetch(`${sbUrl}/rest/v1/stats?id=eq.high_intent_today`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:sbKey,Authorization:`Bearer ${sbKey}`,Prefer:'return=minimal'},body:JSON.stringify({value:omarResult.high_intent_leads.length})}),
+    ]);
+    console.log(`[ryan] Lead stats updated — scored:${omarResult.total_leads_scanned} high-intent:${omarResult.high_intent_leads.length}`);
+  }
   return {csq_id,crm_updates:crmUpdates};
 }
 
