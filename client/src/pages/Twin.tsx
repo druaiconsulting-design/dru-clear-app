@@ -48,8 +48,30 @@ export default function Twin() {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef   = useRef<HTMLInputElement>(null);
+  const textareaRef    = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Auto-resize textarea as user types
+  const autoResize = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    const maxHeight = 150;
+    const newHeight = Math.min(el.scrollHeight, maxHeight);
+    el.style.height = newHeight + "px";
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    autoResize(e.target);
+  };
+
+  const resetTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
+    }
+  };
 
   const processFile = async (file: File): Promise<Attachment | null> => {
     const MAX_SIZE = 15 * 1024 * 1024;
@@ -144,6 +166,7 @@ export default function Twin() {
     const newMessages: Message[] = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
+    resetTextarea();
     setAttachments([]);
     setIsStreaming(true);
     setMessages(prev => [...prev, { role: "assistant", content: "" }]);
@@ -224,8 +247,10 @@ export default function Twin() {
         .attach-btn { width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(212,175,55,.25);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s,background .2s; }
         .attach-btn:hover{border-color:rgba(212,175,55,.6);background:rgba(212,175,55,.07)}
         .attach-btn:disabled{opacity:.4;cursor:not-allowed}
-        .chat-input { flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:'Inter',sans-serif;font-size:.875rem;padding:0; }
+        .chat-input { flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:'Inter',sans-serif;font-size:.875rem;line-height:1.6;padding:0;resize:none;overflow-y:hidden;min-height:22px;max-height:150px;display:block; }
         .chat-input::placeholder{color:rgba(255,255,255,.35)}
+        .chat-input::-webkit-scrollbar{width:3px}
+        .chat-input::-webkit-scrollbar-thumb{background:rgba(212,175,55,.2);border-radius:4px}
         .messages-scroll::-webkit-scrollbar{width:4px}
         .messages-scroll::-webkit-scrollbar-track{background:transparent}
         .messages-scroll::-webkit-scrollbar-thumb{background:rgba(212,175,55,.2);border-radius:4px}
@@ -286,7 +311,6 @@ export default function Twin() {
                   <img src="/deanna-professional.png" alt="Twin" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #D4AF37", flexShrink: 0 }} />
                 )}
                 <div style={{ maxWidth: "75%" }}>
-                  {/* Attachment chips */}
                   {msg.attachmentNames && msg.attachmentNames.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, marginBottom: 6, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
                       {msg.attachmentNames.map((name, ni) => (
@@ -325,17 +349,26 @@ export default function Twin() {
           </div>
         )}
 
-        {/* Input bar */}
-        <div style={{ background: "rgba(7,26,48,.85)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: ".75rem .75rem .75rem 1.25rem", display: "flex", alignItems: "center", gap: ".6rem" }}>
-          <button className="attach-btn" onClick={() => fileInputRef.current?.click()} disabled={isStreaming || isProcessingFile || attachments.length >= 3} title="Attach file (PDF, Word, image, or text)">
+        {/* Input bar — alignItems flex-end so buttons sit at bottom when textarea grows */}
+        <div style={{ background: "rgba(7,26,48,.85)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: ".75rem .75rem .75rem 1.25rem", display: "flex", alignItems: "flex-end", gap: ".6rem" }}>
+          <button className="attach-btn" onClick={() => fileInputRef.current?.click()} disabled={isStreaming || isProcessingFile || attachments.length >= 3} title="Attach file (PDF, Word, image, or text)" style={{ marginBottom: "2px" }}>
             {isProcessingFile ? (
               <span style={{ display: "inline-flex" }}><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /></span>
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             )}
           </button>
-          <input type="text" className="chat-input" value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={attachments.length > 0 ? "Add instructions for your agent..." : "Command your empire..."} disabled={isStreaming} />
-          <button className="send-btn" onClick={() => sendMessage()} disabled={!canSend} aria-label="Send">
+          <textarea
+            ref={textareaRef}
+            className="chat-input"
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={attachments.length > 0 ? "Add instructions for your agent..." : "Command your empire..."}
+            disabled={isStreaming}
+            rows={1}
+          />
+          <button className="send-btn" onClick={() => sendMessage()} disabled={!canSend} aria-label="Send" style={{ marginBottom: "2px" }}>
             {isStreaming ? (
               <span style={{ display: "flex", alignItems: "center" }}>
                 <span className="thinking-dot" style={{ width: 5, height: 5, margin: "0 1px" }} />
