@@ -22,6 +22,8 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | undefined>();
   const [isAdmin, setIsAdmin]     = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // photoMap: keyed by user ID → photo URL, used to show correct avatar on other members' posts
+  const [photoMap, setPhotoMap]   = useState<Record<string, string>>({});
 
   const loadPdfs = useCallback(async () => {
     const { data, error } = await supabase.storage.from('pdfs').list('', { sortBy: { column: 'created_at', order: 'desc' } });
@@ -35,7 +37,20 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
   const loadPosts = useCallback(async () => {
     const { data, error } = await supabase.from('community_posts').select('*').eq('is_active', true).order('published_at', { ascending: false }).limit(50);
     if (error) { console.error('[community feed]', error); return []; }
-    return (data ?? []) as CommunityPost[];
+    const loaded = (data ?? []) as CommunityPost[];
+
+    // Fetch profile photos for all member post authors so avatars show correctly for all viewers
+    const memberIds = [...new Set(
+      loaded.filter(p => p.post_type === 'member_post' && p.agent_id).map(p => p.agent_id)
+    )];
+    if (memberIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, photo_url').in('id', memberIds);
+      const map: Record<string, string> = {};
+      (profiles ?? []).forEach((p: any) => { if (p.photo_url) map[p.id] = p.photo_url; });
+      setPhotoMap(map);
+    }
+
+    return loaded;
   }, []);
 
   const registerPush = useCallback(async (uid: string) => {
@@ -94,7 +109,18 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, (payload) => {
         const newPost = payload.new as CommunityPost;
-        if (newPost.is_active) { setPosts(prev => { if (prev.find(p => p.id === newPost.id)) return prev; setLiveCount(c => c + 1); return [newPost, ...prev]; }); }
+        if (newPost.is_active) {
+          setPosts(prev => {
+            if (prev.find(p => p.id === newPost.id)) return prev;
+            setLiveCount(c => c + 1);
+            // If it's a member post, fetch that author's photo and add to map
+            if (newPost.post_type === 'member_post' && newPost.agent_id) {
+              supabase.from('profiles').select('id, photo_url').eq('id', newPost.agent_id).single()
+                .then(({ data }) => { if (data?.photo_url) setPhotoMap(m => ({ ...m, [data.id]: data.photo_url! })); });
+            }
+            return [newPost, ...prev];
+          });
+        }
       })
       .subscribe();
     return () => { mounted = false; supabase.removeChannel(channel); };
@@ -102,6 +128,11 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
 
   const handleMemberPost = useCallback((post: CommunityPost) => {
     setPosts(prev => [post, ...prev]);
+    // Fetch the new author's photo if not already in map
+    if (post.post_type === 'member_post' && post.agent_id) {
+      supabase.from('profiles').select('id, photo_url').eq('id', post.agent_id).single()
+        .then(({ data }) => { if (data?.photo_url) setPhotoMap(m => ({ ...m, [data.id]: data.photo_url! })); });
+    }
   }, []);
 
   return (
@@ -194,7 +225,11 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
                 {posts.map((post, i) => (
-                  <PostCard key={post.id} post={post} index={i} userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} isAdmin={isAdmin} />
+                  <PostCard
+                    key={post.id} post={post} index={i}
+                    userId={userId} userName={userName} userPhotoUrl={userPhotoUrl}
+                    isAdmin={isAdmin} photoMap={photoMap}
+                  />
                 ))}
               </div>
             </>
