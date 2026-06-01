@@ -12,7 +12,7 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY!;
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
 
-// ─── Supabase helpers ────────────────────────────────────────────────────────
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
 
 async function dbGet(table: string, id: string): Promise<Record<string, unknown> | null> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&limit=1`, {
@@ -42,19 +42,9 @@ async function dbInsert(table: string, record: Record<string, unknown>): Promise
   return data?.[0]?.id ?? null;
 }
 
-async function dbFind(table: string, filters: Record<string, string>): Promise<Record<string, unknown> | null> {
-  const qs = Object.entries(filters).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join("&");
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs}&order=created_at.desc&limit=1`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
-  if (!res.ok) return null;
-  const rows = await res.json();
-  return rows?.[0] ?? null;
-}
+// ─── Anthropic helpers ────────────────────────────────────────────────────────
 
-// ─── Anthropic helpers ───────────────────────────────────────────────────────
-
-// Haiku — for Governance, Command Layer, correction agents
+// Haiku — Governance, Command Layer, correction agents
 async function callAnthropic(prompt: string, maxTokens = 800): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -96,7 +86,7 @@ function getDivisionCategory(division: string): string {
   return map[division] ?? "on_demand";
 }
 
-// ─── Step 1: Isabella compliance check (Sonnet) ──────────────────────────────
+// ─── Step 1: Isabella compliance check (Sonnet) ───────────────────────────────
 
 async function runIsabellaOnItem(item: Record<string, unknown>): Promise<{ cleared: boolean; flags: string; correctionNotes: string }> {
   const raw = await callTwin(
@@ -110,7 +100,6 @@ YOUR RESPONSIBILITIES:
    - Class 35: Business consulting, AI strategy, leadership advisory, business management
    - Class 41: Training, coaching, educational services, workshops, seminars
    - Class 42: AI technology consulting, software-related services, technology strategy
-3. Flag any content that steps outside these classes or misrepresents DRU's services
 
 DRU PROPRIETARY MARKS (must always appear with ™):
 DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
@@ -138,21 +127,12 @@ OR:
 
   const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "null");
   if (!result) throw new Error("Isabella JSON parse failed");
-
-  return {
-    cleared: result.cleared === true,
-    flags: result.flags ?? "none",
-    correctionNotes: result.correction_notes ?? "",
-  };
+  return { cleared: result.cleared === true, flags: result.flags ?? "none", correctionNotes: result.correction_notes ?? "" };
 }
 
-// ─── Correction agent — re-runs agent output with targeted fix ───────────────
+// ─── Correction agent ─────────────────────────────────────────────────────────
 
-async function runCorrectionAgent(
-  item: Record<string, unknown>,
-  correctionNotes: string,
-  retryCount: number
-): Promise<string | null> {
+async function runCorrectionAgent(item: Record<string, unknown>, correctionNotes: string, retryCount: number): Promise<string | null> {
   const correctedOutput = await callAnthropic(
     `You are ${item.agent_name}, working for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
 
@@ -164,11 +144,11 @@ ${correctionNotes}
 YOUR ORIGINAL OUTPUT:
 ${item.raw_output}
 
-Apply the correction precisely and return the complete corrected content. Do not change anything else — only fix what Isabella flagged.`,
+Apply the correction precisely and return the complete corrected content. Do not change anything else.`,
     2000
   );
 
-  const newId = await dbInsert("chief_of_staff_queue", {
+  return await dbInsert("chief_of_staff_queue", {
     agent_id:         item.agent_id,
     agent_name:       item.agent_name,
     division:         item.division,
@@ -183,45 +163,39 @@ Apply the correction precisely and return the complete corrected content. Do not
     raymond_notes:    item.raymond_notes ?? null,
     run_date:         new Date().toISOString().split("T")[0],
   });
-
-  return newId;
 }
 
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
 
 async function runGovernanceOnItem(item: Record<string, unknown>): Promise<{ cleared: boolean; notes: string; flags: string }> {
-  const isClientFacing = ["social_post", "linkedin_post", "email_marketing", "outreach", "content_creation", "digital_marketing", "press_release", "copywriting"].includes(item.category as string);
+  const clientFacingCategories = ["social_post","linkedin_post","email_marketing","outreach","content_creation","digital_marketing","press_release","copywriting"];
+  const isClientFacing = clientFacingCategories.includes(item.category as string);
 
   const raw = await callAnthropic(
     `${GENIUS_MODE}
 
 You are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella Moreno has cleared this content for trademark and class compliance. Your role is to review for legal risk, privacy concerns, financial accuracy, and brand consistency.
 
-PANEL MEMBERS:
-- Khalid Hassan (Disclaimer Writer) — does this content need a legal disclaimer?
-- Sofia Petrov (Privacy Policy) — any privacy or data compliance concerns?
-- James Osei (Contract Writer) — any contractual or liability exposure?
-- Mei Lin (Brand Protection) — brand consistency and competitive risk?
+PANEL MEMBERS: Khalid Hassan (Disclaimers) · Sofia Petrov (Privacy) · James Osei (Contracts) · Mei Lin (Brand Protection)
 
 CONTENT TYPE: ${isClientFacing ? "CLIENT-FACING" : "INTERNAL OPERATIONAL"}
 
 ${isClientFacing
-  ? `CLIENT-FACING BLOCK CONDITIONS (block if ANY of these apply):
+  ? `CLIENT-FACING BLOCK CONDITIONS (block if ANY apply):
 1. Makes a specific earnings or ROI guarantee to a client
-2. Claims a professional license DeAnna does not hold (legal, CPA, licensed therapist)
-3. Contains personally identifiable information about a real third party without consent
+2. Claims a professional license DeAnna does not hold
+3. Contains PII about a real third party without consent
 4. Directly defames or makes provably false claims about a named competitor
 5. Contains regulatory-specific financial, medical, or legal advice presented as fact`
-  : `INTERNAL OPERATIONAL BLOCK CONDITIONS (block ONLY if ALL four of these apply):
+  : `INTERNAL OPERATIONAL BLOCK CONDITIONS (block ONLY if ALL apply):
 1. Contains a factual error that would directly mislead DeAnna's business decisions
 2. Makes a false credential claim on DeAnna's behalf
-3. Creates a named legal liability (not hypothetical risk — actual exposure)
+3. Creates a named legal liability
 4. Contains a demonstrably false financial figure presented as fact
-Coaching philosophy, motivational language, sales strategy, aspirational framing, and operational recommendations SHALL PASS.`}
+Coaching philosophy, motivational language, sales strategy, and aspirational framing SHALL PASS.`}
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT:
-${item.raw_output}
+CONTENT: ${item.raw_output}
 
 Output ONLY this JSON:
 {"cleared":true,"notes":"Governance review complete. No issues found.","flags":"none"}
@@ -232,12 +206,7 @@ OR:
 
   const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "null");
   if (!result) throw new Error("Governance JSON parse failed");
-
-  return {
-    cleared: result.cleared === true,
-    notes: result.notes ?? "",
-    flags: result.flags ?? "none",
-  };
+  return { cleared: result.cleared === true, notes: result.notes ?? "", flags: result.flags ?? "none" };
 }
 
 // ─── Step 3: Command Layer — Priya, Travis, Raymond (Haiku) ──────────────────
@@ -245,49 +214,40 @@ OR:
 async function runCommandLayerOnItem(item: Record<string, unknown>): Promise<{ approved: boolean; priyaNotes: string; travisNotes: string; raymondNotes: string; action: string }> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
-  // Priya — executive context and flags
   const priyaRaw = await callAnthropic(
     `${GENIUS_MODE}
-You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority, CEO/Founder of DRU AI Consulting.
-Review this on-demand agent output. Flag any executive-level concerns, timing issues, or strategic misalignments. If none, confirm it is clear to proceed.
+You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority.
+Review this on-demand agent output. Flag any executive-level concerns or confirm it is clear to proceed.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"notes":"your assessment","flag":false}`,
-    300
-  );
+Output ONLY JSON: {"notes":"your assessment","flag":false}`, 300);
   const priya = JSON.parse(priyaRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"notes":"Reviewed. No executive flags.","flag":false}');
 
-  // Travis — packaging and routing assessment
   const travisRaw = await callAnthropic(
     `${GENIUS_MODE}
 You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-Review this on-demand agent output. Assess quality, completeness, and routing. Determine the appropriate action: route_to_twin, route_to_aaliyah_foster, acknowledge_completion, or needs_revision.
+Review this on-demand output. Assess quality and determine routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"notes":"your assessment","action":"route_to_twin"}`,
-    300
-  );
+Output ONLY JSON: {"notes":"your assessment","action":"route_to_twin"}`, 300);
   const travis = JSON.parse(travisRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"notes":"Output reviewed and packaged.","action":"route_to_twin"}');
 
-  // Raymond — final command approval
   const raymondRaw = await callAnthropic(
     `${GENIUS_MODE}
 You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-This is an on-demand request. Review the output and approve or flag for DeAnna. Consider strategic priority and executive readiness.
+This is an on-demand request from DeAnna. Review and approve for the Intelligence Hub.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
-PRIYA: ${priya.notes} | TRAVIS: ${travis.notes} | ACTION: ${travis.action}
+PRIYA: ${priya.notes} | TRAVIS: ${travis.notes}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"approved":true,"notes":"your final assessment","priority":"high"}`,
-    300
-  );
-  const raymond = JSON.parse(raymondRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"approved":true,"notes":"Approved for Intelligence Hub.","priority":"high"}');
+Output ONLY JSON: {"approved":true,"notes":"your final assessment"}`, 300);
+  const raymond = JSON.parse(raymondRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"approved":true,"notes":"Approved for Intelligence Hub."}');
 
   return {
-    approved: raymond.approved !== false,
-    priyaNotes: priya.notes ?? "",
-    travisNotes: travis.notes ?? "",
+    approved:     raymond.approved !== false,
+    priyaNotes:   priya.notes ?? "",
+    travisNotes:  travis.notes ?? "",
     raymondNotes: raymond.notes ?? "",
-    action: travis.action ?? "route_to_twin",
+    action:       travis.action ?? "route_to_twin",
   };
 }
 
@@ -295,7 +255,7 @@ Output ONLY JSON: {"approved":true,"notes":"your final assessment","priority":"h
 
 async function runTwinSynthesisOnItem(
   item: Record<string, unknown>,
-  commandNotes: { priya: string; travis: string; raymond: string; action: string },
+  cmd: { priya: string; travis: string; raymond: string; action: string },
   complianceFlags: string[]
 ): Promise<string | null> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
@@ -305,9 +265,9 @@ async function runTwinSynthesisOnItem(
     : "";
 
   const notes = [
-    commandNotes.raymond ? `Raymond: ${commandNotes.raymond}` : "",
-    commandNotes.travis  ? `Travis: ${commandNotes.travis}`  : "",
-    commandNotes.priya   ? `Priya: ${commandNotes.priya}`    : "",
+    cmd.raymond ? `Raymond: ${cmd.raymond}` : "",
+    cmd.travis  ? `Travis: ${cmd.travis}`   : "",
+    cmd.priya   ? `Priya: ${cmd.priya}`     : "",
   ].filter(Boolean).join("\n");
 
   const synthesis = await callTwin(
@@ -326,26 +286,24 @@ ${item.raw_output}
 
 ${notes ? `COMMAND LAYER NOTES:\n${notes}` : ""}
 
-Synthesize into a focused, actionable briefing card. Lead with what matters most. End with clear next steps or action items for DeAnna. Write in your commanding Twin voice — strategic, direct, no fluff.${flagsSection}`,
+Synthesize into a focused, actionable briefing card. Lead with what matters most. End with clear next steps for DeAnna. Write in your commanding Twin voice — strategic, direct, no fluff.${flagsSection}`,
     1500
   );
 
-  const approvalId = await dbInsert("approvals", {
-    source:          "twin_on_demand",
-    trigger_type:    "on_demand_request",
-    agent_name:      "DeAnna's AI Twin",
-    agent_role:      "Master Orchestrator",
-    division:        item.division,
-    task_brief:      `${item.division} — On-Demand: ${item.agent_name} | ${today}`,
-    output:          synthesis,
-    status:          "pending",
-    notify_deanna:   true,
-    priority:        "high",
-    category:        getDivisionCategory(item.division as string),
-    platform:        null,
+  return await dbInsert("approvals", {
+    source:        "twin_on_demand",
+    trigger_type:  "on_demand_request",
+    agent_name:    "DeAnna's AI Twin",
+    agent_role:    "Master Orchestrator",
+    division:      item.division,
+    task_brief:    `${item.division} — On-Demand: ${item.agent_name} | ${today}`,
+    output:        synthesis,
+    status:        "pending",
+    notify_deanna: true,
+    priority:      "high",
+    category:      getDivisionCategory(item.division as string),
+    platform:      null,
   });
-
-  return approvalId;
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -362,23 +320,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   console.log(`[on-demand] 🚀 Starting full chain for CSQ: ${csq_id}`);
 
-  // Respond immediately so twin-command.ts doesn't hang
-  res.status(200).json({ success: true, csq_id, message: "On-demand chain started" });
+  let currentId = csq_id as string;
+  const complianceFlags: string[] = [];
 
   try {
-    let currentId = csq_id as string;
-    const complianceFlags: string[] = [];
-
-    // ── STEP 1: Isabella retry loop ─────────────────────────
+    // ── STEP 1: Isabella retry loop ──────────────────────────
     let isabellaPassed = false;
 
     for (let attempt = 0; attempt <= 3; attempt++) {
       const item = await dbGet("chief_of_staff_queue", currentId);
-      if (!item) { console.error(`[on-demand] Item not found: ${currentId}`); return; }
+      if (!item) { console.error(`[on-demand] Item not found: ${currentId}`); res.status(404).json({ error: "CSQ item not found" }); return; }
 
       console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
       const retryCount = (item.retry_count as number) ?? 0;
-
       const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item);
 
       if (cleared) {
@@ -392,7 +346,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         break;
       }
 
-      // Not cleared
       if (retryCount >= 2) {
         await dbUpdate("chief_of_staff_queue", currentId, {
           isabella_flags: flags,
@@ -401,28 +354,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           governance_cleared: false,
         });
         console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${item.agent_name} — ${flags}`);
+        res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: item.agent_name, flags });
         return;
       }
 
-      // Send back for correction
       await dbUpdate("chief_of_staff_queue", currentId, {
         isabella_flags: flags,
         correction_notes: correctionNotes,
         status: "needs_correction",
       });
-
       complianceFlags.push(`${item.agent_name} — CORRECTION APPLIED (attempt ${retryCount + 1}) — ${flags}`);
       console.log(`[on-demand] 🔄 Correction applied for: ${item.agent_name}`);
 
       const newId = await runCorrectionAgent(item, correctionNotes, retryCount + 1);
-      if (!newId) { console.error(`[on-demand] Correction agent failed for: ${currentId}`); return; }
+      if (!newId) { console.error(`[on-demand] Correction agent failed`); res.status(500).json({ error: "Correction agent failed" }); return; }
       currentId = newId;
     }
 
-    if (!isabellaPassed) { console.error(`[on-demand] Isabella loop exhausted`); return; }
+    if (!isabellaPassed) { res.status(500).json({ error: "Isabella loop exhausted" }); return; }
 
     const clearedItem = await dbGet("chief_of_staff_queue", currentId);
-    if (!clearedItem) return;
+    if (!clearedItem) { res.status(404).json({ error: "Cleared item not found" }); return; }
 
     // ── STEP 2: Governance Panel ─────────────────────────────
     console.log(`[on-demand] Running Governance for: ${clearedItem.agent_name}`);
@@ -435,7 +387,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         governance_notes: gov.notes,
         status: "rejected",
       });
-      console.warn(`[on-demand] ⛔ Governance blocked: ${clearedItem.agent_name} — ${gov.flags}`);
+      console.warn(`[on-demand] ⛔ Governance blocked: ${clearedItem.agent_name}`);
+      res.status(200).json({ success: false, reason: "governance_blocked", agent: clearedItem.agent_name, flags: gov.flags });
       return;
     }
 
@@ -452,13 +405,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const cmd = await runCommandLayerOnItem(clearedItem);
 
     await dbUpdate("chief_of_staff_queue", currentId, {
-      raymond_reviewed: true,
-      raymond_action:   cmd.action,
-      priya_notes:      cmd.priyaNotes,
-      travis_notes:     cmd.travisNotes,
-      raymond_notes:    cmd.raymondNotes,
+      raymond_reviewed:    true,
+      raymond_action:      cmd.action,
+      priya_notes:         cmd.priyaNotes,
+      travis_notes:        cmd.travisNotes,
+      raymond_notes:       cmd.raymondNotes,
       command_approved_at: new Date().toISOString(),
-      status: "command_approved",
+      status:              "command_approved",
     });
     console.log(`[on-demand] ✅ Command Layer approved: ${clearedItem.agent_name}`);
 
@@ -477,9 +430,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       status:            "twin_processed",
     });
 
-    console.log(`[on-demand] ✅ Chain complete — ${clearedItem.agent_name} | Intelligence Hub card: ${approvalId}`);
+    console.log(`[on-demand] ✅ Chain complete — ${clearedItem.agent_name} | Card: ${approvalId}`);
+    res.status(200).json({ success: true, agent_name: clearedItem.agent_name, approval_id: approvalId, final_csq_id: currentId });
 
   } catch (err) {
     console.error("[on-demand] ❌ Chain error:", err);
+    res.status(500).json({ error: String(err) });
   }
 }
