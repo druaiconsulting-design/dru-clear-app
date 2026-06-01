@@ -9,6 +9,8 @@
 // - Conversation persistence: saved to approvals.context, restored on reopen
 // - Community Connection: community_post category treated as Approval card → posts to community
 // - DIVISION_COLORS key fixed to match actual division name
+// FIX: postToCommunity — add .select('id') to detect silent 0-row UPDATE; INSERT if record missing
+// FIX: getOriginalColumn — strip post_id:UUID prefix from task_brief for community_post cards
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -224,10 +226,22 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   return { text: CATEGORY_LABELS[approval.category] ?? approval.category, color: "#0A2342" };
 }
 
+// FIX: community_post cards — strip "post_id:UUID | " prefix from task_brief,
+// show only human-readable agent name + topic (e.g. "Tariq Oladele · ai revenue acceleration")
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
-  // ALL social cards show Contributors — agents generate content, there is no "original"
-  if (approval.category === "social" || approval.category === "community_post") {
+  if (approval.category === "social") {
     return { heading: "Contributors", content: approval.task_brief || null };
+  }
+  if (approval.category === "community_post") {
+    // task_brief format: "post_id:UUID | Agent Name | topic description"
+    // Strip the post_id:UUID portion — only show the human-readable parts
+    const raw = approval.task_brief || '';
+    const parts = raw.split('|').map((s: string) => s.trim()).filter(Boolean);
+    // parts[0] = "post_id:UUID", parts[1] = agent name, parts[2] = topic
+    const contributors = parts.length > 1
+      ? parts.slice(1).join(' · ')
+      : raw.replace(/post_id:[a-zA-Z0-9-]+\s*\|?\s*/g, '').trim() || raw;
+    return { heading: "Contributors", content: contributors || null };
   }
   if (approval.category === "daily_briefing")          return { heading: "Today's Date",    content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
   if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
@@ -254,6 +268,7 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
   if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"       : status === "posting" ? "Sending..."          : "⚠ Send Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
+
 export default function AdminApprovals() {
   const [approvals, setApprovals]             = useState<Approval[]>([]);
   const [loading, setLoading]                 = useState(true);
@@ -339,29 +354,58 @@ export default function AdminApprovals() {
     return true;
   };
 
-  // Post CC agent content directly to community_posts table
-  // Activate existing community_posts record created by CC agent (is_active: false → true)
-  // post_id stored in task_brief as "post_id:UUID | ..." — also updates content if DeAnna edited
+  // FIX: postToCommunity — was silently returning true even when UPDATE matched 0 rows.
+  // Now uses .select('id') to detect 0-row updates and falls back to INSERT.
+  // Covers both cases: agent pre-created the record (UPDATE activates it) and agent did not (INSERT creates it).
   const postToCommunity = async (approval: Approval, content: string): Promise<boolean> => {
     try {
       const postIdMatch = (approval.task_brief || '').match(/post_id:([a-zA-Z0-9-]+)/);
       const postId = postIdMatch?.[1];
+
+      const lines = content.split('\n').filter((l: string) => l.trim());
+      const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
+
       if (postId) {
-        const { error } = await supabase.from('community_posts')
+        // Try to activate the pre-existing record created by the CC agent
+        const { data: updated, error } = await supabase
+          .from('community_posts')
           .update({ is_active: true, content, published_at: new Date().toISOString() })
-          .eq('id', postId);
+          .eq('id', postId)
+          .select('id'); // <-- critical: without .select(), Supabase returns no rows data — 0-row updates look like success
+
         if (error) { console.error('[community_post] Activate failed:', error); return false; }
+
+        // 0 rows updated means the pre-created record doesn't exist — INSERT it with the same UUID
+        if (!updated || updated.length === 0) {
+          console.warn('[community_post] No existing record found for post_id:', postId, '— inserting new record');
+          const { error: insertError } = await supabase.from('community_posts').insert({
+            id: postId,
+            title,
+            content,
+            agent_name: approval.agent_name,
+            division: 'Community Connection',
+            category: approval.trigger_type || approval.category,
+            is_active: true,
+            tier_required: 'navigator',
+            published_at: new Date().toISOString(),
+          });
+          if (insertError) { console.error('[community_post] Insert (fallback) failed:', insertError); return false; }
+        }
         return true;
       }
-      // Fallback: no post_id — insert new record
-      const lines = content.split('\n').filter(l => l.trim());
-      const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || approval.task_brief || 'Community Post';
-      const { error } = await supabase.from('community_posts').insert({
-        title, content, agent_name: approval.agent_name,
-        division: 'Community Connection', category: approval.trigger_type || approval.category,
-        is_active: true, tier_required: 'navigator',
+
+      // No post_id at all — insert a brand new record
+      const { error: insertError } = await supabase.from('community_posts').insert({
+        title,
+        content,
+        agent_name: approval.agent_name,
+        division: 'Community Connection',
+        category: approval.trigger_type || approval.category,
+        is_active: true,
+        tier_required: 'navigator',
+        published_at: new Date().toISOString(),
       });
-      if (error) { console.error('[community_post] Insert failed:', error); return false; }
+      if (insertError) { console.error('[community_post] Insert failed:', insertError); return false; }
       return true;
     } catch (err) { console.error('[community_post]', err); return false; }
   };
