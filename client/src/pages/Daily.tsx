@@ -39,6 +39,8 @@ const FALLBACK_CONTENT: DailyContent = {
 };
 
 const ASSESSMENT_URL = "https://assessment.druaiconsulting.com";
+const NAV_UPGRADE_URL = "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0";
+const ACC_UPGRADE_URL = "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1";
 
 // ── Locked Card ───────────────────────────────────────────────────────────────
 function LockedCard({
@@ -107,6 +109,7 @@ function StreakBadge({ streak }: { streak: StreakData }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Daily() {
   const { user, isPaid, hasStrategicEdge, pathwayStage } = useAuth();
+  const [memberTier, setMemberTier] = useState<string>("free");
   const [content, setContent] = useState<DailyContent | null>(null);
   const [streak, setStreak] = useState<StreakData>({ current_streak: 0, longest_streak: 0, total_completions: 0 });
   const [completed, setCompleted] = useState(false);
@@ -115,12 +118,32 @@ export default function Daily() {
   const [copied, setCopied] = useState(false);
   const today = getTodayCST();
 
+  // ── Derived tier booleans ─────────────────────────────────────────────────
+  const isNavigatorPlus = hasStrategicEdge;           // navigator or accelerator
+  const isAccelerator   = memberTier === "accelerator"; // accelerator only
+
   const handleCopy = () => {
     navigator.clipboard.writeText(ASSESSMENT_URL).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
   };
+
+  // ── Fetch member tier ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    async function fetchTier() {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("id", user!.id)
+          .single();
+        if (data?.tier) setMemberTier(data.tier);
+      } catch {}
+    }
+    fetchTier();
+  }, [user?.id]);
 
   // ── Fetch today's content ─────────────────────────────────────────────────
   useEffect(() => {
@@ -266,7 +289,7 @@ export default function Daily() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-            {/* Card 1 — AI Leadership Insight (Free) */}
+            {/* Card 1 — AI Leadership Insight (Free+) */}
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.3)", borderLeft: "3px solid #D4AF37", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
                 <span style={{ fontSize: "1.1rem" }}>⚡</span>
@@ -275,8 +298,8 @@ export default function Daily() {
               <p style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{displayContent.insight}</p>
             </div>
 
-            {/* Card 2 — Framework Micro-Lesson (Paid+) */}
-            {isPaid ? (
+            {/* Card 2 — Framework Micro-Lesson (Navigator+) */}
+            {isNavigatorPlus ? (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(194,24,91,0.3)", borderLeft: "3px solid #C2185B", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
                   <span style={{ fontSize: "1.1rem" }}>🧠</span>
@@ -291,8 +314,8 @@ export default function Daily() {
               <LockedCard title="Framework Micro-Lesson" icon="🧠" color="#C2185B" teaser={displayContent.lesson} />
             )}
 
-            {/* Card 3 — Action Challenge (Paid+) */}
-            {isPaid ? (
+            {/* Card 3 — Today's Action Challenge (Accelerator only) */}
+            {isAccelerator ? (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(30,136,229,0.3)", borderLeft: "3px solid #1E88E5", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
                   <span style={{ fontSize: "1.1rem" }}>🎯</span>
@@ -329,11 +352,18 @@ export default function Daily() {
                 )}
               </div>
             ) : (
-              <LockedCard title="Today's Action Challenge" icon="🎯" color="#1E88E5" teaser={displayContent.challenge} />
+              <LockedCard
+                title="Today's Action Challenge"
+                icon="🎯"
+                color="#1E88E5"
+                teaser={displayContent.challenge}
+                ctaText="Upgrade to Accelerator →"
+                ctaHref={ACC_UPGRADE_URL}
+              />
             )}
 
-            {/* Card 4 — DeAnna's Strategic Edge (Navigator + Accelerator) */}
-            {hasStrategicEdge ? (
+            {/* Card 4 — DeAnna's Strategic Edge (Accelerator only) */}
+            {isAccelerator ? (
               <div style={{
                 background: "linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(10,35,66,0.6) 100%)",
                 border: "1px solid rgba(212,175,55,0.5)",
@@ -370,8 +400,8 @@ export default function Daily() {
                 icon="✦"
                 color="#D4AF37"
                 teaser={FALLBACK_CONTENT.strategic_edge || ""}
-                ctaText="Upgrade to Navigator →"
-                ctaHref="/community"
+                ctaText="Upgrade to Accelerator →"
+                ctaHref={ACC_UPGRADE_URL}
               />
             ) : null}
 
