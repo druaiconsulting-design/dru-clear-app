@@ -227,7 +227,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
 }
 
 // FIX: community_post cards — strip "post_id:UUID | " prefix from task_brief,
-// show only human-readable agent name + topic (e.g. "Tariq Oladele · AI Revenue Acceleration")
+// show only human-readable agent name + topic (e.g. "Tariq Oladele · ai revenue acceleration")
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") {
     return { heading: "Contributors", content: approval.task_brief || null };
@@ -383,7 +383,7 @@ export default function AdminApprovals() {
             title,
             content,
             agent_name: approval.agent_name,
-            division: 'Community Connection',
+            post_type: 'agent',
             is_active: true,
             tier_required: 'navigator',
             published_at: new Date().toISOString(),
@@ -398,7 +398,7 @@ export default function AdminApprovals() {
         title,
         content,
         agent_name: approval.agent_name,
-        division: 'Community Connection',
+        post_type: 'agent',
         is_active: true,
         tier_required: 'navigator',
         published_at: new Date().toISOString(),
