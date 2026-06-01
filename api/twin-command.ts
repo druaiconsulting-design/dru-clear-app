@@ -1,7 +1,7 @@
 // api/twin-command.ts
 // On-demand agent routing — full governance chain
 // DeAnna → Twin chat → twin.ts detects command → twin-command.ts runs chain
-// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Approvals + GHL notification
+// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Intelligence Hub
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
@@ -86,9 +86,9 @@ const AGENT_NAMES: Record<string, string> = {
 
 const AGENT_DIVISIONS: Record<string, string> = {
   raymond:"Command Layer", travis:"Command Layer", priya:"Command Layer", isabella:"AI Governance",
-  omar:"Revenue & Growth", ryan:"Revenue & Growth", serena:"Revenue & Growth", mateo:"Revenue & Growth",
-  aaliyah:"Revenue & Growth", jaylen:"Revenue & Growth", chloe:"Revenue & Growth", zara:"Revenue & Growth",
-  elena:"Revenue & Growth", kwame:"Revenue & Growth", camila:"Content & Brand", darius:"Content & Brand",
+  omar:"Revenue, Growth & Sales", ryan:"Revenue, Growth & Sales", serena:"Revenue, Growth & Sales", mateo:"Revenue, Growth & Sales",
+  aaliyah:"Revenue, Growth & Sales", jaylen:"Revenue, Growth & Sales", chloe:"Revenue, Growth & Sales", zara:"Revenue, Growth & Sales",
+  elena:"Revenue, Growth & Sales", kwame:"Revenue, Growth & Sales", camila:"Content & Brand", darius:"Content & Brand",
   ravi:"Content & Brand", yara:"Content & Brand", ingrid:"Content & Brand", nia:"Marketing",
   luca:"Marketing", hyunji:"Marketing", andre:"Marketing", amara:"Legal & Finance",
   diego:"Legal & Finance", yuki:"Legal & Finance", marcus:"Legal & Finance", khalid:"AI Governance",
@@ -102,7 +102,6 @@ const AGENT_DIVISIONS: Record<string, string> = {
   tariq:"Community Connection",
 };
 
-// Category mapping — maps agent_id to a category the governance chain recognizes
 const AGENT_CATEGORIES: Record<string, string> = {
   raymond:"coaching", travis:"coaching", priya:"coaching", isabella:"disclaimer_review",
   omar:"lead_intelligence", ryan:"lead_intelligence", serena:"coaching", mateo:"sales_support",
@@ -150,31 +149,6 @@ async function writeToCSQ(record: Record<string, unknown>): Promise<string | nul
   return data?.[0]?.id ?? null;
 }
 
-// Triggers a chain step via ghl-agent-trigger, checks response, logs result
-async function triggerChainStep(triggerType: string, cronSecret: string): Promise<boolean> {
-  // Always use production domain — VERCEL_URL resolves to preview deployments
-  // which have Vercel SSO protection enabled and will return 401
-  const baseUrl = "https://app.druaiconsulting.com";
-  try {
-    const response = await fetch(`${baseUrl}/api/ghl-agent-trigger`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
-      body: JSON.stringify({ trigger_type: triggerType, source: "twin_on_demand" }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[twin-command] Chain step "${triggerType}" FAILED: HTTP ${response.status} — ${errorText.slice(0, 200)}`);
-      return false;
-    }
-    const result = await response.json();
-    console.log(`[twin-command] Chain step "${triggerType}" completed:`, JSON.stringify(result));
-    return true;
-  } catch (err) {
-    console.error(`[twin-command] Chain step "${triggerType}" network error:`, err);
-    return false;
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -186,16 +160,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!agent_id || !task) { res.status(400).json({ error: "agent_id and task are required" }); return; }
 
   const agentName = AGENT_NAMES[agent_id];
-  const division = AGENT_DIVISIONS[agent_id];
-  const category = AGENT_CATEGORIES[agent_id] ?? "on_demand";
+  const division  = AGENT_DIVISIONS[agent_id];
+  const category  = AGENT_CATEGORIES[agent_id] ?? "on_demand";
   const systemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
 
   if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
 
   const cronSecret = process.env.CRON_SECRET ?? "";
+  const baseUrl    = "https://app.druaiconsulting.com";
 
   console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
-  console.log(`[twin-command] cronSecret set: ${!!cronSecret} | baseUrl: https://app.druaiconsulting.com`);
 
   try {
     // Step 1 — Run agent
@@ -217,36 +191,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     console.log(`[twin-command] ${agentName} output written to CSQ: ${csqId}`);
 
-    // Step 3 — Run governance chain sequentially
-    // Each step awaits the previous so CSQ status updates propagate before next step reads them
-    console.log(`[twin-command] Starting governance chain for CSQ item: ${csqId}`);
-
-    const step1 = await triggerChainStep("cron_isabella_review", cronSecret);
-    console.log(`[twin-command] Isabella review: ${step1 ? "✓ completed" : "✗ failed — check logs above"}`);
-
-    const step2 = await triggerChainStep("cron_governance_legal_review", cronSecret);
-    console.log(`[twin-command] Governance review: ${step2 ? "✓ completed" : "✗ failed — check logs above"}`);
-
-    const step3 = await triggerChainStep("cron_command_layer", cronSecret);
-    console.log(`[twin-command] Command layer (Priya/Travis/Raymond): ${step3 ? "✓ completed" : "✗ failed — check logs above"}`);
-
-    const step4 = await triggerChainStep("cron_twin_synthesis", cronSecret);
-    console.log(`[twin-command] Twin synthesis: ${step4 ? "✓ completed" : "✗ failed — check logs above"}`);
-
-    console.log(`[twin-command] Chain complete — Isabella:${step1} Governance:${step2} CommandLayer:${step3} Twin:${step4}`);
+    // Step 3 — Fire on-demand chain (fire and forget)
+    // runOnDemandChain in ghl-agent-trigger handles the full loop:
+    // Isabella retry loop → Governance → Command Layer → Twin synthesis → Intelligence Hub
+    if (csqId) {
+      fetch(`${baseUrl}/api/ghl-agent-trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
+        body: JSON.stringify({ trigger_type: "cron_process_on_demand", csq_id: csqId, source: "twin_on_demand" }),
+      }).catch((err) => console.error("[twin-command] ❌ Failed to fire on-demand chain:", err));
+      console.log(`[twin-command] ✅ On-demand chain fired for CSQ: ${csqId}`);
+    }
 
     res.status(200).json({
       success: true,
       agent_name: agentName,
       preview: output,
       csq_id: csqId,
-      chain: {
-        isabella: step1,
-        governance: step2,
-        command_layer: step3,
-        twin_synthesis: step4,
-      },
     });
+
   } catch (err: unknown) {
     console.error("[twin-command] Error:", err);
     res.status(500).json({ error: String(err) });
