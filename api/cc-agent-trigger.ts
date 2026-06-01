@@ -206,7 +206,7 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
       agent_name: agentName,
       agent_role: agentRole,
       division: 'Community Connection',
-      task_brief: displayTitle,
+      task_brief: `${displayTitle} | post_id:${postId}`,
       original_content: postContent.slice(0, 500),
       output: corrected,
       edited_output: null,
@@ -216,7 +216,7 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
       priority: 'NORMAL',
       category: 'community_comment_reply',
       platform: null,
-      context: postId,
+      context: null,
       archived: false,
     });
     console.log(`[${agentId}] Community reply → approvals: ${approval_id ?? 'failed'} for post ${postId}`);
