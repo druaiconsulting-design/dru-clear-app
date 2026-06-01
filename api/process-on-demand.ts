@@ -144,6 +144,23 @@ OR:
 
   const result = extractJSON(raw);
   if (!result) throw new Error(`Isabella JSON parse failed. Raw response: ${raw.slice(0, 200)}`);
+  // False-positive guard: Isabella contradicted herself — cleared:false but correction_notes say content is fine
+  if (result.cleared === false) {
+    const corrNote = String(result.correction_notes ?? "").toLowerCase();
+    const isSelfContradicting =
+      corrNote.includes("no corrections needed") ||
+      corrNote.includes("content is compliant") ||
+      corrNote.includes("content clears") ||
+      corrNote.includes("nothing to correct") ||
+      corrNote.includes("already approved") ||
+      corrNote.includes("all marks correct");
+    if (isSelfContradicting) {
+      console.log(`[on-demand] ⚠️ Isabella false-positive overridden — correction_notes confirm content is clean`);
+      result.cleared = true;
+      result.flags = "none";
+      result.correction_notes = "False positive overridden. Content confirmed compliant.";
+    }
+  }
   return { cleared: result.cleared === true, flags: String(result.flags ?? "none"), correctionNotes: String(result.correction_notes ?? "") };
 }
 
@@ -363,7 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         break;
       }
 
-      if (retryCount >= 2) {
+      if (attempt >= 2) {
         await dbUpdate("chief_of_staff_queue", currentId, {
           isabella_flags: flags,
           correction_notes: correctionNotes,
