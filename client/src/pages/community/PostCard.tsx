@@ -25,9 +25,9 @@ function getPdfFilename(url: string): string {
 // POST CARD
 // =============================================================================
 export default function PostCard({
-  post, index, userId, userName, userPhotoUrl, isAdmin,
+  post, index, userId, userName, userPhotoUrl, isAdmin, photoMap = {},
 }: {
-  post: CommunityPost; index: number; userId: string; userName: string; userPhotoUrl?: string; isAdmin: boolean;
+  post: CommunityPost; index: number; userId: string; userName: string; userPhotoUrl?: string; isAdmin: boolean; photoMap?: Record<string, string>;
 }) {
   const isMemberPost = post.post_type === 'member_post';
   const paragraphs   = formatContent(post.content);
@@ -113,7 +113,7 @@ export default function PostCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <MemberAvatar
             firstName={post.agent_name}
-            photoUrl={isMemberPost && post.agent_id === userId ? userPhotoUrl : undefined}
+            photoUrl={isMemberPost ? (post.agent_id === userId ? userPhotoUrl : photoMap[post.agent_id]) : undefined}
             size={36}
           />
           <div>
