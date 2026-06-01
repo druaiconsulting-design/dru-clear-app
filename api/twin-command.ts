@@ -195,10 +195,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // runOnDemandChain in ghl-agent-trigger handles the full loop:
     // Isabella retry loop → Governance → Command Layer → Twin synthesis → Intelligence Hub
     if (csqId) {
-      fetch(`${baseUrl}/api/ghl-agent-trigger`, {
+      fetch(`${baseUrl}/api/process-on-demand`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
-        body: JSON.stringify({ trigger_type: "cron_process_on_demand", csq_id: csqId, source: "twin_on_demand" }),
+        body: JSON.stringify({ csq_id: csqId }),
       }).catch((err) => console.error("[twin-command] ❌ Failed to fire on-demand chain:", err));
       console.log(`[twin-command] ✅ On-demand chain fired for CSQ: ${csqId}`);
     }
