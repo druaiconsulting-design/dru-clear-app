@@ -199,7 +199,26 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   try {
     const raw = await callAnthropic(prompt, 600);
     const corrected = enforceTM(raw);
-    const approval_id = await writeToApprovals({ source: 'cc_agent_reply', trigger_type: 'cc_agent_reply', agent_name: agentName, agent_role: agentRole, division: 'Community Connection', task_brief: `post_id:${postId}`, original_content: postContent.slice(0, 500), output: corrected, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'NORMAL', category: 'community_comment_reply', platform: null, context: null, archived: false });
+    const displayTitle = postTitle ? `"${postTitle.slice(0, 80)}"` : 'Community post reply';
+    const approval_id = await writeToApprovals({
+      source: 'cc_agent_reply',
+      trigger_type: 'cc_agent_reply',
+      agent_name: agentName,
+      agent_role: agentRole,
+      division: 'Community Connection',
+      task_brief: displayTitle,
+      original_content: postContent.slice(0, 500),
+      output: corrected,
+      edited_output: null,
+      status: 'pending',
+      ghl_contact_id: null,
+      notify_deanna: true,
+      priority: 'NORMAL',
+      category: 'community_comment_reply',
+      platform: null,
+      context: postId,
+      archived: false,
+    });
     console.log(`[${agentId}] Community reply → approvals: ${approval_id ?? 'failed'} for post ${postId}`);
     return { approval_id };
   } catch (error) { console.error(`[${agentId}] Community reply error:`, error); return { approval_id: null }; }
