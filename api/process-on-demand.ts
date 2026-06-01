@@ -168,17 +168,21 @@ OR:
 
 async function runCorrectionAgent(item: Record<string, unknown>, correctionNotes: string, retryCount: number): Promise<string | null> {
   const correctedOutput = await callAnthropic(
-    `You are ${item.agent_name}, working for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
+    `You are a compliance editor making ONE targeted correction to an existing document.
 
-Your previous output was reviewed by Isabella Moreno (Director of Compliance) and requires the following correction:
-
-CORRECTION REQUIRED:
+CORRECTION REQUIRED BY ISABELLA MORENO (Director of Compliance):
 ${correctionNotes}
 
-YOUR ORIGINAL OUTPUT:
-${item.raw_output}
+RULES — strictly enforced:
+1. Copy the ENTIRE original content below VERBATIM — every word, every line, every character
+2. Make ONLY the specific change Isabella identified above — nothing else
+3. Do NOT rewrite, rephrase, restructure, or improve any other part of the document
+4. Do NOT add new content, frameworks, or marks that are not already in the original
+5. Do NOT remove any existing ™ symbols that are already correctly placed
+6. If you are unsure what to change, change only the minimum possible
 
-Apply the correction precisely and return the complete corrected content. Do not change anything else.`,
+ORIGINAL CONTENT (copy verbatim, apply only the one correction above):
+${item.raw_output}`,
     2000
   );
 
