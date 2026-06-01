@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, formatRelativeTime, formatContent, POST_TYPE_CONFIG, TIER_BADGE, AGENT_FRAMEWORK_MAP, ZOE_POST_TYPES } from './types';
+import { supabase, formatRelativeTime, formatContent, ZOE_POST_TYPES } from './types';
 import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 import CommentSection from './CommentSection';
@@ -29,11 +29,8 @@ export default function PostCard({
 }: {
   post: CommunityPost; index: number; userId: string; userName: string; userPhotoUrl?: string; isAdmin: boolean;
 }) {
-  const cfg        = POST_TYPE_CONFIG[post.post_type] ?? POST_TYPE_CONFIG.daily_insight;
-  const tierBadge  = TIER_BADGE[post.tier_required];
-  const paragraphs = formatContent(post.content);
-  const agentInfo  = AGENT_FRAMEWORK_MAP[post.agent_name];
   const isMemberPost = post.post_type === 'member_post';
+  const paragraphs   = formatContent(post.content);
 
   const [hearted, setHearted]           = useState(false);
   const [heartLoading, setHeartLoading] = useState(false);
@@ -82,10 +79,6 @@ export default function PostCard({
         }),
       });
 
-      // ── Write to community_comments with is_flagged: true ─────────────────
-      // Hidden from members (CommentSection excludes is_flagged: true).
-      // Surfaces immediately in Intelligence Hub → Zoe/Micah CC Reply Queue.
-      // DeAnna can Clear it after approving the agent reply card.
       const routedTo = ZOE_POST_TYPES.includes(post.post_type) ? 'Zoe Beaumont' : 'Micah Santos';
       await supabase.from('community_comments').insert({
         post_id:    post.id,
@@ -94,7 +87,6 @@ export default function PostCard({
         is_flagged: true,
         is_active:  true,
       });
-      // ─────────────────────────────────────────────────────────────────────
 
       setAgentQueued(true);
     } catch (err) {
@@ -107,42 +99,44 @@ export default function PostCard({
   const countLabel = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
   const videoEmbed = post.video_url ? getVideoEmbed(post.video_url) : null;
 
+  // Top border: gold for agent posts, navy-blue for member posts
+  const topBorderColor = isMemberPost ? '#2D5A8E' : '#B8941F';
+
   return (
     <div
-      style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderTop: `3px solid ${isMemberPost ? '#2D5A8E' : cfg.color}`, borderRadius: '12px', padding: '28px 32px', animation: 'ccFadeIn 0.45s ease both', animationDelay: `${index * 55}ms`, boxShadow: '0 1px 4px rgba(10,35,66,0.06)', transition: 'box-shadow 0.2s ease' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderTop: `3px solid ${topBorderColor}`, borderRadius: '12px', padding: '28px 32px', animation: 'ccFadeIn 0.45s ease both', animationDelay: `${index * 55}ms`, boxShadow: '0 1px 4px rgba(10,35,66,0.06)', transition: 'box-shadow 0.2s ease' }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(10,35,66,0.1)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 4px rgba(10,35,66,0.06)'; }}>
 
-      {/* Header */}
-      {isMemberPost ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <MemberAvatar firstName={post.agent_name} photoUrl={post.agent_id === userId ? userPhotoUrl : undefined} size={36} />
-            <div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>{post.agent_name}</div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.35)' }}>{formatRelativeTime(post.published_at)}</div>
+      {/* Header — unified for all post types */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <MemberAvatar
+            firstName={post.agent_name}
+            photoUrl={isMemberPost && post.agent_id === userId ? userPhotoUrl : undefined}
+            size={36}
+          />
+          <div>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>
+              {post.agent_name}
             </div>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}`, fontSize: '10px', fontFamily: "'Cinzel', serif", letterSpacing: '1.5px', fontWeight: '600', padding: '4px 10px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span>{cfg.icon}</span>{cfg.label.toUpperCase()}
-            </span>
-            {tierBadge && (
-              <span style={{ color: tierBadge.color, background: tierBadge.bg, fontSize: '9px', fontFamily: "'Montserrat', sans-serif", fontWeight: '700', letterSpacing: '1.5px', padding: '3px 8px', borderRadius: '3px' }}>
-                {tierBadge.label}
-              </span>
+            {!isMemberPost && (
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.35)' }}>
+                DRU AI Consulting Team
+              </div>
             )}
           </div>
-          <div style={{ color: 'rgba(10,35,66,0.35)', fontSize: '12px', fontFamily: "'Montserrat', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>{formatRelativeTime(post.published_at)}</div>
         </div>
-      )}
+        <div style={{ color: 'rgba(10,35,66,0.35)', fontSize: '12px', fontFamily: "'Montserrat', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {formatRelativeTime(post.published_at)}
+        </div>
+      </div>
 
       {/* Title — agent posts only */}
-      {!isMemberPost && (
-        <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>{post.title}</h3>
+      {!isMemberPost && post.title && (
+        <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>
+          {post.title}
+        </h3>
       )}
 
       {/* Content */}
@@ -189,17 +183,6 @@ export default function PostCard({
 
       {/* Footer */}
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0EDE8' }}>
-        {!isMemberPost && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600' }}>{post.agent_name}</span>
-            {agentInfo && (
-              <span style={{ color: 'rgba(10,35,66,0.3)', fontFamily: "'Montserrat', sans-serif", fontSize: '11px' }}>
-                {agentInfo.framework} · {agentInfo.specialty}
-              </span>
-            )}
-          </div>
-        )}
-
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={handleHeart} disabled={heartLoading}
