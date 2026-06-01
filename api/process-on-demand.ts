@@ -1,7 +1,6 @@
 // api/process-on-demand.ts
 // Standalone on-demand chain processor — called by twin-command.ts after CSQ write
 // Flow: Isabella retry loop → Governance → Command Layer → Twin synthesis → Intelligence Hub
-// No dependency on ghl-agent-trigger.ts
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
@@ -11,6 +10,25 @@ const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY!;
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
+
+// ─── JSON extractor — finds first complete JSON object, ignores surrounding content ──
+
+function extractJSON(text: string): Record<string, unknown> | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(start, i + 1)); }
+        catch { return null; }
+      }
+    }
+  }
+  return null;
+}
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -44,7 +62,6 @@ async function dbInsert(table: string, record: Record<string, unknown>): Promise
 
 // ─── Anthropic helpers ────────────────────────────────────────────────────────
 
-// Haiku — Governance, Command Layer, correction agents
 async function callAnthropic(prompt: string, maxTokens = 800): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -110,24 +127,24 @@ IMPORTANT — WHAT DOES NOT TAKE ™:
 
 CLEARING STANDARD:
 - All DRU marks appear with ™ AND content is within Classes 35/41/42 → cleared:true
-- A DRU mark appears WITHOUT ™ → cleared:false, state exactly which mark and where
-- An unapproved phrase carries ™ → cleared:false, state exactly which phrase
-- Content falls outside Classes 35/41/42 → cleared:false, state exactly what falls outside
+- A DRU mark appears WITHOUT ™ → cleared:false
+- An unapproved phrase carries ™ → cleared:false
+- Content falls outside Classes 35/41/42 → cleared:false
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT:
+CONTENT TO REVIEW:
 ${item.raw_output}
 
-Output ONLY this JSON — nothing before it, nothing after it:
+You MUST respond with ONLY the JSON below. No preamble, no explanation, no markdown. Just the raw JSON object:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
 OR:
 {"cleared":false,"flags":"specific issue here","correction_notes":"Exact instruction for the agent to correct this"}`,
     600
   );
 
-  const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "null");
-  if (!result) throw new Error("Isabella JSON parse failed");
-  return { cleared: result.cleared === true, flags: result.flags ?? "none", correctionNotes: result.correction_notes ?? "" };
+  const result = extractJSON(raw);
+  if (!result) throw new Error(`Isabella JSON parse failed. Raw response: ${raw.slice(0, 200)}`);
+  return { cleared: result.cleared === true, flags: String(result.flags ?? "none"), correctionNotes: String(result.correction_notes ?? "") };
 }
 
 // ─── Correction agent ─────────────────────────────────────────────────────────
@@ -197,16 +214,16 @@ Coaching philosophy, motivational language, sales strategy, and aspirational fra
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
 
-Output ONLY this JSON:
+Respond with ONLY this JSON — no preamble, no markdown:
 {"cleared":true,"notes":"Governance review complete. No issues found.","flags":"none"}
 OR:
 {"cleared":false,"notes":"Reason for block","flags":"specific issue"}`,
     600
   );
 
-  const result = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "null");
-  if (!result) throw new Error("Governance JSON parse failed");
-  return { cleared: result.cleared === true, notes: result.notes ?? "", flags: result.flags ?? "none" };
+  const result = extractJSON(raw);
+  if (!result) throw new Error(`Governance JSON parse failed. Raw: ${raw.slice(0, 200)}`);
+  return { cleared: result.cleared === true, notes: String(result.notes ?? ""), flags: String(result.flags ?? "none") };
 }
 
 // ─── Step 3: Command Layer — Priya, Travis, Raymond (Haiku) ──────────────────
@@ -217,20 +234,20 @@ async function runCommandLayerOnItem(item: Record<string, unknown>): Promise<{ a
   const priyaRaw = await callAnthropic(
     `${GENIUS_MODE}
 You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority.
-Review this on-demand agent output. Flag any executive-level concerns or confirm it is clear to proceed.
+Review this on-demand agent output. Flag any executive-level concerns or confirm clear to proceed.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"notes":"your assessment","flag":false}`, 300);
-  const priya = JSON.parse(priyaRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"notes":"Reviewed. No executive flags.","flag":false}');
+Respond with ONLY this JSON — no preamble: {"notes":"your assessment","flag":false}`, 300);
+  const priya = extractJSON(priyaRaw) ?? { notes: "Reviewed. No executive flags.", flag: false };
 
   const travisRaw = await callAnthropic(
     `${GENIUS_MODE}
 You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-Review this on-demand output. Assess quality and determine routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
+Review this on-demand output. Determine routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"notes":"your assessment","action":"route_to_twin"}`, 300);
-  const travis = JSON.parse(travisRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"notes":"Output reviewed and packaged.","action":"route_to_twin"}');
+Respond with ONLY this JSON — no preamble: {"notes":"your assessment","action":"route_to_twin"}`, 300);
+  const travis = extractJSON(travisRaw) ?? { notes: "Output reviewed and packaged.", action: "route_to_twin" };
 
   const raymondRaw = await callAnthropic(
     `${GENIUS_MODE}
@@ -239,15 +256,15 @@ This is an on-demand request from DeAnna. Review and approve for the Intelligenc
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 PRIYA: ${priya.notes} | TRAVIS: ${travis.notes}
 CONTENT: ${item.raw_output}
-Output ONLY JSON: {"approved":true,"notes":"your final assessment"}`, 300);
-  const raymond = JSON.parse(raymondRaw.match(/\{[\s\S]*\}/)?.[0] ?? '{"approved":true,"notes":"Approved for Intelligence Hub."}');
+Respond with ONLY this JSON — no preamble: {"approved":true,"notes":"your final assessment"}`, 300);
+  const raymond = extractJSON(raymondRaw) ?? { approved: true, notes: "Approved for Intelligence Hub." };
 
   return {
     approved:     raymond.approved !== false,
-    priyaNotes:   priya.notes ?? "",
-    travisNotes:  travis.notes ?? "",
-    raymondNotes: raymond.notes ?? "",
-    action:       travis.action ?? "route_to_twin",
+    priyaNotes:   String(priya.notes ?? ""),
+    travisNotes:  String(travis.notes ?? ""),
+    raymondNotes: String(raymond.notes ?? ""),
+    action:       String(travis.action ?? "route_to_twin"),
   };
 }
 
@@ -329,7 +346,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     for (let attempt = 0; attempt <= 3; attempt++) {
       const item = await dbGet("chief_of_staff_queue", currentId);
-      if (!item) { console.error(`[on-demand] Item not found: ${currentId}`); res.status(404).json({ error: "CSQ item not found" }); return; }
+      if (!item) { res.status(404).json({ error: "CSQ item not found" }); return; }
 
       console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
       const retryCount = (item.retry_count as number) ?? 0;
@@ -367,7 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       console.log(`[on-demand] 🔄 Correction applied for: ${item.agent_name}`);
 
       const newId = await runCorrectionAgent(item, correctionNotes, retryCount + 1);
-      if (!newId) { console.error(`[on-demand] Correction agent failed`); res.status(500).json({ error: "Correction agent failed" }); return; }
+      if (!newId) { res.status(500).json({ error: "Correction agent failed" }); return; }
       currentId = newId;
     }
 
