@@ -29,6 +29,8 @@ export type Tier         = 'free' | 'paid' | 'navigator' | 'accelerator';
 export type PostType     = 'daily_insight' | 'framework_lesson' | 'action_challenge' | 'strategic_edge' | 'framework_training' | 'pdf_downloadable' | 'lab_video' | 'member_post';
 export type TierRequired = 'all' | 'navigator' | 'accelerator';
 export type NotifType    = 'mention' | 'reply' | 'new_post' | 'new_agent_post';
+export type PostCategory = 'win' | 'question' | 'resource' | 'challenge' | 'general';
+export type CommunityLevel = 'Connected' | 'Contributor' | 'Cultivator' | 'Cornerstone' | 'Changemaker';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 export interface CommunityPost {
@@ -37,6 +39,10 @@ export interface CommunityPost {
   agent_id: string; agent_name: string;
   published_at: string; is_active: boolean;
   pdf_url?: string; video_url?: string; image_url?: string;
+  // Engagement fields
+  category?:   PostCategory;
+  is_pinned?:  boolean;
+  pinned_at?:  string | null;
 }
 export interface CommunityComment {
   id: string; post_id: string; member_id: string | null;
@@ -91,6 +97,15 @@ export const AGENT_FRAMEWORK_MAP: Record<string, { framework: string; specialty:
 };
 
 export const ZOE_POST_TYPES: PostType[] = ['strategic_edge', 'daily_insight', 'framework_training'];
+
+// ── Category config ───────────────────────────────────────────────────────────
+export const CATEGORY_CONFIG: Record<PostCategory, { label: string; bg: string; color: string }> = {
+  win:       { label: 'Win',       bg: '#EAF3DE', color: '#27500A' },
+  question:  { label: 'Question',  bg: '#E6F1FB', color: '#0C447C' },
+  resource:  { label: 'Resource',  bg: '#EEEDFE', color: '#3C3489' },
+  challenge: { label: 'Challenge', bg: '#FBEAF0', color: '#72243E' },
+  general:   { label: 'General',   bg: '#F1EFE8', color: '#444441' },
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function tierLabel(t: Tier): string {
