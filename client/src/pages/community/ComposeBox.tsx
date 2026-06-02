@@ -14,6 +14,14 @@ function getVideoEmbed(url: string): string | null {
   return null;
 }
 
+// ── Category config ───────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { value: 'win',       label: 'Win',       activeBg: '#EAF3DE', activeColor: '#27500A' },
+  { value: 'question',  label: 'Question',  activeBg: '#E6F1FB', activeColor: '#0C447C' },
+  { value: 'resource',  label: 'Resource',  activeBg: '#EEEDFE', activeColor: '#3C3489' },
+  { value: 'challenge', label: 'Challenge', activeBg: '#FBEAF0', activeColor: '#72243E' },
+];
+
 // =============================================================================
 // COMPOSE BOX
 // =============================================================================
@@ -26,6 +34,7 @@ export default function ComposeBox({
   const [text, setText]               = useState('');
   const [expanded, setExpanded]       = useState(false);
   const [submitting, setSubmitting]   = useState(false);
+  const [category, setCategory]       = useState('general');
 
   // Image / GIF
   const [imageFile, setImageFile]       = useState<File | null>(null);
@@ -44,10 +53,10 @@ export default function ComposeBox({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef   = useRef<HTMLInputElement>(null);
 
-  const MAX_CHARS      = 1000;
-  const MAX_IMAGE_MB   = 10;
-  const MAX_VIDEO_MB   = 25;
-  const MAX_PDF_MB     = 5;
+  const MAX_CHARS    = 1000;
+  const MAX_IMAGE_MB = 10;
+  const MAX_VIDEO_MB = 25;
+  const MAX_PDF_MB   = 5;
 
   const resetMedia = () => {
     setImageFile(null); setImagePreview(null);
@@ -92,7 +101,6 @@ export default function ComposeBox({
     let video_url: string | null = null;
     let pdf_url:   string | null = null;
 
-    // Upload image
     if (imageFile) {
       const ext  = imageFile.name.split('.').pop();
       const path = `${userId}/${Date.now()}.${ext}`;
@@ -100,7 +108,6 @@ export default function ComposeBox({
       if (!error) image_url = supabase.storage.from('community-images').getPublicUrl(path).data.publicUrl;
     }
 
-    // Upload or save video link
     if (videoFile) {
       const ext  = videoFile.name.split('.').pop();
       const path = `${userId}/${Date.now()}.${ext}`;
@@ -110,20 +117,20 @@ export default function ComposeBox({
       video_url = videoLink.trim();
     }
 
-    // Upload PDF
     if (pdfFile) {
       const path = `${userId}/${Date.now()}_${pdfFile.name.replace(/\s/g, '_')}`;
       const { error } = await supabase.storage.from('community-pdfs').upload(path, pdfFile);
       if (!error) pdf_url = supabase.storage.from('community-pdfs').getPublicUrl(path).data.publicUrl;
     }
 
-    const content    = text.trim() || ' ';
-    const isFlagged  = checkFlagged(content);
-    const title      = content.slice(0, 80) + (content.length > 80 ? '...' : '');
+    const content   = text.trim() || ' ';
+    const isFlagged = checkFlagged(content);
+    const title     = content.slice(0, 80) + (content.length > 80 ? '...' : '');
 
     const { data, error } = await supabase.from('community_posts').insert({
       title,
       content,
+      category,
       post_type:     'member_post',
       tier_required: 'navigator',
       agent_id:      userId,
@@ -138,7 +145,6 @@ export default function ComposeBox({
 
     if (!error && data) {
       if (isFlagged) {
-        // Write policy violation card to AdminApprovals — post is suppressed
         await supabase.from('approvals').insert({
           source:           'cc_post_flag',
           trigger_type:     'cc_post_flag',
@@ -158,18 +164,17 @@ export default function ComposeBox({
           context:          null,
           archived:         false,
         });
-        // Silently close — post is suppressed, feed never receives it
       } else {
         onPostSubmitted(data as CommunityPost);
       }
       setText('');
+      setCategory('general');
       resetMedia();
       setExpanded(false);
     }
     setSubmitting(false);
   };
 
-  // ── Icon button style ────────────────────────────────────────────────────────
   const iconBtn = (active?: boolean) => ({
     background: active ? 'rgba(10,35,66,0.08)' : 'none',
     border: `1px solid ${active ? '#C0D0E8' : '#E8E4DF'}`,
@@ -209,9 +214,40 @@ export default function ComposeBox({
                 style={{ width: '100%', border: '1.5px solid #C0D0E8', borderRadius: '10px', padding: '12px 14px', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', color: '#0A2342', background: '#fff', resize: 'vertical', outline: 'none', lineHeight: '1.65', boxSizing: 'border-box' }}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSubmit(); }
-                  if (e.key === 'Escape') { setExpanded(false); setText(''); resetMedia(); }
+                  if (e.key === 'Escape') { setExpanded(false); setText(''); setCategory('general'); resetMedia(); }
                 }}
               />
+
+              {/* ── Category selector ─────────────────────────────────────── */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: 'rgba(10,35,66,0.35)', letterSpacing: '0.5px' }}>TAG:</span>
+                {CATEGORIES.map(cat => {
+                  const selected = category === cat.value;
+                  return (
+                    <button
+                      key={cat.value}
+                      onClick={() => setCategory(selected ? 'general' : cat.value)}
+                      style={{
+                        background:    selected ? cat.activeBg    : 'transparent',
+                        color:         selected ? cat.activeColor : 'rgba(10,35,66,0.4)',
+                        border:        `1px solid ${selected ? cat.activeBg : '#E8E4DF'}`,
+                        borderRadius:  '6px',
+                        padding:       '4px 12px',
+                        cursor:        'pointer',
+                        fontFamily:    "'Montserrat', sans-serif",
+                        fontSize:      '11px',
+                        fontWeight:    '600',
+                        letterSpacing: '0.3px',
+                        transition:    'all 0.15s',
+                      }}
+                      onMouseEnter={e => { if (!selected) { (e.currentTarget as HTMLButtonElement).style.borderColor = '#C0D0E8'; (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; } }}
+                      onMouseLeave={e => { if (!selected) { (e.currentTarget as HTMLButtonElement).style.borderColor = '#E8E4DF'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.4)'; } }}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Image preview */}
               {imagePreview && (
@@ -288,7 +324,6 @@ export default function ComposeBox({
               {/* Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {/* Photo/GIF */}
                   <button onClick={() => imageInputRef.current?.click()} style={iconBtn(!!imageFile)}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#C0D0E8'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = imageFile ? '#C0D0E8' : '#E8E4DF'; }}>
@@ -297,8 +332,6 @@ export default function ComposeBox({
                     </svg>
                     Photo/GIF
                   </button>
-
-                  {/* Video */}
                   <button onClick={() => setShowVideoPanel(!showVideoPanel)} style={iconBtn(showVideoPanel || !!videoFile || !!videoLink)}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#C0D0E8'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = (showVideoPanel || videoFile || videoLink) ? '#C0D0E8' : '#E8E4DF'; }}>
@@ -307,8 +340,6 @@ export default function ComposeBox({
                     </svg>
                     Video
                   </button>
-
-                  {/* PDF */}
                   <button onClick={() => pdfInputRef.current?.click()} style={iconBtn(!!pdfFile)}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#C0D0E8'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = pdfFile ? '#C0D0E8' : '#E8E4DF'; }}>
@@ -317,14 +348,12 @@ export default function ComposeBox({
                     </svg>
                     PDF
                   </button>
-
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: text.length > MAX_CHARS * 0.85 ? '#C2185B' : 'rgba(10,35,66,0.3)' }}>
                     {text.length}/{MAX_CHARS}
                   </span>
                 </div>
-
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button onClick={() => { setExpanded(false); setText(''); resetMedia(); }}
+                  <button onClick={() => { setExpanded(false); setText(''); setCategory('general'); resetMedia(); }}
                     style={{ background: 'none', border: '1px solid #E8E4DF', borderRadius: '6px', padding: '8px 16px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: 'rgba(10,35,66,0.45)', cursor: 'pointer' }}>
                     Cancel
                   </button>
