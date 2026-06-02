@@ -222,15 +222,7 @@ export default function Daily() {
 
         {isPaid && <StreakBadge streak={streak} />}
 
-        {/* Free tier banner */}
-        {!isPaid && (
-          <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, padding: "0.875rem 1.1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" as const }}>
-            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.65)", fontSize: "0.78rem", lineHeight: 1.6, margin: 0 }}>
-              You're viewing your free daily insight. Book a diagnostic to unlock the full experience.
-            </p>
-            <a href="/frameworks" style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase" as const, textDecoration: "none", whiteSpace: "nowrap" as const, flexShrink: 0 }}>Upgrade →</a>
-          </div>
-        )}
+
 
         {/* Dynamic access level badge */}
         {(() => {
