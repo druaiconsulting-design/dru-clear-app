@@ -12,17 +12,16 @@ export const NAVIGATOR_FEATURES = [
   'Access to DRU AI Consulting — Community Connection',
   'Daily Leadership with AI Insights',
   'Framework Micro-Lessons',
-  "Today's Action Challenge",
-  "DeAnna's Strategic Edge",
-  'Weekly Framework Training Content',
-  'Exclusive Founder Pricing — Locked In Forever',
+  'Executive Founder Pricing — Locked In Forever',
 ];
 
 export const ACCELERATOR_FEATURES = [
-  'Everything in Navigator — plus:',
-  'Weekly Branded Framework PDF Downloadable',
+  'Everything in Navigator, plus:',
+  "Today's Action Challenge",
+  "DeAnna's Strategic Edge",
+  'Weekly Framework PDF Downloadable',
   "Monthly DeAnna's Leadership Lab! Video Access",
-  'Exclusive Founder Pricing — Locked In Forever',
+  'Executive Founder Pricing — Locked In Forever',
 ];
 
 // ── Types ────────────────────────────────────────────────────────────────────
