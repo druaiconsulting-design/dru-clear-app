@@ -5,6 +5,7 @@ import NavBar from '../../components/NavBar';
 import ComposeBox from './ComposeBox';
 import PostCard from './PostCard';
 import { NotificationBell, SettingsPanel } from './NotificationBell';
+import MemberProfile from '../community-engagement/MemberProfile';
 
 // =============================================================================
 // COMMUNITY FEED
@@ -28,6 +29,7 @@ export default function CommunityFeed({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [photoMap, setPhotoMap]   = useState<Record<string, string>>({});
   const [levelMap, setLevelMap]   = useState<Record<string, string>>({});
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const loadPdfs = useCallback(async () => {
     const { data, error } = await supabase.storage.from('pdfs').list('', { sortBy: { column: 'created_at', order: 'desc' } });
@@ -152,6 +154,19 @@ export default function CommunityFeed({
     }
   }, [cacheMemberProfile]);
 
+  // Re-sort feed after a pin change without a full reload
+  const handlePinChange = useCallback((postId: string, pinned: boolean) => {
+    setPosts(prev => {
+      const updated = prev.map(p => p.id === postId ? { ...p, is_pinned: pinned } as CommunityPost : p);
+      return [...updated].sort((a, b) => {
+        const ap = (a as any).is_pinned ? 1 : 0;
+        const bp = (b as any).is_pinned ? 1 : 0;
+        if (bp !== ap) return bp - ap;
+        return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+      });
+    });
+  }, []);
+
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
@@ -173,7 +188,6 @@ export default function CommunityFeed({
                 <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Share your thoughts, ask questions, connect and collaborate with like-minded leaders.</p>
                 <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', marginTop: '5px', fontWeight: '600' }}>Soliciting and self-promotion are prohibited; violation will result in removal from the membership.</p>
               </div>
-              {/* Right controls: tier badge + Leaderboard + Notifications */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', alignSelf: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '8px', padding: '8px 16px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.5)', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(10,35,66,0.06)' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: tierDotColor(tier), flexShrink: 0 }} />{tierLabel(tier)}
@@ -183,10 +197,8 @@ export default function CommunityFeed({
                     onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); onShowLeaderboard(); }}
                     style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '8px', padding: '8px 14px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: 'rgba(10,35,66,0.5)', cursor: 'pointer', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 3px rgba(10,35,66,0.06)', transition: 'all 0.15s ease' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.25)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#E8E4DF'; }}
-                  >
-                    <span>🏆</span>
-                    <span>Leaderboard</span>
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#E8E4DF'; }}>
+                    <span>🏆</span><span>Leaderboard</span>
                   </button>
                 )}
                 {userId && (
@@ -213,7 +225,6 @@ export default function CommunityFeed({
             </div>
           ) : (
             <>
-              {/* PDF strip */}
               {pdfs.length > 0 && (
                 <div style={{ marginBottom: '28px' }}>
                   <a href={pdfs[0].url} target="_blank" rel="noopener noreferrer"
@@ -250,7 +261,6 @@ export default function CommunityFeed({
                 </div>
               )}
 
-              {/* Feed */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
                 {posts.map((post, i) => (
@@ -258,6 +268,8 @@ export default function CommunityFeed({
                     key={post.id} post={post} index={i}
                     userId={userId} userName={userName} userPhotoUrl={userPhotoUrl}
                     isAdmin={isAdmin} photoMap={photoMap} levelMap={levelMap}
+                    onMemberClick={setSelectedMemberId}
+                    onPinChange={handlePinChange}
                   />
                 ))}
               </div>
@@ -266,7 +278,6 @@ export default function CommunityFeed({
         </div>
       </main>
 
-      {/* Upgrade pill — Navigator only */}
       {tier === 'navigator' && (
         <a href={ACCELERATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer"
           style={{ position: 'fixed', bottom: '28px', right: '28px', background: '#B8941F', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px', textDecoration: 'none', boxShadow: '0 2px 12px rgba(184,148,31,0.3)', zIndex: 50, display: 'flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.2s' }}
@@ -280,10 +291,18 @@ export default function CommunityFeed({
         <SettingsPanel userId={userId} userFirstName={userName} userPhotoUrl={userPhotoUrl} onClose={() => setSettingsOpen(false)} onPhotoUpdate={url => setUserPhotoUrl(url)} />
       )}
 
+      {selectedMemberId && (
+        <MemberProfile
+          profileUserId={selectedMemberId}
+          viewerUserId={userId}
+          isAdmin={isAdmin}
+          onClose={() => setSelectedMemberId(null)}
+        />
+      )}
+
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(10,35,66,0.25)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em', borderTop: '1px solid #E8E4DF' }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
     </div>
   );
 }
-
