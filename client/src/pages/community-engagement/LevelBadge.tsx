@@ -31,3 +31,4 @@ export default function LevelBadge({ level }: { level: string }) {
     </span>
   );
 }
+
