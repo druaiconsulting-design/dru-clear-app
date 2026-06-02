@@ -1,29 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, tierLabel, tierDotColor, ACCELERATOR_PAYMENT_LINK } from './types';
-import type { CommunityPost, Tier } from './types';
+import { supabase, tierLabel, tierDotColor, ACCELERATOR_PAYMENT_LINK, CATEGORY_CONFIG } from './types';
+import type { CommunityPost, Tier, PostCategory } from './types';
 import NavBar from '../../components/NavBar';
 import ComposeBox from './ComposeBox';
 import PostCard from './PostCard';
 import { NotificationBell, SettingsPanel } from './NotificationBell';
 
-
+// ── Category filter chips ─────────────────────────────────────────────────────
+const FILTER_OPTIONS: { key: PostCategory | 'all'; label: string }[] = [
+  { key: 'all',       label: 'All'        },
+  { key: 'win',       label: 'Wins'       },
+  { key: 'question',  label: 'Questions'  },
+  { key: 'resource',  label: 'Resources'  },
+  { key: 'challenge', label: 'Challenges' },
+];
 
 // =============================================================================
 // COMMUNITY FEED
 // =============================================================================
 export default function CommunityFeed({ tier }: { tier: Tier }) {
-  const [posts, setPosts]         = useState<CommunityPost[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [liveCount, setLiveCount] = useState(0);
-  const [pdfs, setPdfs]           = useState<{ name: string; url: string }[]>([]);
+  const [posts, setPosts]               = useState<CommunityPost[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [liveCount, setLiveCount]       = useState(0);
+  const [pdfs, setPdfs]                 = useState<{ name: string; url: string }[]>([]);
   const [showArchives, setShowArchives] = useState(false);
-  const [userId, setUserId]       = useState('');
-  const [userName, setUserName]   = useState('');
+  const [userId, setUserId]             = useState('');
+  const [userName, setUserName]         = useState('');
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | undefined>();
-  const [isAdmin, setIsAdmin]     = useState(false);
+  const [isAdmin, setIsAdmin]           = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // photoMap: keyed by user ID → photo URL, used to show correct avatar on other members' posts
-  const [photoMap, setPhotoMap]   = useState<Record<string, string>>({});
+  const [photoMap, setPhotoMap]         = useState<Record<string, string>>({});
+  const [levelMap, setLevelMap]         = useState<Record<string, string>>({});
+  const [activeCategory, setActiveCategory] = useState<PostCategory | 'all'>('all');
 
   const loadPdfs = useCallback(async () => {
     const { data, error } = await supabase.storage.from('pdfs').list('', { sortBy: { column: 'created_at', order: 'desc' } });
@@ -35,19 +43,34 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
   }, []);
 
   const loadPosts = useCallback(async () => {
-    const { data, error } = await supabase.from('community_posts').select('*').eq('is_active', true).order('published_at', { ascending: false }).limit(50);
+    const { data, error } = await supabase
+      .from('community_posts')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_pinned', { ascending: false })
+      .order('published_at', { ascending: false })
+      .limit(50);
+
     if (error) { console.error('[community feed]', error); return []; }
     const loaded = (data ?? []) as CommunityPost[];
 
-    // Fetch profile photos for all member post authors so avatars show correctly for all viewers
+    // Fetch photo + community_level for all member post authors in one query
     const memberIds = [...new Set(
       loaded.filter(p => p.post_type === 'member_post' && p.agent_id).map(p => p.agent_id)
     )];
     if (memberIds.length > 0) {
-      const { data: profiles } = await supabase.from('profiles').select('id, photo_url').in('id', memberIds);
-      const map: Record<string, string> = {};
-      (profiles ?? []).forEach((p: any) => { if (p.photo_url) map[p.id] = p.photo_url; });
-      setPhotoMap(map);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, photo_url, community_level')
+        .in('id', memberIds);
+      const photos: Record<string, string> = {};
+      const levels: Record<string, string> = {};
+      (profiles ?? []).forEach((p: any) => {
+        if (p.photo_url)       photos[p.id] = p.photo_url;
+        if (p.community_level) levels[p.id] = p.community_level;
+      });
+      setPhotoMap(photos);
+      setLevelMap(levels);
     }
 
     return loaded;
@@ -75,6 +98,18 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       if (perm === 'granted') registerPush(uid);
     }, 3000);
   }, [registerPush]);
+
+  // Helper: fetch and cache photo + level for a single member
+  const cacheMemberProfile = useCallback(async (memberId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, photo_url, community_level')
+      .eq('id', memberId)
+      .single();
+    if (!data) return;
+    if (data.photo_url)       setPhotoMap(m => ({ ...m, [data.id]: data.photo_url! }));
+    if (data.community_level) setLevelMap(m => ({ ...m, [data.id]: data.community_level! }));
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -113,10 +148,8 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
           setPosts(prev => {
             if (prev.find(p => p.id === newPost.id)) return prev;
             setLiveCount(c => c + 1);
-            // If it's a member post, fetch that author's photo and add to map
             if (newPost.post_type === 'member_post' && newPost.agent_id) {
-              supabase.from('profiles').select('id, photo_url').eq('id', newPost.agent_id).single()
-                .then(({ data }) => { if (data?.photo_url) setPhotoMap(m => ({ ...m, [data.id]: data.photo_url! })); });
+              cacheMemberProfile(newPost.agent_id);
             }
             return [newPost, ...prev];
           });
@@ -124,16 +157,23 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       })
       .subscribe();
     return () => { mounted = false; supabase.removeChannel(channel); };
-  }, [loadPosts, loadPdfs, requestPushPermission, registerPush]);
+  }, [loadPosts, loadPdfs, requestPushPermission, registerPush, cacheMemberProfile]);
 
   const handleMemberPost = useCallback((post: CommunityPost) => {
     setPosts(prev => [post, ...prev]);
-    // Fetch the new author's photo if not already in map
     if (post.post_type === 'member_post' && post.agent_id) {
-      supabase.from('profiles').select('id, photo_url').eq('id', post.agent_id).single()
-        .then(({ data }) => { if (data?.photo_url) setPhotoMap(m => ({ ...m, [data.id]: data.photo_url! })); });
+      cacheMemberProfile(post.agent_id);
     }
-  }, []);
+  }, [cacheMemberProfile]);
+
+  // ── Category filtering ──────────────────────────────────────────────────────
+  // Agent posts always show. Member posts filtered by selected category.
+  const filteredPosts = activeCategory === 'all'
+    ? posts
+    : posts.filter(p =>
+        p.post_type !== 'member_post' ||
+        (p.category ?? 'general') === activeCategory
+      );
 
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
@@ -141,7 +181,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       <main style={{ flex: 1, padding: '40px 24px 80px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
-          {/* Page header */}
+          {/* ── Page header ─────────────────────────────────────────────────── */}
           <div style={{ marginBottom: '32px', animation: 'ccFadeIn 0.5s ease both' }}>
             <a href="/portal"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: 'rgba(10,35,66,0.45)', textDecoration: 'none', letterSpacing: '0.5px', marginBottom: '20px', transition: 'color 0.15s ease' }}
@@ -184,7 +224,7 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
             </div>
           ) : (
             <>
-              {/* PDF strip */}
+              {/* ── PDF strip ───────────────────────────────────────────────── */}
               {pdfs.length > 0 && (
                 <div style={{ marginBottom: '28px' }}>
                   <a href={pdfs[0].url} target="_blank" rel="noopener noreferrer"
@@ -221,23 +261,71 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
                 </div>
               )}
 
-              {/* Feed */}
+              {/* ── Category filter chips ────────────────────────────────────── */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                {FILTER_OPTIONS.map(opt => {
+                  const isActive = activeCategory === opt.key;
+                  const catStyle = opt.key !== 'all' ? CATEGORY_CONFIG[opt.key as PostCategory] : null;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setActiveCategory(opt.key as PostCategory | 'all')}
+                      style={{
+                        fontFamily:    "'Montserrat', sans-serif",
+                        fontSize:      '12px',
+                        fontWeight:    '600',
+                        padding:       '6px 14px',
+                        borderRadius:  '20px',
+                        border:        isActive ? 'none' : '1px solid #E8E4DF',
+                        cursor:        'pointer',
+                        letterSpacing: '0.3px',
+                        transition:    'all 0.15s ease',
+                        background:    isActive
+                          ? (opt.key === 'all' ? '#0A2342' : catStyle?.bg ?? '#0A2342')
+                          : '#FFFFFF',
+                        color:         isActive
+                          ? (opt.key === 'all' ? '#FFFFFF' : catStyle?.color ?? '#FFFFFF')
+                          : 'rgba(10,35,66,0.5)',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ── Feed ────────────────────────────────────────────────────── */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <ComposeBox userId={userId} userName={userName} userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost} />
-                {posts.map((post, i) => (
-                  <PostCard
-                    key={post.id} post={post} index={i}
-                    userId={userId} userName={userName} userPhotoUrl={userPhotoUrl}
-                    isAdmin={isAdmin} photoMap={photoMap}
-                  />
-                ))}
+                <ComposeBox
+                  userId={userId} userName={userName}
+                  userPhotoUrl={userPhotoUrl} onPostSubmitted={handleMemberPost}
+                />
+                {filteredPosts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px 24px', color: 'rgba(10,35,66,0.35)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px' }}>
+                    No posts in this category yet — be the first.
+                  </div>
+                ) : (
+                  filteredPosts.map((post, i) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      index={i}
+                      userId={userId}
+                      userName={userName}
+                      userPhotoUrl={userPhotoUrl}
+                      isAdmin={isAdmin}
+                      photoMap={photoMap}
+                      levelMap={levelMap}
+                    />
+                  ))
+                )}
               </div>
             </>
           )}
         </div>
       </main>
 
-      {/* Upgrade pill — Navigator only */}
+      {/* ── Upgrade pill — Navigator only ───────────────────────────────────── */}
       {tier === 'navigator' && (
         <a href={ACCELERATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer"
           style={{ position: 'fixed', bottom: '28px', right: '28px', background: '#B8941F', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px', textDecoration: 'none', boxShadow: '0 2px 12px rgba(184,148,31,0.3)', zIndex: 50, display: 'flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.2s' }}
@@ -248,7 +336,11 @@ export default function CommunityFeed({ tier }: { tier: Tier }) {
       )}
 
       {settingsOpen && userId && (
-        <SettingsPanel userId={userId} userFirstName={userName} userPhotoUrl={userPhotoUrl} onClose={() => setSettingsOpen(false)} onPhotoUpdate={url => setUserPhotoUrl(url)} />
+        <SettingsPanel
+          userId={userId} userFirstName={userName} userPhotoUrl={userPhotoUrl}
+          onClose={() => setSettingsOpen(false)}
+          onPhotoUpdate={url => setUserPhotoUrl(url)}
+        />
       )}
 
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(10,35,66,0.25)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em', borderTop: '1px solid #E8E4DF' }}>
