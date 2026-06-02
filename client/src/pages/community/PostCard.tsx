@@ -3,6 +3,7 @@ import { supabase, formatRelativeTime, formatContent, ZOE_POST_TYPES } from './t
 import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 import CommentSection from './CommentSection';
+import LevelBadge from '../community-engagement/LevelBadge';
 
 // ── Video embed detector ──────────────────────────────────────────────────────
 function getVideoEmbed(url: string): string | null {
@@ -21,35 +22,6 @@ function getPdfFilename(url: string): string {
   return decodeURIComponent(raw).replace(/^\d+_/, '');
 }
 
-// ── Level badge ───────────────────────────────────────────────────────────────
-const LEVEL_STYLES: Record<string, { bg: string; color: string }> = {
-  Connected:   { bg: '#F1EFE8', color: '#5F5E5A' },
-  Contributor: { bg: '#E6F1FB', color: '#185FA5' },
-  Cultivator:  { bg: '#EAF3DE', color: '#27500A' },
-  Cornerstone: { bg: '#FAEEDA', color: '#633806' },
-  Changemaker: { bg: '#0A2342', color: '#D4AF37' },
-};
-
-function LevelBadge({ level }: { level: string }) {
-  const s = LEVEL_STYLES[level] || LEVEL_STYLES.Connected;
-  return (
-    <span style={{
-      display: 'inline-block',
-      fontSize: '10px',
-      fontWeight: '700',
-      fontFamily: "'Montserrat', sans-serif",
-      padding: '2px 8px',
-      borderRadius: '4px',
-      background: s.bg,
-      color: s.color,
-      letterSpacing: '0.3px',
-      flexShrink: 0,
-    }}>
-      {level}
-    </span>
-  );
-}
-
 // ── Category tag ──────────────────────────────────────────────────────────────
 const CATEGORY_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   win:       { bg: '#EAF3DE', color: '#27500A', label: 'Win'       },
@@ -64,15 +36,9 @@ function CategoryTag({ category }: { category: string }) {
   const s = CATEGORY_STYLES[category] || CATEGORY_STYLES.general;
   return (
     <span style={{
-      display: 'inline-block',
-      fontSize: '10px',
-      fontWeight: '700',
-      fontFamily: "'Montserrat', sans-serif",
-      padding: '2px 8px',
-      borderRadius: '4px',
-      background: s.bg,
-      color: s.color,
-      letterSpacing: '0.3px',
+      display: 'inline-block', fontSize: '10px', fontWeight: '700',
+      fontFamily: "'Montserrat', sans-serif", padding: '2px 8px',
+      borderRadius: '4px', background: s.bg, color: s.color, letterSpacing: '0.3px',
     }}>
       {s.label}
     </span>
@@ -81,17 +47,6 @@ function CategoryTag({ category }: { category: string }) {
 
 // =============================================================================
 // POST CARD
-// NOTE: types.ts — add to CommunityPost type:
-//   category?:   string;
-//   is_pinned?:  boolean;
-//   pinned_at?:  string | null;
-//
-// CommunityFeed.tsx — add levelMap prop build:
-//   const memberIds = posts.filter(p => p.post_type === 'member_post').map(p => p.agent_id);
-//   const { data: levels } = await supabase.from('profiles')
-//     .select('id, community_level').in('id', memberIds);
-//   const levelMap = Object.fromEntries((levels || []).map(l => [l.id, l.community_level]));
-//   then pass levelMap={levelMap} to each <PostCard />
 // =============================================================================
 export default function PostCard({
   post, index, userId, userName, userPhotoUrl, isAdmin, photoMap = {}, levelMap = {},
@@ -120,7 +75,6 @@ export default function PostCard({
 
   useEffect(() => {
     if (!userId) return;
-    // Check if current user has hearted this post (post-level reaction only)
     supabase
       .from('community_reactions')
       .select('id', { count: 'exact', head: true })
@@ -144,12 +98,9 @@ export default function PostCard({
     setHeartLoading(true);
     if (hearted) {
       await supabase
-        .from('community_reactions')
-        .delete()
-        .eq('post_id', post.id)
-        .eq('member_id', userId)
-        .eq('reaction_type', 'heart')
-        .is('comment_id', null);
+        .from('community_reactions').delete()
+        .eq('post_id', post.id).eq('member_id', userId)
+        .eq('reaction_type', 'heart').is('comment_id', null);
       setHearted(false);
     } else {
       await supabase
@@ -178,11 +129,9 @@ export default function PostCard({
       });
       const routedTo = ZOE_POST_TYPES.includes(post.post_type) ? 'Zoe Beaumont' : 'Micah Santos';
       await supabase.from('community_comments').insert({
-        post_id:    post.id,
-        member_id:  null,
-        content:    `Reply requested — ${routedTo} queued to respond`,
-        is_flagged: true,
-        is_active:  true,
+        post_id: post.id, member_id: null,
+        content: `Reply requested — ${routedTo} queued to respond`,
+        is_flagged: true, is_active: true,
       });
       setAgentQueued(true);
     } catch (err) {
@@ -192,52 +141,23 @@ export default function PostCard({
     }
   };
 
-  const countLabel = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
-  const videoEmbed = post.video_url ? getVideoEmbed(post.video_url) : null;
-
-  // Top border: pinned = gold, agent posts = gold, member posts = navy-blue
-  const topBorderColor = isPinned || !isMemberPost ? '#B8941F' : '#2D5A8E';
-  const cardShadow     = isPinned
-    ? '0 1px 4px rgba(212,175,55,0.18)'
-    : '0 1px 4px rgba(10,35,66,0.06)';
-  const cardShadowHover = isPinned
-    ? '0 4px 20px rgba(212,175,55,0.22)'
-    : '0 4px 20px rgba(10,35,66,0.1)';
+  const countLabel      = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
+  const videoEmbed      = post.video_url ? getVideoEmbed(post.video_url) : null;
+  const topBorderColor  = isPinned || !isMemberPost ? '#B8941F' : '#2D5A8E';
+  const cardShadow      = isPinned ? '0 1px 4px rgba(212,175,55,0.18)' : '0 1px 4px rgba(10,35,66,0.06)';
+  const cardShadowHover = isPinned ? '0 4px 20px rgba(212,175,55,0.22)' : '0 4px 20px rgba(10,35,66,0.1)';
 
   return (
     <div
-      style={{
-        background:    '#FFFFFF',
-        border:        '1px solid #E8E4DF',
-        borderTop:     `3px solid ${topBorderColor}`,
-        borderRadius:  '12px',
-        padding:       '28px 32px',
-        animation:     'ccFadeIn 0.45s ease both',
-        animationDelay:`${index * 55}ms`,
-        boxShadow:     cardShadow,
-        transition:    'box-shadow 0.2s ease',
-      }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderTop: `3px solid ${topBorderColor}`, borderRadius: '12px', padding: '28px 32px', animation: 'ccFadeIn 0.45s ease both', animationDelay: `${index * 55}ms`, boxShadow: cardShadow, transition: 'box-shadow 0.2s ease' }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = cardShadowHover; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = cardShadow; }}
     >
-
       {/* ── Pin + Category row ─────────────────────────────────────────────── */}
       {(isPinned || (isMemberPost && category !== 'general')) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
           {isPinned && (
-            <span style={{
-              display:     'inline-flex',
-              alignItems:  'center',
-              gap:         '4px',
-              fontSize:    '10px',
-              fontWeight:  '700',
-              fontFamily:  "'Montserrat', sans-serif",
-              padding:     '2px 8px',
-              borderRadius:'4px',
-              background:  '#FAEEDA',
-              color:       '#633806',
-              letterSpacing:'0.3px',
-            }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '700', fontFamily: "'Montserrat', sans-serif", padding: '2px 8px', borderRadius: '4px', background: '#FAEEDA', color: '#633806', letterSpacing: '0.3px' }}>
               ↑ Pinned
             </span>
           )}
@@ -250,127 +170,74 @@ export default function PostCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <MemberAvatar
             firstName={post.agent_name}
-            photoUrl={isMemberPost
-              ? (post.agent_id === userId ? userPhotoUrl : photoMap[post.agent_id])
-              : undefined}
+            photoUrl={isMemberPost ? (post.agent_id === userId ? userPhotoUrl : photoMap[post.agent_id]) : undefined}
             size={36}
           />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontSize:   '13px',
-                fontWeight: '700',
-                color:      '#0A2342',
-              }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>
                 {post.agent_name}
               </span>
               {isMemberPost && memberLevel && <LevelBadge level={memberLevel} />}
             </div>
             {!isMemberPost && (
-              <div style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontSize:   '11px',
-                color:      'rgba(10,35,66,0.35)',
-              }}>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.35)' }}>
                 DRU AI Consulting Team
               </div>
             )}
           </div>
         </div>
-        <div style={{
-          color:      'rgba(10,35,66,0.35)',
-          fontSize:   '12px',
-          fontFamily: "'Montserrat', sans-serif",
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}>
+        <div style={{ color: 'rgba(10,35,66,0.35)', fontSize: '12px', fontFamily: "'Montserrat', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>
           {formatRelativeTime(post.published_at)}
         </div>
       </div>
 
       {/* ── Title — agent posts only ───────────────────────────────────────── */}
       {!isMemberPost && post.title && (
-        <h3 style={{
-          fontFamily:   "'Cinzel', serif",
-          color:        '#0A2342',
-          fontSize:     '17px',
-          fontWeight:   '600',
-          lineHeight:   '1.45',
-          marginBottom: '16px',
-        }}>
+        <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>
           {post.title}
         </h3>
       )}
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
       {post.content.trim() && (
-        <div style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontSize:   '14px',
-          lineHeight: '1.85',
-          color:      'rgba(10,35,66,0.7)',
-        }}>
-          {paragraphs.map((p, i) => (
-            <p key={i} style={{ marginBottom: '12px' }}>{p}</p>
-          ))}
+        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', lineHeight: '1.85', color: 'rgba(10,35,66,0.7)' }}>
+          {paragraphs.map((p, i) => <p key={i} style={{ marginBottom: '12px' }}>{p}</p>)}
         </div>
       )}
 
       {/* ── Image / GIF ───────────────────────────────────────────────────── */}
       {post.image_url && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
-          <img
-            src={post.image_url}
-            alt="Post image"
-            style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }}
-          />
+          <img src={post.image_url} alt="Post image" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }} />
         </div>
       )}
 
       {/* ── Video embed ───────────────────────────────────────────────────── */}
       {post.video_url && videoEmbed && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8', position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-          <iframe
-            src={videoEmbed}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Video"
-          />
+          <iframe src={videoEmbed} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="Video" />
         </div>
       )}
 
       {/* ── Direct video upload ───────────────────────────────────────────── */}
       {post.video_url && !videoEmbed && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
-          <video
-            src={post.video_url}
-            controls
-            style={{ width: '100%', maxHeight: '400px', display: 'block', background: '#000' }}
-          />
+          <video src={post.video_url} controls style={{ width: '100%', maxHeight: '400px', display: 'block', background: '#000' }} />
         </div>
       )}
 
       {/* ── PDF download card ─────────────────────────────────────────────── */}
       {post.pdf_url && (
-        <a
-          href={post.pdf_url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <a href={post.pdf_url} target="_blank" rel="noopener noreferrer"
           style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#FAFAF8', border: '1px solid #E8E4DF', borderRadius: '8px', textDecoration: 'none', transition: 'background 0.15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#F0EDE8'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAF8'; }}
-        >
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAF8'; }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '20px' }}>📄</span>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: '#0A2342' }}>
-              {getPdfFilename(post.pdf_url)}
-            </span>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: '#0A2342' }}>{getPdfFilename(post.pdf_url)}</span>
           </div>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#B8941F', letterSpacing: '0.5px' }}>
-            DOWNLOAD ↓
-          </span>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#B8941F', letterSpacing: '0.5px' }}>DOWNLOAD ↓</span>
         </a>
       )}
 
@@ -378,44 +245,29 @@ export default function PostCard({
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0EDE8' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-
-            {/* Heart button — post-level reaction, no count shown to members */}
-            <button
-              onClick={handleHeart}
-              disabled={heartLoading}
-              aria-label={hearted ? 'Remove heart' : 'Heart this post'}
+            <button onClick={handleHeart} disabled={heartLoading} aria-label={hearted ? 'Remove heart' : 'Heart this post'}
               style={{ background: 'none', border: 'none', cursor: heartLoading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '5px', padding: '0', transition: 'transform 0.15s ease' }}
               onMouseEnter={e => { if (!heartLoading) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.15)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
-            >
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}>
               <span style={{ fontSize: '17px', color: hearted ? '#C2185B' : 'rgba(10,35,66,0.3)', transition: 'color 0.15s ease' }}>
                 {hearted ? '♥' : '♡'}
               </span>
             </button>
-
-            {/* Comments toggle */}
-            <button
-              onClick={() => setCommentsOpen(!commentsOpen)}
+            <button onClick={() => setCommentsOpen(!commentsOpen)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', padding: '0', fontFamily: "'Montserrat', sans-serif", fontSize: '12px', fontWeight: '600', color: commentsOpen ? '#0A2342' : 'rgba(10,35,66,0.4)', transition: 'color 0.15s ease' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = commentsOpen ? '#0A2342' : 'rgba(10,35,66,0.4)'; }}
-            >
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = commentsOpen ? '#0A2342' : 'rgba(10,35,66,0.4)'; }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               <span>Comments{countLabel}</span>
             </button>
           </div>
-
-          {/* Ask Agent to Reply — admin only */}
           {isAdmin && (
-            <button
-              onClick={handleAskAgent}
-              disabled={agentLoading || agentQueued}
+            <button onClick={handleAskAgent} disabled={agentLoading || agentQueued}
               style={{ background: 'none', border: `1px dashed ${agentQueued ? '#B8941F' : 'rgba(10,35,66,0.2)'}`, borderRadius: '6px', padding: '5px 12px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: agentQueued ? '#B8941F' : 'rgba(10,35,66,0.35)', cursor: agentQueued || agentLoading ? 'default' : 'pointer', letterSpacing: '0.4px', transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '5px' }}
               onMouseEnter={e => { if (!agentQueued && !agentLoading) { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.4)'; } }}
-              onMouseLeave={e => { if (!agentQueued) { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.2)'; } }}
-            >
+              onMouseLeave={e => { if (!agentQueued) { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.2)'; } }}>
               <span>{agentQueued ? '✓' : '↺'}</span>
               <span>{agentLoading ? 'Queuing...' : agentQueued ? 'Agent queued' : 'Ask Agent to Reply'}</span>
             </button>
@@ -424,13 +276,9 @@ export default function PostCard({
       </div>
 
       <CommentSection
-        postId={post.id}
-        userId={userId}
-        userName={userName}
-        open={commentsOpen}
-        onToggle={() => setCommentsOpen(!commentsOpen)}
-        commentCount={commentCount}
-        setCommentCount={setCommentCount}
+        postId={post.id} userId={userId} userName={userName}
+        open={commentsOpen} onToggle={() => setCommentsOpen(!commentsOpen)}
+        commentCount={commentCount} setCommentCount={setCommentCount}
       />
     </div>
   );
