@@ -38,48 +38,38 @@ const FALLBACK_CONTENT: DailyContent = {
   strategic_edge: "Most leaders are asking the wrong question about AI. They ask 'What can AI do?' when the only question that matters is 'What does my organization need to become?' Your AI strategy is not a technology decision — it is a leadership identity decision. Make it from that place.",
 };
 
-const ASSESSMENT_URL = "https://assessment.druaiconsulting.com";
-const NAV_UPGRADE_URL = "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0";
-const ACC_UPGRADE_URL = "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1";
+const ASSESSMENT_URL   = "https://assessment.druaiconsulting.com";
+const NAV_UPGRADE_URL  = "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0";
+const ACC_UPGRADE_URL  = "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1";
 
 // ── Locked Card ───────────────────────────────────────────────────────────────
 function LockedCard({
-  title, icon, color, teaser, ctaText, ctaHref,
+  title, icon, color, membersText, ctaText, ctaHref,
 }: {
-  title: string; icon: string; color: string; teaser: string;
-  ctaText?: string; ctaHref?: string;
+  title: string; icon: string; color: string;
+  membersText: string; ctaText: string; ctaHref: string;
 }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderLeft: "3px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "1.25rem 1.5rem", position: "relative", overflow: "hidden" }}>
-      <div style={{ filter: "blur(3px)", pointerEvents: "none", userSelect: "none", opacity: 0.35 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
-          <span style={{ fontSize: "1.1rem" }}>{icon}</span>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: color, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>{title}</p>
-        </div>
-        <p style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{teaser}</p>
+    <div style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem", paddingBottom: "0.875rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <span style={{ fontSize: "1.1rem", opacity: 0.35 }}>{icon}</span>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, opacity: 0.35 }}>{title}</p>
       </div>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(10,35,66,0.7)", backdropFilter: "blur(2px)", borderRadius: 10, padding: "1.5rem", gap: "0.75rem" }}>
-        <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0" }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="11" width="18" height="11" rx="2" stroke="#D4AF37" strokeWidth="1.75"/>
             <path d="M7 11V7a5 5 0 0110 0v4" stroke="#D4AF37" strokeWidth="1.75" strokeLinecap="round"/>
           </svg>
         </div>
-        <div style={{ textAlign: "center" as const }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", marginBottom: "0.3rem" }}>
-            {ctaText ? "Navigator & Accelerator Members Only" : "Paid Members Only"}
-          </p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.72rem", lineHeight: 1.5 }}>
-            {ctaText
-              ? "Upgrade to Navigator or Accelerator to unlock DeAnna's exclusive daily strategic insight"
-              : "Book your diagnostic to unlock the full Daily Connection experience"}
-          </p>
-        </div>
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, textAlign: "center" as const, lineHeight: 1.6 }}>
+          {membersText}
+        </p>
         <a
-          href={ctaHref || "/frameworks"}
-          style={{ display: "inline-block", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.5rem 1.1rem", borderRadius: 6, textDecoration: "none" }}
+          href={ctaHref}
+          style={{ display: "inline-block", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "0.5rem 1.25rem", borderRadius: 6, textDecoration: "none" }}
         >
-          {ctaText || "Book Your Diagnostic →"}
+          {ctaText}
         </a>
       </div>
     </div>
@@ -108,8 +98,9 @@ function StreakBadge({ streak }: { streak: StreakData }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Daily() {
-  const { user, isPaid, hasStrategicEdge, pathwayStage } = useAuth();
-  const [memberTier, setMemberTier] = useState<string>("free");
+  const { user, isPaid, isNavigator, isAccelerator, hasStrategicEdge, pathwayStage } = useAuth();
+  const isNavigatorPlus = hasStrategicEdge; // navigator or accelerator
+
   const [content, setContent] = useState<DailyContent | null>(null);
   const [streak, setStreak] = useState<StreakData>({ current_streak: 0, longest_streak: 0, total_completions: 0 });
   const [completed, setCompleted] = useState(false);
@@ -118,32 +109,12 @@ export default function Daily() {
   const [copied, setCopied] = useState(false);
   const today = getTodayCST();
 
-  // ── Derived tier booleans ─────────────────────────────────────────────────
-  const isNavigatorPlus = hasStrategicEdge;           // navigator or accelerator
-  const isAccelerator   = memberTier === "accelerator"; // accelerator only
-
   const handleCopy = () => {
     navigator.clipboard.writeText(ASSESSMENT_URL).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
   };
-
-  // ── Fetch member tier ─────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user?.id) return;
-    async function fetchTier() {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("tier")
-          .eq("id", user!.id)
-          .single();
-        if (data?.tier) setMemberTier(data.tier);
-      } catch {}
-    }
-    fetchTier();
-  }, [user?.id]);
 
   // ── Fetch today's content ─────────────────────────────────────────────────
   useEffect(() => {
@@ -261,21 +232,21 @@ export default function Daily() {
           </div>
         )}
 
-        {/* Dynamic access level badge — shown to all logged-in users */}
+        {/* Dynamic access level badge */}
         {(() => {
           const tierConfig = isAccelerator
             ? { label: "Accelerator Member", sub: "", dot: "#D4AF37", border: "rgba(212,175,55,0.35)", bg: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)" }
-            : isNavigatorPlus
+            : isNavigator
             ? { label: "Navigator Member", sub: "", dot: "#D4AF37", border: "rgba(212,175,55,0.35)", bg: "linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.04) 100%)" }
             : isPaid
             ? { label: "Diagnostic Client", sub: "3 cards unlocked · upgrade to Navigator for full access", dot: "#1E88E5", border: "rgba(30,136,229,0.3)", bg: "rgba(30,136,229,0.05)" }
-            : { label: "Free Member", sub: "1 card unlocked · book your diagnostic to unlock more", dot: "rgba(230,230,230,0.3)", border: "rgba(255,255,255,0.08)", bg: "rgba(255,255,255,0.02)" };
+            : { label: "Free Tier", sub: "", dot: "rgba(230,230,230,0.3)", border: "rgba(255,255,255,0.08)", bg: "rgba(255,255,255,0.02)" };
           return (
             <div style={{ background: tierConfig.bg, border: `1px solid ${tierConfig.border}`, borderRadius: 8, padding: "0.65rem 1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: tierConfig.dot, flexShrink: 0 }} />
               <div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: 0 }}>{tierConfig.label}</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", margin: "2px 0 0", lineHeight: 1.4 }}>{tierConfig.sub}</p>
+                {tierConfig.sub && <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", margin: "2px 0 0", lineHeight: 1.4 }}>{tierConfig.sub}</p>}
               </div>
             </div>
           );
@@ -291,21 +262,21 @@ export default function Daily() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-            {/* Card 1 — AI Leadership Insight (Free+) */}
+            {/* Card 1 — Leadership with AI Insight (Free+) */}
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.3)", borderLeft: "3px solid #D4AF37", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
                 <span style={{ fontSize: "1.1rem" }}>⚡</span>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>AI Leadership Insight</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Leadership with AI Insight</p>
               </div>
               <p style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{displayContent.insight}</p>
             </div>
 
-            {/* Card 2 — Framework Micro-Lesson (Navigator+) */}
+            {/* Card 2 — Framework Micro-Lessons (Navigator+) */}
             {isNavigatorPlus ? (
               <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(194,24,91,0.3)", borderLeft: "3px solid #C2185B", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
                   <span style={{ fontSize: "1.1rem" }}>🧠</span>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Framework Micro-Lesson</p>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Framework Micro-Lessons</p>
                 </div>
                 <span style={{ display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", color: "#D4AF37", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 4, padding: "0.18rem 0.5rem", marginBottom: "0.875rem" }}>
                   {displayContent.lesson_badge}
@@ -313,7 +284,14 @@ export default function Daily() {
                 <p style={{ color: "#E6E6E6", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{displayContent.lesson}</p>
               </div>
             ) : (
-              <LockedCard title="Framework Micro-Lesson" icon="🧠" color="#C2185B" teaser={displayContent.lesson} />
+              <LockedCard
+                title="Framework Micro-Lessons"
+                icon="🧠"
+                color="#C2185B"
+                membersText="Navigator & Accelerator Monthly Subscriptions Members"
+                ctaText="Upgrade to Navigator →"
+                ctaHref={NAV_UPGRADE_URL}
+              />
             )}
 
             {/* Card 3 — Today's Action Challenge (Accelerator only) */}
@@ -358,7 +336,7 @@ export default function Daily() {
                 title="Today's Action Challenge"
                 icon="🎯"
                 color="#1E88E5"
-                teaser={displayContent.challenge}
+                membersText="Accelerator Monthly Subscriptions Members"
                 ctaText="Upgrade to Accelerator →"
                 ctaHref={ACC_UPGRADE_URL}
               />
@@ -376,7 +354,6 @@ export default function Daily() {
                 overflow: "hidden",
               }}>
                 <div style={{ position: "absolute" as const, top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.875rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <span style={{ fontSize: "1.1rem" }}>✦</span>
@@ -384,11 +361,9 @@ export default function Daily() {
                   </div>
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.1em", color: "#0A2342", background: "#D4AF37", borderRadius: 20, padding: "2px 8px", textTransform: "uppercase" as const, whiteSpace: "nowrap" as const }}>Exclusive</span>
                 </div>
-
                 <p style={{ color: "#F0E6C8", fontFamily: "'Playfair Display', serif", fontSize: "0.92rem", lineHeight: 1.8, fontStyle: "italic" }}>
                   {displayContent.strategic_edge || FALLBACK_CONTENT.strategic_edge}
                 </p>
-
                 <div style={{ marginTop: "1rem", paddingTop: "0.875rem", borderTop: "1px solid rgba(212,175,55,0.15)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: "0.65rem" }}>D</span>
@@ -396,16 +371,16 @@ export default function Daily() {
                   <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.6)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: 0 }}>DeAnna R. Upshaw · AI Authority</p>
                 </div>
               </div>
-            ) : isPaid ? (
+            ) : (
               <LockedCard
                 title="DeAnna's Strategic Edge"
                 icon="✦"
                 color="#D4AF37"
-                teaser={FALLBACK_CONTENT.strategic_edge || ""}
+                membersText="Accelerator Monthly Subscriptions Members"
                 ctaText="Upgrade to Accelerator →"
                 ctaHref={ACC_UPGRADE_URL}
               />
-            ) : null}
+            )}
 
           </div>
         )}
