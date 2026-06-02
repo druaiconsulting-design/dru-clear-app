@@ -35,11 +35,7 @@ function CategoryTag({ category }: { category: string }) {
   if (!category || category === 'general') return null;
   const s = CATEGORY_STYLES[category] || CATEGORY_STYLES.general;
   return (
-    <span style={{
-      display: 'inline-block', fontSize: '10px', fontWeight: '700',
-      fontFamily: "'Montserrat', sans-serif", padding: '2px 8px',
-      borderRadius: '4px', background: s.bg, color: s.color, letterSpacing: '0.3px',
-    }}>
+    <span style={{ display: 'inline-block', fontSize: '10px', fontWeight: '700', fontFamily: "'Montserrat', sans-serif", padding: '2px 8px', borderRadius: '4px', background: s.bg, color: s.color, letterSpacing: '0.3px' }}>
       {s.label}
     </span>
   );
@@ -50,22 +46,26 @@ function CategoryTag({ category }: { category: string }) {
 // =============================================================================
 export default function PostCard({
   post, index, userId, userName, userPhotoUrl, isAdmin, photoMap = {}, levelMap = {},
+  onMemberClick, onPinChange,
 }: {
-  post:          CommunityPost;
-  index:         number;
-  userId:        string;
-  userName:      string;
-  userPhotoUrl?: string;
-  isAdmin:       boolean;
-  photoMap?:     Record<string, string>;
-  levelMap?:     Record<string, string>;
+  post:            CommunityPost;
+  index:           number;
+  userId:          string;
+  userName:        string;
+  userPhotoUrl?:   string;
+  isAdmin:         boolean;
+  photoMap?:       Record<string, string>;
+  levelMap?:       Record<string, string>;
+  onMemberClick?:  (memberId: string) => void;
+  onPinChange?:    (postId: string, isPinned: boolean) => void;
 }) {
   const isMemberPost = post.post_type === 'member_post';
   const paragraphs   = formatContent(post.content);
   const category     = (post as any).category  as string  ?? 'general';
-  const isPinned     = (post as any).is_pinned as boolean ?? false;
   const memberLevel  = isMemberPost ? (levelMap[post.agent_id] ?? 'Connected') : null;
 
+  const [pinned,       setPinned]       = useState<boolean>((post as any).is_pinned ?? false);
+  const [pinLoading,   setPinLoading]   = useState(false);
   const [hearted,      setHearted]      = useState(false);
   const [heartLoading, setHeartLoading] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -75,21 +75,15 @@ export default function PostCard({
 
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from('community_reactions')
+    supabase.from('community_reactions')
       .select('id', { count: 'exact', head: true })
-      .eq('post_id', post.id)
-      .eq('member_id', userId)
-      .eq('reaction_type', 'heart')
-      .is('comment_id', null)
+      .eq('post_id', post.id).eq('member_id', userId)
+      .eq('reaction_type', 'heart').is('comment_id', null)
       .then(({ count }) => { if ((count ?? 0) > 0) setHearted(true); });
 
-    supabase
-      .from('community_comments')
+    supabase.from('community_comments')
       .select('id', { count: 'exact', head: true })
-      .eq('post_id', post.id)
-      .eq('is_active', true)
-      .eq('is_flagged', false)
+      .eq('post_id', post.id).eq('is_active', true).eq('is_flagged', false)
       .then(({ count }) => { if (count !== null) setCommentCount(count); });
   }, [post.id, userId]);
 
@@ -97,18 +91,29 @@ export default function PostCard({
     if (!userId || heartLoading) return;
     setHeartLoading(true);
     if (hearted) {
-      await supabase
-        .from('community_reactions').delete()
+      await supabase.from('community_reactions').delete()
         .eq('post_id', post.id).eq('member_id', userId)
         .eq('reaction_type', 'heart').is('comment_id', null);
       setHearted(false);
     } else {
-      await supabase
-        .from('community_reactions')
+      await supabase.from('community_reactions')
         .insert({ post_id: post.id, member_id: userId, reaction_type: 'heart' });
       setHearted(true);
     }
     setHeartLoading(false);
+  };
+
+  const handlePin = async () => {
+    if (pinLoading) return;
+    setPinLoading(true);
+    const newPinned = !pinned;
+    await supabase.from('community_posts').update({
+      is_pinned: newPinned,
+      pinned_at: newPinned ? new Date().toISOString() : null,
+    }).eq('id', post.id);
+    setPinned(newPinned);
+    onPinChange?.(post.id, newPinned);
+    setPinLoading(false);
   };
 
   const handleAskAgent = async () => {
@@ -134,18 +139,15 @@ export default function PostCard({
         is_flagged: true, is_active: true,
       });
       setAgentQueued(true);
-    } catch (err) {
-      console.error('[ask agent]', err);
-    } finally {
-      setAgentLoading(false);
-    }
+    } catch (err) { console.error('[ask agent]', err); }
+    finally { setAgentLoading(false); }
   };
 
   const countLabel      = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
   const videoEmbed      = post.video_url ? getVideoEmbed(post.video_url) : null;
-  const topBorderColor  = isPinned || !isMemberPost ? '#B8941F' : '#2D5A8E';
-  const cardShadow      = isPinned ? '0 1px 4px rgba(212,175,55,0.18)' : '0 1px 4px rgba(10,35,66,0.06)';
-  const cardShadowHover = isPinned ? '0 4px 20px rgba(212,175,55,0.22)' : '0 4px 20px rgba(10,35,66,0.1)';
+  const topBorderColor  = pinned || !isMemberPost ? '#B8941F' : '#2D5A8E';
+  const cardShadow      = pinned ? '0 1px 4px rgba(212,175,55,0.18)' : '0 1px 4px rgba(10,35,66,0.06)';
+  const cardShadowHover = pinned ? '0 4px 20px rgba(212,175,55,0.22)' : '0 4px 20px rgba(10,35,66,0.1)';
 
   return (
     <div
@@ -154,9 +156,9 @@ export default function PostCard({
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = cardShadow; }}
     >
       {/* ── Pin + Category row ─────────────────────────────────────────────── */}
-      {(isPinned || (isMemberPost && category !== 'general')) && (
+      {(pinned || (isMemberPost && category !== 'general')) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-          {isPinned && (
+          {pinned && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '700', fontFamily: "'Montserrat', sans-serif", padding: '2px 8px', borderRadius: '4px', background: '#FAEEDA', color: '#633806', letterSpacing: '0.3px' }}>
               ↑ Pinned
             </span>
@@ -175,9 +177,21 @@ export default function PostCard({
           />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>
-                {post.agent_name}
-              </span>
+              {/* Member name — clickable for member posts */}
+              {isMemberPost && onMemberClick ? (
+                <button
+                  onClick={() => onMemberClick(post.agent_id)}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342', transition: 'color 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#B8941F'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; }}
+                >
+                  {post.agent_name}
+                </button>
+              ) : (
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', fontWeight: '700', color: '#0A2342' }}>
+                  {post.agent_name}
+                </span>
+              )}
               {isMemberPost && memberLevel && <LevelBadge level={memberLevel} />}
             </div>
             {!isMemberPost && (
@@ -206,7 +220,7 @@ export default function PostCard({
         </div>
       )}
 
-      {/* ── Image / GIF ───────────────────────────────────────────────────── */}
+      {/* ── Image ─────────────────────────────────────────────────────────── */}
       {post.image_url && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
           <img src={post.image_url} alt="Post image" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', display: 'block' }} />
@@ -220,14 +234,14 @@ export default function PostCard({
         </div>
       )}
 
-      {/* ── Direct video upload ───────────────────────────────────────────── */}
+      {/* ── Direct video ──────────────────────────────────────────────────── */}
       {post.video_url && !videoEmbed && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
           <video src={post.video_url} controls style={{ width: '100%', maxHeight: '400px', display: 'block', background: '#000' }} />
         </div>
       )}
 
-      {/* ── PDF download card ─────────────────────────────────────────────── */}
+      {/* ── PDF ───────────────────────────────────────────────────────────── */}
       {post.pdf_url && (
         <a href={post.pdf_url} target="_blank" rel="noopener noreferrer"
           style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#FAFAF8', border: '1px solid #E8E4DF', borderRadius: '8px', textDecoration: 'none', transition: 'background 0.15s' }}
@@ -244,6 +258,7 @@ export default function PostCard({
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0EDE8' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Left: heart + comments */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={handleHeart} disabled={heartLoading} aria-label={hearted ? 'Remove heart' : 'Heart this post'}
               style={{ background: 'none', border: 'none', cursor: heartLoading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '5px', padding: '0', transition: 'transform 0.15s ease' }}
@@ -263,14 +278,28 @@ export default function PostCard({
               <span>Comments{countLabel}</span>
             </button>
           </div>
+
+          {/* Right: admin controls — pin + ask agent */}
           {isAdmin && (
-            <button onClick={handleAskAgent} disabled={agentLoading || agentQueued}
-              style={{ background: 'none', border: `1px dashed ${agentQueued ? '#B8941F' : 'rgba(10,35,66,0.2)'}`, borderRadius: '6px', padding: '5px 12px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: agentQueued ? '#B8941F' : 'rgba(10,35,66,0.35)', cursor: agentQueued || agentLoading ? 'default' : 'pointer', letterSpacing: '0.4px', transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '5px' }}
-              onMouseEnter={e => { if (!agentQueued && !agentLoading) { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.4)'; } }}
-              onMouseLeave={e => { if (!agentQueued) { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.2)'; } }}>
-              <span>{agentQueued ? '✓' : '↺'}</span>
-              <span>{agentLoading ? 'Queuing...' : agentQueued ? 'Agent queued' : 'Ask Agent to Reply'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Pin toggle */}
+              <button onClick={handlePin} disabled={pinLoading}
+                style={{ background: 'none', border: `1px dashed ${pinned ? '#B8941F' : 'rgba(10,35,66,0.2)'}`, borderRadius: '6px', padding: '5px 10px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: pinned ? '#B8941F' : 'rgba(10,35,66,0.35)', cursor: pinLoading ? 'default' : 'pointer', letterSpacing: '0.4px', transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '4px' }}
+                onMouseEnter={e => { if (!pinLoading) { (e.currentTarget as HTMLButtonElement).style.color = pinned ? '#633806' : '#0A2342'; (e.currentTarget as HTMLButtonElement).style.borderColor = pinned ? '#B8941F' : 'rgba(10,35,66,0.4)'; } }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = pinned ? '#B8941F' : 'rgba(10,35,66,0.35)'; (e.currentTarget as HTMLButtonElement).style.borderColor = pinned ? '#B8941F' : 'rgba(10,35,66,0.2)'; }}>
+                <span>📌</span>
+                <span>{pinLoading ? '...' : pinned ? 'Unpin' : 'Pin'}</span>
+              </button>
+
+              {/* Ask Agent */}
+              <button onClick={handleAskAgent} disabled={agentLoading || agentQueued}
+                style={{ background: 'none', border: `1px dashed ${agentQueued ? '#B8941F' : 'rgba(10,35,66,0.2)'}`, borderRadius: '6px', padding: '5px 10px', fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: agentQueued ? '#B8941F' : 'rgba(10,35,66,0.35)', cursor: agentQueued || agentLoading ? 'default' : 'pointer', letterSpacing: '0.4px', transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '4px' }}
+                onMouseEnter={e => { if (!agentQueued && !agentLoading) { (e.currentTarget as HTMLButtonElement).style.color = '#0A2342'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.4)'; } }}
+                onMouseLeave={e => { if (!agentQueued) { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(10,35,66,0.35)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(10,35,66,0.2)'; } }}>
+                <span>{agentQueued ? '✓' : '↺'}</span>
+                <span>{agentLoading ? 'Queuing...' : agentQueued ? 'Agent queued' : 'Ask Agent to Reply'}</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -283,4 +312,3 @@ export default function PostCard({
     </div>
   );
 }
-
