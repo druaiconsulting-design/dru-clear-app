@@ -3,14 +3,17 @@ import { supabase } from './types';
 import type { Tier } from './types';
 import CommunityFeed from './CommunityFeed';
 import CommunityJoin from './CommunityJoin';
+import Leaderboard from '../community-engagement/Leaderboard';
 
 // =============================================================================
-// COMMUNITY — smart detection, renders Feed or Join page
+// COMMUNITY — smart detection, renders Feed / Leaderboard / Join
 // =============================================================================
 export default function Community() {
-  const [tier, setTier]               = useState<Tier | null>(null);
+  const [tier,        setTier]        = useState<Tier | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [checking, setChecking]       = useState(true);
+  const [checking,    setChecking]    = useState(true);
+  const [activeTab,   setActiveTab]   = useState<'feed' | 'leaderboard'>('feed');
+  const [userId,      setUserId]      = useState('');
 
   useEffect(() => {
     const check = async () => {
@@ -19,8 +22,8 @@ export default function Community() {
         if (!user) { setTier('free'); setChecking(false); return; }
         const admin = user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase();
         setIsAdminUser(admin);
+        setUserId(user.id);
         const { data } = await supabase.from('profiles').select('tier').eq('id', user.id).maybeSingle();
-        // Admin always gets full access — treat as accelerator so all content is visible
         setTier(admin ? 'accelerator' : ((data?.tier as Tier) ?? 'free'));
       } catch { setTier('free'); } finally { setChecking(false); }
     };
@@ -50,13 +53,28 @@ export default function Community() {
     );
   }
 
-  // Admin always gets feed. Members need navigator or accelerator tier.
   const isMember = tier === 'navigator' || tier === 'accelerator' || isAdminUser;
 
   return (
     <>
       <style>{globalStyles}</style>
-      {isMember ? <CommunityFeed tier={tier!} /> : <CommunityJoin />}
+      {isMember ? (
+        activeTab === 'feed' ? (
+          <CommunityFeed
+            tier={tier!}
+            onShowLeaderboard={() => setActiveTab('leaderboard')}
+          />
+        ) : (
+          <Leaderboard
+            userId={userId}
+            isAdmin={isAdminUser}
+            tier={tier!}
+            onBack={() => setActiveTab('feed')}
+          />
+        )
+      ) : (
+        <CommunityJoin />
+      )}
     </>
   );
 }
