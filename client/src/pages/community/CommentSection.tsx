@@ -24,15 +24,20 @@ export default function CommentSection({
   commentCount: number | null;
   setCommentCount: (fn: (n: number | null) => number | null) => void;
 }) {
-  const [comments, setComments]               = useState<CommunityComment[]>([]);
+  const [comments,        setComments]        = useState<CommunityComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [newComment, setNewComment]           = useState('');
-  const [submitting, setSubmitting]           = useState(false);
-  const [editingId, setEditingId]             = useState<string | null>(null);
-  const [editContent, setEditContent]         = useState('');
-  const [mentionSearch, setMentionSearch]     = useState('');
-  const [mentionResults, setMentionResults]   = useState<MemberProfile[]>([]);
-  const [showMentions, setShowMentions]       = useState(false);
+  const [newComment,      setNewComment]      = useState('');
+  const [submitting,      setSubmitting]      = useState(false);
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [editContent,     setEditContent]     = useState('');
+  const [mentionSearch,   setMentionSearch]   = useState('');
+  const [mentionResults,  setMentionResults]  = useState<MemberProfile[]>([]);
+  const [showMentions,    setShowMentions]    = useState(false);
+
+  // ── Comment hearts ─────────────────────────────────────────────────────────
+  const [heartedComments,      setHeartedComments]      = useState<Record<string, boolean>>({});
+  const [heartLoadingComments, setHeartLoadingComments] = useState<Record<string, boolean>>({});
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -42,7 +47,27 @@ export default function CommentSection({
       .select('*, profiles(first_name, photo_url)')
       .eq('post_id', postId).eq('is_active', true).eq('is_flagged', false)
       .order('created_at', { ascending: true })
-      .then(({ data }) => { setComments((data ?? []) as CommunityComment[]); setLoadingComments(false); });
+      .then(({ data }) => {
+        const loaded = (data ?? []) as CommunityComment[];
+        setComments(loaded);
+        setLoadingComments(false);
+
+        // Batch-fetch which comments the current user has hearted
+        if (loaded.length > 0 && userId) {
+          supabase
+            .from('community_reactions')
+            .select('comment_id')
+            .eq('member_id', userId)
+            .eq('reaction_type', 'heart')
+            .in('comment_id', loaded.map(c => c.id))
+            .is('post_id', null)
+            .then(({ data: rData }) => {
+              const hm: Record<string, boolean> = {};
+              (rData ?? []).forEach((r: any) => { if (r.comment_id) hm[r.comment_id] = true; });
+              setHeartedComments(hm);
+            });
+        }
+      });
 
     const channel = supabase.channel(`cc_comments_${postId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, (payload) => {
@@ -57,8 +82,12 @@ export default function CommentSection({
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, (payload) => {
         const c = payload.new as CommunityComment;
-        if (!c.is_active || c.is_flagged) { setComments(prev => prev.filter(x => x.id !== c.id)); setCommentCount(n => Math.max(0, (n ?? 1) - 1)); }
-        else { setComments(prev => prev.map(x => x.id === c.id ? { ...x, content: c.content } : x)); }
+        if (!c.is_active || c.is_flagged) {
+          setComments(prev => prev.filter(x => x.id !== c.id));
+          setCommentCount(n => Math.max(0, (n ?? 1) - 1));
+        } else {
+          setComments(prev => prev.map(x => x.id === c.id ? { ...x, content: c.content } : x));
+        }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` }, (payload) => {
         setComments(prev => prev.filter(x => x.id !== (payload.old as CommunityComment).id));
@@ -128,8 +157,12 @@ export default function CommentSection({
     if (!editContent.trim()) return;
     const flagged = checkFlagged(editContent);
     await supabase.from('community_comments').update({ content: editContent.trim(), is_flagged: flagged }).eq('id', commentId);
-    if (flagged) { setComments(prev => prev.filter(c => c.id !== commentId)); setCommentCount(n => Math.max(0, (n ?? 1) - 1)); }
-    else { setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editContent.trim() } : c)); }
+    if (flagged) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      setCommentCount(n => Math.max(0, (n ?? 1) - 1));
+    } else {
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editContent.trim() } : c));
+    }
     setEditingId(null); setEditContent('');
   };
 
@@ -139,7 +172,27 @@ export default function CommentSection({
     setCommentCount(n => Math.max(0, (n ?? 1) - 1));
   };
 
-  // ── Display helpers — agent_name takes priority over profiles join ──────────
+  // ── Comment heart toggle ───────────────────────────────────────────────────
+  const handleCommentHeart = async (commentId: string) => {
+    if (!userId || heartLoadingComments[commentId]) return;
+    setHeartLoadingComments(prev => ({ ...prev, [commentId]: true }));
+    if (heartedComments[commentId]) {
+      await supabase
+        .from('community_reactions').delete()
+        .eq('comment_id', commentId)
+        .eq('member_id', userId)
+        .eq('reaction_type', 'heart')
+        .is('post_id', null);
+      setHeartedComments(prev => ({ ...prev, [commentId]: false }));
+    } else {
+      await supabase
+        .from('community_reactions')
+        .insert({ comment_id: commentId, member_id: userId, reaction_type: 'heart' });
+      setHeartedComments(prev => ({ ...prev, [commentId]: true }));
+    }
+    setHeartLoadingComments(prev => ({ ...prev, [commentId]: false }));
+  };
+
   const getDisplayName = (c: CommunityComment) =>
     c.agent_name ? c.agent_name : c.member_id === userId ? 'You' : (c as any).profiles?.first_name ?? 'Member';
   const getPhoto = (c: CommunityComment) =>
@@ -159,6 +212,8 @@ export default function CommentSection({
             <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <MemberAvatar firstName={getDisplayName(comment)} photoUrl={getPhoto(comment)} size={28} />
               <div style={{ flex: 1, background: comment.agent_name ? '#EEF3FA' : '#FAFAF8', border: `1px solid ${comment.agent_name ? '#C0D0E8' : '#F0EDE8'}`, borderRadius: '8px', padding: '10px 12px' }}>
+
+                {/* Comment header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '700', color: '#0A2342' }}>{getDisplayName(comment)}</span>
@@ -182,6 +237,8 @@ export default function CommentSection({
                     </div>
                   )}
                 </div>
+
+                {/* Comment content or edit form */}
                 {editingId === comment.id ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={2}
@@ -194,9 +251,27 @@ export default function CommentSection({
                     </div>
                   </div>
                 ) : (
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.7)', lineHeight: '1.65', margin: '0' }}>
-                    {renderWithMentions(comment.content)}
-                  </p>
+                  <>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.7)', lineHeight: '1.65', margin: '0' }}>
+                      {renderWithMentions(comment.content)}
+                    </p>
+
+                    {/* ── Heart button ──────────────────────────────────── */}
+                    <div style={{ marginTop: '8px' }}>
+                      <button
+                        onClick={() => handleCommentHeart(comment.id)}
+                        disabled={heartLoadingComments[comment.id]}
+                        aria-label={heartedComments[comment.id] ? 'Remove heart' : 'Heart this comment'}
+                        style={{ background: 'none', border: 'none', cursor: heartLoadingComments[comment.id] ? 'default' : 'pointer', padding: '0', display: 'inline-flex', alignItems: 'center', transition: 'transform 0.15s ease' }}
+                        onMouseEnter={e => { if (!heartLoadingComments[comment.id]) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.2)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+                      >
+                        <span style={{ fontSize: '13px', color: heartedComments[comment.id] ? '#C2185B' : 'rgba(10,35,66,0.22)', transition: 'color 0.15s ease' }}>
+                          {heartedComments[comment.id] ? '♥' : '♡'}
+                        </span>
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
