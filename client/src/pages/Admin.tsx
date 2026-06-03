@@ -28,8 +28,8 @@ const PAYMENT_LINKS = [
   { label: "AI Sales Mastery",                               price: "$6,000",  href: "https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe", color: "#C2185B" },
   { label: "Full Ecosystem - Signing ($13K)",                price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff", color: "#43A047" },
   { label: "Full Ecosystem - Final ($13K)",                  price: "$13,000", href: "https://link.druaiconsulting.com/payment-link/69e50e30557558e89e520fb6", color: "#43A047" },
-  { label: "DRU CLEAR Navigator - Founder",                  price: "$47/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
-  { label: "DRU CLEAR Accelerator - Founder",                price: "$147/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
+  { label: "DRU CLEAR Navigator - Founder",                  price: "$97/mo",  href: "https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0", color: "#D4AF37" },
+  { label: "DRU CLEAR Accelerator - Founder",                price: "$167/mo", href: "https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1", color: "#C2185B" },
   { label: "From Confusion to Confident - Self-Paced",       price: "$1,497",  href: "https://link.druaiconsulting.com/payment-link/69f55d0cb615f70a8a33b5fd", color: "#D4AF37" },
   { label: "From Confusion to Confident - Live Cohort",      price: "$7,997",  href: "https://link.druaiconsulting.com/payment-link/69f55e7bb18c99dd72d3c0e5", color: "#C2185B" },
   { label: "From Confusion to Confident - Mastermind",       price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
@@ -71,7 +71,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { label: "Affiliate page updated", sub: "New copy - real links - GHL note" },
       { label: "Reset password flow - LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page" },
       { label: "NavBar restored - CLIENT VIEW / ADMIN VIEW", sub: "Toggle follows admin across all pages" },
-      { label: "Community Landing Page - LIVE", sub: "Founders Special - Navigator $47/mo - Accelerator $147/mo" },
+      { label: "Community Landing Page - LIVE", sub: "Founders Special - Navigator $97/mo - Accelerator $167/mo" },
       { label: "GHL Homepage Funnel - LIVE", sub: "15-section branded homepage - single CTA to assessment" },
       { label: "frameworks.druaiconsulting.com - LIVE", sub: "Standalone frameworks page deployed on Vercel" },
       { label: "Admin Command Center live stats", sub: "Supabase stats table - Edge Function - GHL webhooks wired" },
@@ -106,7 +106,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true, label: "SMS Sequences - LIVE",                          sub: "GHL phone number provisioned - SMS automation workflows active" },
       { done: true, label: "course.druaiconsulting.com - LIVE",             sub: "Repo created - Vercel deployed - course landing page live" },
       { done: true, label: "Add 2 PDFs to app for user access",             sub: "Delegated to AI Agents — complete" },
-      { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - June 6, 2026" },
+      { done: false, label: "LAUNCH",                                        sub: "app.druaiconsulting.com - course.druaiconsulting.com - full AI empire live - all agents operational - June 10-11, 2026" },
     ],
   },
   {
@@ -155,7 +155,6 @@ function getPillarColor(score: number): string {
   return "#43A047";
 }
 
-// CHANGE 1: Updated Stats interface — agent-powered metrics
 interface Stats {
   leads_scored_today: number; high_intent_today: number;
   sessions_booked: number;
@@ -163,7 +162,6 @@ interface Stats {
 }
 
 function useStats() {
-  // CHANGE 2: Updated initial state
   const [stats, setStats] = useState<Stats>({ leads_scored_today: 0, high_intent_today: 0, sessions_booked: 0, diagnostics_sd_sold: 0, diagnostics_ed_sold: 0 });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -173,7 +171,6 @@ function useStats() {
         if (error) throw error;
         const map: Record<string, number> = {};
         data?.forEach((row: { id: string; value: number }) => { map[row.id] = row.value; });
-        // CHANGE 3: Updated setStats with new stat IDs
         setStats({ leads_scored_today: map["leads_scored_today"] || 0, high_intent_today: map["high_intent_today"] || 0, sessions_booked: map["sessions_booked"] || 0, diagnostics_sd_sold: map["diagnostics_sd_sold"] || 0, diagnostics_ed_sold: map["diagnostics_ed_sold"] || 0 });
       } catch (err) { console.error("Failed to fetch stats:", err); }
       finally { setLoading(false); }
@@ -420,7 +417,6 @@ export default function Admin() {
     setPdfPublishing(false);
   };
 
-  // CHANGE 4: Updated STAT_CARDS — agent-powered metrics
   const STAT_CARDS = [
     { label: "Leads Scored Today",        value: loading ? "..." : String(stats.leads_scored_today),  sub: "Omar's daily GHL scan",      icon: "📊", color: "#D4AF37" },
     { label: "High Intent Today",         value: loading ? "..." : String(stats.high_intent_today),   sub: "Ready for outreach",         icon: "🎯", color: "#C2185B" },
@@ -485,7 +481,6 @@ export default function Admin() {
           </div>
         </a>
 
-        {/* CHANGE 4 APPLIED: 4 agent-powered stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "0.875rem" }}>
           {STAT_CARDS.map((stat) => (
             <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
@@ -499,7 +494,6 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* CHANGE 5: Sessions Booked — standalone full-width card */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 10, padding: "1.1rem 1rem", marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>📅</span>
@@ -528,7 +522,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Leadership Lab — Publish Video */}
+        {/* Leadership Lab */}
         <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
@@ -544,7 +538,7 @@ export default function Admin() {
           </button>
         </div>
 
-        {/* Weekly PDF — Publish */}
+        {/* Weekly PDF */}
         <div style={{ background: "rgba(30,136,229,0.06)", border: "1px solid rgba(30,136,229,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>📄 Weekly Resource PDF</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
@@ -656,7 +650,7 @@ export default function Admin() {
           </div>
           <div style={{ marginTop: "1.25rem", textAlign: "center" as const, padding: "0.875rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#D4AF37" }}>
-              Launch Target - June 6, 2026 - app.druaiconsulting.com
+              Launch Target - June 10-11, 2026 - app.druaiconsulting.com
             </p>
           </div>
         </div>
