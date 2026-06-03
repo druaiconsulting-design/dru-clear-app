@@ -427,7 +427,7 @@ export default function AdminApprovals() {
     setSaving(null);
   };
 
-  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected" }).eq("id", id); setSaving(null); };
+  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected", archived: true }).eq("id", id); setSaving(null); };
   const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
   const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"approved" }).eq("id", id); setSaving(null); };
 
