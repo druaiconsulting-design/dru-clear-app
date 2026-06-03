@@ -11,7 +11,7 @@ const QUICK_LINKS = [
   { label: "Live Assessment",      href: "https://assessment.druaiconsulting.com", icon: "🚀" },
   { label: "Main Website",         href: "https://druaiconsulting.com", icon: "🌐" },
   { label: "Frameworks Page",      href: "https://frameworks.druaiconsulting.com", icon: "📐" },
-  { label: "Course Page",          href: "https://course.druaiconsulting.com", icon: "🎓" },
+  { label: "Course Page",          href: "https://courses.druaiconsulting.com", icon: "🎓" },
   { label: "GitHub - App",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
   { label: "GitHub - Website",     href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
   { label: "GitHub - Frameworks",  href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
