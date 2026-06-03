@@ -248,13 +248,16 @@ export default function AdminMemberIntelligence() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {paginated.map(member => {
               const isHot = member.signal.label === 'Hot Lead';
+              const displayName = (member.first_name || member.last_name)
+                ? [member.first_name, member.last_name].filter(Boolean).join(' ')
+                : member.email;
               return (
                 <div key={member.id} style={{ background: isHot ? 'rgba(251,234,240,0.04)' : 'rgba(255,255,255,0.02)', border: isHot ? '1px solid rgba(194,24,91,0.2)' : '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
 
                   {/* Name + Email */}
                   <div style={{ minWidth: 160, flex: '1 1 160px' }}>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: '#FFFFFF', margin: 0, marginBottom: '1px' }}>
-                      {(member.first_name || member.last_name)   ? [member.first_name, member.last_name].filter(Boolean).join(' ')   : member.email}''}
+                      {displayName}
                     </p>
                     <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6rem', color: 'rgba(230,230,230,0.35)', margin: 0 }}>
                       {member.email}
