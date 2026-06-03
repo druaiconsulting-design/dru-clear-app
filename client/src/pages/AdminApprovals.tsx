@@ -1,5 +1,5 @@
 // client/src/pages/AdminApprovals.tsx
-// Admin · Page 3 · Intelligence Hub & Approval Queue
+// Admin · Page 3 · Intelligence Dashboard & Approval Queue
 // DAY 4 ADDITION: Member Intelligence section with Gap Signal
 // (Hot Lead / Aligned / Retention Risk per community level vs pathway stage)
 
@@ -30,8 +30,6 @@ interface FlaggedComment {
   profiles?: { first_name?: string | null } | null;
   community_posts?: { title?: string | null } | null;
 }
-
-
 
 interface ConversationMessage { role: 'user' | 'agent'; agentName?: string; text: string; }
 
@@ -290,8 +288,6 @@ export default function AdminApprovals() {
     setFlaggedLoading(false);
   };
 
-
-
   useEffect(() => {
     fetchApprovals();
     fetchMemberCounts();
@@ -333,13 +329,11 @@ export default function AdminApprovals() {
     const match  = (approval.task_brief || "").match(/post_id:([a-zA-Z0-9-]+)/);
     const postId = match?.[1];
     if (!postId) { console.error("[cc_reply] No post_id in task_brief:", approval.task_brief); return false; }
-    // Insert the real agent reply
     const { error } = await supabase.from("community_comments").insert({
       post_id: postId, member_id: null, agent_name: approval.agent_name,
       content, is_flagged: false, is_active: true,
     });
     if (error) { console.error("[cc_reply] Insert failed:", error); return false; }
-    // Preserve placeholder in DB but remove from Flagged queue (is_active: false)
     await supabase.from("community_comments")
       .update({ is_active: false, is_flagged: false })
       .eq("post_id", postId)
@@ -567,22 +561,22 @@ export default function AdminApprovals() {
         {/* Header */}
         <div style={{ marginBottom:"1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"1rem" }}>
           <div>
-            <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.7rem", letterSpacing:"0.12em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Admin · Page 3 · Confidential</p>
-            <h1 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.75rem", fontWeight:700, lineHeight:1.2, marginBottom:"0.2rem" }}>Intelligence Hub</h1>
-            <p style={{ color:"rgba(230,230,230,0.5)", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem" }}>Knowledge cards to read and act on · Approval cards gate publishing and outreach</p>
+            <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.7rem", letterSpacing:"0.12em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Admin · Page 3</p>
+            <h1 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.75rem", fontWeight:700, lineHeight:1.2, marginBottom:"0.2rem" }}>Intelligence Dashboard</h1>
+            <p style={{ color:"rgba(230,230,230,0.5)", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem" }}>Acknowledgements: read, think and strategize · Approvals: publishing</p>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", flexWrap:"wrap" as const }}>
             <div onClick={() => window.location.href = "/admin-archived"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>Archived →</div>
-            <div onClick={() => window.location.href = "/admin"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#D4AF37", border:"1px solid rgba(212,175,55,0.35)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>← Command Center</div>
+            <div onClick={() => window.location.href = "/admin"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#D4AF37", border:"1px solid rgba(212,175,55,0.35)", borderRadius:8, padding:"0.6rem 1.25rem", letterSpacing:"0.06em", cursor:"pointer" }}>← Profit Pulse</div>
           </div>
         </div>
 
         {/* Stats */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"0.75rem" }}>
           {[
-            { label:"Pending Approval", value:pending,       color:"#D4AF37" },
-            { label:"Knowledge Items",  value:knowledge,     color:"rgba(192,208,232,1)" },
-            { label:"Approved Today",   value:approvedToday, color:"#4CAF50" },
+            { label:"Pending Approval",  value:pending,       color:"#D4AF37" },
+            { label:"Acknowledgements",  value:knowledge,     color:"rgba(192,208,232,1)" },
+            { label:"Approved Today",    value:approvedToday, color:"#4CAF50" },
           ].map(s => (
             <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
@@ -617,8 +611,6 @@ export default function AdminApprovals() {
             <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#C2185B", letterSpacing:"0.08em" }}>VIEW →</span>
           </div>
         </a>
-
-
 
         {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
@@ -658,7 +650,7 @@ export default function AdminApprovals() {
 
         {/* Section Tabs */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" as const }}>
-          <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "#4A90D9")}>Knowledge ({approvals.filter(a => !isApprovalCard(a)).length})</button>
+          <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "#4A90D9")}>Acknowledgement ({approvals.filter(a => !isApprovalCard(a)).length})</button>
           <button onClick={() => setActiveFilter("approvals")} style={sectionTabStyle(activeFilter === "approvals", "#C2185B")}>Approvals ({approvals.filter(a => isApprovalCard(a)).length})</button>
         </div>
 
@@ -672,7 +664,7 @@ export default function AdminApprovals() {
         </div>
 
         {loading && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(212,175,55,0.6)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>LOADING...</div>}
-        {!loading && filtered.length === 0 && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(255,255,255,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>{activeFilter === "knowledge" ? "Queue is clear — agents are standing by" : "No items in this category"}</div>}
+        {!loading && filtered.length === 0 && <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(255,255,255,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>{activeFilter === "knowledge" ? "Acknowledgement queue is clear — agents are standing by" : "No items in this category"}</div>}
 
         {!loading && (
           <div style={{ display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
@@ -700,7 +692,7 @@ export default function AdminApprovals() {
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
-                      {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge</span>}
+                      {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Acknowledgement</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
                       {isPDF && !isPostTrigger && !isCCReply && !isKnowledge && !isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
