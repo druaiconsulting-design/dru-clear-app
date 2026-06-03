@@ -2,6 +2,7 @@
 // P9 Community Connection Division — 10 agents
 // ARCHITECTURE v2: CC agents write DIRECTLY to approvals (bypass daily CSQ chain)
 // KNOWLEDGE INJECTION: getAgentKnowledge() inlined directly (no separate module)
+// UPDATED: Full FRAMEWORK_KNOWLEDGE — matches ghl-agent-trigger.ts (agent prompts unchanged)
 
 export const config = { maxDuration: 60 };
 
@@ -60,8 +61,65 @@ async function writeToApprovals(record: Record<string, unknown>): Promise<string
   const data = await res.json(); return data?.[0]?.id ?? null;
 }
 
-// ─── Agent Knowledge Base (inline) ───────────────────────────────────────────
+// ─── Agent Knowledge Base (inline) ─────────────────────────────────────────
+// UPDATED: Full framework knowledge — identical to ghl-agent-trigger.ts
+// Agent prompts unchanged — framework assignment per agent already correct
 const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
+const FRAMEWORK_KNOWLEDGE = `
+## THE DRU AI TRANSFORMATION PATHWAY™
+Sequential journey every client walks — no shortcuts, no skipped steps:
+Discover → Diagnose → Design → Deploy → Dominate
+- DISCOVER: Uncover where the organization is today and where AI can take them
+- DIAGNOSE: Deep analysis across all frameworks — identify gaps and highest-impact opportunities
+- DESIGN: Build the strategy, execution plan, and alignment system
+- DEPLOY: Activate transformation — implement frameworks with live facilitation
+- DOMINATE: Sustain, measure, and scale AI leadership results
+
+## THE 4 FRAMEWORKS — TRUE MEANINGS
+
+### DRU CLEAR™ — The Connector (Flagship) | $7,500 | 3 sessions x 90 min
+NOT just an assessment. The complete AI readiness diagnosis, strategy design, and
+execution alignment system that CONNECTS all four frameworks into a unified strategy.
+- C — CLARITY: Define the AI vision with precision. Where are you going, why does it matter?
+- L — LEADERSHIP: AI fluency, executive sponsorship, strategic conviction top-down and inside-out.
+- E — EXECUTION: Close the gap between strategy and action. Identify processes and capabilities.
+- A — ALIGNMENT: Unify around a single AI strategy. Break silos, synchronize departments.
+- R — RESULTS: Define, measure, and demonstrate ROI. What gets measured gets transformed.
+
+### 5C Cultural DNA™ — Culture | $6,000 | 3 sessions x 90 min
+Theme: Learn IT. Live IT. Lead IT. Leadership Thinking with AI.
+Most organizations don't have an AI problem — they have a CULTURE problem.
+Gives leaders a path to use AI as a strategic THINKING PARTNER — not a decision-maker.
+- COMMUNICATION: Foundation. How leaders and teams share vision and create clarity around AI.
+- CONNECTION: Relational layer. Trust and meaningful relationships that enable collaboration.
+- COLLABORATION: Action layer. Breaking silos so AI initiatives flow through the whole organization.
+- COACHING: Development layer. Building confidence and competency from the inside out.
+- CULTURE TRANSFORMATION: Outcome. From resistance and fear to ownership and strategic adoption.
+
+### 5D Leadership™ — Leadership | $6,500 | 3 sessions x 90 min
+Focuses on the WHOLE leader — building from the inside out. NOT a skills program.
+An AI-infused methodology where personal mastery and strategic impact develop together.
+- I. SELF: Personal mastery. How a leader thinks, decides, and shows up.
+- II. PEOPLE: Relational intelligence. Connects with and develops the individuals around them.
+- III. TEAM: Collective effectiveness. Builds cohesion, trust, and high performance.
+- IV. ORGANIZATION: Systemic strength. Aligns culture, strategy, and operations.
+- V. VISIONARY: Strategic impact. Sees beyond today, positions organization to lead.
+
+### AI Sales Mastery™ — Sales | $6,000 | 3 sessions x 90 min
+Theme: Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.
+Combines DISC behavioral insights with AI. Selling stops feeling like selling.
+- HYPER-PERSONALIZED OUTREACH AT SCALE: Right person, right message, right time — every time.
+- SPEAK YOUR CLIENT'S DECISION LANGUAGE: DISC gives you the map. AI gives you the speed.
+- PREDICT OBJECTIONS BEFORE THEY HAPPEN: Stop reacting and start anticipating.
+- CLOSE WITH CONFIDENCE, NOT PRESSURE: Clarity makes closing a natural next step.
+- BUILD LONG-TERM CLIENT RELATIONSHIPS: Not transactions — transformation.
+
+## HOW THE FRAMEWORKS RELATE
+DRU CLEAR™ is the CONNECTOR — anchors every engagement.
+Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
+Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
+Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
+`;
 async function getAgentKnowledge(): Promise<string> {
   let tmMarks: string[] = [];
   try {
@@ -81,28 +139,7 @@ ${tmList}
 RULES: Every mark above MUST include TM every time. NO other terms carry TM.
 Do NOT add TM to anything not on this list. 'DRU AI Consulting' = business name, NO TM.
 REQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)
-
-## THE 4 FRAMEWORKS — TRUE MEANINGS
-
-DRU CLEAR™ — The Connector (Flagship): NOT just an assessment. Complete AI readiness
-diagnosis, strategy design, and execution alignment. C=Clarity, L=Leadership,
-E=Execution, A=Alignment, R=Results. CONNECTS all four frameworks.
-
-5C Cultural DNA™ — Culture: Organizations don't have an AI problem — they have a
-CULTURE problem. AI as strategic THINKING PARTNER, not decision-maker.
-C=Communication, C=Connection, C=Collaboration, C=Coaching, C=Culture Transformation.
-
-5D Leadership™ — Leadership: Whole leader development from the inside out. NOT a
-skills program. I=Self, II=People, III=Team, IV=Organization, V=Visionary.
-
-AI Sales Mastery™ — Sales: DISC behavioral insights + AI. Selling stops feeling like
-selling. Hyper-personalized outreach, speak client's decision language, predict
-objections, close with confidence, build long-term relationships.
-
-DRU AI Transformation Pathway™: Discover → Diagnose → Design → Deploy → Dominate
-
-From Confusion to Confident with AI™ — Course: Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
-
+${FRAMEWORK_KNOWLEDGE}
 === END AGENT KNOWLEDGE BASE ===`.trim();
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,23 +238,11 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
     const corrected = enforceTM(raw);
     const displayTitle = postTitle ? `"${postTitle.slice(0, 80)}"` : 'Community post reply';
     const approval_id = await writeToApprovals({
-      source: 'cc_agent_reply',
-      trigger_type: 'cc_agent_reply',
-      agent_name: agentName,
-      agent_role: agentRole,
-      division: 'Community Connection',
-      task_brief: `${displayTitle} | post_id:${postId}`,
-      original_content: postContent.slice(0, 500),
-      output: corrected,
-      edited_output: null,
-      status: 'pending',
-      ghl_contact_id: null,
-      notify_deanna: true,
-      priority: 'NORMAL',
-      category: 'community_comment_reply',
-      platform: null,
-      context: null,
-      archived: false,
+      source: 'cc_agent_reply', trigger_type: 'cc_agent_reply', agent_name: agentName, agent_role: agentRole,
+      division: 'Community Connection', task_brief: `${displayTitle} | post_id:${postId}`,
+      original_content: postContent.slice(0, 500), output: corrected, edited_output: null,
+      status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'NORMAL',
+      category: 'community_comment_reply', platform: null, context: null, archived: false,
     });
     console.log(`[${agentId}] Community reply → approvals: ${approval_id ?? 'failed'} for post ${postId}`);
     return { approval_id };
