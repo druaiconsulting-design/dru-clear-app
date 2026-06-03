@@ -103,16 +103,16 @@ const DIVISIONS = [
     name: "Community Connection", tag: "Client-Facing", fullWidth: true,
     border: "rgba(46,109,171,0.5)", headerBg: "#2E6DAB",
     agents: [
-      { name: "Zoe Beaumont",    role: "Community Connection Leader ★", src: photo("women", 74) },
-      { name: "Micah Santos",    role: "Member Experience Specialist",  src: photo("men",   77) },
+      { name: "Zoe Beaumont",     role: "Community Connection Leader ★", src: photo("women", 74) },
+      { name: "Micah Santos",     role: "Member Experience Specialist",  src: photo("men",   77) },
       { name: "Dominique Carter", role: "CLEAR Vision · Clarity & Alignment",   src: photo("women", 48) },
-      { name: "Elijah Brooks",   role: "CLEAR Vision · Leadership & Results",   src: photo("men",   11) },
-      { name: "Solange Dupont",  role: "5D Elevation · Self & People",          src: photo("women", 37) },
-      { name: "Isaiah Webb",     role: "5D Elevation · Team & Visionary",       src: photo("men",   54) },
-      { name: "Nadia Osei",      role: "Culture DNA · Communication",           src: photo("women", 91) },
-      { name: "Victor Reyes",    role: "Culture DNA · Culture Transformation",  src: photo("men",   46) },
-      { name: "Sasha Kim",       role: "Revenue Intel. · DISC Intelligence",    src: photo("women", 57) },
-      { name: "Tariq Oladele",   role: "Revenue Intel. · Revenue Acceleration", src: photo("men",   23) },
+      { name: "Elijah Brooks",    role: "CLEAR Vision · Leadership & Results",   src: photo("men",   11) },
+      { name: "Solange Dupont",   role: "5D Elevation · Self & People",          src: photo("women", 37) },
+      { name: "Isaiah Webb",      role: "5D Elevation · Team & Visionary",       src: photo("men",   54) },
+      { name: "Nadia Osei",       role: "Culture DNA · Communication",           src: photo("women", 91) },
+      { name: "Victor Reyes",     role: "Culture DNA · Culture Transformation",  src: photo("men",   46) },
+      { name: "Sasha Kim",        role: "Revenue Intel. · DISC Intelligence",    src: photo("women", 57) },
+      { name: "Tariq Oladele",    role: "Revenue Intel. · Revenue Acceleration", src: photo("men",   23) },
     ],
   },
 ];
@@ -142,11 +142,11 @@ export default function AdminOrg() {
         {/* Header */}
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 2 · Confidential</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.4rem" }}>Admin · Page 2</p>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
             <p style={{ color: "rgba(230,230,230,0.5)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>54 agents · 9 divisions · DeAnna → AI Twin → Raymond → Travis → Priya → 50 Agents · All agents operate in Genius Mode</p>
           </div>
-          <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Command Center</div>
+          <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Profit Pulse</div>
         </div>
 
         {/* Hierarchy */}
@@ -241,13 +241,13 @@ export default function AdminOrg() {
 
         <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,75,0.7)", margin: 0 }}>
-            ★ Isabella Moreno auto-blocks all outputs violating Trademark Classes 35 · 41 · 42 · All agents operate in Genius Mode · Confidential · DRU AI Consulting © 2026
+            ★ Isabella Moreno auto-blocks all outputs violating Trademark Classes 35 · 41 · 42 · All agents operate in Genius Mode · DRU AI Consulting © 2026
           </p>
         </div>
 
       </main>
       <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem" }}>
-        © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
+        © 2026 DRU AI Consulting · All Rights Reserved
       </footer>
     </div>
   );
