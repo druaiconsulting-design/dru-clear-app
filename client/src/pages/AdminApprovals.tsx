@@ -31,34 +31,7 @@ interface FlaggedComment {
   community_posts?: { title?: string | null } | null;
 }
 
-// ── NEW: Member Intelligence ────────────────────────────────────────────────
-interface MemberIntelligence {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string;
-  tier: string;
-  community_level: string | null;
-  pathway_stage: string | null;
-  clarity_points: number;
-}
 
-const LEVEL_RANK: Record<string, number> = {
-  Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5,
-};
-const PATHWAY_RANK: Record<string, number> = {
-  Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5,
-};
-
-function getGapSignal(level: string | null, pathway: string | null): { label: string; bg: string; textColor: string } {
-  const l = LEVEL_RANK[level ?? ''] ?? 0;
-  const p = PATHWAY_RANK[pathway ?? ''] ?? 0;
-  if (l === 0) return { label: 'No Activity', bg: 'rgba(255,255,255,0.04)', textColor: 'rgba(255,255,255,0.3)' };
-  if (p === 0 || l > p) return { label: 'Hot Lead',        bg: '#FBEAF0', textColor: '#72243E' };
-  if (l === p)           return { label: 'Aligned',         bg: '#EAF3DE', textColor: '#27500A' };
-  return                        { label: 'Retention Risk',  bg: '#FAEEDA', textColor: '#633806' };
-}
-// ────────────────────────────────────────────────────────────────────────────
 
 interface ConversationMessage { role: 'user' | 'agent'; agentName?: string; text: string; }
 
@@ -292,8 +265,6 @@ export default function AdminApprovals() {
   const [flaggedComments, setFlaggedComments]     = useState<FlaggedComment[]>([]);
   const [flaggedLoading, setFlaggedLoading]       = useState(true);
   const [savingComment, setSavingComment]         = useState<string | null>(null);
-  // NEW ──────────────────────────────────────────────────────────────────────
-  const [memberIntelligence, setMemberIntelligence] = useState<MemberIntelligence[]>([]);
 
   const fetchApprovals = async () => {
     const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
@@ -319,40 +290,21 @@ export default function AdminApprovals() {
     setFlaggedLoading(false);
   };
 
-  // NEW ──────────────────────────────────────────────────────────────────────
-  const fetchMemberIntelligence = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name, email, tier, community_level, pathway_stage, clarity_points")
-      .in("tier", ["navigator", "accelerator"])
-      .order("clarity_points", { ascending: false });
-    setMemberIntelligence((data as MemberIntelligence[]) || []);
-  };
+
 
   useEffect(() => {
     fetchApprovals();
     fetchMemberCounts();
     fetchFlaggedComments();
-    fetchMemberIntelligence(); // NEW
-
     const channel = supabase.channel("approvals-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals())
       .subscribe();
     const commentsChannel = supabase.channel("flagged-comments-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments())
       .subscribe();
-    // NEW: live updates when members earn points or change pathway
-    const profilesChannel = supabase.channel("profiles-intelligence-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
-        fetchMemberCounts();
-        fetchMemberIntelligence();
-      })
-      .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(commentsChannel);
-      supabase.removeChannel(profilesChannel); // NEW
     };
   }, []);
 
@@ -581,9 +533,6 @@ export default function AdminApprovals() {
   const knowledge     = approvals.filter(a => !isApprovalCard(a)).length;
   const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
 
-  // NEW: hot lead count for stats display
-  const hotLeadCount = memberIntelligence.filter(m => getGapSignal(m.community_level, m.pathway_stage).label === 'Hot Lead').length;
-
   const sectionTabStyle = (active: boolean, color: string) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
     letterSpacing:"0.08em", textTransform:"uppercase" as const,
@@ -636,74 +585,33 @@ export default function AdminApprovals() {
         </div>
 
         {/* Community Member Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"1rem" }}>
           {[
             { label:"CC Members",  value:memberCounts.total,       color:"#D4AF37" },
             { label:"Navigator",   value:memberCounts.navigator,   color:"rgba(192,208,232,1)" },
             { label:"Accelerator", value:memberCounts.accelerator, color:"#B8941F" },
-            { label:"Hot Leads",   value:hotLeadCount,             color:"#C2185B" },
           ].map(s => (
-            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${s.label === 'Hot Leads' ? 'rgba(194,24,91,0.25)' : 'rgba(212,175,55,0.15)'}`, borderRadius:10, padding:"0.875rem 1rem" }}>
+            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
               <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>{s.label}</p>
             </div>
           ))}
         </div>
 
-        {/* ── Member Intelligence — Gap Signal ────────────────────────────── */}
-        <div style={{ marginBottom:"1.75rem" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.5rem" }}>
-            <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Member Intelligence</h2>
-            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"rgba(212,175,55,0.1)", border:"1px solid rgba(212,175,55,0.3)", color:"#D4AF37" }}>{memberIntelligence.length} members</span>
+        {/* Member Intelligence link card */}
+        <a href="/admin-member-intelligence" style={{ textDecoration:"none", display:"block", marginBottom:"1.5rem" }}>
+          <div style={{ background:"linear-gradient(135deg, rgba(194,24,91,0.08), rgba(194,24,91,0.04))", border:"1px solid rgba(194,24,91,0.3)", borderRadius:12, padding:"1rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.6)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.3)"; }}>
+            <div>
+              <p style={{ fontFamily:"'Playfair Display', serif", color:"#C2185B", fontSize:"1rem", fontWeight:700, margin:"0 0 3px" }}>Member Intelligence</p>
+              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.72rem", margin:0 }}>Gap signal · Hot Lead · Aligned · Retention Risk · full member list with filters, search, and CSV export · Page 4</p>
+            </div>
+            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#C2185B", letterSpacing:"0.08em" }}>VIEW →</span>
           </div>
-          <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(230,230,230,0.4)", fontSize:"0.7rem", marginBottom:"0.875rem", lineHeight:1.5 }}>
-            Community engagement level vs. investment pathway stage · Hot Lead = engaged but not yet invested · Retention Risk = invested but disengaging
-          </p>
+        </a>
 
-          {memberIntelligence.length === 0 ? (
-            <div style={{ padding:"0.875rem 1rem", background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8 }}>
-              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.75rem", margin:0 }}>No members yet — appears when Navigator and Accelerator members join</p>
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.35rem" }}>
-              {memberIntelligence.map(member => {
-                const signal = getGapSignal(member.community_level, member.pathway_stage);
-                const isHot  = signal.label === 'Hot Lead';
-                return (
-                  <div key={member.id} style={{ background: isHot ? "rgba(251,234,240,0.04)" : "rgba(255,255,255,0.02)", border: isHot ? "1px solid rgba(194,24,91,0.2)" : "1px solid rgba(255,255,255,0.06)", borderRadius:10, padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap" as const }}>
-                    {/* Name + email */}
-                    <div style={{ minWidth:130, flex:"0 0 auto" }}>
-                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", fontWeight:700, color:"#FFFFFF", margin:0, marginBottom:"1px" }}>
-                        {member.first_name ?? ''} {member.last_name ?? ''}
-                      </p>
-                      <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.58rem", color:"rgba(230,230,230,0.35)", margin:0 }}>{member.email}</p>
-                    </div>
-                    {/* Tier badge */}
-                    <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 7px", borderRadius:20, flexShrink:0, background:member.tier === 'accelerator' ? "rgba(194,24,91,0.15)" : "rgba(212,175,55,0.12)", color:member.tier === 'accelerator' ? "#C2185B" : "#D4AF37", border:`1px solid ${member.tier === 'accelerator' ? "rgba(194,24,91,0.35)" : "rgba(212,175,55,0.3)"}` }}>
-                      {member.tier === 'accelerator' ? 'Accelerator' : 'Navigator'}
-                    </span>
-                    {/* Level → Pathway */}
-                    <div style={{ display:"flex", alignItems:"center", gap:"0.35rem", flexShrink:0 }}>
-                      <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(212,175,55,0.9)", fontWeight:600 }}>{member.community_level ?? 'Connected'}</span>
-                      <span style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.6rem" }}>→</span>
-                      <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(230,230,230,0.55)" }}>{member.pathway_stage ?? 'None'}</span>
-                    </div>
-                    {/* Points */}
-                    <div style={{ textAlign:"center" as const, flexShrink:0, minWidth:45 }}>
-                      <p style={{ fontFamily:"'Playfair Display', serif", color:"#D4AF37", fontSize:"0.9rem", fontWeight:700, margin:0 }}>{member.clarity_points ?? 0}</p>
-                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.48rem", color:"rgba(230,230,230,0.3)", margin:0, letterSpacing:"0.08em" }}>PTS</p>
-                    </div>
-                    {/* Gap Signal badge */}
-                    <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"3px 10px", borderRadius:20, flexShrink:0, background:signal.bg, color:signal.textColor, whiteSpace:"nowrap" as const }}>
-                      {signal.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        {/* ────────────────────────────────────────────────────────────────── */}
+
 
         {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
