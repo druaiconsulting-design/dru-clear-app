@@ -707,7 +707,7 @@ export default function Admin() {
 
       </main>
       <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
-        &copy; 2026 DRU CLEAR™ - All Rights Reserved - DRU AI Consulting
+        &copy; © 2026 DRU AI Consulting · All Rights Reserved
       </footer>
     </div>
   );
