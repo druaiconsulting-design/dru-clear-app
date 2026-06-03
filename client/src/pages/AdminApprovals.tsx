@@ -333,11 +333,18 @@ export default function AdminApprovals() {
     const match  = (approval.task_brief || "").match(/post_id:([a-zA-Z0-9-]+)/);
     const postId = match?.[1];
     if (!postId) { console.error("[cc_reply] No post_id in task_brief:", approval.task_brief); return false; }
+    // Insert the real agent reply
     const { error } = await supabase.from("community_comments").insert({
       post_id: postId, member_id: null, agent_name: approval.agent_name,
       content, is_flagged: false, is_active: true,
     });
     if (error) { console.error("[cc_reply] Insert failed:", error); return false; }
+    // Preserve placeholder in DB but remove from Flagged queue (is_active: false)
+    await supabase.from("community_comments")
+      .update({ is_active: false, is_flagged: false })
+      .eq("post_id", postId)
+      .eq("is_flagged", true)
+      .like("content", "Reply requested%");
     return true;
   };
 
