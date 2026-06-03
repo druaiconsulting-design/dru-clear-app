@@ -180,6 +180,38 @@ function useStats() {
   return { stats, loading };
 }
 
+// ── CC Hot Leads: community engagement gap signal count ──────────────────────
+const LEVEL_RANK_ADMIN: Record<string, number> = {
+  Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5,
+};
+const PATHWAY_RANK_ADMIN: Record<string, number> = {
+  Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5,
+};
+
+function useCCHotLeads() {
+  const [count, setCount] = useState(0);
+  const [hlLoading, setHlLoading] = useState(true);
+  useEffect(() => {
+    async function fetchHotLeads() {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("community_level, pathway_stage")
+          .in("tier", ["navigator", "accelerator"]);
+        const hot = (data ?? []).filter((m: any) => {
+          const l = LEVEL_RANK_ADMIN[m.community_level ?? ''] ?? 0;
+          const p = PATHWAY_RANK_ADMIN[m.pathway_stage  ?? ''] ?? 0;
+          return l > 0 && (p === 0 || l > p);
+        }).length;
+        setCount(hot);
+      } catch (err) { console.error("Failed to fetch CC hot leads:", err); }
+      finally { setHlLoading(false); }
+    }
+    fetchHotLeads();
+  }, []);
+  return { count, hlLoading };
+}
+
 interface Submission {
   id: string; created_at: string; first_name: string; last_name: string; email: string;
   company: string; role: string; country_name: string; total_score: number; tier: string;
@@ -342,6 +374,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [copied, setCopied]                     = useState(false);
   const { stats, loading }                      = useStats();
+  const { count: ccHotLeads, hlLoading }        = useCCHotLeads();
   const [hasPasskey, setHasPasskey]             = useState(false);
   const [passkeyLoading, setPasskeyLoading]     = useState(false);
   const [passkeyMessage, setPasskeyMessage]     = useState("");
@@ -502,6 +535,23 @@ export default function Admin() {
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>Sessions Booked</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>Running total · updates in real time on booking</p>
         </div>
+
+        {/* CC Hot Leads */}
+        <a href="/admin-member-intelligence" style={{ textDecoration:"none", display:"block", marginBottom:"2rem" }}>
+          <div style={{ background:"rgba(194,24,91,0.06)", border:"1px solid rgba(194,24,91,0.25)", borderRadius:10, padding:"1.1rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.5)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.25)"; }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.5rem" }}>
+                <span style={{ fontSize:"1.1rem" }}>🔥</span>
+                <p style={{ fontFamily:"'Playfair Display', serif", color:"#C2185B", fontWeight:700, fontSize:"1.4rem", margin:0 }}>{hlLoading ? "..." : ccHotLeads}</p>
+              </div>
+              <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#FFFFFF", fontWeight:700, fontSize:"0.72rem", letterSpacing:"0.04em", marginBottom:"0.2rem" }}>CC Hot Leads</p>
+              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(230,230,230,0.35)", fontSize:"0.65rem" }}>Community members engaged but not yet invested · tap to view all</p>
+            </div>
+            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#C2185B", letterSpacing:"0.08em", flexShrink:0 }}>VIEW →</span>
+          </div>
+        </a>
 
         <ClientIntelligenceDashboard />
 
