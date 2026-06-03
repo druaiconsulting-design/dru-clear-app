@@ -254,7 +254,7 @@ export default function AdminMemberIntelligence() {
                   {/* Name + Email */}
                   <div style={{ minWidth: 160, flex: '1 1 160px' }}>
                     <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: '#FFFFFF', margin: 0, marginBottom: '1px' }}>
-                      {member.first_name ?? ''} {member.last_name ?? ''}
+                      {(member.first_name || member.last_name)   ? `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim()   : member.email}''}
                     </p>
                     <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.6rem', color: 'rgba(230,230,230,0.35)', margin: 0 }}>
                       {member.email}
