@@ -157,7 +157,7 @@ export default function AdminMemberIntelligence() {
         {/* ── Header ───────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Admin · Page 4 · Confidential</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: '#C2185B', fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Admin · Page 4</p>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, marginBottom: '0.2rem' }}>Member Intelligence</h1>
             <p style={{ color: 'rgba(230,230,230,0.5)', fontFamily: "'Inter', sans-serif", fontSize: '0.75rem' }}>
               Community engagement level vs. investment pathway stage · Hot Lead = engaged but not yet invested
@@ -170,11 +170,11 @@ export default function AdminMemberIntelligence() {
             </button>
             <div onClick={() => window.location.href = '/admin-approvals'}
               style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.35)', borderRadius: 8, padding: '0.6rem 1.25rem', letterSpacing: '0.06em', cursor: 'pointer' }}>
-              ← Intelligence Hub
+              ← Intelligence Dashboard
             </div>
             <div onClick={() => window.location.href = '/admin'}
               style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.6rem 1.25rem', letterSpacing: '0.06em', cursor: 'pointer' }}>
-              ← Command Center
+              ← Profit Pulse
             </div>
           </div>
         </div>
@@ -323,7 +323,7 @@ export default function AdminMemberIntelligence() {
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', padding: '0.75rem', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 8 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.6rem', color: 'rgba(212,175,55,0.7)', margin: 0 }}>
-            Member intelligence is confidential · DRU AI Consulting © 2026
+            Community Connections Growth and Development with the DRU AI Leadership Ecosystem™ · DRU AI Consulting © 2026
           </p>
         </div>
 
