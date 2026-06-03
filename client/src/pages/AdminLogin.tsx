@@ -51,8 +51,7 @@ export default function AdminLogin() {
 
       <div style={{ width: "100%", maxWidth: 360 }}>
         <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.2)", borderRadius: 12, padding: "2rem 1.75rem" }}>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.4rem", textAlign: "center" }}>Authorized Access Only</h1>
-          <p style={{ color: "rgba(230,230,230,0.35)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", textAlign: "center", marginBottom: "2rem" }}>This area is restricted.</p>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem", textAlign: "center" }}>Admin</h1>
 
           {/* ── Passkey Sign-In Button ──────────────────────────────────── */}
           <button
