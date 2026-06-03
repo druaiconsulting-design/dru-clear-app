@@ -23,6 +23,7 @@ import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminArchived from "./pages/AdminArchived";
 import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
+import AdminSprints from "./pages/AdminSprints";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
@@ -165,7 +166,7 @@ function Router() {
 
   // ── Admin Routes ────────────────────────────────────────────────────────────
   if (path === "/admin" || path === "/admin/") {
-    setTitle("Command Center · DRU CLEAR™");
+    setTitle("Profit Pulse · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Admin />;
   }
@@ -188,6 +189,11 @@ function Router() {
     setTitle("Member Intelligence · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminMemberIntelligence />;
+  }
+  if (path === "/admin-sprints" || path === "/admin-sprints/") {
+    setTitle("Build Roadmap · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminSprints />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
