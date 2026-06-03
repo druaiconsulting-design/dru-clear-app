@@ -22,6 +22,7 @@ import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminArchived from "./pages/AdminArchived";
+import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
@@ -40,13 +41,10 @@ function Router() {
   const hostname = window.location.hostname;
   const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
 
-  // Tracks whether we are mid-OAuth-exchange so we keep the splash up
-  // until the session is actually established (no premature redirect to /login).
   const params = new URLSearchParams(window.location.search);
   const [exchangingCode, setExchangingCode] = useState(!!params.get("code"));
 
   useEffect(() => {
-    // ── Handle hash-based tokens (password reset, magic link) ──────────────
     if (hash && hash.includes("access_token")) {
       if (hash.includes("type=recovery") || hash.includes("type=signup")) {
         window.location.href = "/reset-password" + window.location.hash;
@@ -61,25 +59,15 @@ function Router() {
       return;
     }
 
-    // ── Handle PKCE code exchange (Google OAuth) ────────────────────────────
-    // We exchange the code EXPLICITLY and wait for it to finish. We do NOT
-    // strip the code from the URL first (that was racing Supabase and causing
-    // the exchange to fail, dumping the user back to /login).
     const sp = new URLSearchParams(window.location.search);
     const code = sp.get("code");
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        // Clean the URL now that the code has been consumed.
         window.history.replaceState({}, document.title, window.location.pathname);
-
         if (error || !data?.session) {
-          // Exchange failed — let the user retry from the login screen.
           setExchangingCode(false);
           return;
         }
-
-        // Session established. onAuthStateChange in AuthContext will also fire,
-        // but we redirect explicitly here so it's deterministic.
         const isAdminUser =
           data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
         window.location.replace(isAdminUser ? "/admin" : "/portal");
@@ -88,7 +76,6 @@ function Router() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── While loading auth OR exchanging an OAuth code, show splash ────────────
   if (loading || exchangingCode) {
     setTitle("DRU CLEAR™");
     return (
@@ -108,7 +95,6 @@ function Router() {
     );
   }
 
-  // ── Root ────────────────────────────────────────────────────────────────────
   if (path === "/" || path === "") {
     if (isAssessmentDomain) {
       setTitle("DRU CLEAR™ AI Readiness Assessment");
@@ -122,7 +108,6 @@ function Router() {
     return <Login />;
   }
 
-  // ── Redirects ───────────────────────────────────────────────────────────────
   if (path === "/roi" || path === "/roi/") {
     window.location.replace("/community");
     return null;
@@ -132,7 +117,6 @@ function Router() {
     return null;
   }
 
-  // ── Public Routes ───────────────────────────────────────────────────────────
   if (path === "/bundle-pricing" || path === "/bundle-pricing/") {
     setTitle("Bundle Pricing · DRU CLEAR™");
     return <BundlePricing />;
@@ -150,7 +134,6 @@ function Router() {
     return <Login />;
   }
 
-  // ── Thank You Pages ─────────────────────────────────────────────────────────
   if (path === "/thank-you-ed" || path === "/thank-you-ed/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouED />;
@@ -200,6 +183,11 @@ function Router() {
     setTitle("Archived Queue · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminArchived />;
+  }
+  if (path === "/admin-member-intelligence" || path === "/admin-member-intelligence/") {
+    setTitle("Member Intelligence · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminMemberIntelligence />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
