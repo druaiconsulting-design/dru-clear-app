@@ -233,7 +233,7 @@ async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
   const data = await res.json(); return Array.isArray(data) && data.length > 0;
 }
 async function fireAaliyahUpsellCard(memberId: string, firstName: string, email: string | null, phone: string | null, signalReason: string, postTitle: string): Promise<void> {
-  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nA Navigator member named ${firstName} is showing strong signals of readiness to upgrade to Accelerator ($147/mo).\nCommunity intelligence: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personalized outreach message (100-120 words) inviting ${firstName} to upgrade. Feel personal and specific. Reference their community engagement. Articulate Accelerator value. CTA: https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1\nWrite ONLY the message.`;
+  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nA Navigator member named ${firstName} is showing strong signals of readiness to upgrade to Accelerator ($167/mo).\nCommunity intelligence: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personalized outreach message (100-120 words) inviting ${firstName} to upgrade. Feel personal and specific. Reference their community engagement. Articulate Accelerator value. CTA: https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1\nWrite ONLY the message.`;
   const outreach = enforceTM(await callAnthropic(prompt, 400));
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
