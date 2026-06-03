@@ -21,6 +21,7 @@ const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
   cron_tariq_sales_content:      { agent_id: 'tariq',       agent_name: 'Tariq Oladele',    task: 'ai_revenue_acceleration',     pipeline: 'p9_tariq' },
   cron_zoe_community_lead:       { agent_id: 'zoe',         agent_name: 'Zoe Beaumont',     task: 'daily_community_facilitation',pipeline: 'p9_zoe' },
   cron_micah_member_experience:  { agent_id: 'micah',       agent_name: 'Micah Santos',     task: 'daily_member_experience',     pipeline: 'p9_micah' },
+  cron_cc_upsell_scan:           { agent_id: 'upsell_scan', agent_name: 'Upsell Scanner',   task: 'cc_upsell_scan',              pipeline: 'p9_upsell_scan' },
   cc_agent_reply:                { agent_id: 'cc_agent',    agent_name: 'Community Agent',  task: 'community_reply',             pipeline: 'p9_cc_reply' },
 };
 
