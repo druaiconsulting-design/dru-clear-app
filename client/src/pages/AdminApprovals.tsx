@@ -1,16 +1,7 @@
 // client/src/pages/AdminApprovals.tsx
 // Admin · Page 3 · Intelligence Hub & Approval Queue
-// Knowledge cards: Read ✓ (archive) — division briefings, design briefs, etc.
-// Approval cards: Approve/Reject/Edit — social posts, CC replies, upsell outreach
-// CHANGES:
-// - Removed All tab (redundant with Knowledge tab)
-// - Revenue, Growth & Sales: merged revenue_growth + division_briefing under one tab
-// - Social cards: Contributors shown for ALL social cards (not just creative platforms)
-// - Conversation persistence: saved to approvals.context, restored on reopen
-// - Community Connection: community_post category treated as Approval card → posts to community
-// - DIVISION_COLORS key fixed to match actual division name
-// FIX: postToCommunity — add .select('id') to detect silent 0-row UPDATE; INSERT if record missing
-// FIX: getOriginalColumn — strip post_id:UUID prefix from task_brief for community_post cards
+// DAY 4 ADDITION: Member Intelligence section with Gap Signal
+// (Hot Lead / Aligned / Retention Risk per community level vs pathway stage)
 
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -40,6 +31,35 @@ interface FlaggedComment {
   community_posts?: { title?: string | null } | null;
 }
 
+// ── NEW: Member Intelligence ────────────────────────────────────────────────
+interface MemberIntelligence {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  tier: string;
+  community_level: string | null;
+  pathway_stage: string | null;
+  clarity_points: number;
+}
+
+const LEVEL_RANK: Record<string, number> = {
+  Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5,
+};
+const PATHWAY_RANK: Record<string, number> = {
+  Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5,
+};
+
+function getGapSignal(level: string | null, pathway: string | null): { label: string; bg: string; textColor: string } {
+  const l = LEVEL_RANK[level ?? ''] ?? 0;
+  const p = PATHWAY_RANK[pathway ?? ''] ?? 0;
+  if (l === 0) return { label: 'No Activity', bg: 'rgba(255,255,255,0.04)', textColor: 'rgba(255,255,255,0.3)' };
+  if (p === 0 || l > p) return { label: 'Hot Lead',        bg: '#FBEAF0', textColor: '#72243E' };
+  if (l === p)           return { label: 'Aligned',         bg: '#EAF3DE', textColor: '#27500A' };
+  return                        { label: 'Retention Risk',  bg: '#FAEEDA', textColor: '#633806' };
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 interface ConversationMessage { role: 'user' | 'agent'; agentName?: string; text: string; }
 
 interface QuestionState {
@@ -62,7 +82,6 @@ const PDF_CATEGORIES = new Set([
   "community_management","client_delivery",
 ]);
 
-// Cards that gate a publishing/outreach action — full Approve/Reject/Edit
 const APPROVAL_CATEGORIES = new Set([
   "social", "community_comment_reply", "cc_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post",
@@ -76,7 +95,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   Community:"#2D5A8E",
 };
 
-// Key must match actual division name from approvals table
 const DIVISION_COLORS: Record<string, string> = {
   "Revenue, Growth & Sales":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
   "Legal & Finance":"#8A6E1A", "AI Governance":"#7A0F38", "HR":"#2E6DAB",
@@ -90,7 +108,6 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   daily_briefing:"Daily Briefing",
-  // Both revenue_growth and division_briefing map to same label — merged in UI
   revenue_growth:"Revenue, Growth & Sales",
   division_briefing:"Revenue, Growth & Sales",
   content_brand:"Content & Brand", marketing:"Marketing",
@@ -103,7 +120,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   cc_upsell_outreach:"CC Upsell Signal",
 };
 
-// division_briefing intentionally excluded — merged under revenue_growth tab
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
@@ -173,16 +189,16 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" },
   ],
   "Community Connection": [
-    { agent_id:"dominique", agent_name:"Dominique",  role:"DRU CLEAR™ Insights" },
-    { agent_id:"elijah",    agent_name:"Elijah",      role:"Framework Lesson" },
-    { agent_id:"solange",   agent_name:"Solange",     role:"Action Challenge" },
-    { agent_id:"isaiah_webb",agent_name:"Isaiah Webb",role:"5D Leadership™" },
-    { agent_id:"nadia",     agent_name:"Nadia",       role:"Strategic Edge" },
-    { agent_id:"victor",    agent_name:"Victor",      role:"Community Engagement" },
-    { agent_id:"sasha",     agent_name:"Sasha",       role:"AI Sales Mastery™" },
-    { agent_id:"tariq",     agent_name:"Tariq",       role:"Sales Content" },
-    { agent_id:"zoe",       agent_name:"Zoe Beaumont",role:"CC Division Leader" },
-    { agent_id:"micah",     agent_name:"Micah Santos",role:"Member Experience" },
+    { agent_id:"dominique",  agent_name:"Dominique",   role:"DRU CLEAR™ Insights" },
+    { agent_id:"elijah",     agent_name:"Elijah",      role:"Framework Lesson" },
+    { agent_id:"solange",    agent_name:"Solange",     role:"Action Challenge" },
+    { agent_id:"isaiah_webb",agent_name:"Isaiah Webb", role:"5D Leadership™" },
+    { agent_id:"nadia",      agent_name:"Nadia",       role:"Strategic Edge" },
+    { agent_id:"victor",     agent_name:"Victor",      role:"Community Engagement" },
+    { agent_id:"sasha",      agent_name:"Sasha",       role:"AI Sales Mastery™" },
+    { agent_id:"tariq",      agent_name:"Tariq",       role:"Sales Content" },
+    { agent_id:"zoe",        agent_name:"Zoe Beaumont",role:"CC Division Leader" },
+    { agent_id:"micah",      agent_name:"Micah Santos",role:"Member Experience" },
   ],
 };
 
@@ -217,27 +233,20 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "CC Post Triggers")            return { text: "CC Policy Violation",color: "#C2185B" };
   if (approval.category === "cc_upsell_outreach")          return { text: "CC Upsell Signal",   color: "#D4AF37" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
-  // revenue_growth AND division_briefing both get gold Revenue badge
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
-  // Other division cards — use division name + color
   if (approval.division && DIVISION_COLORS[approval.division])
     return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   return { text: CATEGORY_LABELS[approval.category] ?? approval.category, color: "#0A2342" };
 }
 
-// FIX: community_post cards — strip "post_id:UUID | " prefix from task_brief,
-// show only human-readable agent name + topic (e.g. "Tariq Oladele · ai revenue acceleration")
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
   if (approval.category === "social") {
     return { heading: "Contributors", content: approval.task_brief || null };
   }
   if (approval.category === "community_post") {
-    // task_brief format: "post_id:UUID | Agent Name | topic description"
-    // Strip the post_id:UUID portion — only show the human-readable parts
     const raw = approval.task_brief || '';
     const parts = raw.split('|').map((s: string) => s.trim()).filter(Boolean);
-    // parts[0] = "post_id:UUID", parts[1] = agent name, parts[2] = topic
     const contributors = parts.length > 1
       ? parts.slice(1).join(' · ')
       : raw.replace(/post_id:[a-zA-Z0-9-]+\s*\|?\s*/g, '').trim() || raw;
@@ -270,19 +279,21 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
 }
 
 export default function AdminApprovals() {
-  const [approvals, setApprovals]             = useState<Approval[]>([]);
-  const [loading, setLoading]                 = useState(true);
-  const [activeFilter, setActiveFilter]       = useState<string>("knowledge");
-  const [editingId, setEditingId]             = useState<string | null>(null);
-  const [editText, setEditText]               = useState("");
-  const [saving, setSaving]                   = useState<string | null>(null);
-  const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
-  const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
-  const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
-  const [memberCounts, setMemberCounts]       = useState({ total: 0, navigator: 0, accelerator: 0 });
-  const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([]);
-  const [flaggedLoading, setFlaggedLoading]   = useState(true);
-  const [savingComment, setSavingComment]     = useState<string | null>(null);
+  const [approvals, setApprovals]                 = useState<Approval[]>([]);
+  const [loading, setLoading]                     = useState(true);
+  const [activeFilter, setActiveFilter]           = useState<string>("knowledge");
+  const [editingId, setEditingId]                 = useState<string | null>(null);
+  const [editText, setEditText]                   = useState("");
+  const [saving, setSaving]                       = useState<string | null>(null);
+  const [publishStatus, setPublishStatus]         = useState<Record<string, "posting" | "posted" | "failed">>({});
+  const [leadDirection, setLeadDirection]         = useState<Record<string, string>>({});
+  const [questions, setQuestions]                 = useState<Record<string, QuestionState>>({});
+  const [memberCounts, setMemberCounts]           = useState({ total: 0, navigator: 0, accelerator: 0 });
+  const [flaggedComments, setFlaggedComments]     = useState<FlaggedComment[]>([]);
+  const [flaggedLoading, setFlaggedLoading]       = useState(true);
+  const [savingComment, setSavingComment]         = useState<string | null>(null);
+  // NEW ──────────────────────────────────────────────────────────────────────
+  const [memberIntelligence, setMemberIntelligence] = useState<MemberIntelligence[]>([]);
 
   const fetchApprovals = async () => {
     const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
@@ -308,17 +319,41 @@ export default function AdminApprovals() {
     setFlaggedLoading(false);
   };
 
+  // NEW ──────────────────────────────────────────────────────────────────────
+  const fetchMemberIntelligence = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, email, tier, community_level, pathway_stage, clarity_points")
+      .in("tier", ["navigator", "accelerator"])
+      .order("clarity_points", { ascending: false });
+    setMemberIntelligence((data as MemberIntelligence[]) || []);
+  };
+
   useEffect(() => {
     fetchApprovals();
     fetchMemberCounts();
     fetchFlaggedComments();
+    fetchMemberIntelligence(); // NEW
+
     const channel = supabase.channel("approvals-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals())
       .subscribe();
     const commentsChannel = supabase.channel("flagged-comments-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments())
       .subscribe();
-    return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); };
+    // NEW: live updates when members earn points or change pathway
+    const profilesChannel = supabase.channel("profiles-intelligence-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        fetchMemberCounts();
+        fetchMemberIntelligence();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(profilesChannel); // NEW
+    };
   }, []);
 
   const downloadPDF = async (approval: Approval): Promise<boolean> => {
@@ -354,53 +389,32 @@ export default function AdminApprovals() {
     return true;
   };
 
-  // FIX: postToCommunity — was silently returning true even when UPDATE matched 0 rows.
-  // Now uses .select('id') to detect 0-row updates and falls back to INSERT.
-  // Covers both cases: agent pre-created the record (UPDATE activates it) and agent did not (INSERT creates it).
   const postToCommunity = async (approval: Approval, content: string): Promise<boolean> => {
     try {
       const postIdMatch = (approval.task_brief || '').match(/post_id:([a-zA-Z0-9-]+)/);
       const postId = postIdMatch?.[1];
-
       const lines = content.split('\n').filter((l: string) => l.trim());
       const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
-
       if (postId) {
-        // Try to activate the pre-existing record created by the CC agent
         const { data: updated, error } = await supabase
           .from('community_posts')
           .update({ is_active: true, content, published_at: new Date().toISOString() })
           .eq('id', postId)
-          .select('id'); // <-- critical: without .select(), Supabase returns no rows data — 0-row updates look like success
-
+          .select('id');
         if (error) { console.error('[community_post] Activate failed:', error); return false; }
-
-        // 0 rows updated means the pre-created record doesn't exist — INSERT it with the same UUID
         if (!updated || updated.length === 0) {
-          console.warn('[community_post] No existing record found for post_id:', postId, '— inserting new record');
           const { error: insertError } = await supabase.from('community_posts').insert({
-            id: postId,
-            title,
-            content,
-            agent_name: approval.agent_name,
-            post_type: 'agent',
-            is_active: true,
-            tier_required: 'navigator',
+            id: postId, title, content, agent_name: approval.agent_name,
+            post_type: 'agent', is_active: true, tier_required: 'navigator',
             published_at: new Date().toISOString(),
           });
           if (insertError) { console.error('[community_post] Insert (fallback) failed:', insertError); return false; }
         }
         return true;
       }
-
-      // No post_id at all — insert a brand new record
       const { error: insertError } = await supabase.from('community_posts').insert({
-        title,
-        content,
-        agent_name: approval.agent_name,
-        post_type: 'agent',
-        is_active: true,
-        tier_required: 'navigator',
+        title, content, agent_name: approval.agent_name,
+        post_type: 'agent', is_active: true, tier_required: 'navigator',
         published_at: new Date().toISOString(),
       });
       if (insertError) { console.error('[community_post] Insert failed:', insertError); return false; }
@@ -512,11 +526,8 @@ export default function AdminApprovals() {
   const toggleQuestion = (approval: Approval) => {
     const qs = getQS(approval.id);
     if (!qs.open) {
-      // Restore saved conversation from approvals.context if it exists
       let savedMessages: ConversationMessage[] = [];
-      if (approval.context) {
-        try { savedMessages = JSON.parse(approval.context); } catch { savedMessages = []; }
-      }
+      if (approval.context) { try { savedMessages = JSON.parse(approval.context); } catch { savedMessages = []; } }
       const autoAgent = approval.category === "social"
         ? { agent_id: approval.source?.replace('_social','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "community_post"
@@ -540,7 +551,6 @@ export default function AdminApprovals() {
       const reply = data.response ?? "Unable to respond. Please try again.";
       const updatedMessages: ConversationMessage[] = [...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:reply }];
       setQS(approval.id, { messages: updatedMessages, loading:false });
-      // Persist conversation to approvals.context so it survives page reload and approval
       await supabase.from("approvals").update({ context: JSON.stringify(updatedMessages) }).eq("id", approval.id);
     } catch {
       const failMessages: ConversationMessage[] = [...newMessages, { role:'agent', agentName:qs.selectedAgent?.agent_name, text:"Something went wrong. Please try again." }];
@@ -548,7 +558,6 @@ export default function AdminApprovals() {
     }
   };
 
-  // Filtering — revenue_growth tab includes division_briefing cards (same division, merged)
   const presentCategories = [...new Set(approvals.map(a =>
     a.category === "division_briefing" ? "revenue_growth" : a.category
   ))];
@@ -559,12 +568,10 @@ export default function AdminApprovals() {
   const filtered = (() => {
     if (activeFilter === "knowledge") return approvals.filter(a => !isApprovalCard(a));
     if (activeFilter === "approvals") return approvals.filter(a => isApprovalCard(a));
-    // revenue_growth tab shows both revenue_growth AND division_briefing cards
     if (activeFilter === "revenue_growth") return approvals.filter(a => a.category === "revenue_growth" || a.category === "division_briefing");
     return approvals.filter(a => a.category === activeFilter);
   })();
 
-  // Counts — revenue_growth count includes division_briefing
   const getCategoryCount = (cat: string) => {
     if (cat === "revenue_growth") return approvals.filter(a => a.category === "revenue_growth" || a.category === "division_briefing").length;
     return approvals.filter(a => a.category === cat).length;
@@ -573,6 +580,9 @@ export default function AdminApprovals() {
   const pending       = approvals.filter(a => a.status === "pending" && isApprovalCard(a)).length;
   const knowledge     = approvals.filter(a => !isApprovalCard(a)).length;
   const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+
+  // NEW: hot lead count for stats display
+  const hotLeadCount = memberIntelligence.filter(m => getGapSignal(m.community_level, m.pathway_stage).label === 'Hot Lead').length;
 
   const sectionTabStyle = (active: boolean, color: string) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
@@ -626,18 +636,74 @@ export default function AdminApprovals() {
         </div>
 
         {/* Community Member Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
           {[
             { label:"CC Members",  value:memberCounts.total,       color:"#D4AF37" },
             { label:"Navigator",   value:memberCounts.navigator,   color:"rgba(192,208,232,1)" },
             { label:"Accelerator", value:memberCounts.accelerator, color:"#B8941F" },
+            { label:"Hot Leads",   value:hotLeadCount,             color:"#C2185B" },
           ].map(s => (
-            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"0.875rem 1rem" }}>
+            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${s.label === 'Hot Leads' ? 'rgba(194,24,91,0.25)' : 'rgba(212,175,55,0.15)'}`, borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
               <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(230,230,230,0.5)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>{s.label}</p>
             </div>
           ))}
         </div>
+
+        {/* ── Member Intelligence — Gap Signal ────────────────────────────── */}
+        <div style={{ marginBottom:"1.75rem" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.5rem" }}>
+            <h2 style={{ fontFamily:"'Playfair Display', serif", color:"#FFFFFF", fontSize:"1.1rem", fontWeight:700, margin:0 }}>Member Intelligence</h2>
+            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"rgba(212,175,55,0.1)", border:"1px solid rgba(212,175,55,0.3)", color:"#D4AF37" }}>{memberIntelligence.length} members</span>
+          </div>
+          <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(230,230,230,0.4)", fontSize:"0.7rem", marginBottom:"0.875rem", lineHeight:1.5 }}>
+            Community engagement level vs. investment pathway stage · Hot Lead = engaged but not yet invested · Retention Risk = invested but disengaging
+          </p>
+
+          {memberIntelligence.length === 0 ? (
+            <div style={{ padding:"0.875rem 1rem", background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8 }}>
+              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.75rem", margin:0 }}>No members yet — appears when Navigator and Accelerator members join</p>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.35rem" }}>
+              {memberIntelligence.map(member => {
+                const signal = getGapSignal(member.community_level, member.pathway_stage);
+                const isHot  = signal.label === 'Hot Lead';
+                return (
+                  <div key={member.id} style={{ background: isHot ? "rgba(251,234,240,0.04)" : "rgba(255,255,255,0.02)", border: isHot ? "1px solid rgba(194,24,91,0.2)" : "1px solid rgba(255,255,255,0.06)", borderRadius:10, padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap" as const }}>
+                    {/* Name + email */}
+                    <div style={{ minWidth:130, flex:"0 0 auto" }}>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", fontWeight:700, color:"#FFFFFF", margin:0, marginBottom:"1px" }}>
+                        {member.first_name ?? ''} {member.last_name ?? ''}
+                      </p>
+                      <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.58rem", color:"rgba(230,230,230,0.35)", margin:0 }}>{member.email}</p>
+                    </div>
+                    {/* Tier badge */}
+                    <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 7px", borderRadius:20, flexShrink:0, background:member.tier === 'accelerator' ? "rgba(194,24,91,0.15)" : "rgba(212,175,55,0.12)", color:member.tier === 'accelerator' ? "#C2185B" : "#D4AF37", border:`1px solid ${member.tier === 'accelerator' ? "rgba(194,24,91,0.35)" : "rgba(212,175,55,0.3)"}` }}>
+                      {member.tier === 'accelerator' ? 'Accelerator' : 'Navigator'}
+                    </span>
+                    {/* Level → Pathway */}
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.35rem", flexShrink:0 }}>
+                      <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(212,175,55,0.9)", fontWeight:600 }}>{member.community_level ?? 'Connected'}</span>
+                      <span style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.6rem" }}>→</span>
+                      <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(230,230,230,0.55)" }}>{member.pathway_stage ?? 'None'}</span>
+                    </div>
+                    {/* Points */}
+                    <div style={{ textAlign:"center" as const, flexShrink:0, minWidth:45 }}>
+                      <p style={{ fontFamily:"'Playfair Display', serif", color:"#D4AF37", fontSize:"0.9rem", fontWeight:700, margin:0 }}>{member.clarity_points ?? 0}</p>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.48rem", color:"rgba(230,230,230,0.3)", margin:0, letterSpacing:"0.08em" }}>PTS</p>
+                    </div>
+                    {/* Gap Signal badge */}
+                    <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"3px 10px", borderRadius:20, flexShrink:0, background:signal.bg, color:signal.textColor, whiteSpace:"nowrap" as const }}>
+                      {signal.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {/* ────────────────────────────────────────────────────────────────── */}
 
         {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
@@ -675,7 +741,7 @@ export default function AdminApprovals() {
           )}
         </div>
 
-        {/* Section Tabs — Knowledge vs Approvals (All removed — redundant) */}
+        {/* Section Tabs */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" as const }}>
           <button onClick={() => setActiveFilter("knowledge")} style={sectionTabStyle(activeFilter === "knowledge", "#4A90D9")}>Knowledge ({approvals.filter(a => !isApprovalCard(a)).length})</button>
           <button onClick={() => setActiveFilter("approvals")} style={sectionTabStyle(activeFilter === "approvals", "#C2185B")}>Approvals ({approvals.filter(a => isApprovalCard(a)).length})</button>
@@ -825,7 +891,6 @@ export default function AdminApprovals() {
                     )}
 
                     <div style={{ display:"flex", gap:"0.5rem", marginLeft:"auto" }}>
-                      {/* KNOWLEDGE CARDS — Read ✓ only */}
                       {isKnowledge && approval.status === "pending" && editingId !== approval.id && (
                         <button onClick={() => handleRead(approval.id)} disabled={saving === approval.id}
                           style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(192,208,232,0.4)", background:"rgba(192,208,232,0.08)", color:"rgba(192,208,232,0.9)", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
@@ -833,7 +898,6 @@ export default function AdminApprovals() {
                         </button>
                       )}
 
-                      {/* CC Post Triggers — Dismiss only */}
                       {isPostTrigger && approval.status === "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id}
                           style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.5)", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
@@ -841,7 +905,6 @@ export default function AdminApprovals() {
                         </button>
                       )}
 
-                      {/* APPROVAL CARDS — full Reject / Edit / Approve */}
                       {!isKnowledge && approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                         <>
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
@@ -852,7 +915,6 @@ export default function AdminApprovals() {
                         </>
                       )}
 
-                      {/* Edit save/cancel */}
                       {editingId === approval.id && (
                         <>
                           <button onClick={() => setEditingId(null)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"rgba(255,255,255,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
@@ -860,7 +922,6 @@ export default function AdminApprovals() {
                         </>
                       )}
 
-                      {/* Already actioned */}
                       {approval.status !== "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.4)", letterSpacing:"0.06em" }}>Archive</button>
                       )}
