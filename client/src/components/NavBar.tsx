@@ -140,12 +140,12 @@ export default function NavBar({ active }: { active?: string }) {
           </a>
         )}
 
-        {/* Admin-only Approvals link */}
+        {/* Admin-only Intelligence Dashboard link */}
         {isLoggedIn && isAdmin && (
           <a href="/admin-approvals" style={adminLinkStyle("/admin-approvals")}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#D4AF37"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = active === "/admin-approvals" ? "#D4AF37" : "rgba(212,175,55,0.7)"; }}>
-            ✦ Approvals
+            ✦ Intelligence Dashboard
           </a>
         )}
 
@@ -244,7 +244,7 @@ export default function NavBar({ active }: { active?: string }) {
           {isLoggedIn && isAdmin && (
             <a href="/admin-approvals" onClick={() => setMenuOpen(false)}
               style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: active === "/admin-approvals" ? "#D4AF37" : "rgba(212,175,55,0.7)", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
-              ✦ Approvals
+              ✦ Intelligence Dashboard
             </a>
           )}
 
