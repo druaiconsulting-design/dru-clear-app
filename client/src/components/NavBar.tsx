@@ -167,7 +167,7 @@ export default function NavBar({ active }: { active?: string }) {
 
         {/* Admin toggle */}
         {isLoggedIn && isAdmin && active !== "/portal" && (
-          <a href="/portal"
+          <a href="https://members.druaiconsulting.com" target="_blank" rel="noopener noreferrer"
             style={{ marginLeft: "0.5rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.35rem 0.8rem", borderRadius: 4, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.3)", transition: "all 0.2s" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.15)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,55,0.08)"; }}>
@@ -265,7 +265,7 @@ export default function NavBar({ active }: { active?: string }) {
           )}
 
           {isLoggedIn && isAdmin && active !== "/portal" && (
-            <a href="/portal" onClick={() => setMenuOpen(false)}
+            <a href="https://members.druaiconsulting.com" target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}
               style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#D4AF37", textDecoration: "none", padding: "0.6rem 0.5rem", borderBottom: "1px solid rgba(212,175,55,0.08)" }}>
               👤 Client View
             </a>
