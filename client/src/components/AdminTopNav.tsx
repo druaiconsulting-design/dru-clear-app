@@ -145,7 +145,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       position: 'fixed',
       top: 0, left: 0, right: 0,
       height: 88,
-      background: '#163D6E',
+      background: '#0A2342',
       borderBottom: '1px solid rgba(212,175,55,0.18)',
       display: 'flex',
       alignItems: 'center',
@@ -183,30 +183,29 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           return (
             <a key={link.href} href={link.href}
               style={{
-                fontFamily: 'Montserrat, sans-serif',
-                fontSize: 14,
-                fontWeight: 700,
-                color: active ? '#D4AF37' : '#EDE8DB',
-                background: active ? 'rgba(212,175,55,0.12)' : 'transparent',
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: '0.72rem',
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: active ? '#D4AF37' : 'rgba(255,255,255,0.55)',
+                background: active ? 'rgba(212,175,55,0.1)' : 'transparent',
                 textDecoration: 'none',
-                borderRadius: 6,
+                borderRadius: 4,
                 borderBottom: active ? '2px solid #D4AF37' : '2px solid transparent',
-                padding: '8px 12px',
+                padding: '0.4rem 0.75rem',
                 whiteSpace: 'nowrap',
-                letterSpacing: '0.04em',
-                transition: 'all 0.15s',
+                transition: 'color 0.2s',
               }}
               onMouseEnter={(e) => {
                 if (active) return
                 const el = e.currentTarget as HTMLAnchorElement
                 el.style.color = '#D4AF37'
-                el.style.background = 'rgba(212,175,55,0.08)'
               }}
               onMouseLeave={(e) => {
                 if (active) return
                 const el = e.currentTarget as HTMLAnchorElement
-                el.style.color = '#EDE8DB'
-                el.style.background = 'transparent'
+                el.style.color = 'rgba(255,255,255,0.55)'
               }}>
               {link.label}
             </a>
@@ -239,7 +238,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
             {unreadCount > 0 && (
-              <span style={{ position: 'absolute', top: 6, right: 6, minWidth: 6, height: 6, borderRadius: '50%', background: '#C2185B', border: '1.5px solid #163D6E' }} />
+              <span style={{ position: 'absolute', top: 6, right: 6, minWidth: 6, height: 6, borderRadius: '50%', background: '#C2185B', border: '1.5px solid #0A2342' }} />
             )}
           </button>
 
