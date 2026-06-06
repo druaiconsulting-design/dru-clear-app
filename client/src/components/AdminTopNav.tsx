@@ -188,7 +188,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: active ? '#D4AF37' : 'rgba(255,255,255,0.55)',
+                color: active ? '#D4AF37' : '#EDE8DB',
                 background: active ? 'rgba(212,175,55,0.1)' : 'transparent',
                 textDecoration: 'none',
                 borderRadius: 4,
@@ -205,7 +205,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               onMouseLeave={(e) => {
                 if (active) return
                 const el = e.currentTarget as HTMLAnchorElement
-                el.style.color = 'rgba(255,255,255,0.55)'
+                el.style.color = '#EDE8DB'
               }}>
               {link.label}
             </a>
