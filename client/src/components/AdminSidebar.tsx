@@ -134,7 +134,7 @@ export default function AdminSidebar({ collapsed, currentPath }: AdminSidebarPro
       left: 0,
       width: w,
       height: `calc(100vh - ${TOPNAV_H}px)`,
-      background: '#1A2D7A',
+      background: '#0A2342',
       borderRight: '1px solid rgba(212,175,55,0.15)',
       display: 'flex',
       flexDirection: 'column',
