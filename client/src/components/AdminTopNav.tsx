@@ -59,7 +59,7 @@ function Avatar({ user, size = 34 }: { user: any; size?: number }) {
     <div style={{
       width: size, height: size,
       borderRadius: '50%',
-      background: 'linear-gradient(135deg,#1e3d6e,#0A2342)',
+      background: 'rgba(212,175,55,0.15)',
       border: '2px solid rgba(212,175,55,0.45)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
@@ -96,7 +96,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       position: 'fixed',
       top: 0, left: 0, right: 0,
       height: 72,
-      background: '#3366FF',
+      background: '#1A2D7A',
       borderBottom: '1px solid rgba(212,175,55,0.18)',
       display: 'flex',
       alignItems: 'center',
@@ -115,11 +115,13 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           borderRadius: 8,
           background: 'transparent',
           border: 'none',
-          color: 'rgba(255,255,255,0.85)',
+          color: 'rgba(255,255,255,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
           flexShrink: 0,
         }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.75)' }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -129,11 +131,32 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
       {/* ── Logo ── */}
       <img
-        src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
+        src="/new-dru-clear-navy-logo.png"
         alt="DRU CLEAR™"
-        style={{ height: 60, width: 'auto', flexShrink: 0 }}
-        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+        style={{
+          height: 54,
+          width: 'auto',
+          flexShrink: 0,
+          objectFit: 'contain',
+        }}
+        onError={(e) => {
+          const img = e.currentTarget as HTMLImageElement
+          img.style.display = 'none'
+          const fallback = img.nextElementSibling as HTMLElement
+          if (fallback) fallback.style.display = 'block'
+        }}
       />
+      <span style={{
+        display: 'none',
+        fontFamily: 'Cinzel, serif',
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#D4AF37',
+        letterSpacing: '0.1em',
+        flexShrink: 0,
+      }}>
+        DRU CLEAR™
+      </span>
 
       {/* ── Nav links ── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
@@ -184,10 +207,12 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           style={{
             width: 34, height: 34, borderRadius: 8,
             background: 'transparent', border: 'none',
-            color: 'rgba(255,255,255,0.75)',
+            color: 'rgba(255,255,255,0.65)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
           }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.65)' }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8"/>
@@ -202,10 +227,12 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
             position: 'relative',
             width: 34, height: 34, borderRadius: 8,
             background: 'transparent', border: 'none',
-            color: 'rgba(255,255,255,0.75)',
+            color: 'rgba(255,255,255,0.65)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
           }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.65)' }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -216,7 +243,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
             width: 6, height: 6,
             borderRadius: '50%',
             background: '#C2185B',
-            border: '1.5px solid #3366FF',
+            border: '1.5px solid #1A2D7A',
           }} />
         </button>
 
