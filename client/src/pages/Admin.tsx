@@ -4,8 +4,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { registerPasskey } from "../lib/passkey";
 
-const GHL_LAB_WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/70d21e5b-66f9-4aa0-8eac-5c59ed55fcaa";
-
 const QUICK_LINKS = [
   { label: "GHL Dashboard",        href: "https://crm.aiforbusiness.com/v2/location/gl07I4JnbkGgW8zJprSz/dashboard", icon: "🔗" },
   { label: "Live Assessment",      href: "https://assessment.druaiconsulting.com", icon: "🚀" },
@@ -68,37 +66,6 @@ function useStats() {
     fetchStats();
   }, []);
   return { stats, loading };
-}
-
-const LEVEL_RANK_ADMIN: Record<string, number> = {
-  Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5,
-};
-const PATHWAY_RANK_ADMIN: Record<string, number> = {
-  Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5,
-};
-
-function useCCHotLeads() {
-  const [count, setCount] = useState(0);
-  const [hlLoading, setHlLoading] = useState(true);
-  useEffect(() => {
-    async function fetchHotLeads() {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("community_level, pathway_stage")
-          .in("tier", ["navigator", "accelerator"]);
-        const hot = (data ?? []).filter((m: any) => {
-          const l = LEVEL_RANK_ADMIN[m.community_level ?? ''] ?? 0;
-          const p = PATHWAY_RANK_ADMIN[m.pathway_stage  ?? ''] ?? 0;
-          return l > 0 && (p === 0 || l > p);
-        }).length;
-        setCount(hot);
-      } catch (err) { console.error("Failed to fetch CC hot leads:", err); }
-      finally { setHlLoading(false); }
-    }
-    fetchHotLeads();
-  }, []);
-  return { count, hlLoading };
 }
 
 interface Submission {
@@ -170,8 +137,6 @@ function ClientIntelligenceDashboard() {
         <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Client Intelligence</p>
         <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.25)" }} />
       </div>
-
-      {/* Summary cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
         {SUMMARY_CARDS.map((card) => (
           <div key={card.label} style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "0.875rem 1rem" }}>
@@ -183,29 +148,25 @@ function ClientIntelligenceDashboard() {
           </div>
         ))}
       </div>
-
-      {/* Filters */}
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
         <input type="text" placeholder="Search name, email, company..." value={search} onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1, minWidth: 200, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none" }} />
         <select value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}
           style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", outline: "none" }}>
-          <option value="ALL"       style={{ background: "#FFFFFF" }}>All Tiers</option>
-          <option value="EMERGING"  style={{ background: "#FFFFFF" }}>Emerging</option>
-          <option value="DEVELOPING" style={{ background: "#FFFFFF" }}>Developing</option>
-          <option value="ADVANCING" style={{ background: "#FFFFFF" }}>Advancing</option>
-          <option value="LEADING"   style={{ background: "#FFFFFF" }}>Leading</option>
+          <option value="ALL">All Tiers</option>
+          <option value="EMERGING">Emerging</option>
+          <option value="DEVELOPING">Developing</option>
+          <option value="ADVANCING">Advancing</option>
+          <option value="LEADING">Leading</option>
         </select>
         <button onClick={handleExport} disabled={filtered.length === 0}
           style={{ background: filtered.length > 0 ? "#D4AF37" : "rgba(212,175,55,0.2)", color: filtered.length > 0 ? "#0A2342" : "rgba(212,175,55,0.4)", border: "none", borderRadius: 6, padding: "0.55rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: filtered.length > 0 ? "pointer" : "default", transition: "all 0.2s", whiteSpace: "nowrap" as const }}>
           Export CSV
         </button>
       </div>
-
       <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
         {loading ? "Loading..." : `${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}`}
       </p>
-
       {loading ? (
         <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
           <p style={{ color: "rgba(10,35,66,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
@@ -250,7 +211,6 @@ function ClientIntelligenceDashboard() {
           </table>
         </div>
       )}
-
       <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" as const }}>
         <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.35)", fontSize: "0.62rem", margin: 0 }}>C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
         <div style={{ display: "flex", gap: "0.75rem" }}>
@@ -270,25 +230,10 @@ export default function Admin() {
   const { user } = useAuth();
   const [copied, setCopied]                     = useState(false);
   const { stats, loading }                      = useStats();
-  const { count: ccHotLeads, hlLoading }        = useCCHotLeads();
   const [hasPasskey, setHasPasskey]             = useState(false);
   const [passkeyLoading, setPasskeyLoading]     = useState(false);
   const [passkeyMessage, setPasskeyMessage]     = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
-
-  const [labTitle, setLabTitle]             = useState("");
-  const [labMonth, setLabMonth]             = useState("");
-  const [labVideoUrl, setLabVideoUrl]       = useState("");
-  const [labPublishing, setLabPublishing]   = useState(false);
-  const [labPublished, setLabPublished]     = useState(false);
-  const [labError, setLabError]             = useState("");
-
-  const [pdfTitle, setPdfTitle]             = useState("");
-  const [pdfWeekOf, setPdfWeekOf]           = useState("");
-  const [pdfUrl, setPdfUrl]                 = useState("");
-  const [pdfPublishing, setPdfPublishing]   = useState(false);
-  const [pdfPublished, setPdfPublished]     = useState(false);
-  const [pdfError, setPdfError]             = useState("");
 
   useEffect(() => {
     async function checkPasskey() {
@@ -307,45 +252,6 @@ export default function Admin() {
     else { setPasskeyMessage(result.error || "Something went wrong."); }
   };
 
-  const handleLabPublish = async () => {
-    if (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) {
-      setLabError("All fields are required before publishing."); return;
-    }
-    setLabPublishing(true); setLabError(""); setLabPublished(false);
-    try {
-      const { error } = await supabase.from("lab_videos").insert({
-        title: labTitle.trim(), month_year: labMonth.trim(),
-        video_url: labVideoUrl.trim(), is_active: true,
-      });
-      if (error) throw error;
-      await fetch(GHL_LAB_WEBHOOK_URL, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trigger_type: "lab_video_published", video_title: labTitle.trim(), month_year: labMonth.trim(), lab_url: "https://app.druaiconsulting.com/lab", tier: "accelerator" }),
-      });
-      setLabPublished(true);
-      setLabTitle(""); setLabMonth(""); setLabVideoUrl("");
-      setTimeout(() => setLabPublished(false), 5000);
-    } catch (err: any) { setLabError(err?.message || "Publish failed. Please try again."); }
-    setLabPublishing(false);
-  };
-
-  const handlePdfPublish = async () => {
-    if (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) {
-      setPdfError("All fields are required before publishing."); return;
-    }
-    setPdfPublishing(true); setPdfError(""); setPdfPublished(false);
-    try {
-      const { error } = await supabase.from("weekly_pdfs").insert({
-        title: pdfTitle.trim(), week_of: pdfWeekOf.trim(), pdf_url: pdfUrl.trim(), is_active: true,
-      });
-      if (error) throw error;
-      setPdfPublished(true);
-      setPdfTitle(""); setPdfWeekOf(""); setPdfUrl("");
-      setTimeout(() => setPdfPublished(false), 5000);
-    } catch (err: any) { setPdfError(err?.message || "Publish failed. Please try again."); }
-    setPdfPublishing(false);
-  };
-
   const STAT_CARDS = [
     { label: "Leads Scored Today",        value: loading ? "..." : String(stats.leads_scored_today),  sub: "Omar's daily GHL scan",       icon: "📊", color: "#D4AF37" },
     { label: "High Intent Today",         value: loading ? "..." : String(stats.high_intent_today),   sub: "Ready for outreach",          icon: "🎯", color: "#C2185B" },
@@ -357,19 +263,12 @@ export default function Admin() {
     navigator.clipboard.writeText("https://app.druaiconsulting.com/bundle-pricing").then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)",
-    borderRadius: 6, padding: "0.6rem 0.875rem", color: "#0A2342",
-    fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none", boxSizing: "border-box",
-  };
-
   return (
     <AdminLayout currentPath={window.location.pathname}>
       <main style={{ padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
         {/* Page header */}
         <div style={{ marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin · Page 1</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Profit Pulse</h1>
           <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting - DeAnna R. Upshaw</p>
         </div>
@@ -399,32 +298,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* AI Empire Org Chart */}
-        <a href="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "0.875rem" }}>
-          <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.04))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
-            <div>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>AI Empire Org Chart</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.72rem", margin: 0 }}>54 agents · 9 divisions · Raymond oversees all · Full hierarchy with illustrated avatars · Page 2</p>
-            </div>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW</span>
-          </div>
-        </a>
-
-        {/* Build Roadmap */}
-        <a href="/admin-sprints" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
-          <div style={{ background: "linear-gradient(135deg, rgba(30,136,229,0.06), rgba(30,136,229,0.02))", border: "1px solid rgba(30,136,229,0.35)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(30,136,229,0.6)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(30,136,229,0.35)"; }}>
-            <div>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#1E88E5", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>Build Roadmap & Sprint Tracker</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.72rem", margin: 0 }}>Focal Points · Sprint 1–7 · Full build history · Sprint 6 in progress · Page 3</p>
-            </div>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#1E88E5", letterSpacing: "0.08em" }}>VIEW</span>
-          </div>
-        </a>
-
         {/* Stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "0.875rem" }}>
           {STAT_CARDS.map((stat) => (
@@ -449,23 +322,6 @@ export default function Admin() {
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>Running total · updates in real time on booking</p>
         </div>
 
-        {/* CC Hot Leads */}
-        <a href="/admin-member-intelligence" style={{ textDecoration: "none", display: "block", marginBottom: "2rem" }}>
-          <div style={{ background: "rgba(194,24,91,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1.1rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.5)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.25)"; }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                <span style={{ fontSize: "1.1rem" }}>🔥</span>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: "#C2185B", fontWeight: 700, fontSize: "1.4rem", margin: 0 }}>{hlLoading ? "..." : ccHotLeads}</p>
-              </div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>CC Hot Leads</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>Community members engaged but not yet invested · tap to view all</p>
-            </div>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#C2185B", letterSpacing: "0.08em", flexShrink: 0 }}>VIEW →</span>
-          </div>
-        </a>
-
         <ClientIntelligenceDashboard />
 
         {/* Private Client Links */}
@@ -483,38 +339,6 @@ export default function Admin() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Leadership Lab */}
-        <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
-          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
-            <input type="text" placeholder="Video Title — e.g. AI Leadership in Action" value={labTitle} onChange={e => { setLabTitle(e.target.value); setLabError(""); }} style={inputStyle} />
-            <input type="text" placeholder="Month — e.g. June 2026" value={labMonth} onChange={e => { setLabMonth(e.target.value); setLabError(""); }} style={inputStyle} />
-            <input type="text" placeholder="Supabase Video URL — paste from storage" value={labVideoUrl} onChange={e => { setLabVideoUrl(e.target.value); setLabError(""); }} style={inputStyle} />
-          </div>
-          {labError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{labError}</p>}
-          <button onClick={handleLabPublish} disabled={labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()}
-            style={{ width: "100%", background: labPublished ? "#43A047" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.2)" : "#D4AF37", color: labPublished ? "#FFFFFF" : (!labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "rgba(212,175,55,0.4)" : "#0A2342", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (labPublishing || !labTitle.trim() || !labMonth.trim() || !labVideoUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
-            {labPublishing ? "Publishing..." : labPublished ? "✓ Published — Accelerator Members Notified" : "Publish + Notify Accelerator Members"}
-          </button>
-        </div>
-
-        {/* Weekly PDF */}
-        <div style={{ background: "rgba(30,136,229,0.05)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>📄 Weekly Resource PDF</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
-          <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
-            <input type="text" placeholder="PDF Title — e.g. DRU CLEAR™ AI Leadership Manual 101" value={pdfTitle} onChange={e => { setPdfTitle(e.target.value); setPdfError(""); }} style={inputStyle} />
-            <input type="text" placeholder="Week Of — e.g. May 26, 2026" value={pdfWeekOf} onChange={e => { setPdfWeekOf(e.target.value); setPdfError(""); }} style={inputStyle} />
-            <input type="text" placeholder="Supabase PDF URL — paste from storage" value={pdfUrl} onChange={e => { setPdfUrl(e.target.value); setPdfError(""); }} style={inputStyle} />
-          </div>
-          {pdfError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{pdfError}</p>}
-          <button onClick={handlePdfPublish} disabled={pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()}
-            style={{ width: "100%", background: pdfPublished ? "#43A047" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.15)" : "#1E88E5", color: pdfPublished ? "#FFFFFF" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.4)" : "#FFFFFF", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
-            {pdfPublishing ? "Publishing..." : pdfPublished ? "✓ Published — Now Live on Resources Page" : "Publish to Resources Page"}
-          </button>
         </div>
 
         {/* Quick Links */}
