@@ -20,7 +20,7 @@ interface Notification {
 // ─── Nav links ────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
-  { label: 'Portal',      href: '/portal' },
+  { label: 'Home',      href: '/portal' },
   { label: 'Frameworks',  href: '/frameworks' },
   { label: 'Resources',   href: '/resources' },
   { label: 'Daily',       href: '/daily' },
