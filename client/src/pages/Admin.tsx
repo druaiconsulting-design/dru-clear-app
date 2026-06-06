@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import NavBar from "../components/NavBar";
+import AdminLayout from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { registerPasskey } from "../lib/passkey";
@@ -166,52 +166,58 @@ function ClientIntelligenceDashboard() {
   return (
     <div style={{ marginBottom: "2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
-        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.25)" }} />
         <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Client Intelligence</p>
-        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.2)" }} />
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.25)" }} />
       </div>
+
+      {/* Summary cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
         {SUMMARY_CARDS.map((card) => (
-          <div key={card.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "0.875rem 1rem" }}>
+          <div key={card.label} style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "0.875rem 1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
               <span style={{ fontSize: "0.9rem" }}>{card.icon}</span>
               <p style={{ fontFamily: "'Playfair Display', serif", color: card.color, fontWeight: 700, fontSize: "1.3rem", margin: 0 }}>{card.value}</p>
             </div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase" as const, margin: 0 }}>{card.label}</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase" as const, margin: 0 }}>{card.label}</p>
           </div>
         ))}
       </div>
+
+      {/* Filters */}
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
         <input type="text" placeholder="Search name, email, company..." value={search} onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 200, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none" }} />
+          style={{ flex: 1, minWidth: 200, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none" }} />
         <select value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", outline: "none" }}>
-          <option value="ALL" style={{ background: "#0A2342" }}>All Tiers</option>
-          <option value="EMERGING" style={{ background: "#0A2342" }}>Emerging</option>
-          <option value="DEVELOPING" style={{ background: "#0A2342" }}>Developing</option>
-          <option value="ADVANCING" style={{ background: "#0A2342" }}>Advancing</option>
-          <option value="LEADING" style={{ background: "#0A2342" }}>Leading</option>
+          style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", outline: "none" }}>
+          <option value="ALL"       style={{ background: "#FFFFFF" }}>All Tiers</option>
+          <option value="EMERGING"  style={{ background: "#FFFFFF" }}>Emerging</option>
+          <option value="DEVELOPING" style={{ background: "#FFFFFF" }}>Developing</option>
+          <option value="ADVANCING" style={{ background: "#FFFFFF" }}>Advancing</option>
+          <option value="LEADING"   style={{ background: "#FFFFFF" }}>Leading</option>
         </select>
         <button onClick={handleExport} disabled={filtered.length === 0}
           style={{ background: filtered.length > 0 ? "#D4AF37" : "rgba(212,175,55,0.2)", color: filtered.length > 0 ? "#0A2342" : "rgba(212,175,55,0.4)", border: "none", borderRadius: 6, padding: "0.55rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: filtered.length > 0 ? "pointer" : "default", transition: "all 0.2s", whiteSpace: "nowrap" as const }}>
           Export CSV
         </button>
       </div>
-      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
+
+      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
         {loading ? "Loading..." : `${filtered.length} submission${filtered.length !== 1 ? "s" : ""}${tierFilter !== "ALL" || search ? " (filtered)" : ""}`}
       </p>
+
       {loading ? (
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
-          <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
+          <p style={{ color: "rgba(10,35,66,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading submissions...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,56,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
-          <p style={{ color: "rgba(230,230,230,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
+          <p style={{ color: "rgba(10,35,66,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
             {submissions.length === 0 ? "No submissions yet - data will appear here when clients complete the assessment." : "No results match your filter."}
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: "auto" as const, borderRadius: 8, border: "1px solid rgba(212,175,55,0.15)" }}>
+        <div style={{ overflowX: "auto" as const, borderRadius: 8, border: "1px solid rgba(10,35,66,0.12)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 900 }}>
             <thead>
               <tr style={{ background: "rgba(212,175,55,0.08)", borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
@@ -222,35 +228,36 @@ function ClientIntelligenceDashboard() {
             </thead>
             <tbody>
               {filtered.map((s, i) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>{s.first_name} {s.last_name}</td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem" }}>{s.email}</td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.7)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{s.company || "-"}</td>
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.65rem", whiteSpace: "nowrap" as const }}>{s.role || "-"}</td>
+                <tr key={s.id} style={{ borderBottom: "1px solid rgba(10,35,66,0.06)", background: i % 2 === 0 ? "#FFFFFF" : "rgba(10,35,66,0.02)" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>{s.first_name} {s.last_name}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.65)", fontSize: "0.68rem" }}>{s.email}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.65)", fontSize: "0.68rem", whiteSpace: "nowrap" as const }}>{s.company || "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.55)", fontSize: "0.65rem", whiteSpace: "nowrap" as const }}>{s.role || "-"}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" as const }}>{s.total_score ?? "-"}</td>
                   <td style={{ padding: "0.6rem 0.75rem" }}>
-                    {s.tier ? <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#FFFFFF", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>{s.tier}</span> : "-"}
+                    {s.tier ? <span style={{ fontFamily: "'Montserrat', sans-serif", color: TIER_COLORS[s.tier] || "#0A2342", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", background: `${TIER_COLORS[s.tier]}18`, border: `1px solid ${TIER_COLORS[s.tier]}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>{s.tier}</span> : "-"}
                   </td>
                   {[s.clarity_score, s.leadership_score, s.execution_score, s.alignment_score, s.results_score].map((score, pi) => (
                     <td key={pi} style={{ padding: "0.6rem 0.5rem", textAlign: "center" as const }}>
                       <span style={{ fontFamily: "'Montserrat', sans-serif", color: getPillarColor(score), fontSize: "0.72rem", fontWeight: 700 }}>{score ?? "-"}</span>
                     </td>
                   ))}
-                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{s.top_gaps || "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{s.top_gaps || "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
       <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" as const }}>
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.3)", fontSize: "0.62rem", margin: 0 }}>C = Clarity - L = Leadership - E = Execution - A = Alignment - R = Results (each out of 15)</p>
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.35)", fontSize: "0.62rem", margin: 0 }}>C = Clarity · L = Leadership · E = Execution · A = Alignment · R = Results (each out of 15)</p>
         <div style={{ display: "flex", gap: "0.75rem" }}>
           {[{ label: "Low (1-6)", color: "#E53935" }, { label: "Mid (7-10)", color: "#D4AF37" }, { label: "Strong (11-15)", color: "#43A047" }].map((item) => (
             <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
-              <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.62rem" }}>{item.label}</span>
+              <span style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.62rem" }}>{item.label}</span>
             </div>
           ))}
         </div>
@@ -340,10 +347,10 @@ export default function Admin() {
   };
 
   const STAT_CARDS = [
-    { label: "Leads Scored Today",        value: loading ? "..." : String(stats.leads_scored_today),  sub: "Omar's daily GHL scan",      icon: "📊", color: "#D4AF37" },
-    { label: "High Intent Today",         value: loading ? "..." : String(stats.high_intent_today),   sub: "Ready for outreach",         icon: "🎯", color: "#C2185B" },
-    { label: "Strategic Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_sd_sold), sub: "SD · $3,497 · running total", icon: "💰", color: "#43A047" },
-    { label: "Executive Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_ed_sold), sub: "ED · $4,997 · running total", icon: "💎", color: "#D4AF37" },
+    { label: "Leads Scored Today",        value: loading ? "..." : String(stats.leads_scored_today),  sub: "Omar's daily GHL scan",       icon: "📊", color: "#D4AF37" },
+    { label: "High Intent Today",         value: loading ? "..." : String(stats.high_intent_today),   sub: "Ready for outreach",          icon: "🎯", color: "#C2185B" },
+    { label: "Strategic Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_sd_sold), sub: "SD · $3,497 · running total",  icon: "💰", color: "#43A047" },
+    { label: "Executive Diagnostic Sold", value: loading ? "..." : String(stats.diagnostics_ed_sold), sub: "ED · $4,997 · running total",  icon: "💎", color: "#D4AF37" },
   ];
 
   const copyBundleLink = () => {
@@ -351,29 +358,30 @@ export default function Admin() {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.25)",
-    borderRadius: 6, padding: "0.6rem 0.875rem", color: "#FFFFFF",
+    width: "100%", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)",
+    borderRadius: 6, padding: "0.6rem 0.875rem", color: "#0A2342",
     fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none", boxSizing: "border-box",
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/admin" />
-      <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
+    <AdminLayout currentPath={window.location.pathname}>
+      <main style={{ padding: "2.5rem 1.5rem", maxWidth: 900, margin: "0 auto", width: "100%" }}>
 
+        {/* Page header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Admin · Page 1</p>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Profit Pulse</h1>
-          <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting - DeAnna R. Upshaw</p>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>Profit Pulse</h1>
+          <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>DRU AI Consulting - DeAnna R. Upshaw</p>
         </div>
 
+        {/* Passkey banner */}
         {!passkeyDismissed && (
           <div style={{ background: hasPasskey ? "rgba(67,160,71,0.06)" : "rgba(194,24,91,0.06)", border: hasPasskey ? "1px solid rgba(67,160,71,0.3)" : "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flex: 1, minWidth: 0 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: hasPasskey ? "rgba(67,160,71,0.12)" : "rgba(194,24,91,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "1.1rem" }}>{hasPasskey ? "✅" : "🔐"}</div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: hasPasskey ? "#43A047" : "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", margin: 0, marginBottom: "0.1rem" }}>{hasPasskey ? "Passkey Active" : "Speed Up Your Login"}</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", margin: 0, lineHeight: 1.4 }}>{hasPasskey ? "Face ID or fingerprint sign-in is enabled." : "Set up Face ID or fingerprint to sign in instantly."}</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: hasPasskey ? "#43A047" : "#0A2342", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", margin: 0, marginBottom: "0.1rem" }}>{hasPasskey ? "Passkey Active" : "Speed Up Your Login"}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", margin: 0, lineHeight: 1.4 }}>{hasPasskey ? "Face ID or fingerprint sign-in is enabled." : "Set up Face ID or fingerprint to sign in instantly."}</p>
                 {passkeyMessage && <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.68rem", margin: "0.35rem 0 0", color: hasPasskey ? "#43A047" : "#E53935" }}>{passkeyMessage}</p>}
               </div>
             </div>
@@ -385,7 +393,7 @@ export default function Admin() {
                 </button>
               )}
               {hasPasskey && (
-                <button onClick={() => setPasskeyDismissed(true)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0.25rem" }}>x</button>
+                <button onClick={() => setPasskeyDismissed(true)} style={{ background: "none", border: "none", color: "rgba(10,35,66,0.3)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0.25rem" }}>×</button>
               )}
             </div>
           </div>
@@ -393,12 +401,12 @@ export default function Admin() {
 
         {/* AI Empire Org Chart */}
         <a href="/admin-org" style={{ textDecoration: "none", display: "block", marginBottom: "0.875rem" }}>
-          <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          <div style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.04))", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.7)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.4)"; }}>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>AI Empire Org Chart</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>54 agents · 9 divisions · Raymond oversees all · Full hierarchy with illustrated avatars · Page 2</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.72rem", margin: 0 }}>54 agents · 9 divisions · Raymond oversees all · Full hierarchy with illustrated avatars · Page 2</p>
             </div>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em" }}>VIEW</span>
           </div>
@@ -406,65 +414,67 @@ export default function Admin() {
 
         {/* Build Roadmap */}
         <a href="/admin-sprints" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
-          <div style={{ background: "linear-gradient(135deg, rgba(30,136,229,0.08), rgba(30,136,229,0.03))", border: "1px solid rgba(30,136,229,0.35)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          <div style={{ background: "linear-gradient(135deg, rgba(30,136,229,0.06), rgba(30,136,229,0.02))", border: "1px solid rgba(30,136,229,0.35)", borderRadius: 12, padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(30,136,229,0.6)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(30,136,229,0.35)"; }}>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#1E88E5", fontSize: "1rem", fontWeight: 700, margin: "0 0 3px" }}>Build Roadmap & Sprint Tracker</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.72rem", margin: 0 }}>Focal Points · Sprint 1–7 · Full build history · Sprint 6 in progress · Page 3</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.72rem", margin: 0 }}>Focal Points · Sprint 1–7 · Full build history · Sprint 6 in progress · Page 3</p>
             </div>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#1E88E5", letterSpacing: "0.08em" }}>VIEW</span>
           </div>
         </a>
 
+        {/* Stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "0.875rem" }}>
           {STAT_CARDS.map((stat) => (
-            <div key={stat.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "1.1rem 1rem" }}>
+            <div key={stat.label} style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "1.1rem 1rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
                 <span style={{ fontSize: "1.1rem" }}>{stat.icon}</span>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem" }}>{stat.value}</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: stat.color, fontWeight: 700, fontSize: "1.4rem", margin: 0 }}>{stat.value}</p>
               </div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>{stat.sub}</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{stat.label}</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>{stat.sub}</p>
             </div>
           ))}
         </div>
 
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 10, padding: "1.1rem 1rem", marginBottom: "2rem" }}>
+        {/* Sessions booked */}
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(30,136,229,0.2)", borderRadius: 10, padding: "1.1rem 1rem", marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>📅</span>
-            <p style={{ fontFamily: "'Playfair Display', serif", color: "#1E88E5", fontWeight: 700, fontSize: "1.4rem" }}>{loading ? "..." : String(stats.sessions_booked)}</p>
+            <p style={{ fontFamily: "'Playfair Display', serif", color: "#1E88E5", fontWeight: 700, fontSize: "1.4rem", margin: 0 }}>{loading ? "..." : String(stats.sessions_booked)}</p>
           </div>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>Sessions Booked</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.35)", fontSize: "0.65rem" }}>Running total · updates in real time on booking</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>Sessions Booked</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>Running total · updates in real time on booking</p>
         </div>
 
         {/* CC Hot Leads */}
-        <a href="/admin-member-intelligence" style={{ textDecoration:"none", display:"block", marginBottom:"2rem" }}>
-          <div style={{ background:"rgba(194,24,91,0.06)", border:"1px solid rgba(194,24,91,0.25)", borderRadius:10, padding:"1.1rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.5)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.25)"; }}>
+        <a href="/admin-member-intelligence" style={{ textDecoration: "none", display: "block", marginBottom: "2rem" }}>
+          <div style={{ background: "rgba(194,24,91,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1.1rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.5)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.25)"; }}>
             <div>
-              <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.5rem" }}>
-                <span style={{ fontSize:"1.1rem" }}>🔥</span>
-                <p style={{ fontFamily:"'Playfair Display', serif", color:"#C2185B", fontWeight:700, fontSize:"1.4rem", margin:0 }}>{hlLoading ? "..." : ccHotLeads}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                <span style={{ fontSize: "1.1rem" }}>🔥</span>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#C2185B", fontWeight: 700, fontSize: "1.4rem", margin: 0 }}>{hlLoading ? "..." : ccHotLeads}</p>
               </div>
-              <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#FFFFFF", fontWeight:700, fontSize:"0.72rem", letterSpacing:"0.04em", marginBottom:"0.2rem" }}>CC Hot Leads</p>
-              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(230,230,230,0.35)", fontSize:"0.65rem" }}>Community members engaged but not yet invested · tap to view all</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>CC Hot Leads</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>Community members engaged but not yet invested · tap to view all</p>
             </div>
-            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#C2185B", letterSpacing:"0.08em", flexShrink:0 }}>VIEW →</span>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "#C2185B", letterSpacing: "0.08em", flexShrink: 0 }}>VIEW →</span>
           </div>
         </a>
 
         <ClientIntelligenceDashboard />
 
         {/* Private Client Links */}
-        <div style={{ background: "rgba(194,24,91,0.06)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+        <div style={{ background: "rgba(194,24,91,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "1rem" }}>Private Client Links</p>
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 10, padding: "1rem 1.25rem" }}>
+          <div style={{ background: "#FFFFFF", border: "1px solid rgba(194,24,91,0.2)", borderRadius: 10, padding: "1rem 1.25rem" }}>
             <div style={{ marginBottom: 10 }}>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private - Send to client during diagnostic call - Full Ecosystem payment live</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.9rem", fontWeight: 600, marginBottom: 3 }}>Bundle Pricing Page</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", lineHeight: 1.5 }}>Private - Send to client during diagnostic call - Full Ecosystem payment live</p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <a href="https://app.druaiconsulting.com/bundle-pricing" target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "block", background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none", textAlign: "center" as const, padding: "0.6rem 0.875rem", borderRadius: 6, border: "1px solid rgba(212,175,55,0.35)" }}>Preview Page</a>
@@ -476,9 +486,9 @@ export default function Admin() {
         </div>
 
         {/* Leadership Lab */}
-        <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
+        <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>🎬 DeAnna's Leadership Lab™</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload video to Supabase storage, paste the URL below, then publish. Accelerator members are notified automatically.</p>
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
             <input type="text" placeholder="Video Title — e.g. AI Leadership in Action" value={labTitle} onChange={e => { setLabTitle(e.target.value); setLabError(""); }} style={inputStyle} />
             <input type="text" placeholder="Month — e.g. June 2026" value={labMonth} onChange={e => { setLabMonth(e.target.value); setLabError(""); }} style={inputStyle} />
@@ -492,9 +502,9 @@ export default function Admin() {
         </div>
 
         {/* Weekly PDF */}
-        <div style={{ background: "rgba(30,136,229,0.06)", border: "1px solid rgba(30,136,229,0.3)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
+        <div style={{ background: "rgba(30,136,229,0.05)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.2rem" }}>📄 Weekly Resource PDF</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.68rem", marginBottom: "1.25rem", lineHeight: 1.5 }}>Upload PDF to Supabase storage (resources bucket), paste the URL below, then publish. Visible to all members on the Resources page.</p>
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.75rem", marginBottom: "1rem" }}>
             <input type="text" placeholder="PDF Title — e.g. DRU CLEAR™ AI Leadership Manual 101" value={pdfTitle} onChange={e => { setPdfTitle(e.target.value); setPdfError(""); }} style={inputStyle} />
             <input type="text" placeholder="Week Of — e.g. May 26, 2026" value={pdfWeekOf} onChange={e => { setPdfWeekOf(e.target.value); setPdfError(""); }} style={inputStyle} />
@@ -502,7 +512,7 @@ export default function Admin() {
           </div>
           {pdfError && <p style={{ fontFamily: "'Inter', sans-serif", color: "#E53935", fontSize: "0.72rem", marginBottom: "0.75rem" }}>{pdfError}</p>}
           <button onClick={handlePdfPublish} disabled={pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()}
-            style={{ width: "100%", background: pdfPublished ? "#43A047" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.2)" : "#1E88E5", color: pdfPublished ? "#FFFFFF" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.4)" : "#FFFFFF", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
+            style={{ width: "100%", background: pdfPublished ? "#43A047" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.15)" : "#1E88E5", color: pdfPublished ? "#FFFFFF" : (!pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "rgba(30,136,229,0.4)" : "#FFFFFF", border: "none", borderRadius: 8, padding: "0.75rem 1.5rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", cursor: (pdfPublishing || !pdfTitle.trim() || !pdfWeekOf.trim() || !pdfUrl.trim()) ? "default" : "pointer", transition: "all 0.2s" }}>
             {pdfPublishing ? "Publishing..." : pdfPublished ? "✓ Published — Now Live on Resources Page" : "Publish to Resources Page"}
           </button>
         </div>
@@ -513,11 +523,11 @@ export default function Admin() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
             {QUICK_LINKS.map((link) => (
               <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.4)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.15)"; }}>
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(10,35,66,0.1)"; }}>
                 <span style={{ fontSize: "1rem" }}>{link.icon}</span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.04em" }}>{link.label}</span>
               </a>
             ))}
           </div>
@@ -529,12 +539,12 @@ export default function Admin() {
           <div style={{ display: "flex", flexDirection: "column" as const, gap: "0.5rem" }}>
             {PAYMENT_LINKS.map((link) => (
               <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.08)", borderRadius: 8, padding: "0.75rem 1rem", textDecoration: "none" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(212,175,55,0.12)"; }}>
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(10,35,66,0.08)"; }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: link.color, flexShrink: 0 }} />
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.8)", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 600, fontSize: "0.72rem" }}>{link.label}</span>
                 </div>
                 <span style={{ fontFamily: "'Playfair Display', serif", color: link.color, fontWeight: 700, fontSize: "0.85rem" }}>{link.price}</span>
               </a>
@@ -542,10 +552,11 @@ export default function Admin() {
           </div>
         </div>
 
+        <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.3)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
+          &copy; 2026 DRU AI Consulting · All Rights Reserved
+        </footer>
+
       </main>
-      <footer style={{ textAlign: "center" as const, padding: "1rem", color: "rgba(255,255,255,0.2)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>
-        &copy; 2026 DRU AI Consulting · All Rights Reserved
-      </footer>
-    </div>
+    </AdminLayout>
   );
 }
