@@ -531,19 +531,6 @@ export default function AdminApprovals() {
           ))}
         </div>
 
-        {/* Member Intelligence link */}
-        <a href="/admin-member-intelligence" style={{ textDecoration:"none", display:"block", marginBottom:"1.5rem" }}>
-          <div style={{ background:"rgba(194,24,91,0.04)", border:"1px solid rgba(194,24,91,0.25)", borderRadius:12, padding:"1rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.5)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(194,24,91,0.25)"; }}>
-            <div>
-              <p style={{ fontFamily:"'Playfair Display', serif", color:"#C2185B", fontSize:"1rem", fontWeight:700, margin:"0 0 3px" }}>Member Intelligence</p>
-              <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.5)", fontSize:"0.72rem", margin:0 }}>Gap signal · Hot Lead · Aligned · Retention Risk · full member list with filters, search, and CSV export</p>
-            </div>
-            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700, color:"#C2185B", letterSpacing:"0.08em" }}>VIEW →</span>
-          </div>
-        </a>
-
         {/* Flagged Comments */}
         <div style={{ marginBottom:"1.75rem" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.75rem" }}>
