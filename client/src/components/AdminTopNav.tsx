@@ -205,14 +205,14 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         @media (max-width: 640px) {
           .dru-nav-label { display: none; }
           .dru-nav-link { padding: 0.4rem 0.55rem; }
-          .dru-logo-img { height: 44px !important; }
+          .dru-logo-img { height: 60px !important; }
         }
       `}</style>
 
       <nav style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
-        height: 88,
+        height: 120,
         background: '#0A2342',
         borderBottom: '1px solid rgba(212,175,55,0.18)',
         zIndex: 1000,
@@ -237,7 +237,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               src="/new-dru-clear-transparent-logo.png"
               alt="DRU CLEAR™"
               className="dru-logo-img"
-              style={{ height: 64, width: 'auto', objectFit: 'contain', display: 'block' }}
+              style={{ height: 120, width: 'auto', objectFit: 'contain', display: 'block' }}
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement
                 img.style.display = 'none'

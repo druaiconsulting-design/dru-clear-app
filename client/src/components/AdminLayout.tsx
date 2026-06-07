@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import AdminTopNav from './AdminTopNav'
 import AdminSidebar from './AdminSidebar'
 
-const TOPNAV_H    = 88
+const TOPNAV_H    = 120
 const SIDEBAR_W   = 264
 const COLLAPSED_W = 64
 
