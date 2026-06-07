@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
+import MemberAvatar from "./community/MemberAvatar";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -11,6 +12,7 @@ interface Member {
   id: string; first_name: string | null; last_name: string | null;
   email: string; tier: string; community_level: string | null;
   pathway_stage: string | null; clarity_points: number;
+  photo_url: string | null;
 }
 
 const LEVEL_RANK: Record<string, number> = {
@@ -44,7 +46,11 @@ export default function AdminMemberIntelligence() {
   const [page,         setPage]         = useState(1);
 
   const fetchMembers = async () => {
-    const { data } = await supabase.from('profiles').select('id, first_name, last_name, email, tier, community_level, pathway_stage, clarity_points').in('tier', ['navigator', 'accelerator']).order('clarity_points', { ascending: false });
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, tier, community_level, pathway_stage, clarity_points, photo_url')
+      .in('tier', ['navigator', 'accelerator'])
+      .order('clarity_points', { ascending: false });
     setMembers((data as Member[]) || []);
     setLoading(false);
   };
@@ -204,10 +210,20 @@ export default function AdminMemberIntelligence() {
               const displayName = (member.first_name || member.last_name) ? [member.first_name, member.last_name].filter(Boolean).join(' ') : member.email;
               return (
                 <div key={member.id} style={{ background: isHot ? 'rgba(194,24,91,0.03)' : '#FFFFFF', border: isHot ? '1px solid rgba(194,24,91,0.15)' : '1px solid rgba(10,35,66,0.08)', borderRadius:10, padding:'0.75rem 1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.75rem', flexWrap:'wrap' }}>
-                  <div style={{ minWidth:160, flex:'1 1 160px' }}>
-                    <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:'0.72rem', fontWeight:700, color:'#0A2342', margin:0, marginBottom:'1px' }}>{displayName}</p>
-                    <p style={{ fontFamily:"'Inter', sans-serif", fontSize:'0.6rem', color:'rgba(10,35,66,0.35)', margin:0 }}>{member.email}</p>
+
+                  {/* Avatar + name + email */}
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px', minWidth:160, flex:'1 1 160px' }}>
+                    <MemberAvatar
+                      firstName={member.first_name || member.email}
+                      photoUrl={member.photo_url ?? undefined}
+                      size={44}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:'0.72rem', fontWeight:700, color:'#0A2342', margin:0, marginBottom:'1px' }}>{displayName}</p>
+                      <p style={{ fontFamily:"'Inter', sans-serif", fontSize:'0.6rem', color:'rgba(10,35,66,0.35)', margin:0 }}>{member.email}</p>
+                    </div>
                   </div>
+
                   <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:'0.58rem', fontWeight:700, padding:'2px 8px', borderRadius:20, flexShrink:0, background:member.tier === 'accelerator' ? 'rgba(194,24,91,0.1)' : 'rgba(212,175,55,0.1)', color:member.tier === 'accelerator' ? '#C2185B' : '#D4AF37', border:`1px solid ${member.tier === 'accelerator' ? 'rgba(194,24,91,0.3)' : 'rgba(212,175,55,0.3)'}` }}>
                     {member.tier === 'accelerator' ? 'Accelerator' : 'Navigator'}
                   </span>
