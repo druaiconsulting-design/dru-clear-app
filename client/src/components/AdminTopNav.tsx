@@ -76,13 +76,6 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
   const isNavActive = (href: string) => currentPath === href
 
-  // Mobile detection for logo sizing
-  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768)
-  React.useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
 
 
   // ── Fetch notifications ───────────────────────────────────────────────────
@@ -156,13 +149,21 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       height: 88,
       background: '#0A2342',
       borderBottom: '1px solid rgba(212,175,55,0.18)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 16px',
-      gap: 12,
       zIndex: 1000,
-      boxSizing: 'border-box',
+      overflow: 'hidden',
     }}>
+      <style>{`.dru-topnav-inner::-webkit-scrollbar{display:none}`}</style>
+      <div className="dru-topnav-inner" style={{
+        display: 'flex',
+        alignItems: 'center',
+        height: '100%',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        padding: '0 16px',
+        gap: 12,
+        boxSizing: 'border-box',
+        WebkitOverflowScrolling: 'touch',
+      }}>
 
       {/* ── Sidebar toggle / hamburger ── */}
       <button onClick={onToggleSidebar} aria-label="Toggle sidebar"
@@ -176,7 +177,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
       {/* ── Logo ── */}
       <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™"
-        style={{ height: isMobile ? 46 : 70, width: 'auto', flexShrink: 0, objectFit: 'contain', maxWidth: isMobile ? 120 : 220 }}
+        style={{ height: 70, width: 'auto', flexShrink: 0, objectFit: 'contain' }}
         onError={(e) => {
           const img = e.currentTarget as HTMLImageElement
           img.style.display = 'none'
@@ -186,11 +187,8 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       <span style={{ display: 'none', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em', flexShrink: 0 }}>DRU CLEAR™</span>
 
 
-      {/* ── Scrollbar hide for nav ── */}
-      <style>{`.dru-nav-scroll::-webkit-scrollbar{display:none}`}</style>
-
       {/* ── Nav links — scrollable ── */}
-      <div className="dru-nav-scroll" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
           {NAV_LINKS.map((link) => {
             const active = isNavActive(link.href)
             return (
@@ -301,6 +299,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
             )}
           </div>
         )}
+      </div>
       </div>
     </nav>
   )
