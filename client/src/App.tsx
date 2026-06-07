@@ -24,6 +24,8 @@ import AdminApprovals from "./pages/AdminApprovals";
 import AdminArchived from "./pages/AdminArchived";
 import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
 import AdminSprints from "./pages/AdminSprints";
+import AdminLab from "./pages/AdminLab";
+import AdminWeekly from "./pages/AdminWeekly";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
@@ -81,17 +83,11 @@ function Router() {
     setTitle("DRU CLEAR™");
     return (
       <div style={{
-        minHeight: "100dvh",
-        background: "#0A2342",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        minHeight: "100dvh", background: "#0A2342",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <img
-          src="/new-dru-clear-transparent-logo.png"
-          alt="DRU CLEAR™"
-          style={{ height: 56, width: "auto", opacity: 0.9 }}
-        />
+        <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™"
+          style={{ height: 56, width: "auto", opacity: 0.9 }} />
       </div>
     );
   }
@@ -176,7 +172,7 @@ function Router() {
     return <AdminOrg />;
   }
   if (path === "/admin-approvals" || path === "/admin-approvals/") {
-    setTitle("Approval Queue · DRU CLEAR™");
+    setTitle("Intelligence Hub · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminApprovals />;
   }
@@ -195,6 +191,16 @@ function Router() {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminSprints />;
   }
+  if (path === "/admin-lab" || path === "/admin-lab/") {
+    setTitle("Leadership Lab · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminLab />;
+  }
+  if (path === "/admin-resources" || path === "/admin-resources/") {
+    setTitle("Weekly Resources PDF · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminWeekly />;
+  }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
   if (path === "/portal" || path === "/portal/") {
@@ -208,7 +214,7 @@ function Router() {
     return <MyResults />;
   }
   if (path === "/resources" || path === "/resources/") {
-    setTitle("Resource Hub · DRU CLEAR™");
+    setTitle("Knowledge Vault · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
     return <Resources />;
   }
@@ -239,7 +245,7 @@ function Router() {
   }
   if (path === "/twin" || path === "/twin/") {
     setTitle("DeAnna's AI Twin · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <Twin />;
   }
 
