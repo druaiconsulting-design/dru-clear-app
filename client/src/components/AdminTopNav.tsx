@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -28,6 +28,38 @@ const NAV_LINKS = [
   { label: 'Courses',     href: '/admin-courses' },
   { label: 'Affiliate',   href: '/affiliate' },
 ]
+
+// Mobile bottom bar tabs (Home lives here, not in pill row)
+const BOTTOM_TABS = [
+  { label: 'Home',          href: '/portal',    icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  )},
+  { label: 'Notifications', href: null,         icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  )},
+  { label: 'Search',        href: null,         icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  )},
+  { label: 'Profile',       href: null,         icon: null }, // avatar rendered separately
+]
+
+// Mobile pill tabs (no Home — lives in bottom bar)
+const MOBILE_PILLS = [
+  { label: 'Frameworks',  href: '/frameworks' },
+  { label: 'Daily',       href: '/daily' },
+  { label: 'Community',   href: '/community' },
+  { label: 'Leaderboard', href: '/leaderboard' },
+  { label: 'Courses',     href: '/admin-courses' },
+  { label: 'Affiliate',   href: '/affiliate' },
+]
+
+const BOTTOM_BAR_H = 60
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
@@ -71,11 +103,44 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   const [unreadCount, setUnreadCount]         = useState(0)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [localAvatar, setLocalAvatar]         = useState<string | null>(null)
+  const [isMobile, setIsMobile]               = useState(window.innerWidth < 768)
+  const [topBarVisible, setTopBarVisible]     = useState(true)
+  const [bottomBarVisible, setBottomBarVisible] = useState(true)
   const fileInputRef                          = useRef<HTMLInputElement>(null)
   const navScrollRef                          = useRef<HTMLDivElement>(null)
+  const lastScrollY                           = useRef(0)
   const userDisplay                           = user ? getUserDisplay(user) : null
 
   const isNavActive = (href: string) => currentPath === href
+
+  // ── Detect mobile ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // ── Hide/show bars on scroll (mobile only) ────────────────────────────────
+  useEffect(() => {
+    if (!isMobile) return
+    const handleScroll = () => {
+      const main = document.querySelector('main') as HTMLElement | null
+      if (!main) return
+      const y = main.scrollTop
+      if (y > lastScrollY.current + 8) {
+        setTopBarVisible(false)
+        setBottomBarVisible(false)
+      } else if (y < lastScrollY.current - 8) {
+        setTopBarVisible(true)
+        setBottomBarVisible(true)
+      }
+      lastScrollY.current = y
+    }
+    const main = document.querySelector('main')
+    main?.addEventListener('scroll', handleScroll, { passive: true })
+    return () => main?.removeEventListener('scroll', handleScroll)
+  }, [isMobile])
 
   // ── Fetch notifications ───────────────────────────────────────────────────
   useEffect(() => {
@@ -155,20 +220,67 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
     return `${Math.floor(hrs / 24)}d ago`
   }
 
-  // ─── Scroll nav link into view on click ──────────────────────────────────
-  const handleNavLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    const target = e.currentTarget
-    target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    // Allow default navigation
-  }
+  // ── Profile dropdown ──────────────────────────────────────────────────────
+  const ProfileDropdown = () => (
+    <>
+      <div onClick={() => setDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+      <div style={{
+        position: 'fixed',
+        ...(isMobile
+          ? { bottom: BOTTOM_BAR_H + 8, top: 'auto' }
+          : { top: 'var(--topnav-h, 120px)', bottom: 'auto' }
+        ),
+        right: 14,
+        background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)',
+        borderRadius: 10, padding: '12px 0', minWidth: 210, zIndex: 1100,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+      }}>
+        {/* User info */}
+        <div style={{ padding: '0 16px 12px', borderBottom: '1px solid rgba(212,175,55,0.12)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Avatar user={user} size={48} avatarOverride={localAvatar} />
+          <div>
+            <p style={{ fontFamily: 'Montserrat, sans-serif', color: '#EDE8DB', fontSize: 13, fontWeight: 600, margin: '0 0 2px' }}>{userDisplay?.name}</p>
+            <p style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.4)', fontSize: 11, margin: 0 }}>{(user as any)?.email}</p>
+          </div>
+        </div>
+        {/* Change photo */}
+        <button
+          onClick={() => { setDropdownOpen(false); fileInputRef.current?.click() }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(237,232,219,0.7)' }}
+          style={{ width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 600, color: 'rgba(237,232,219,0.7)', cursor: 'pointer', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 8, transition: 'color 0.15s' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          {avatarUploading ? 'Uploading...' : 'Change Photo'}
+        </button>
+        {/* Sign out */}
+        <button
+          onClick={handleLogout}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(237,232,219,0.7)' }}
+          style={{ width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 600, color: 'rgba(237,232,219,0.7)', cursor: 'pointer', letterSpacing: '0.04em', transition: 'color 0.15s' }}
+        >
+          Sign Out
+        </button>
+      </div>
+    </>
+  )
 
   return (
     <>
-      {/* ── Responsive styles ── */}
+      {/* ── Styles ── */}
       <style>{`
-        :root { --topnav-h: 120px; }
+        :root {
+          --topnav-h: 120px;
+          --admin-bottom-bar-h: 0px;
+        }
         .dru-topnav-scroll::-webkit-scrollbar { display: none; }
         .dru-topnav-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Desktop nav link */
         .dru-nav-link {
           font-family: 'Montserrat', sans-serif;
           font-size: 0.72rem;
@@ -193,6 +305,38 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           background: rgba(212,175,55,0.1);
           border-bottom: 2px solid #D4AF37;
         }
+
+        /* Mobile pill tab — Circle-style */
+        .dru-admin-pill {
+          padding: 7px 16px;
+          border-radius: 999px;
+          font-family: 'Montserrat', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #3A5070;
+          background: transparent;
+          border: 1.5px solid rgba(10,35,66,0.2);
+          cursor: pointer;
+          transition: all 0.18s;
+          white-space: nowrap;
+          flex-shrink: 0;
+          scroll-snap-align: start;
+          text-decoration: none;
+          display: inline-block;
+        }
+        .dru-admin-pill.active {
+          font-weight: 700;
+          color: #FAFAF8;
+          background: #0A2342;
+          border-color: #0A2342;
+        }
+        .dru-admin-pill:hover:not(.active) {
+          background: rgba(10,35,66,0.07);
+          border-color: rgba(10,35,66,0.35);
+          color: #0A2342;
+        }
+
+        /* Icon button */
         .dru-icon-btn {
           width: 40px; height: 40px; border-radius: 8px;
           background: transparent; border: none;
@@ -202,95 +346,168 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           flex-shrink: 0;
         }
         .dru-icon-btn:hover { color: #D4AF37; }
-        /* Mobile: compact bar, shield icon replaces full logo */
-        .dru-logo-full { display: block; }
+
+        /* Bottom tab bar */
+        .dru-admin-bottom-bar {
+          display: none;
+        }
+        .dru-admin-bottom-btn {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 6px 0;
+          color: rgba(237,232,219,0.55);
+          font-family: 'Montserrat', sans-serif;
+          font-size: 10px;
+          font-weight: 500;
+          transition: color 0.15s;
+          text-decoration: none;
+        }
+        .dru-admin-bottom-btn.active { color: #D4AF37; }
+        .dru-admin-bottom-btn:hover  { color: #D4AF37; }
+
+        /* Logo visibility */
+        .dru-logo-full   { display: block; }
         .dru-logo-shield { display: none; }
+        .dru-desktop-right { display: flex; }
+        .dru-mobile-pills  { display: none; }
+
+        /* Mobile overrides */
         @media (max-width: 768px) {
-          :root { --topnav-h: 64px; }
-          .dru-topnav-nav { height: 64px !important; }
-          .dru-logo-full { display: none !important; }
-          .dru-logo-shield { display: block !important; }
-          .dru-nav-link { padding: 0.4rem 0.6rem; font-size: 0.68rem; }
+          :root {
+            --topnav-h: 64px;
+            --admin-bottom-bar-h: ${BOTTOM_BAR_H}px;
+          }
+          .dru-topnav-nav        { height: 64px !important; background: transparent !important; border-bottom: none !important; }
+          .dru-logo-full         { display: none !important; }
+          .dru-logo-shield       { display: block !important; }
+          .dru-desktop-right     { display: none !important; }
+          .dru-mobile-pills      { display: flex !important; }
+          .dru-admin-bottom-bar  { display: flex !important; }
         }
       `}</style>
 
+      {/* ══════════════════════════════════════════════════════════
+          TOP NAV BAR
+      ══════════════════════════════════════════════════════════ */}
       <nav className="dru-topnav-nav" style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
-        height: 120,
-        background: '#0A2342',
-        borderBottom: '1px solid rgba(212,175,55,0.18)',
+        height: isMobile ? 64 : 120,
+        background: isMobile ? 'transparent' : '#0A2342',
+        borderBottom: isMobile ? 'none' : '1px solid rgba(212,175,55,0.18)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
-        // overflow:hidden removed — was clipping dropdown panels
+        transform: (isMobile && !topBarVisible) ? 'translateY(-100%)' : 'translateY(0)',
+        transition: 'transform 0.25s ease',
       }}>
 
         {/* ── Left: hamburger + logo ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 12, flexShrink: 0 }}>
 
           {/* Sidebar toggle */}
-          <button onClick={onToggleSidebar} aria-label="Toggle sidebar" className="dru-icon-btn">
+          <button
+            onClick={onToggleSidebar}
+            aria-label="Toggle sidebar"
+            className="dru-icon-btn"
+            style={{ color: isMobile ? '#0A2342' : '#EDE8DB' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isMobile ? '#0A2342' : '#EDE8DB' }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
             </svg>
           </button>
 
-          {/* Logo — full on desktop, shield icon on mobile */}
+          {/* Logo */}
           <a href="/portal" style={{ display: 'flex', alignItems: 'center', flexShrink: 0, textDecoration: 'none' }}>
-            {/* Full logo — desktop only */}
+            {/* Full logo — desktop */}
             <img
               src="/new-dru-clear-transparent-logo.png"
               alt="DRU CLEAR™"
               className="dru-logo-full"
               style={{ height: 120, width: 'auto', objectFit: 'contain', display: 'block' }}
             />
-            {/* Mobile logo — transparent DC shield, no background */}
+            {/* DC rounded-square badge — mobile */}
             <img
-              src="/dru-shield-transparent.png"
+              src="/dru-shield-icon.png"
               alt="DRU CLEAR™"
               className="dru-logo-shield"
-              style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0 }}
+              style={{ width: 52, height: 52, borderRadius: 12, objectFit: 'cover', display: 'block', flexShrink: 0 }}
             />
           </a>
         </div>
 
-        {/* ── Center: scrollable nav links ── */}
-        <div
-          ref={navScrollRef}
-          onScroll={handleNavScroll}
-          className="dru-topnav-scroll"
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            height: '100%',
-            gap: 2,
-            padding: '0 8px',
-            WebkitOverflowScrolling: 'touch',
-            scrollSnapType: 'x proximity',
-          }}
-        >
-          {NAV_LINKS.map((link) => {
-            const active = isNavActive(link.href)
-            return (
+        {/* ── Center: desktop nav links (hidden on mobile) ── */}
+        {!isMobile && (
+          <div
+            ref={navScrollRef}
+            onScroll={handleNavScroll}
+            className="dru-topnav-scroll"
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              height: '100%',
+              gap: 2,
+              padding: '0 8px',
+              WebkitOverflowScrolling: 'touch',
+              scrollSnapType: 'x proximity',
+            }}
+          >
+            {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className={`dru-nav-link${active ? ' active' : ''}`}
-                onClick={(e) => handleNavLinkClick(e, link.href)}
+                className={`dru-nav-link${isNavActive(link.href) ? ' active' : ''}`}
               >
-                <span className="dru-nav-label">{link.label}</span>
+                {link.label}
               </a>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* ── Right: notifications + avatar ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 14, flexShrink: 0 }}>
+        {/* ── Mobile: scrollable pill tabs (hidden on desktop) ── */}
+        {isMobile && (
+          <div
+            className="dru-topnav-scroll dru-mobile-pills"
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              height: '100%',
+              gap: 6,
+              padding: '0 8px',
+              WebkitOverflowScrolling: 'touch',
+              scrollSnapType: 'x proximity',
+            }}
+          >
+            {MOBILE_PILLS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={`dru-admin-pill${isNavActive(link.href) ? ' active' : ''}`}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* ── Right: notifications + avatar (desktop only) ── */}
+        <div className="dru-desktop-right" style={{ alignItems: 'center', gap: 6, paddingRight: 14, flexShrink: 0 }}>
 
           {/* Notifications bell */}
           <div style={{ position: 'relative' }}>
@@ -343,60 +560,119 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           {/* Avatar + dropdown */}
           {isLoggedIn && user && userDisplay && (
             <div style={{ position: 'relative' }}>
-
-              {/* Hidden file input for photo change */}
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
-
               <button
                 onClick={() => { setDropdownOpen(!dropdownOpen); setNotifOpen(false) }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', opacity: avatarUploading ? 0.6 : 1 }}
               >
                 <Avatar user={user} size={42} avatarOverride={localAvatar} />
               </button>
-
-              {dropdownOpen && (
-                <>
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setDropdownOpen(false)} />
-                  <div style={{ position: 'fixed', top: 'var(--topnav-h, 120px)', right: 14, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, padding: '12px 0', minWidth: 210, zIndex: 1100, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
-
-                    {/* User info */}
-                    <div style={{ padding: '0 16px 12px', borderBottom: '1px solid rgba(212,175,55,0.12)', marginBottom: 4 }}>
-                      <p style={{ fontFamily: 'Montserrat, sans-serif', color: '#EDE8DB', fontSize: 13, fontWeight: 600, margin: '0 0 2px' }}>{userDisplay.name}</p>
-                      <p style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.4)', fontSize: 11, margin: 0 }}>{(user as any).email}</p>
-                    </div>
-
-                    {/* Change photo */}
-                    <button
-                      onClick={() => { setDropdownOpen(false); fileInputRef.current?.click() }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(237,232,219,0.7)' }}
-                      style={{ width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 600, color: 'rgba(237,232,219,0.7)', cursor: 'pointer', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 8, transition: 'color 0.15s' }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                      {avatarUploading ? 'Uploading...' : 'Change Photo'}
-                    </button>
-
-                    {/* Sign out */}
-                    <button
-                      onClick={handleLogout}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(237,232,219,0.7)' }}
-                      style={{ width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 600, color: 'rgba(237,232,219,0.7)', cursor: 'pointer', letterSpacing: '0.04em', transition: 'color 0.15s' }}
-                    >
-                      Sign Out
-                    </button>
-
-                  </div>
-                </>
-              )}
+              {dropdownOpen && <ProfileDropdown />}
             </div>
           )}
         </div>
 
       </nav>
+
+      {/* ══════════════════════════════════════════════════════════
+          BOTTOM TAB BAR (mobile only)
+      ══════════════════════════════════════════════════════════ */}
+      <nav
+        className="dru-admin-bottom-bar"
+        style={{
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
+          height: BOTTOM_BAR_H,
+          background: '#0A2342',
+          borderTop: '1px solid rgba(212,175,55,0.18)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          transform: bottomBarVisible ? 'translateY(0)' : `translateY(${BOTTOM_BAR_H}px)`,
+          transition: 'transform 0.25s ease',
+        }}
+      >
+        {/* Home */}
+        <a href="/portal" className={`dru-admin-bottom-btn${isNavActive('/portal') ? ' active' : ''}`}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Home</span>
+        </a>
+
+        {/* Notifications */}
+        <button
+          className="dru-admin-bottom-btn"
+          onClick={handleNotifToggle}
+          style={{ position: 'relative', color: notifOpen ? '#D4AF37' : undefined }}
+        >
+          <div style={{ position: 'relative' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 8, height: 8, borderRadius: '50%', background: '#C2185B', border: '1.5px solid #0A2342' }} />
+            )}
+          </div>
+          <span>Notifications</span>
+        </button>
+
+        {/* Search */}
+        <button className="dru-admin-bottom-btn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span>Search</span>
+        </button>
+
+        {/* Profile */}
+        {isLoggedIn && user && (
+          <button
+            className="dru-admin-bottom-btn"
+            onClick={() => { setDropdownOpen(!dropdownOpen); setNotifOpen(false) }}
+            style={{ opacity: avatarUploading ? 0.6 : 1 }}
+          >
+            <Avatar user={user} size={26} avatarOverride={localAvatar} />
+            <span>Profile</span>
+          </button>
+        )}
+      </nav>
+
+      {/* Profile dropdown rendered outside nav so it's never clipped */}
+      {dropdownOpen && isLoggedIn && user && <ProfileDropdown />}
+
+      {/* Notifications panel for mobile (anchored above bottom bar) */}
+      {notifOpen && isMobile && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setNotifOpen(false)} />
+          <div style={{ position: 'fixed', bottom: BOTTOM_BAR_H + 8, right: 14, width: 300, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, zIndex: 1100, boxShadow: '0 8px 24px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontFamily: 'Montserrat, sans-serif', color: '#D4AF37', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Notifications</p>
+              {unreadCount === 0 && <span style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.35)', fontSize: 11 }}>All caught up</span>}
+            </div>
+            <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  <p style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.35)', fontSize: 13, margin: 0 }}>No notifications yet</p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: n.is_read ? 'transparent' : 'rgba(212,175,55,0.05)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    {!n.is_read && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C2185B', flexShrink: 0, marginTop: 5 }} />}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontFamily: 'Inter, sans-serif', color: '#EDE8DB', fontSize: 13, margin: '0 0 3px', lineHeight: 1.4 }}>{n.message}</p>
+                      <p style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.35)', fontSize: 11, margin: 0 }}>{timeAgo(n.created_at)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
     </>
   )
 }
