@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, tierLabel, tierDotColor, ACCELERATOR_PAYMENT_LINK } from './types';
 import type { CommunityPost, Tier } from './types';
-import NavBar from '../../components/NavBar';
 import ComposeBox from './ComposeBox';
 import PostCard from './PostCard';
 import { NotificationBell, SettingsPanel } from './NotificationBell';
@@ -154,7 +153,6 @@ export default function CommunityFeed({
     }
   }, [cacheMemberProfile]);
 
-  // Re-sort feed after a pin change without a full reload
   const handlePinChange = useCallback((postId: string, pinned: boolean) => {
     setPosts(prev => {
       const updated = prev.map(p => p.id === postId ? { ...p, is_pinned: pinned } as CommunityPost : p);
@@ -168,8 +166,7 @@ export default function CommunityFeed({
   }, []);
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
-      <NavBar active="/community" />
+    <>
       <main style={{ flex: 1, padding: '40px 24px 80px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
@@ -303,6 +300,6 @@ export default function CommunityFeed({
       <footer style={{ textAlign: 'center', padding: '1rem', color: 'rgba(10,35,66,0.25)', fontFamily: "'Montserrat', sans-serif", fontSize: '0.65rem', letterSpacing: '0.04em', borderTop: '1px solid #E8E4DF' }}>
         © 2026 DRU CLEAR™ · All Rights Reserved · DRU AI Consulting
       </footer>
-    </div>
+    </>
   );
 }
