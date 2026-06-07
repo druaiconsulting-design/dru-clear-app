@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import AdminLayout from '../components/AdminLayout';
+import AdminLayout from '../../components/AdminLayout';
 import { supabase } from './types';
 import type { Tier } from './types';
 import CommunityFeed from './CommunityFeed';
