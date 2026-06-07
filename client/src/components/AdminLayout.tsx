@@ -34,15 +34,15 @@ export default function AdminLayout({ children, currentPath }: AdminLayoutProps)
         currentPath={currentPath}
       />
 
-      <div style={{ display: 'flex', flex: 1, paddingTop: TOPNAV_H }}>
+      <div style={{ display: 'flex', flex: 1, paddingTop: 'var(--topnav-h, 120px)' as any }}>
 
         {/* Sidebar — always visible, collapses to icons on mobile */}
         <div style={{
           position: 'fixed',
-          top: TOPNAV_H,
+          top: 'var(--topnav-h, 120px)' as any,
           left: 0,
           width: sidebarWidth,
-          height: `calc(100vh - ${TOPNAV_H}px)`,
+          height: 'calc(100vh - var(--topnav-h, 120px))' as any,
           zIndex: 100,
           transition: 'width 0.2s ease',
           overflowY: 'auto',

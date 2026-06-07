@@ -166,6 +166,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
     <>
       {/* ── Responsive styles ── */}
       <style>{`
+        :root { --topnav-h: 120px; }
         .dru-topnav-scroll::-webkit-scrollbar { display: none; }
         .dru-topnav-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         .dru-nav-link {
@@ -201,15 +202,19 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           flex-shrink: 0;
         }
         .dru-icon-btn:hover { color: #D4AF37; }
-        /* Mobile: hide nav text labels, show only icons */
-        @media (max-width: 640px) {
-          .dru-nav-label { display: none; }
-          .dru-nav-link { padding: 0.4rem 0.55rem; }
-          .dru-logo-img { height: 60px !important; }
+        /* Mobile: compact bar, shield icon replaces full logo */
+        .dru-logo-full { display: block; }
+        .dru-logo-shield { display: none; }
+        @media (max-width: 768px) {
+          :root { --topnav-h: 64px; }
+          .dru-topnav-nav { height: 64px !important; }
+          .dru-logo-full { display: none !important; }
+          .dru-logo-shield { display: block !important; }
+          .dru-nav-link { padding: 0.4rem 0.6rem; font-size: 0.68rem; }
         }
       `}</style>
 
-      <nav style={{
+      <nav className="dru-topnav-nav" style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
         height: 120,
@@ -231,21 +236,22 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
             </svg>
           </button>
 
-          {/* Logo */}
+          {/* Logo — full on desktop, shield icon on mobile */}
           <a href="/portal" style={{ display: 'flex', alignItems: 'center', flexShrink: 0, textDecoration: 'none' }}>
+            {/* Full logo — desktop only */}
             <img
               src="/new-dru-clear-transparent-logo.png"
               alt="DRU CLEAR™"
-              className="dru-logo-img"
+              className="dru-logo-full"
               style={{ height: 120, width: 'auto', objectFit: 'contain', display: 'block' }}
-              onError={(e) => {
-                const img = e.currentTarget as HTMLImageElement
-                img.style.display = 'none'
-                const fallback = img.nextElementSibling as HTMLElement
-                if (fallback) fallback.style.display = 'block'
-              }}
             />
-            <span style={{ display: 'none', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em' }}>DRU CLEAR™</span>
+            {/* Shield icon — mobile only */}
+            <img
+              src="/apple-touch-icon.png"
+              alt="DRU CLEAR™"
+              className="dru-logo-shield"
+              style={{ height: 44, width: 44, borderRadius: 8, objectFit: 'contain' }}
+            />
           </a>
         </div>
 
