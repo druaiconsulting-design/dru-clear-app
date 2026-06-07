@@ -72,6 +72,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [localAvatar, setLocalAvatar]       = useState<string | null>(null)
   const fileInputRef                        = useRef<HTMLInputElement>(null)
+  const navScrollRef                        = useRef<HTMLDivElement>(null)
   const userDisplay                         = user ? getUserDisplay(user) : null
 
   const isNavActive = (href: string) => currentPath === href
@@ -95,6 +96,20 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
     }
     fetchNotifs()
   }, [(user as any)?.id])
+
+  // Restore nav scroll position on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('dru-nav-scroll')
+    if (saved && navScrollRef.current) {
+      navScrollRef.current.scrollLeft = parseInt(saved, 10)
+    }
+  }, [])
+
+  const handleNavScroll = () => {
+    if (navScrollRef.current) {
+      sessionStorage.setItem('dru-nav-scroll', String(navScrollRef.current.scrollLeft))
+    }
+  }
 
   // ── Open notif panel + mark as read ──────────────────────────────────────
   const handleNotifToggle = async () => {
@@ -153,7 +168,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       overflow: 'hidden',
     }}>
       <style>{`.dru-topnav-inner::-webkit-scrollbar{display:none}`}</style>
-      <div className="dru-topnav-inner" style={{
+      <div ref={navScrollRef} onScroll={handleNavScroll} className="dru-topnav-inner" style={{
         display: 'flex',
         alignItems: 'center',
         height: '100%',
