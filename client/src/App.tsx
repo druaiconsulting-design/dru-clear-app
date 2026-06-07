@@ -27,6 +27,7 @@ import AdminSprints from "./pages/AdminSprints";
 import AdminLab from "./pages/AdminLab";
 import AdminWeekly from "./pages/AdminWeekly";
 import AdminCourses from "./pages/AdminCourses";
+import AdminLeaderboard from "./pages/AdminLeaderboard";
 import CourseDashboard from "./pages/CourseDashboard";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
@@ -212,6 +213,11 @@ function Router() {
     setTitle("Weekly Resources PDF · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminWeekly />;
+  }
+  if (path === "/leaderboard" || path === "/leaderboard/") {
+    setTitle("Leaderboard · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminLeaderboard />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
