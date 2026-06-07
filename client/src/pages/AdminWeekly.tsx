@@ -24,8 +24,8 @@ export default function AdminWeekly() {
       setPublished(true);
       setPdfTitle(""); setPdfWeekOf(""); setPdfUrl("");
       setTimeout(() => setPublished(false), 5000);
-    } catch (err: any) {
-      setError(err?.message || "Publish failed. Please try again.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : null) || "Publish failed. Please try again.");
     }
     setPublishing(false);
   };
