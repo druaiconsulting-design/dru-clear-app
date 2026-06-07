@@ -250,7 +250,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               src="/dru-shield-transparent.png"
               alt="DRU CLEAR™"
               className="dru-logo-shield"
-              style={{ height: 52, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+              style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0 }}
             />
           </a>
         </div>
