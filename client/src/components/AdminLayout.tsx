@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import AdminTopNav from './AdminTopNav'
 import AdminSidebar from './AdminSidebar'
 
-const TOPNAV_H    = 120
 const SIDEBAR_W   = 264
 const COLLAPSED_W = 64
 
@@ -12,51 +11,52 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, currentPath }: AdminLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed,       setCollapsed]       = useState(false)
+  const [isMobile,        setIsMobile]        = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
-  // Auto-collapse on mobile
   useEffect(() => {
     const check = () => {
-      if (window.innerWidth < 768) setCollapsed(true)
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setCollapsed(true)
     }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const sidebarWidth = collapsed ? COLLAPSED_W : SIDEBAR_W
+  // On mobile: sidebar takes no layout space (it's an overlay drawer)
+  // On desktop: sidebar shifts content
+  const sidebarWidth = isMobile ? 0 : (collapsed ? COLLAPSED_W : SIDEBAR_W)
+
+  const handleToggle = () => {
+    if (isMobile) setMobileSidebarOpen(prev => !prev)
+    else setCollapsed(prev => !prev)
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
 
       <AdminTopNav
-        onToggleSidebar={() => setCollapsed(prev => !prev)}
+        onToggleSidebar={handleToggle}
         currentPath={currentPath}
       />
 
       <div style={{ display: 'flex', flex: 1, paddingTop: 'var(--topnav-h, 120px)' as any }}>
 
-        {/* Sidebar — always visible, collapses to icons on mobile */}
-        <div style={{
-          position: 'fixed',
-          top: 'var(--topnav-h, 120px)' as any,
-          left: 0,
-          width: sidebarWidth,
-          height: 'calc(100vh - var(--topnav-h, 120px))' as any,
-          zIndex: 100,
-          transition: 'width 0.2s ease',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          flexShrink: 0,
-        }}>
-          <AdminSidebar collapsed={collapsed} currentPath={currentPath} />
-        </div>
+        <AdminSidebar
+          collapsed={collapsed}
+          currentPath={currentPath}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
+        />
 
-        {/* Main content */}
+        {/* Main content — full width on mobile, offset by sidebar on desktop */}
         <main style={{
           flex: 1,
           marginLeft: sidebarWidth,
-          transition: 'margin-left 0.2s ease',
+          transition: 'margin-left 0.25s ease',
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',

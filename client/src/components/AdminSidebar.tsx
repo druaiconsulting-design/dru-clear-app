@@ -1,8 +1,8 @@
-import React from 'react'
-
 interface AdminSidebarProps {
   collapsed: boolean
   currentPath: string
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 interface NavItem {
@@ -58,6 +58,7 @@ const SECTIONS: Section[] = [
     items: [
       { icon: '🎬', label: "DeAnna's Leadership Lab", path: '/admin-lab' },
       { icon: '📄', label: 'Weekly Resources PDF',    path: '/admin-resources' },
+      { icon: '📋', label: 'Onboarding Checklist',    path: '/admin-onboarding' },
     ],
   },
   {
@@ -77,17 +78,21 @@ function isActive(itemPath: string, currentPath: string): boolean {
   return currentPath === itemPath || currentPath.startsWith(itemPath + '/')
 }
 
-export default function AdminSidebar({ collapsed, currentPath }: AdminSidebarProps) {
+export default function AdminSidebar({ collapsed, currentPath, mobileOpen = false, onMobileClose }: AdminSidebarProps) {
   const SIDEBAR_W   = 264
   const COLLAPSED_W = 64
-  const TOPNAV_H    = 88
 
-  const w        = collapsed ? COLLAPSED_W : SIDEBAR_W
-  const showText = !collapsed
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
+  // On mobile: always show full-width drawer when open, hidden when closed
+  // On desktop: respect collapsed state
+  const w        = isMobile ? SIDEBAR_W : (collapsed ? COLLAPSED_W : SIDEBAR_W)
+  const showText = isMobile ? true : !collapsed
 
   const navigate = (path: string, external?: boolean) => {
     if (external) window.open(path, '_blank', 'noopener,noreferrer')
     else window.location.href = path
+    if (isMobile && onMobileClose) onMobileClose()
   }
 
   const renderItem = (item: NavItem) => {
@@ -138,13 +143,63 @@ export default function AdminSidebar({ collapsed, currentPath }: AdminSidebarPro
     )
   }
 
+  // ── Mobile drawer ──────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop overlay */}
+        {mobileOpen && (
+          <div
+            onClick={onMobileClose}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 49,
+            }}
+          />
+        )}
+        {/* Drawer */}
+        <aside style={{
+          position: 'fixed',
+          top: 'var(--topnav-h, 64px)' as any,
+          left: mobileOpen ? 0 : -SIDEBAR_W - 10,
+          width: SIDEBAR_W,
+          height: 'calc(100vh - var(--topnav-h, 64px))' as any,
+          background: '#0A2342',
+          borderRight: '1px solid rgba(212,175,55,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          transition: 'left 0.25s ease',
+          zIndex: 50,
+        }}>
+          <nav style={{ flex: 1, padding: '8px' }}>
+            {SECTIONS.map((section) => (
+              <div key={section.heading} style={{ marginBottom: 6 }}>
+                <div style={{ padding: '10px 12px 4px', fontFamily: 'Montserrat, sans-serif', fontSize: 10, fontWeight: 700, color: 'rgba(237,232,219,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  {section.heading}
+                </div>
+                {section.items.map((item) => renderItem(item))}
+              </div>
+            ))}
+          </nav>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(212,175,55,0.12)', fontFamily: 'Cinzel, serif', fontSize: 9, color: 'rgba(237,232,219,0.25)', letterSpacing: '0.12em', textAlign: 'center', flexShrink: 0 }}>
+            DRU AI LEADERSHIP ECOSYSTEM™
+          </div>
+        </aside>
+      </>
+    )
+  }
+
+  // ── Desktop sidebar ────────────────────────────────────────────────────────
   return (
     <aside style={{
       position: 'fixed',
-      top: TOPNAV_H,
+      top: 'var(--topnav-h, 120px)' as any,
       left: 0,
       width: w,
-      height: `calc(100vh - ${TOPNAV_H}px)`,
+      height: 'calc(100vh - var(--topnav-h, 120px))' as any,
       background: '#0A2342',
       borderRight: '1px solid rgba(212,175,55,0.15)',
       display: 'flex',
