@@ -597,7 +597,6 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
           background: '#0A2342',
           borderTop: '1px solid rgba(212,175,55,0.18)',
           zIndex: 1000,
-          display: 'flex',
           alignItems: 'center',
           transform: bottomBarVisible ? 'translateY(0)' : `translateY(${BOTTOM_BAR_H}px)`,
           transition: 'transform 0.25s ease',
