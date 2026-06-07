@@ -36,8 +36,8 @@ export default function AdminLab() {
       setPublished(true);
       setLabTitle(""); setLabMonth(""); setLabVideoUrl("");
       setTimeout(() => setPublished(false), 5000);
-    } catch (err: any) {
-      setError(err?.message || "Publish failed. Please try again.");
+    } catch (err) {
+      setError((err instanceof Error ? err.message : null) || "Publish failed. Please try again.");
     }
     setPublishing(false);
   };
