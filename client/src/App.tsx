@@ -26,6 +26,8 @@ import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
 import AdminSprints from "./pages/AdminSprints";
 import AdminLab from "./pages/AdminLab";
 import AdminWeekly from "./pages/AdminWeekly";
+import AdminCourses from "./pages/AdminCourses";
+import CourseDashboard from "./pages/CourseDashboard";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
 import ResetPassword from "./pages/ResetPassword";
@@ -196,6 +198,16 @@ function Router() {
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminLab />;
   }
+  if (path === "/course-dashboard" || path === "/course-dashboard/") {
+    setTitle("Course Dashboard · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <CourseDashboard adminPreview={true} />;
+  }
+  if (path === "/admin-courses" || path === "/admin-courses/") {
+    setTitle("Course Management · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminCourses />;
+  }
   if (path === "/admin-resources" || path === "/admin-resources/") {
     setTitle("Weekly Resources PDF · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
@@ -275,4 +287,3 @@ function App() {
 }
 
 export default App;
-
