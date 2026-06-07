@@ -190,9 +190,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               </a>
             )
           })}
-        </div>
-      )}
-
+      </div>
 
       {/* ── Right controls ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
