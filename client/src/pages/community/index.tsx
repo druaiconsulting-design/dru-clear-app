@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
+import AdminLayout from '../components/AdminLayout';
 import { supabase } from './types';
 import type { Tier } from './types';
 import CommunityFeed from './CommunityFeed';
 import CommunityJoin from './CommunityJoin';
 import Leaderboard from '../community-engagement/Leaderboard';
 
-// =============================================================================
-// COMMUNITY — smart detection, renders Feed / Leaderboard / Join
-// =============================================================================
 export default function Community() {
   const [tier,        setTier]        = useState<Tier | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -40,23 +38,20 @@ export default function Community() {
 
   if (checking) {
     return (
-      <>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@500&display=swap');
-          @keyframes ccPulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
-        `}</style>
-        <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+      <AdminLayout currentPath={window.location.pathname}>
+        <style>{`@keyframes ccPulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }`}</style>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', minHeight: '60vh' }}>
           <div style={{ color: '#D4AF37', fontSize: '32px', animation: 'ccPulse 1.5s ease infinite' }}>◆</div>
           <div style={{ fontFamily: "'Cinzel', serif", color: 'rgba(10,35,66,0.4)', fontSize: '11px', letterSpacing: '3px' }}>LOADING</div>
         </div>
-      </>
+      </AdminLayout>
     );
   }
 
   const isMember = tier === 'navigator' || tier === 'accelerator' || isAdminUser;
 
   return (
-    <>
+    <AdminLayout currentPath={window.location.pathname}>
       <style>{globalStyles}</style>
       {isMember ? (
         activeTab === 'feed' ? (
@@ -75,7 +70,6 @@ export default function Community() {
       ) : (
         <CommunityJoin />
       )}
-    </>
+    </AdminLayout>
   );
 }
-
