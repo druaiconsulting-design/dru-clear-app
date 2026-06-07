@@ -128,8 +128,9 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       setBottomBarVisible(true)
       return
     }
+    let scrollEl: HTMLElement | null = null
     const handleScroll = () => {
-      const y = window.scrollY
+      const y = scrollEl ? scrollEl.scrollTop : 0
       if (y > lastScrollY.current + 8) {
         setTopBarVisible(false)
         setBottomBarVisible(false)
@@ -139,8 +140,17 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       }
       lastScrollY.current = y
     }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    // Retry until the main scroll container is mounted
+    const attach = () => {
+      scrollEl = document.getElementById('dru-admin-scroll')
+      if (scrollEl) {
+        scrollEl.addEventListener('scroll', handleScroll, { passive: true })
+      } else {
+        setTimeout(attach, 100)
+      }
+    }
+    attach()
+    return () => { scrollEl?.removeEventListener('scroll', handleScroll) }
   }, [isMobile])
 
   // ── Fetch notifications ───────────────────────────────────────────────────
