@@ -25,6 +25,7 @@ const NAV_LINKS = [
   { label: 'Daily',       href: '/daily' },
   { label: 'Community',   href: '/community' },
   { label: 'Leaderboard', href: '/leaderboard' },
+  { label: 'Courses',     href: '/admin-courses' },
   { label: 'Affiliate',   href: '/affiliate' },
 ]
 
@@ -66,14 +67,24 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   const { user, logout, isLoggedIn }        = useAuth()
   const [dropdownOpen, setDropdownOpen]     = useState(false)
   const [notifOpen, setNotifOpen]           = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifications, setNotifications]   = useState<Notification[]>([])
   const [unreadCount, setUnreadCount]       = useState(0)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [localAvatar, setLocalAvatar]       = useState<string | null>(null)
+  const [isMobile, setIsMobile]             = useState(false)
   const fileInputRef                        = useRef<HTMLInputElement>(null)
   const userDisplay                         = user ? getUserDisplay(user) : null
 
   const isNavActive = (href: string) => currentPath === href
+
+  // Detect mobile
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // ── Fetch notifications ───────────────────────────────────────────────────
   useEffect(() => {
@@ -175,42 +186,54 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         }} />
       <span style={{ display: 'none', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em', flexShrink: 0 }}>DRU CLEAR™</span>
 
-      {/* ── Nav links ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-        {NAV_LINKS.map((link) => {
-          const active = isNavActive(link.href)
-          return (
-            <a key={link.href} href={link.href}
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontSize: '0.72rem',
-                fontWeight: active ? 700 : 500,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: active ? '#D4AF37' : '#EDE8DB',
-                background: active ? 'rgba(212,175,55,0.1)' : 'transparent',
-                textDecoration: 'none',
-                borderRadius: 4,
-                borderBottom: active ? '2px solid #D4AF37' : '2px solid transparent',
-                padding: '0.4rem 0.75rem',
-                whiteSpace: 'nowrap',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                if (active) return
-                const el = e.currentTarget as HTMLAnchorElement
-                el.style.color = '#D4AF37'
-              }}
-              onMouseLeave={(e) => {
-                if (active) return
-                const el = e.currentTarget as HTMLAnchorElement
-                el.style.color = '#EDE8DB'
-              }}>
-              {link.label}
-            </a>
-          )
-        })}
-      </div>
+      {/* ── Nav links — desktop only ── */}
+      {!isMobile && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          {NAV_LINKS.map((link) => {
+            const active = isNavActive(link.href)
+            return (
+              <a key={link.href} href={link.href}
+                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: active ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: active ? '#D4AF37' : '#EDE8DB', background: active ? 'rgba(212,175,55,0.1)' : 'transparent', textDecoration: 'none', borderRadius: 4, borderBottom: active ? '2px solid #D4AF37' : '2px solid transparent', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap', transition: 'color 0.2s' }}
+                onMouseEnter={(e) => { if (active) return; (e.currentTarget as HTMLAnchorElement).style.color = '#D4AF37' }}
+                onMouseLeave={(e) => { if (active) return; (e.currentTarget as HTMLAnchorElement).style.color = '#EDE8DB' }}>
+                {link.label}
+              </a>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Mobile spacer ── */}
+      {isMobile && <div style={{ flex: 1 }} />}
+
+      {/* ── Mobile nav dropdown ── */}
+      {isMobile && (
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => { setMobileMenuOpen(p => !p); setDropdownOpen(false); setNotifOpen(false) }} aria-label="Navigation menu"
+            style={{ width: 40, height: 40, borderRadius: 8, background: mobileMenuOpen ? 'rgba(212,175,55,0.1)' : 'transparent', border: '1px solid rgba(212,175,55,0.2)', color: '#EDE8DB', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            {mobileMenuOpen
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            }
+          </button>
+          {mobileMenuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setMobileMenuOpen(false)} />
+              <div style={{ position: 'absolute', top: 48, right: 0, width: 220, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, zIndex: 999, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', padding: '6px 0' }}>
+                {NAV_LINKS.map((link) => {
+                  const active = isNavActive(link.href)
+                  return (
+                    <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                      style={{ display: 'block', padding: '11px 18px', fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: active ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: active ? '#D4AF37' : '#EDE8DB', textDecoration: 'none', background: active ? 'rgba(212,175,55,0.08)' : 'transparent', borderLeft: active ? '3px solid #D4AF37' : '3px solid transparent', transition: 'all 0.15s' }}>
+                      {link.label}
+                    </a>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Right controls ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
