@@ -3,6 +3,7 @@ import React from 'react'
 interface AdminSidebarProps {
   collapsed: boolean
   currentPath: string
+  onItemClick?: () => void
 }
 
 interface NavItem {
@@ -42,13 +43,15 @@ const SECTIONS: Section[] = [
   {
     heading: 'VIEW',
     items: [
-      { icon: '👤', label: 'Client View ↗', path: 'https://members.druaiconsulting.com', external: true },
+      { icon: '👤', label: 'Client View ↗',   path: 'https://members.druaiconsulting.com', external: true },
+      { icon: '🎓', label: 'Student View ↗', path: 'https://courses.druaiconsulting.com', external: true },
     ],
   },
   {
     heading: 'COURSES',
     items: [
       { icon: '🎓', label: 'From Confusion to Confident', path: '/admin-courses' },
+      { icon: '📊', label: 'Dashboard',                   path: '/course-dashboard' },
     ],
   },
   {
@@ -66,7 +69,7 @@ function isActive(itemPath: string, currentPath: string): boolean {
   return currentPath === itemPath || currentPath.startsWith(itemPath + '/')
 }
 
-export default function AdminSidebar({ collapsed, currentPath }: AdminSidebarProps) {
+export default function AdminSidebar({ collapsed, currentPath, onItemClick }: AdminSidebarProps) {
   const SIDEBAR_W   = 264
   const COLLAPSED_W = 64
   const TOPNAV_H    = 88
@@ -75,6 +78,7 @@ export default function AdminSidebar({ collapsed, currentPath }: AdminSidebarPro
   const showText = !collapsed
 
   const navigate = (path: string, external?: boolean) => {
+    if (onItemClick) onItemClick()
     if (external) window.open(path, '_blank', 'noopener,noreferrer')
     else window.location.href = path
   }
