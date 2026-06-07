@@ -12,83 +12,58 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, currentPath }: AdminLayoutProps) {
-  const [collapsed, setCollapsed]     = useState(false)
-  const [isMobile, setIsMobile]       = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
+  // Auto-collapse on mobile
   useEffect(() => {
     const check = () => {
-      const mobile = window.innerWidth < 768
-      setIsMobile(mobile)
-      if (mobile) { setCollapsed(true); setSidebarOpen(false) }
+      if (window.innerWidth < 768) setCollapsed(true)
     }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const handleToggle = () => {
-    if (isMobile) setSidebarOpen(prev => !prev)
-    else setCollapsed(prev => !prev)
-  }
-
-  const closeSidebar = () => setSidebarOpen(false)
-
-  const contentMargin = isMobile ? 0 : (collapsed ? COLLAPSED_W : SIDEBAR_W)
+  const sidebarWidth = collapsed ? COLLAPSED_W : SIDEBAR_W
 
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Top nav — always fixed */}
-      <AdminTopNav onToggleSidebar={handleToggle} currentPath={currentPath} />
+      <AdminTopNav
+        onToggleSidebar={() => setCollapsed(prev => !prev)}
+        currentPath={currentPath}
+      />
 
-      {/* Mobile backdrop — rendered BEFORE sidebar so sidebar sits on top */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={closeSidebar}
-          style={{
-            position: 'fixed', inset: 0,
-            top: TOPNAV_H,
-            background: 'rgba(0,0,0,0.55)',
-            zIndex: 940,
-          }}
-        />
-      )}
+      <div style={{ display: 'flex', flex: 1, paddingTop: TOPNAV_H }}>
 
-      {/* Sidebar */}
-      <div style={{
-        position: 'fixed',
-        top: TOPNAV_H,
-        left: isMobile ? (sidebarOpen ? 0 : -SIDEBAR_W - 10) : 0,
-        width: isMobile ? SIDEBAR_W : (collapsed ? COLLAPSED_W : SIDEBAR_W),
-        height: `calc(100vh - ${TOPNAV_H}px)`,
-        zIndex: 950,
-        transition: isMobile
-          ? 'left 0.28s cubic-bezier(0.4,0,0.2,1)'
-          : 'width 0.2s ease',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        flexShrink: 0,
-      }}>
-        <AdminSidebar
-          collapsed={isMobile ? false : collapsed}
-          currentPath={currentPath}
-          onItemClick={isMobile ? closeSidebar : undefined}
-        />
+        {/* Sidebar — always visible, collapses to icons on mobile */}
+        <div style={{
+          position: 'fixed',
+          top: TOPNAV_H,
+          left: 0,
+          width: sidebarWidth,
+          height: `calc(100vh - ${TOPNAV_H}px)`,
+          zIndex: 100,
+          transition: 'width 0.2s ease',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          flexShrink: 0,
+        }}>
+          <AdminSidebar collapsed={collapsed} currentPath={currentPath} />
+        </div>
+
+        {/* Main content */}
+        <main style={{
+          flex: 1,
+          marginLeft: sidebarWidth,
+          transition: 'margin-left 0.2s ease',
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          {children}
+        </main>
       </div>
-
-      {/* Main content */}
-      <main style={{
-        flex: 1,
-        paddingTop: TOPNAV_H,
-        marginLeft: contentMargin,
-        transition: isMobile ? 'none' : 'margin-left 0.2s ease',
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        {children}
-      </main>
     </div>
   )
 }
