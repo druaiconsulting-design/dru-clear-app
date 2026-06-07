@@ -48,24 +48,92 @@ function Router() {
   const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
 
   const params = new URLSearchParams(window.location.search);
-  const [exchangingCode, setExchangingCode] = useState(!!params.get("code"));
+
+  // Show spinner while any token exchange is in progress.
+  // Covers: ?code= (Google OAuth) and ?token_hash= (email confirmation / recovery).
+  const [exchangingCode, setExchangingCode] = useState(
+    !!params.get("code") ||
+    (!!params.get("token_hash") &&
+      (params.get("type") === "signup" ||
+       params.get("type") === "recovery" ||
+       params.get("type") === "email"))
+  );
 
   useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+
+    // ── 1. Hash fragment — implicit-flow tokens ───────────────────────────────
+    // Covers Google OAuth result and older Supabase email confirmation tokens
+    // where the access_token is embedded directly in the URL hash.
     if (hash && hash.includes("access_token")) {
-      if (hash.includes("type=recovery") || hash.includes("type=signup")) {
+      // Password recovery — member or admin forgot their password.
+      if (hash.includes("type=recovery")) {
         window.location.href = "/reset-password" + window.location.hash;
         return;
       }
+      // New member email confirmation (hash format).
+      // The hash carries type=signup — ResetPassword.tsx reads it to know
+      // this is account creation, not a password reset.
+      if (hash.includes("type=signup")) {
+        window.location.href = "/reset-password" + window.location.hash;
+        return;
+      }
+      // All other hash tokens — standard Google OAuth success, no type tag.
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-          const isAdminUser = session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          const isAdminUser =
+            session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
           window.location.href = isAdminUser ? "/admin" : "/portal";
         }
       });
       return;
     }
 
-    const sp = new URLSearchParams(window.location.search);
+    // ── 2. Token hash — email confirmation / password recovery (query params) ─
+    // Supabase ignores emailRedirectTo for password-based signUp() and always
+    // uses the Site URL (app.druaiconsulting.com). New members land here after
+    // clicking their confirmation email with ?token_hash=xxx&type=signup.
+    // We exchange the token to establish a session, then route accordingly.
+    const tokenHash = sp.get("token_hash");
+    const tokenType = sp.get("type") as "signup" | "recovery" | "email" | null;
+
+    if (tokenHash && (tokenType === "signup" || tokenType === "recovery" || tokenType === "email")) {
+      // Map "email" (used by some Supabase versions) to "signup" for verifyOtp.
+      const otpType: "signup" | "recovery" = tokenType === "recovery" ? "recovery" : "signup";
+
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: otpType })
+        .then(({ data, error }) => {
+          // Clean the token params from the URL regardless of outcome.
+          window.history.replaceState({}, document.title, window.location.pathname);
+
+          if (error || !data.session) {
+            // Token invalid, expired, or already used — drop to login.
+            setExchangingCode(false);
+            return;
+          }
+
+          const isAdminUser =
+            data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          const isSignup = otpType === "signup";
+
+          if (isSignup && !isAdminUser) {
+            // New member email confirmed — send to ResetPassword to create their
+            // password. ?flow=signup tells that page to redirect to the members
+            // portal on success instead of the old /portal route.
+            window.location.replace("/reset-password?flow=signup");
+          } else if (isAdminUser) {
+            // Admin link (signup or recovery) — go to admin.
+            window.location.replace("/admin");
+          } else {
+            // Member password recovery — go to ResetPassword normally.
+            window.location.replace("/reset-password");
+          }
+        });
+      return;
+    }
+
+    // ── 3. OAuth PKCE code exchange — Google sign-in ──────────────────────────
     const code = sp.get("code");
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
