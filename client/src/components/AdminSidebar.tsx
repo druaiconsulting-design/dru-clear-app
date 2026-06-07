@@ -61,6 +61,15 @@ const SECTIONS: Section[] = [
       { icon: '📄', label: 'Weekly Resources PDF',    path: '/admin-resources' },
     ],
   },
+  {
+    heading: 'LINKS',
+    items: [
+      { icon: '📋', label: 'Assessment ↗',  path: 'https://assessment.druaiconsulting.com/',  external: true },
+      { icon: '🧩', label: 'Frameworks ↗',  path: 'https://frameworks.druaiconsulting.com/', external: true },
+      { icon: '🎓', label: 'Courses ↗',     path: 'https://courses.druaiconsulting.com/',    external: true },
+      { icon: '🌐', label: 'Website ↗',     path: 'https://druaiconsulting.com/',            external: true },
+    ],
+  },
 ]
 
 function isActive(itemPath: string, currentPath: string): boolean {
@@ -149,6 +158,17 @@ export default function AdminSidebar({ collapsed, currentPath, onItemClick }: Ad
       flexShrink: 0,
     }}>
       <nav style={{ flex: 1, padding: '8px' }}>
+        {/* Close button — mobile only */}
+        {onItemClick && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 4px 8px' }}>
+            <button
+              onClick={onItemClick}
+              aria-label="Close menu"
+              style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(212,175,55,0.2)', color: 'rgba(237,232,219,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>
+              ✕
+            </button>
+          </div>
+        )}
         {SECTIONS.map((section) => (
           <div key={section.heading} style={{ marginBottom: 6 }}>
             {showText && (
