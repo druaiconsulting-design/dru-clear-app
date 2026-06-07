@@ -67,24 +67,15 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   const { user, logout, isLoggedIn }        = useAuth()
   const [dropdownOpen, setDropdownOpen]     = useState(false)
   const [notifOpen, setNotifOpen]           = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifications, setNotifications]   = useState<Notification[]>([])
   const [unreadCount, setUnreadCount]       = useState(0)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [localAvatar, setLocalAvatar]       = useState<string | null>(null)
-  const [isMobile, setIsMobile]             = useState(false)
   const fileInputRef                        = useRef<HTMLInputElement>(null)
   const userDisplay                         = user ? getUserDisplay(user) : null
 
   const isNavActive = (href: string) => currentPath === href
 
-  // Detect mobile
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
 
   // ── Fetch notifications ───────────────────────────────────────────────────
   useEffect(() => {
@@ -170,10 +161,9 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         style={{ width: 40, height: 40, borderRadius: 8, background: 'transparent', border: 'none', color: '#EDE8DB', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'color 0.15s' }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#D4AF37' }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#EDE8DB' }}>
-        {isMobile
-          ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-        }
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+        </svg>
       </button>
 
       {/* ── Logo ── */}
@@ -187,9 +177,8 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         }} />
       <span style={{ display: 'none', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em', flexShrink: 0 }}>DRU CLEAR™</span>
 
-      {/* ── Nav links — desktop only ── */}
-      {!isMobile && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+      {/* ── Nav links — scrollable ── */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', gap: 2, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {NAV_LINKS.map((link) => {
             const active = isNavActive(link.href)
             return (
