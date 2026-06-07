@@ -76,6 +76,14 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
   const isNavActive = (href: string) => currentPath === href
 
+  // Mobile detection for logo sizing
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768)
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
 
   // ── Fetch notifications ───────────────────────────────────────────────────
   useEffect(() => {
@@ -168,7 +176,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
       {/* ── Logo ── */}
       <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™"
-        style={{ height: 70, width: 'auto', flexShrink: 0, objectFit: 'contain' }}
+        style={{ height: isMobile ? 46 : 70, width: 'auto', flexShrink: 0, objectFit: 'contain', maxWidth: isMobile ? 120 : 220 }}
         onError={(e) => {
           const img = e.currentTarget as HTMLImageElement
           img.style.display = 'none'
@@ -198,17 +206,6 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
       {/* ── Right controls ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-
-        {/* Search pill */}
-        <button aria-label="Search"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(237,232,219,0.2)', color: '#EDE8DB', fontFamily: 'Montserrat, sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.03em', transition: 'all 0.15s' }}
-          onMouseEnter={(e) => { const el = e.currentTarget as HTMLButtonElement; el.style.color = '#D4AF37'; el.style.borderColor = 'rgba(212,175,55,0.45)' }}
-          onMouseLeave={(e) => { const el = e.currentTarget as HTMLButtonElement; el.style.color = '#EDE8DB'; el.style.borderColor = 'rgba(237,232,219,0.2)' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          Search
-        </button>
 
         {/* Notifications bell */}
         <div style={{ position: 'relative' }}>
