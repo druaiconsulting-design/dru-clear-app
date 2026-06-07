@@ -177,13 +177,17 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         }} />
       <span style={{ display: 'none', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em', flexShrink: 0 }}>DRU CLEAR™</span>
 
+
+      {/* ── Scrollbar hide for nav ── */}
+      <style>{`.dru-nav-scroll::-webkit-scrollbar{display:none}`}</style>
+
       {/* ── Nav links — scrollable ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', gap: 2, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+      <div className="dru-nav-scroll" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', gap: 2 }}>
           {NAV_LINKS.map((link) => {
             const active = isNavActive(link.href)
             return (
               <a key={link.href} href={link.href}
-                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: active ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: active ? '#D4AF37' : '#EDE8DB', background: active ? 'rgba(212,175,55,0.1)' : 'transparent', textDecoration: 'none', borderRadius: 4, borderBottom: active ? '2px solid #D4AF37' : '2px solid transparent', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap', transition: 'color 0.2s' }}
+                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: active ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: active ? '#D4AF37' : '#EDE8DB', background: active ? 'rgba(212,175,55,0.1)' : 'transparent', textDecoration: 'none', borderRadius: 4, borderBottom: active ? '2px solid #D4AF37' : '2px solid transparent', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap', flexShrink: 0, transition: 'color 0.2s' }}
                 onMouseEnter={(e) => { if (active) return; (e.currentTarget as HTMLAnchorElement).style.color = '#D4AF37' }}
                 onMouseLeave={(e) => { if (active) return; (e.currentTarget as HTMLAnchorElement).style.color = '#EDE8DB' }}>
                 {link.label}
