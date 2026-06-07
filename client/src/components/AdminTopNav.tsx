@@ -22,7 +22,6 @@ interface Notification {
 const NAV_LINKS = [
   { label: 'Home',      href: '/portal' },
   { label: 'Frameworks',  href: '/frameworks' },
-  { label: 'Resources',   href: '/resources' },
   { label: 'Daily',       href: '/daily' },
   { label: 'Community',   href: '/community' },
   { label: 'Leaderboard', href: '/leaderboard' },
