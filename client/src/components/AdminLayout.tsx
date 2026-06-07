@@ -43,7 +43,7 @@ export default function AdminLayout({ children, currentPath }: AdminLayoutProps)
         currentPath={currentPath}
       />
 
-      <div style={{ display: 'flex', flex: 1, paddingTop: isMobile ? 0 : 'var(--topnav-h, 120px)' as any }}>
+      <div style={{ display: 'flex', flex: 1, paddingTop: isMobile ? 64 : 'var(--topnav-h, 120px)' as any }}>
 
         <AdminSidebar
           collapsed={collapsed}
@@ -61,7 +61,6 @@ export default function AdminLayout({ children, currentPath }: AdminLayoutProps)
           display: 'flex',
           flexDirection: 'column',
           paddingBottom: isMobile ? 60 : 0,
-          overflowY: isMobile ? 'auto' : undefined,
         }}>
           {children}
         </main>

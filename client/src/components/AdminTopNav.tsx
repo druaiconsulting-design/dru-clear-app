@@ -103,7 +103,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   const [unreadCount, setUnreadCount]         = useState(0)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [localAvatar, setLocalAvatar]         = useState<string | null>(null)
-  const [isMobile, setIsMobile]               = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile]               = useState(() => window.innerWidth < 768)
   const [topBarVisible, setTopBarVisible]     = useState(true)
   const [bottomBarVisible, setBottomBarVisible] = useState(true)
   const fileInputRef                          = useRef<HTMLInputElement>(null)
@@ -123,11 +123,13 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
 
   // ── Hide/show bars on scroll (mobile only) ────────────────────────────────
   useEffect(() => {
-    if (!isMobile) return
+    if (!isMobile) {
+      setTopBarVisible(true)
+      setBottomBarVisible(true)
+      return
+    }
     const handleScroll = () => {
-      const main = document.querySelector('main') as HTMLElement | null
-      if (!main) return
-      const y = main.scrollTop
+      const y = window.scrollY
       if (y > lastScrollY.current + 8) {
         setTopBarVisible(false)
         setBottomBarVisible(false)
@@ -137,9 +139,8 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
       }
       lastScrollY.current = y
     }
-    const main = document.querySelector('main')
-    main?.addEventListener('scroll', handleScroll, { passive: true })
-    return () => main?.removeEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [isMobile])
 
   // ── Fetch notifications ───────────────────────────────────────────────────
