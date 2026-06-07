@@ -223,7 +223,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
-        overflow: 'hidden',
+        // overflow:hidden removed — was clipping dropdown panels
       }}>
 
         {/* ── Left: hamburger + logo ── */}
@@ -313,7 +313,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
             {notifOpen && (
               <>
                 <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setNotifOpen(false)} />
-                <div style={{ position: 'absolute', top: 48, right: 0, width: 320, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, zIndex: 999, boxShadow: '0 8px 24px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+                <div style={{ position: 'fixed', top: 'var(--topnav-h, 120px)', right: 14, width: 320, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, zIndex: 1100, boxShadow: '0 8px 24px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <p style={{ fontFamily: 'Montserrat, sans-serif', color: '#D4AF37', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Notifications</p>
                     {unreadCount === 0 && <span style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(237,232,219,0.35)', fontSize: 11 }}>All caught up</span>}
@@ -357,7 +357,7 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
               {dropdownOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setDropdownOpen(false)} />
-                  <div style={{ position: 'absolute', top: 52, right: 0, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, padding: '12px 0', minWidth: 210, zIndex: 999, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+                  <div style={{ position: 'fixed', top: 'var(--topnav-h, 120px)', right: 14, background: '#0A2342', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10, padding: '12px 0', minWidth: 210, zIndex: 1100, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
 
                     {/* User info */}
                     <div style={{ padding: '0 16px 12px', borderBottom: '1px solid rgba(212,175,55,0.12)', marginBottom: 4 }}>
