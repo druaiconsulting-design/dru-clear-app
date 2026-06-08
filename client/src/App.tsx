@@ -1,207 +1,363 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from './context/AuthContext'
-import { navigate } from './lib/router'
-import Login from './pages/Login'
-import Portal from './pages/Portal'
-import Daily from './pages/Daily'
-import Community from './pages/community'
-import Courses from './pages/Courses'
-import ModuleLessons from './pages/ModuleLessons'
-import LessonPlayer from './pages/LessonPlayer'
-import MonthlyVideos from './pages/MonthlyVideos'
-import Leaderboard from './pages/community-engagement/Leaderboard'
-import Announcements from './pages/community/Announcements'
-import AcceleratorCircle from './pages/community/AcceleratorCircle'
-import MemberLayout from './components/layout/MemberLayout'
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
+import DruClearApp from "./pages/DruClearAssessment";
+import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
+import Portal from "./pages/Portal";
+import Frameworks from "./pages/Frameworks";
+import BundlePricing from "./pages/BundlePricing";
+import TermsPage from "./pages/TermsPage";
+import ThankYouED from "./pages/ThankYouED";
+import ThankYouSD from "./pages/ThankYouSD";
+import { ThankYouDruClear, ThankYou5D, ThankYou5C, ThankYouAISales } from "./pages/ThankYouFrameworks";
+import ThankYouFullEcosystem from "./pages/ThankYouFullEcosystem";
+import Resources from "./pages/Resources";
+import Daily from "./pages/Daily";
+import Community from "./pages/community";
+import Affiliate from "./pages/Affiliate";
+import Admin from "./pages/Admin";
+import AdminOrg from "./pages/AdminOrg";
+import AdminApprovals from "./pages/AdminApprovals";
+import AdminArchived from "./pages/AdminArchived";
+import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
+import AdminSprints from "./pages/AdminSprints";
+import AdminLab from "./pages/AdminLab";
+import AdminWeekly from "./pages/AdminWeekly";
+import AdminCourses from "./pages/AdminCourses";
+import AdminLeaderboard from "./pages/AdminLeaderboard";
+import CourseDashboard from "./pages/CourseDashboard";
+import Twin from "./pages/Twin";
+import Lab from "./pages/Lab";
+import ResetPassword from "./pages/ResetPassword";
+import MyResults from "./pages/MyResults";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
 
-// ─── Loading screen ───────────────────────────────────────────────────────────
-
-function LoadingScreen() {
-  return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(160deg, #051528 0%, #0A2342 60%, #07192e 100%)',
-      gap: 20,
-    }}>
-      <div style={{
-        fontFamily: 'Cinzel, serif',
-        fontSize: 16,
-        fontWeight: 700,
-        color: '#D4AF37',
-        letterSpacing: '0.2em',
-      }}>
-        DRU AI CONSULTING™
-      </div>
-      <div style={{
-        width: 36,
-        height: 36,
-        border: '2px solid rgba(212,175,55,0.2)',
-        borderTopColor: '#D4AF37',
-        borderRadius: '50%',
-        animation: 'dru-spin 0.8s linear infinite',
-      }} />
-    </div>
-  )
+function setTitle(title: string) {
+  document.title = title;
 }
 
-// ─── Coming Soon placeholder ──────────────────────────────────────────────────
+function Router() {
+  const { isLoggedIn, isAdmin, loading } = useAuth();
+  const path = window.location.pathname;
+  const hash = window.location.hash;
+  const hostname = window.location.hostname;
+  const isAssessmentDomain = hostname === "assessment.druaiconsulting.com";
 
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '60vh',
-      gap: 12,
-      padding: '40px 24px',
-      textAlign: 'center',
-    }}>
-      <div style={{ fontSize: 40 }}>🔨</div>
-      <div style={{
-        fontFamily: 'Playfair Display, serif',
-        fontSize: 22,
-        color: '#D4AF37',
-      }}>
-        {title}
-      </div>
-      <div style={{
-        fontFamily: 'Montserrat, sans-serif',
-        fontSize: 13,
-        color: 'rgba(138,164,200,0.6)',
-      }}>
-        Coming soon
-      </div>
-    </div>
-  )
-}
+  const params = new URLSearchParams(window.location.search);
 
-// ─── App / Router ─────────────────────────────────────────────────────────────
-
-export default function App() {
-  const { session, loading } = useAuth()
-  const [path, setPath] = useState(window.location.pathname)
+  // Show spinner while any token exchange is in progress.
+  // Covers: ?code= (Google OAuth) and ?token_hash= (email confirmation / recovery).
+  const [exchangingCode, setExchangingCode] = useState(
+    !!params.get("code") ||
+    (!!params.get("token_hash") &&
+      (params.get("type") === "signup" ||
+       params.get("type") === "recovery" ||
+       params.get("type") === "email"))
+  );
 
   useEffect(() => {
-    const handlePop = () => setPath(window.location.pathname)
-    window.addEventListener('popstate', handlePop)
-    return () => window.removeEventListener('popstate', handlePop)
-  }, [])
+    const sp = new URLSearchParams(window.location.search);
 
-  useEffect(() => {
-    if (loading) return
-    if (!session && path !== '/login') {
-      navigate('/login')
-    } else if (session && path === '/login') {
-      navigate('/')
+    // ── 1. Hash fragment — implicit-flow tokens ───────────────────────────────
+    // Covers Google OAuth result and older Supabase email confirmation tokens
+    // where the access_token is embedded directly in the URL hash.
+    if (hash && hash.includes("access_token")) {
+      // Password recovery — member or admin forgot their password.
+      if (hash.includes("type=recovery")) {
+        window.location.href = "/reset-password" + window.location.hash;
+        return;
+      }
+      // New member email confirmation (hash format).
+      // The hash carries type=signup — ResetPassword.tsx reads it to know
+      // this is account creation, not a password reset.
+      if (hash.includes("type=signup")) {
+        window.location.href = "/reset-password" + window.location.hash;
+        return;
+      }
+      // All other hash tokens — standard Google OAuth success, no type tag.
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const isAdminUser =
+            session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          window.location.href = isAdminUser ? "/admin" : "/portal";
+        }
+      });
+      return;
     }
-  }, [session, loading, path])
 
-  if (loading) return <LoadingScreen />
+    // ── 2. Token hash — email confirmation / password recovery (query params) ─
+    // Supabase ignores emailRedirectTo for password-based signUp() and always
+    // uses the Site URL (app.druaiconsulting.com). New members land here after
+    // clicking their confirmation email with ?token_hash=xxx&type=signup.
+    // We exchange the token to establish a session, then route accordingly.
+    const tokenHash = sp.get("token_hash");
+    const tokenType = sp.get("type") as "signup" | "recovery" | "email" | null;
 
-  if (!session || path === '/login') return <Login />
+    if (tokenHash && (tokenType === "signup" || tokenType === "recovery" || tokenType === "email")) {
+      // Map "email" (used by some Supabase versions) to "signup" for verifyOtp.
+      const otpType: "signup" | "recovery" = tokenType === "recovery" ? "recovery" : "signup";
 
-  // ── Authenticated page resolver ──────────────────────────────────────────
-  const renderPage = () => {
-    // Home / Dashboard
-    if (path === '/' || path === '/home') return <Portal />
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: otpType })
+        .then(({ data, error }) => {
+          // Clean the token params from the URL regardless of outcome.
+          window.history.replaceState({}, document.title, window.location.pathname);
 
-    // Community sub-pages — must come BEFORE the /community catch-all
-    if (path === '/community/announcements')
-      return <Announcements />
+          if (error || !data.session) {
+            // Token invalid, expired, or already used — drop to login.
+            setExchangingCode(false);
+            return;
+          }
 
-    if (path === '/community/accelerator')
-      return <AcceleratorCircle />
+          const isAdminUser =
+            data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+          const isSignup = otpType === "signup";
 
-    // Community feed
-    if (path === '/feed' || path.startsWith('/community')) return <Community />
+          if (isSignup && !isAdminUser) {
+            // New member email confirmed — send to ResetPassword to create their
+            // password. ?flow=signup tells that page to redirect to the members
+            // portal on success instead of the old /portal route.
+            window.location.replace("/reset-password?flow=signup");
+          } else if (isAdminUser) {
+            // Admin link (signup or recovery) — go to admin.
+            window.location.replace("/admin");
+          } else {
+            // Member password recovery — go to ResetPassword normally.
+            window.location.replace("/reset-password");
+          }
+        });
+      return;
+    }
 
-    // Daily
-    if (path === '/daily' || path === '/daily/') return <Daily />
+    // ── 3. OAuth PKCE code exchange — Google sign-in ──────────────────────────
+    const code = sp.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        if (error || !data?.session) {
+          setExchangingCode(false);
+          return;
+        }
+        const isAdminUser =
+          data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
+        window.location.replace(isAdminUser ? "/admin" : "/portal");
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Start Here
-    if (path === '/start-here')
-      return <ComingSoon title="Start Here" />
-
-    // Courses — lesson player
-    if (path.startsWith('/courses/lesson/'))
-      return <LessonPlayer />
-
-    // Courses — module lesson list
-    if (path.startsWith('/courses/module/'))
-      return <ModuleLessons />
-
-    // Courses — main catalog
-    if (path === '/courses' || path === '/courses/')
-      return <Courses />
-
-    // Monthly Videos
-    if (path === '/videos' || path.startsWith('/videos/'))
-      return <MonthlyVideos />
-
-    // Leaderboard
-    if (path === '/leaderboard')
-      return <Leaderboard />
-
-    // Resources
-    if (path.startsWith('/resources'))
-      return <ComingSoon title="Resources" />
-
-    // Support
-    if (path.startsWith('/support'))
-      return <ComingSoon title="Support Hub" />
-
-    // Profile
-    if (path === '/profile')
-      return <ComingSoon title="My Profile" />
-
-    // 404
+  if (loading || exchangingCode) {
+    setTitle("DRU CLEAR™");
     return (
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: 12,
-        color: 'rgba(138,164,200,0.6)',
+        minHeight: "100dvh", background: "#0A2342",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <div style={{ fontSize: 40 }}>🔍</div>
-        <div style={{
-          fontFamily: 'Playfair Display, serif',
-          fontSize: 20,
-          color: '#D4AF37',
-        }}>
-          Page Not Found
-        </div>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: '8px 20px',
-            background: 'rgba(212,175,55,0.1)',
-            border: '1px solid rgba(212,175,55,0.3)',
-            borderRadius: 8,
-            color: '#D4AF37',
-            fontFamily: 'Montserrat, sans-serif',
-            fontSize: 13,
-            cursor: 'pointer',
-            marginTop: 8,
-          }}
-        >
-          Back to Home
-        </button>
+        <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR™"
+          style={{ height: 56, width: "auto", opacity: 0.9 }} />
       </div>
-    )
+    );
   }
 
-  return (
-    <MemberLayout currentPath={path}>
-      {renderPage()}
-    </MemberLayout>
-  )
+  if (path === "/" || path === "") {
+    if (isAssessmentDomain) {
+      setTitle("DRU CLEAR™ AI Readiness Assessment");
+      return <DruClearApp />;
+    }
+    if (isLoggedIn) {
+      window.location.replace(isAdmin ? "/admin" : "/portal");
+      return null;
+    }
+    setTitle("Sign In · DRU CLEAR™");
+    return <Login />;
+  }
+
+  if (path === "/roi" || path === "/roi/") {
+    window.location.replace("/community");
+    return null;
+  }
+  if (path === "/admin-launch" || path === "/admin-launch/") {
+    window.location.replace("/admin");
+    return null;
+  }
+
+  if (path === "/bundle-pricing" || path === "/bundle-pricing/") {
+    setTitle("Bundle Pricing · DRU CLEAR™");
+    return <BundlePricing />;
+  }
+  if (path === "/terms" || path === "/terms/") {
+    setTitle("Terms of Engagement · DRU CLEAR™");
+    return <TermsPage />;
+  }
+  if (path === "/reset-password" || path === "/reset-password/") {
+    setTitle("Set Your Password · DRU CLEAR™");
+    return <ResetPassword />;
+  }
+  if (path === "/login" || path === "/login/") {
+    setTitle("Sign In · DRU CLEAR™");
+    return <Login />;
+  }
+
+  if (path === "/thank-you-ed" || path === "/thank-you-ed/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYouED />;
+  }
+  if (path === "/thank-you-sd" || path === "/thank-you-sd/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYouSD />;
+  }
+  if (path === "/thank-you-dru-clear" || path === "/thank-you-dru-clear/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYouDruClear />;
+  }
+  if (path === "/thank-you-5d" || path === "/thank-you-5d/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYou5D />;
+  }
+  if (path === "/thank-you-5c" || path === "/thank-you-5c/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYou5C />;
+  }
+  if (path === "/thank-you-ai-sales" || path === "/thank-you-ai-sales/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYouAISales />;
+  }
+  if (path === "/thank-you-full-ecosystem" || path === "/thank-you-full-ecosystem/") {
+    setTitle("Thank You · DRU CLEAR™");
+    return <ThankYouFullEcosystem />;
+  }
+
+  // ── Admin Routes ────────────────────────────────────────────────────────────
+  if (path === "/admin" || path === "/admin/") {
+    setTitle("Profit Pulse · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <Admin />;
+  }
+  if (path === "/admin-org" || path === "/admin-org/") {
+    setTitle("AI Empire Org Chart · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminOrg />;
+  }
+  if (path === "/admin-approvals" || path === "/admin-approvals/") {
+    setTitle("Intelligence Hub · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminApprovals />;
+  }
+  if (path === "/admin-archived" || path === "/admin-archived/") {
+    setTitle("Archived Queue · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminArchived />;
+  }
+  if (path === "/admin-member-intelligence" || path === "/admin-member-intelligence/") {
+    setTitle("Member Intelligence · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminMemberIntelligence />;
+  }
+  if (path === "/admin-sprints" || path === "/admin-sprints/") {
+    setTitle("Build Roadmap · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminSprints />;
+  }
+  if (path === "/admin-lab" || path === "/admin-lab/") {
+    setTitle("Leadership Lab · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminLab />;
+  }
+  if (path === "/course-dashboard" || path === "/course-dashboard/") {
+    setTitle("Course Dashboard · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <CourseDashboard adminPreview={true} />;
+  }
+  if (path === "/admin-courses" || path === "/admin-courses/") {
+    setTitle("Course Management · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminCourses />;
+  }
+  if (path === "/admin-resources" || path === "/admin-resources/") {
+    setTitle("Weekly Resources PDF · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminWeekly />;
+  }
+  if (path === "/leaderboard" || path === "/leaderboard/") {
+    setTitle("Leaderboard · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminLeaderboard />;
+  }
+
+  // ── Protected Routes ────────────────────────────────────────────────────────
+  if (path === "/portal" || path === "/portal/") {
+    setTitle("My Portal · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Portal />;
+  }
+  if (path === "/my-results" || path === "/my-results/") {
+    setTitle("My Assessment Results · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <MyResults />;
+  }
+  if (path === "/resources" || path === "/resources/") {
+    setTitle("Knowledge Vault · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Resources />;
+  }
+  if (path === "/daily" || path === "/daily/") {
+    setTitle("Daily Connections · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Daily />;
+  }
+  if (path === "/frameworks" || path === "/frameworks/") {
+    setTitle("Frameworks · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Frameworks />;
+  }
+  if (path === "/community" || path === "/community/") {
+    setTitle("Community · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Community />;
+  }
+  if (path === "/lab" || path === "/lab/") {
+    setTitle("Leadership Lab · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Lab />;
+  }
+  if (path === "/affiliate" || path === "/affiliate/") {
+    setTitle("Affiliate · DRU CLEAR™");
+    if (!isLoggedIn) return <Login />;
+    return <Affiliate />;
+  }
+  if (path === "/twin" || path === "/twin/") {
+    setTitle("DeAnna's AI Twin · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <Twin />;
+  }
+
+  // ── Fallback ────────────────────────────────────────────────────────────────
+  setTitle("DRU CLEAR™");
+  if (isAssessmentDomain) return <DruClearApp />;
+  if (isLoggedIn) {
+    window.location.replace(isAdmin ? "/admin" : "/portal");
+    return null;
+  }
+  return <Login />;
 }
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
