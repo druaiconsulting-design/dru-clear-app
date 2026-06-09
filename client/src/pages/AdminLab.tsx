@@ -223,7 +223,7 @@ export default function AdminLab() {
 
   return (
     <AdminLayout currentPath={window.location.pathname}>
-      <main style={{ padding: "2.5rem 1.5rem", maxWidth: 720, margin: "0 auto", width: "100%" }}>
+      <main style={{ padding: "2.5rem 1.5rem", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
 
         {/* ── Header ── */}
         <div style={{ marginBottom: "2rem" }}>
@@ -236,9 +236,12 @@ export default function AdminLab() {
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            SECTION 1 — Publish Monthly Lab Video (existing)
+            TWO-COLUMN GRID — Publish Lab + Upload to Bunny
         ══════════════════════════════════════════════════════════════════ */}
-        <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem", alignItems: "start" }}>
+
+        {/* ── SECTION 1 — Publish Monthly Lab Video ── */}
+        <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 12, padding: "1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>🎬</span>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, margin: 0 }}>
@@ -281,10 +284,8 @@ export default function AdminLab() {
           </button>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 2 — Upload Video to Bunny (new)
-        ══════════════════════════════════════════════════════════════════ */}
-        <div style={{ background: "rgba(27,77,142,0.04)", border: "1px solid rgba(27,77,142,0.18)", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
+        {/* ── SECTION 2 — Upload Video to Bunny ── */}
+        <div style={{ background: "rgba(27,77,142,0.04)", border: "1px solid rgba(27,77,142,0.18)", borderRadius: 12, padding: "1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>🎥</span>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, margin: 0 }}>
@@ -392,6 +393,8 @@ export default function AdminLab() {
             {uploadLabel()}
           </button>
         </div>
+
+        </div>{/* end 2-column grid */}
 
         {/* ══════════════════════════════════════════════════════════════════
             SECTION 3 — Video Library
