@@ -1,6 +1,7 @@
 // api/twin.ts
 // Vercel edge function — streaming Twin chat with on-demand agent routing
 // DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
+// FIX: filter empty assistant messages before sending to Anthropic (prevents 400 on failed-stream history)
 
 export const config = { runtime: "edge" };
 
@@ -103,7 +104,11 @@ export default async function handler(req: Request): Promise<Response> {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
 
-    const lastUserMessage: string = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user")?.content ?? "";
+    // ── FIX: strip any empty-content messages left behind by failed streams ──
+    const cleanMessages = (messages as { role: string; content: string }[])
+      .filter(m => m.content && m.content.trim() !== '');
+
+    const lastUserMessage: string = [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? "";
     const detection = await detectCommand(lastUserMessage, apiKey);
 
     if (detection?.is_command) {
@@ -135,7 +140,7 @@ FORMATTING RULES — strictly enforced:
 - Each paragraph should be 1 to 3 sentences`;
 
       const routingMessages = [
-        ...messages.slice(0, -1),
+        ...cleanMessages.slice(0, -1),
         { role: "user", content: `DeAnna just commanded: "${task}" — routed to ${agent_name}, moving through the full governance chain now. Respond in your full Twin voice across 3-4 short paragraphs with a blank line between each. First paragraph: what she just activated and who is on it. Second paragraph: what the agent is doing / what she's getting. Third paragraph: governance chain status and where it lands. Optional fourth: closing commanding line. No timelines. No "I will". Already executing.` },
       ];
 
@@ -156,7 +161,7 @@ FORMATTING RULES — strictly enforced:
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: systemPrompt || DEFAULT_SYSTEM, messages }),
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: systemPrompt || DEFAULT_SYSTEM, messages: cleanMessages }),
     });
 
     if (!anthropicRes.ok) {
