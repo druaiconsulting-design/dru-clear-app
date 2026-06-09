@@ -169,7 +169,7 @@ export default function Twin() {
         .chat-input::placeholder{color:rgba(10,35,66,.35)}
         .messages-scroll::-webkit-scrollbar{width:4px}
         .messages-scroll::-webkit-scrollbar-track{background:transparent}
-        .messages-scroll::-webkit-scrollbar-thumb{background:rgba(212,175,55,.2);border-radius:4px}
+        .messages-scroll::-webkit-scrollbar-thumb{background:rgba(10,35,66,.15);border-radius:4px}
       `}</style>
 
       <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,image/*" style={{ display: "none" }} onChange={handleFileSelect} />
@@ -211,7 +211,7 @@ export default function Twin() {
 
           {/* Messages */}
           {hasMessages && (
-            <div className="messages-scroll" style={{ background: "rgba(7,26,48,.85)", border: "1px solid rgba(212,175,55,.15)", borderRadius: 14, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1.25rem", maxHeight: "55vh", overflowY: "auto", marginBottom: ".75rem" }}>
+            <div className="messages-scroll" style={{ background: "#FAFAF8", border: "1px solid rgba(10,35,66,0.08)", borderRadius: 14, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1.25rem", maxHeight: "55vh", overflowY: "auto", marginBottom: ".75rem" }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-end", gap: ".6rem", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
                   {msg.role === "user" ? (
@@ -230,7 +230,7 @@ export default function Twin() {
                         ))}
                       </div>
                     )}
-                    <div style={{ padding: ".7rem 1rem", borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: msg.role === "user" ? "#C2185B" : "rgba(255,255,255,.07)", border: msg.role === "assistant" ? "1px solid rgba(212,175,55,.15)" : "none", color: "#fff", fontFamily: "'Inter',sans-serif", fontSize: ".85rem", lineHeight: 1.7, whiteSpace: "pre-wrap" as const }}>
+                    <div style={{ padding: ".7rem 1rem", borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: msg.role === "user" ? "#C2185B" : "#FFFFFF", border: msg.role === "assistant" ? "1px solid rgba(10,35,66,.1)" : "none", color: msg.role === "user" ? "#fff" : "#0A2342", fontFamily: "'Inter',sans-serif", fontSize: ".85rem", lineHeight: 1.7, whiteSpace: "pre-wrap" as const }}>
                       {msg.role === "assistant" && msg.content === "" && isStreaming ? (
                         <span style={{ display: "inline-flex", alignItems: "center", padding: ".1rem 0" }}>
                           <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
