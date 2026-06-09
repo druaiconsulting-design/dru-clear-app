@@ -45,6 +45,23 @@ export default function Twin() {
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
 
+  // Load persisted conversation on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('twin_conversation');
+      if (saved) setMessages(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  // Save conversation to localStorage on every message change
+  useEffect(() => {
+    try {
+      // Strip apiContent (base64 data) before saving — display only needs content + role
+      const saveable = messages.map(({ role, content, attachmentNames }) => ({ role, content, attachmentNames }));
+      localStorage.setItem('twin_conversation', JSON.stringify(saveable));
+    } catch {}
+  }, [messages]);
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const autoResize = (el: HTMLTextAreaElement) => {
@@ -283,9 +300,17 @@ export default function Twin() {
             </button>
           </div>
 
-          <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.25)", fontSize: ".58rem", textAlign: "center" as const, marginTop: ".5rem", letterSpacing: ".04em" }}>
-            Attach PDF · Word · Image · Text — up to 3 files · 15MB each
-          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: ".5rem", padding: "0 2px" }}>
+            <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.25)", fontSize: ".58rem", letterSpacing: ".04em", margin: 0 }}>
+              Attach PDF · Word · Image · Text — up to 3 files · 15MB each
+            </p>
+            {hasMessages && (
+              <button onClick={() => { setMessages([]); localStorage.removeItem('twin_conversation'); }}
+                style={{ background: "none", border: "none", fontFamily: "'Montserrat',sans-serif", fontSize: ".58rem", color: "rgba(10,35,66,.25)", cursor: "pointer", letterSpacing: ".04em", padding: 0 }}>
+                Clear conversation
+              </button>
+            )}
+          </div>
 
         </div>
       </div>
