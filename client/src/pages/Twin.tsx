@@ -18,7 +18,7 @@ interface Attachment {
 }
 
 const PROMPT_SUGGESTIONS = [
-  "Have Darius write today's LinkedIn post",
+  "Have Darius write today\'s LinkedIn post",
   "Ask Theo to design a slide deck concept",
   "Have Nia write a thought leadership article",
   "Ask Kwame to draft a client proposal outline",
@@ -157,7 +157,7 @@ export default function Twin() {
         .thinking-dot:nth-child(1){animation:twinkle 1.2s infinite 0s}
         .thinking-dot:nth-child(2){animation:twinkle 1.2s infinite .2s}
         .thinking-dot:nth-child(3){animation:twinkle 1.2s infinite .4s}
-        .prompt-btn { background:#FFFFFF;border:1px solid rgba(10,35,66,0.12);border-radius:10px;padding:.75rem 1rem;color:rgba(10,35,66,0.75);font-family:'Inter',sans-serif;font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:border-color .2s,background .2s,color .2s;width:100%; }
+        .prompt-btn { background:#FFFFFF;border:1px solid rgba(10,35,66,0.12);border-radius:10px;padding:.75rem 1rem;color:rgba(10,35,66,0.75);font-family:\'Inter\',sans-serif;font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:border-color .2s,background .2s,color .2s;width:100%; }
         .prompt-btn:hover { border-color:rgba(212,175,55,.6);background:rgba(212,175,55,.04);color:#0A2342; }
         .send-btn { width:42px;height:42px;border-radius:50%;background:#D4AF37;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,transform .15s; }
         .send-btn:hover:not(:disabled){background:#e8c44a;transform:scale(1.05)}
@@ -165,7 +165,7 @@ export default function Twin() {
         .attach-btn { width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(212,175,55,.25);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s,background .2s; }
         .attach-btn:hover{border-color:rgba(212,175,55,.6);background:rgba(212,175,55,.07)}
         .attach-btn:disabled{opacity:.4;cursor:not-allowed}
-        .chat-input { flex:1;background:transparent;border:none;outline:none;color:#0A2342;font-family:'Inter',sans-serif;font-size:.875rem;line-height:1.6;padding:0;resize:none;overflow-y:hidden;min-height:22px;max-height:150px;display:block; }
+        .chat-input { flex:1;background:transparent;border:none;outline:none;color:#0A2342;font-family:\'Inter\',sans-serif;font-size:.875rem;line-height:1.6;padding:0;resize:none;overflow-y:hidden;min-height:22px;max-height:150px;display:block; }
         .chat-input::placeholder{color:rgba(10,35,66,.35)}
         .messages-scroll::-webkit-scrollbar{width:4px}
         .messages-scroll::-webkit-scrollbar-track{background:transparent}
@@ -177,14 +177,14 @@ export default function Twin() {
       <div style={{ padding: "1.5rem 1rem 1.5rem", display: "flex", flexDirection: "column", alignItems: "center", width: "100%", boxSizing: "border-box" as const, fontFamily: "'Inter', sans-serif" }}>
         <div style={{ width: "100%", maxWidth: 660 }}>
 
-          {/* Header card — stays dark branded */}
+          {/* Header card */}
           <div style={{ background: "rgba(7,26,48,.9)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: ".875rem", marginBottom: hasMessages ? ".75rem" : "2rem" }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
-              <img src="/deanna-professional.png" alt="DeAnna AI Twin" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #D4AF37", display: "block" }} />
+              <img src="/deanna-professional.png" alt="DeAnna AI Twin" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #5DADE2", display: "block" }} />
               <span style={{ position: "absolute", bottom: 2, right: 2, width: 11, height: 11, borderRadius: "50%", background: "#22C55E", border: "2px solid #071A2E" }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: "'Cinzel',serif", color: "#FFFFFF", fontSize: "1rem", fontWeight: 700, margin: 0, letterSpacing: ".02em" }}>DeAnna's AI Twin</p>
+              <p style={{ fontFamily: "'Cinzel',serif", color: "#FFFFFF", fontSize: "1rem", fontWeight: 700, margin: 0, letterSpacing: ".02em" }}>DeAnna\'s AI Twin</p>
               <p style={{ fontFamily: "'Montserrat',sans-serif", color: "#D4AF37", fontSize: ".6rem", fontWeight: 700, letterSpacing: ".12em", margin: "3px 0 2px", textTransform: "uppercase" as const }}>Command Interface · DRU AI Consulting</p>
               <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(255,255,255,.4)", fontSize: ".6rem", margin: 0, letterSpacing: ".04em" }}>54 agents · 9 divisions · All at your command</p>
             </div>
@@ -209,7 +209,7 @@ export default function Twin() {
             </div>
           )}
 
-          {/* Messages — stays dark for chat readability */}
+          {/* Messages */}
           {hasMessages && (
             <div className="messages-scroll" style={{ background: "rgba(7,26,48,.85)", border: "1px solid rgba(212,175,55,.15)", borderRadius: 14, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1.25rem", maxHeight: "55vh", overflowY: "auto", marginBottom: ".75rem" }}>
               {messages.map((msg, i) => (
@@ -217,7 +217,7 @@ export default function Twin() {
                   {msg.role === "user" ? (
                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#C2185B", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: ".75rem", color: "#fff", flexShrink: 0 }}>D</div>
                   ) : (
-                    <img src="/deanna-professional.png" alt="Twin" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #D4AF37", flexShrink: 0 }} />
+                    <img src="/deanna-professional.png" alt="Twin" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #5DADE2", flexShrink: 0 }} />
                   )}
                   <div style={{ maxWidth: "75%" }}>
                     {msg.attachmentNames && msg.attachmentNames.length > 0 && (
