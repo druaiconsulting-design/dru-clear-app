@@ -7,8 +7,6 @@ import { supabase } from "../lib/supabase";
 const GHL_LAB_WEBHOOK_URL =
   "https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/70d21e5b-66f9-4aa0-8eac-5c59ed55fcaa";
 
-const DEANNA_UUID = "4db9a4ac-e0a3-4b17-be1c-732d5731bd29";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type VideoType  = "monthly" | "community";
@@ -99,15 +97,14 @@ export default function AdminLab() {
     setCommPublishing(true); setCommError(""); setCommPublished(false);
     try {
       const { error: dbError } = await supabase.from("community_posts").insert({
-        title:        commTitle.trim(),
-        content:      commText.trim(),
-        video_url:    commVideoUrl.trim(),
+        title:         commTitle.trim(),
+        content:       commText.trim(),
+        video_url:     commVideoUrl.trim(),
         tier_required: commTarget === "accelerator" ? "accelerator" : "navigator",
-        post_type:    "leadership_video",
-        user_id:      DEANNA_UUID,
-        agent_name:   "DeAnna Upshaw",
-        is_active:    true,
-        published_at: new Date().toISOString(),
+        post_type:     "leadership_video",
+        agent_name:    "DeAnna Upshaw",
+        is_active:     true,
+        published_at:  new Date().toISOString(),
       });
       if (dbError) throw dbError;
 
