@@ -178,18 +178,18 @@ export default function Twin() {
         <div style={{ width: "100%", maxWidth: 660 }}>
 
           {/* Header card */}
-          <div style={{ background: "rgba(7,26,48,.9)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: ".875rem", marginBottom: hasMessages ? ".75rem" : "2rem" }}>
+          <div style={{ background: "#FFFFFF", border: "1px solid rgba(93,173,226,0.2)", borderTop: "3px solid #5DADE2", borderRadius: 14, padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: ".875rem", marginBottom: hasMessages ? ".75rem" : "2rem", boxShadow: "0 1px 6px rgba(10,35,66,0.06)" }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
               <img src="/deanna-professional.png" alt="DeAnna AI Twin" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #5DADE2", display: "block" }} />
-              <span style={{ position: "absolute", bottom: 2, right: 2, width: 11, height: 11, borderRadius: "50%", background: "#22C55E", border: "2px solid #071A2E" }} />
+              <span style={{ position: "absolute", bottom: 2, right: 2, width: 11, height: 11, borderRadius: "50%", background: "#22C55E", border: "2px solid #FFFFFF" }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: "'Cinzel',serif", color: "#FFFFFF", fontSize: "1rem", fontWeight: 700, margin: 0, letterSpacing: ".02em" }}>DeAnna\'s AI Twin</p>
+              <p style={{ fontFamily: "'Cinzel',serif", color: "#0A2342", fontSize: "1rem", fontWeight: 700, margin: 0, letterSpacing: ".02em" }}>DeAnna\'s AI Twin</p>
               <p style={{ fontFamily: "'Montserrat',sans-serif", color: "#D4AF37", fontSize: ".6rem", fontWeight: 700, letterSpacing: ".12em", margin: "3px 0 2px", textTransform: "uppercase" as const }}>Command Interface · DRU AI Consulting</p>
-              <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(255,255,255,.4)", fontSize: ".6rem", margin: 0, letterSpacing: ".04em" }}>54 agents · 9 divisions · All at your command</p>
+              <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.4)", fontSize: ".6rem", margin: 0, letterSpacing: ".04em" }}>54 agents · 9 divisions · All at your command</p>
             </div>
             <div style={{ textAlign: "right" as const, flexShrink: 0 }}>
-              <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(255,255,255,.35)", fontSize: ".55rem", margin: "0 0 2px", letterSpacing: ".04em" }}>Powered by</p>
+              <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.35)", fontSize: ".55rem", margin: "0 0 2px", letterSpacing: ".04em" }}>Powered by</p>
               <p style={{ fontFamily: "'Cinzel',serif", color: "#D4AF37", fontSize: ".72rem", fontWeight: 700, margin: 0, letterSpacing: ".06em" }}>DRU CLEAR™</p>
             </div>
           </div>
