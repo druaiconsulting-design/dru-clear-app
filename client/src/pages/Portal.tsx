@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
 import AdminLayout from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -206,7 +207,7 @@ export default function Portal() {
       {showSupport && <SupportModal onClose={() => setShowSupport(false)} userEmail={user?.email} />}
 
       <AdminLayout currentPath={window.location.pathname}>
-        <main style={{ flex: 1, padding: "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
+        <main style={{ flex: 1, padding: isMobile() ? "1.25rem 1rem" : "2.5rem 1.5rem", maxWidth: 680, margin: "0 auto", width: "100%" }}>
 
           {/* Header */}
           <div style={{ marginBottom: "2rem" }}>
@@ -214,7 +215,7 @@ export default function Portal() {
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
               {user && <PortalAvatar user={user} />}
               <div>
-                <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
+                <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: isMobile() ? "1.5rem" : "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
                   {userDisplay.firstName
                     ? <>Welcome Back, <span style={{ color: "#D4AF37" }}>{userDisplay.firstName}</span></>
                     : <>Welcome Back</>}
@@ -228,7 +229,7 @@ export default function Portal() {
           </div>
 
           {/* 3 Quick action cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1.25rem" }}>
             {QUICK_ACTIONS.map((item) => {
               const isDaily = item.key === "daily";
               const cardStyle: React.CSSProperties = {

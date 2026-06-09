@@ -76,7 +76,10 @@ export default function Leaderboard({
   const getRowRank = (r: LeaderboardRow) => view === 'weekly' ? r.weekly_rank  : r.all_time_rank;
   const getRowPts  = (r: LeaderboardRow) => view === 'weekly' ? r.weekly_points : r.clarity_points;
   const medal      = (n: number) => n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : null;
-  const colTemplate = isAdmin ? '40px 1fr 110px 120px' : '40px 1fr 120px';
+  const mob = typeof window !== 'undefined' && window.innerWidth < 768;
+  const colTemplate = mob
+    ? (isAdmin ? '32px 1fr 70px 80px' : '32px 1fr 80px')
+    : (isAdmin ? '40px 1fr 110px 120px' : '40px 1fr 120px');
 
   const renderRow = (row: LeaderboardRow, isMe: boolean) => {
     const r   = getRowRank(row);
@@ -143,7 +146,7 @@ export default function Leaderboard({
   return (
     <div style={{ minHeight: '100dvh', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
-      <main style={{ flex: 1, padding: '40px 24px 80px' }}>
+      <main style={{ flex: 1, padding: mob ? '20px 12px 80px' : '40px 24px 80px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
           <button

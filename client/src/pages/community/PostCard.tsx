@@ -163,7 +163,7 @@ export default function PostCard({
 
   return (
     <div
-      style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderTop: `3px solid ${topBorderColor}`, borderRadius: '12px', padding: '28px 32px', animation: 'ccFadeIn 0.45s ease both', animationDelay: `${index * 55}ms`, boxShadow: cardShadow, transition: 'box-shadow 0.2s ease' }}
+      style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderTop: `3px solid ${topBorderColor}`, borderRadius: '12px', padding: typeof window !== 'undefined' && window.innerWidth < 768 ? '16px 14px' : '28px 32px', animation: 'ccFadeIn 0.45s ease both', animationDelay: `${index * 55}ms`, boxShadow: cardShadow, transition: 'box-shadow 0.2s ease' }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = cardShadowHover; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = cardShadow; }}
     >

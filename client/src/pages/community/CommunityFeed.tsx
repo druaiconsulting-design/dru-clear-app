@@ -171,7 +171,7 @@ export default function CommunityFeed({
 
   return (
     <div style={{ minHeight: '100%', background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
-      <main style={{ flex: 1, padding: '40px 24px 80px' }}>
+      <main style={{ flex: 1, padding: typeof window !== 'undefined' && window.innerWidth < 768 ? '20px 12px 80px' : '40px 24px 80px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
           {/* Page header */}
