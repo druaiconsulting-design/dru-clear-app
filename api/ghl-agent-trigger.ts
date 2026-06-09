@@ -1,9 +1,10 @@
-// DRU AI Leadership Ecosystem™ — api/ghl-agent-trigger.ts
-// 44 agents · 8 divisions (P9 Community Connection moved to cc-agent-trigger.ts)
-// Isabella: Sonnet calls sequential + DB writes sequential
-// runCommandLayer: FIXED — sequential processing to avoid 429 rate limits
-// Isabella 2.0: date filter (48hr window) + limit 25 per run
-// KNOWLEDGE INJECTION: getAgentKnowledge() inlined directly (no separate module)
+// api/ghl-agent-trigger.ts
+// 44 agents · 8 divisions (P9 Community Connection in cc-agent-trigger.ts)
+// Command chain split to separate files:
+//   Isabella  → api/cmd-isabella.ts
+//   Governance → api/cmd-governance.ts
+//   Command Layer → api/cmd-command-layer.ts
+//   Twin Synthesis → api/cmd-twin.ts
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
@@ -15,11 +16,8 @@ interface TriggerPayload { trigger_type: string; source?: string; [key: string]:
 interface ScoredLead { contact_id: string; name: string; email: string; phone: string; source: string; score: number; intent_level: 'high' | 'medium' | 'low'; recommended_action: string; notes: string; }
 interface OmarResult { success: boolean; total_leads_scanned: number; scored_leads: ScoredLead[]; high_intent_leads: ScoredLead[]; run_date: string; error?: string; }
 interface CSQItem { id: string; agent_id: string; agent_name: string; division: string; task: string; category: string; raw_output: string; priority: string; retry_count?: number; correction_notes?: string; parent_csq_id?: string; raymond_notes?: string; raymond_action?: string; raymond_priority?: string; travis_notes?: string; priya_notes?: string; governance_notes?: string; legal_notes?: string; isabella_flags?: string; compliance_score?: number; }
+
 const AGENT_ROUTES: Record<string, AgentRoute> = {
-  cron_isabella_review:           { agent_id: 'isabella',      agent_name: 'Isabella Moreno',  division: 'AI Governance',        task: 'trademark_compliance_review',   pipeline: 'cmd_isabella' },
-  cron_governance_legal_review:   { agent_id: 'governance',    agent_name: 'Governance Panel', division: 'AI Governance',        task: 'governance_panel_review',       pipeline: 'cmd_governance' },
-  cron_command_layer:             { agent_id: 'command_layer', agent_name: 'Executive Leadership', division: 'Command',          task: 'executive_review',              pipeline: 'cmd_command_layer' },
-  cron_twin_synthesis:            { agent_id: 'twin',          agent_name: "DeAnna's AI Twin", division: 'Command',              task: 'daily_synthesis_briefing',      pipeline: 'cmd_twin' },
   cron_omar_lead_score:           { agent_id: 'omar',     agent_name: 'Omar Patel',        division: 'Revenue, Growth & Sales', task: 'scan_score_route_leads',        pipeline: 'p1_omar' },
   cron_ryan_crm_update:           { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',     division: 'Revenue, Growth & Sales', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
   cron_serena_coaching:           { agent_id: 'serena',   agent_name: 'Serena Jackson',    division: 'Revenue, Growth & Sales', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
@@ -74,91 +72,6 @@ const AALIYAH_CC_ROUTING: Record<string, string> = {
   course_interest:     'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/EDVsKWuDioWGDHaI1K7S',
 };
 
-const INTERNAL_CATEGORIES = ['coaching','sales_support','lead_intelligence','proposals','product_knowledge','product_launch','digital_marketing','analytics_report','seo_sem','legal_briefing','expense_report','financial_report','tax_strategy','disclaimer_review','privacy_policy','contract_review','brand_monitoring','ai_intelligence','recruiting','onboarding','helpdesk','client_onboarding','community_management','feedback_coaching','creative_direction','course_architecture','presentation_design','video_production','issue_resolution','multichannel_comms'];
-const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement'];
-const SOCIAL_DIVISIONS = ['Content & Brand','Marketing'];
-
-function getDivisionCategory(division: string): string {
-  const map: Record<string,string> = {'Revenue, Growth & Sales':'revenue_growth','Content & Brand':'content_brand','Marketing':'marketing','Legal & Finance':'legal_finance','AI Governance':'ai_governance','HR':'hr','Client Delivery':'client_delivery','Customer Support':'customer_support','Community Connection':'community_connection'};
-  return map[division] ?? 'division_briefing';
-}
-function getPlatformLabel(category: string): string {
-  const map: Record<string,string> = {linkedin_post:'LinkedIn',instagram_post:'Instagram',facebook_post:'Facebook',twitter_post:'X',tiktok_post:'TikTok',youtube_post:'YouTube',social_post:'Social',content_creation:'Content',press_release:'Press',design_brief:'Design',localization:'Localization',copywriting:'Copy',email_marketing:'Email',outreach:'Outreach'};
-  return map[category] ?? 'Social';
-}
-function getDivisionPrompt(division: string, today: string, content: string): string {
-  const instructions: Record<string,string> = {
-    'Revenue, Growth & Sales': `Synthesize the Revenue, Growth & Sales division's work for today. Cover: lead intelligence (Omar/Ryan), sales support (Mateo), coaching insight (Serena), outreach created (Aaliyah), email campaign (Jaylen), copy asset (Chloe), launch readiness (Zara), product knowledge (Elena), proposal work (Kwame). 250-350 words. First person. Flag any high-intent leads or urgent pipeline actions.`,
-    'Content & Brand': `Synthesize the Content & Brand division's work. Cover: content queue strategy (Camila), design brief (Ravi), press release activity (Ingrid), localization work (Yara). Note: Darius King's post is in the Social Media card. 200-300 words. First person.`,
-    'Marketing': `Synthesize the Marketing division's strategic work. Cover: digital campaign status (Luca), analytics and funnel insights (Hyun-Ji), SEO/SEM priorities (Andre). Note: Nia's published content is in the Social Media card. 200-300 words. First person.`,
-    'Legal & Finance': `Synthesize the Legal & Finance division's weekly work. Cover: legal briefing highlights (Amara), expense health (Diego), financial projections (Yuki), business financial planning intelligence (Marcus). 200-300 words. First person. Flag anything requiring DeAnna's signature or financial decision.`,
-    'AI Governance': `Synthesize the AI Governance division's daily work. Cover: disclaimer status (Khalid), privacy compliance (Sofia), contract readiness (James), brand protection (Mei Lin), AI landscape intelligence (Rafael). 200-300 words. First person. Flag any compliance risks or urgent governance actions.`,
-    'HR': `Synthesize the HR division's daily work. Cover: recruiting pipeline (Naomi), onboarding readiness (Aiden), internal operations health (Fatima). 150-250 words. First person. Flag any staffing decisions or internal issues needing DeAnna's attention.`,
-    'Client Delivery': `Synthesize the Client Delivery division's work. Cover: client onboarding (Keisha), community engagement (Marco), feedback insights (Leila), creative production — Jordan orchestrating Simone/Theo/Amelia. 200-300 words. First person.`,
-    'Customer Support': `Synthesize the Customer Support division's work. Cover: support ticket status (Isaiah), multi-channel communication health (Priscilla). 150-250 words. First person. Flag any unresolved escalations.`,
-    'Community Connection': `Synthesize the Community Connection division's work. Cover: DRU CLEAR™ insights (Dominique/Elijah), 5D Leadership™ content (Solange/Isaiah Webb), 5C Cultural DNA™ posts (Nadia/Victor), AI Sales Mastery™ (Sasha/Tariq), community facilitation and upsell signals (Zoe/Micah). 200-300 words. First person.`,
-  };
-  const instruction = instructions[division] ?? `Synthesize this division's work. 200-300 words. First person.`;
-  return `You are DeAnna R. Upshaw's AI Twin synthesizing the ${division} division's work. Today: ${today}.
-BRAND: "AI Mastery. Leadership Clarity. Measurable Results."
-FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
-${division.toUpperCase()} DIVISION OUTPUTS:
-${content}
-${instruction}
-Write as DeAnna speaking to herself. Start with ## ${division}.`;
-}
-
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json(); return data.content?.[0]?.text ?? '';
-}
-async function callTwin(prompt: string, maxTokens = 2000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
-  if (!res.ok) throw new Error(`Twin error ${res.status}`);
-  const data = await res.json(); return data.content?.[0]?.text ?? '';
-}
-async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(record)});
-  if (!res.ok){console.error(`[csq] Write failed: ${await res.text()}`);return null;}
-  const data = await res.json(); return data?.[0]?.id ?? null;
-}
-async function writeApproval(record: Record<string,unknown>): Promise<string|null> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return null;
-  const res = await fetch(`${url}/rest/v1/approvals`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(record)});
-  if (!res.ok){console.error(`[approvals] Write failed: ${await res.text()}`);return null;}
-  const data = await res.json(); return data?.[0]?.id ?? null;
-}
-async function fetchBrandMarks(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return '';
-  const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return '';
-  const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
-}
-async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return [];
-  let query = `${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`;
-  if (afterDate) query += `&created_at=gte.${afterDate}`;
-  if (limit) query += `&limit=${limit}`;
-  const res = await fetch(query,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return []; return await res.json();
-}
-async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return;
-  await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(updates)});
-}
-
-// ─── Agent Knowledge Base (inline) ───────────────────────────────────────────
 const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
 const FRAMEWORK_KNOWLEDGE = `
 ## THE DRU AI TRANSFORMATION PATHWAY™
@@ -184,7 +97,6 @@ execution alignment system that CONNECTS all four frameworks into a unified stra
 ### 5C Cultural DNA™ — Culture | $6,000 | 3 sessions x 90 min
 Theme: Learn IT. Live IT. Lead IT. Leadership Thinking with AI.
 Most organizations don't have an AI problem — they have a CULTURE problem.
-Gives leaders a path to use AI as a strategic THINKING PARTNER — not a decision-maker.
 - COMMUNICATION: Foundation. How leaders and teams share vision and create clarity around AI.
 - CONNECTION: Relational layer. Trust and meaningful relationships that enable collaboration.
 - COLLABORATION: Action layer. Breaking silos so AI initiatives flow through the whole organization.
@@ -192,7 +104,6 @@ Gives leaders a path to use AI as a strategic THINKING PARTNER — not a decisio
 - CULTURE TRANSFORMATION: Outcome. From resistance and fear to ownership and strategic adoption.
 
 ### 5D Leadership™ — Leadership | $6,500 | 3 sessions x 90 min
-Focuses on the WHOLE leader — building from the inside out. NOT a skills program.
 An AI-infused methodology where personal mastery and strategic impact develop together.
 - I. SELF: Personal mastery. How a leader thinks, decides, and shows up.
 - II. PEOPLE: Relational intelligence. Connects with and develops the individuals around them.
@@ -201,7 +112,6 @@ An AI-infused methodology where personal mastery and strategic impact develop to
 - V. VISIONARY: Strategic impact. Sees beyond today, positions organization to lead.
 
 ### AI Sales Mastery™ — Sales | $6,000 | 3 sessions x 90 min
-Theme: Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.
 Combines DISC behavioral insights with AI. Selling stops feeling like selling.
 - HYPER-PERSONALIZED OUTREACH AT SCALE: Right person, right message, right time — every time.
 - SPEAK YOUR CLIENT'S DECISION LANGUAGE: DISC gives you the map. AI gives you the speed.
@@ -215,6 +125,42 @@ Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
 Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
 Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
 `;
+
+async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
+  const data = await res.json(); return data.content?.[0]?.text ?? '';
+}
+async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return null;
+  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(record)});
+  if (!res.ok){console.error(`[csq] Write failed: ${await res.text()}`);return null;}
+  const data = await res.json(); return data?.[0]?.id ?? null;
+}
+async function fetchBrandMarks(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return '';
+  const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return '';
+  const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
+}
+async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return [];
+  let query = `${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`;
+  if (afterDate) query += `&created_at=gte.${afterDate}`;
+  if (limit) query += `&limit=${limit}`;
+  const res = await fetch(query,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return []; return await res.json();
+}
+async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return;
+  await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(updates)});
+}
 async function getAgentKnowledge(): Promise<string> {
   let tmMarks: string[] = [];
   try {
@@ -237,7 +183,6 @@ REQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosyste
 ${FRAMEWORK_KNOWLEDGE}
 === END AGENT KNOWLEDGE BASE ===`.trim();
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500): Promise<string|null> {
   try {
@@ -245,18 +190,6 @@ async function runAgentToCSQ(agentId:string,agentName:string,division:string,tas
     const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}`,maxTokens);
     return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{})});
   } catch(error){console.error(`[${agentId}] Error:`,error);return null;}
-}
-async function runCorrectionAgent(item:CSQItem,correctionNotes:string,newRetryCount:number): Promise<void> {
-  try {
-    const agentKnowledge = await getAgentKnowledge();
-    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:
-CORRECTION NOTES: ${correctionNotes}
-YOUR PREVIOUS OUTPUT: ${item.raw_output}
-Produce a corrected version. All protected marks require TM — full list is in the knowledge base above.
-Output ONLY the corrected content. No compliance notes or metadata.`,1500);
-    await writeToCSQ({agent_id:item.agent_id,agent_name:item.agent_name,division:item.division,task:item.task,category:item.category,raw_output:output,priority:item.priority,status:'pending',retry_count:newRetryCount,parent_csq_id:item.id,correction_notes:correctionNotes});
-    console.log(`[isabella] Correction triggered for ${item.agent_name} (attempt ${newRetryCount})`);
-  } catch(error){console.error(`[isabella] Correction failed for ${item.agent_name}:`,error);}
 }
 
 // P1
@@ -287,14 +220,12 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
   const highIntentSummary = omarResult.high_intent_leads.map(l=>`* ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`).join('\n');
   const briefing = await callAnthropic(`${GENIUS_MODE}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing.\nDATA: Total:${omarResult.total_leads_scanned} | High-intent:${omarResult.high_intent_leads.length} | Medium:${omarResult.scored_leads.filter(l=>l.intent_level==='medium').length} | Low:${omarResult.scored_leads.filter(l=>l.intent_level==='low').length}\nHIGH-INTENT: ${highIntentSummary||'None today'}\nInclude: executive summary, high-intent leads with actions (all directed to assessment.druaiconsulting.com), CRM updates completed, strategic next steps.`);
   const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue, Growth & Sales',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:briefing,priority:omarResult.high_intent_leads.length>0?'high':'normal',status:'pending',retry_count:0});
-  // Write daily lead stats to stats table — powers Command Center stat cards
   const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (sbUrl&&sbKey){
     await Promise.all([
       fetch(`${sbUrl}/rest/v1/stats?id=eq.leads_scored_today`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:sbKey,Authorization:`Bearer ${sbKey}`,Prefer:'return=minimal'},body:JSON.stringify({value:omarResult.total_leads_scanned})}),
       fetch(`${sbUrl}/rest/v1/stats?id=eq.high_intent_today`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:sbKey,Authorization:`Bearer ${sbKey}`,Prefer:'return=minimal'},body:JSON.stringify({value:omarResult.high_intent_leads.length})}),
     ]);
-    console.log(`[ryan] Lead stats updated — scored:${omarResult.total_leads_scanned} high-intent:${omarResult.high_intent_leads.length}`);
   }
   return {csq_id,crm_updates:crmUpdates};
 }
@@ -439,7 +370,7 @@ async function runTheo(): Promise<string|null> {
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const assetType=dayOfWeek==='Monday'?'diagnostic_readout_template':dayOfWeek==='Wednesday'?'course_module_slides':dayOfWeek==='Friday'?'framework_visualization':'daily_presentation_asset';
   const assetInstructions:Record<string,string>={diagnostic_readout_template:`**Diagnostic Readout Template** — Slide structure for delivering Strategic Diagnostic™ or Executive Diagnostic™ results. Slides: executive summary, findings by pillar, DRU AI Transformation Pathway™ stage placement, recommendations, next steps.`,course_module_slides:`**Course Module Slide Deck** — Slide structure for one course module (5-8 slides). Title slide, learning objectives, 3 content slides with visual direction, one activity slide, summary/CTA slide.`,framework_visualization:`**Framework Visualization** — One-page visual representation of a DRU proprietary framework. Layout concept, key elements, color application (Navy/Gold/Magenta), typography guidance.`,daily_presentation_asset:`**Daily Presentation Asset** — One slide concept for the highest-priority presentation need today. Specify type, layout, content, visual direction.`};
-  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery','daily_presentation_design','presentation_design',`You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\nASSET TYPE: ${assetType}\n${assetInstructions[assetType]}\n**Today's Production Priority** — Single most impactful presentation asset to complete today.`,'normal',0,null,1500);
+  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery','daily_presentation_design','presentation_design',`You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\nASSET TYPE: ${assetType}\n${assetInstructions[assetType]}\n**Today's Production Priority** — Single most important presentation asset to complete today.`,'normal',0,null,1500);
 }
 async function runAmelia(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -468,199 +399,6 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
   } catch (error) { console.error(`[aaliyah_cc] Webhook failed for ${signalType}:`, error); }
 }
 
-// Command Chain — Isabella 2.0
-async function runIsabella(): Promise<{reviewed:number;cleared:number;sent_back:number;rejected:number}> {
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const pending=await getCSQItems('pending', 25, cutoff);
-  console.log(`[isabella] Reviewing ${pending.length} pending items (max 25, 48hr window, Sonnet sequential)...`);
-  if (pending.length===0) return {reviewed:0,cleared:0,sent_back:0,rejected:0};
-  let cleared=0; let sentBack=0; let rejected=0;
-  for (const item of pending){
-    try {
-      const raw=await callTwin(`${GENIUS_MODE}
-
-You are Isabella Moreno, Director of Compliance for DRU AI Consulting.
-
-RESPONSIBILITIES:
-1. Every DRU proprietary framework name must include ™
-2. Content stays within Classes 35, 41, 42
-3. Flag content outside these classes
-
-DRU PROPRIETARY MARKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
-
-BUSINESS NAME — NOT A TRADEMARK: 'DRU AI Consulting' is the registered business name. It does NOT require ™. Do NOT flag it.
-
-CLEARING STANDARD:
-- All marks with ™ AND content within Classes 35/41/42 → cleared:true
-- Missing ™ → cleared:false, state exactly which mark and where
-- Outside classes → cleared:false, state exactly what
-
-LEGAL & FINANCE EXCEPTION: Content from the Legal & Finance division is INTERNAL OPERATIONAL advisory for DeAnna only. Check ™ marks and service class usage as normal. Do NOT flag the surrounding operational subject matter as a class violation. If ™ marks are correct, return cleared:true.
-
-COMMUNITY CONNECTION EXCEPTION: Content from the Community Connection division is educational community content for Navigator and Accelerator subscribers. Framework lessons, action challenges, daily insights, strategic edge posts are firmly within Class 41 (educational) and Class 35 (community facilitation). UPSELL SIGNAL notes in Zoe and Micah outputs are internal routing instructions — do NOT flag them as class violations. If ™ marks are correct, return cleared:true.
-
-AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT: ${item.raw_output}
-
-Output ONLY this JSON:
-{"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
-OR: {"cleared":false,"flags":"specific issue","correction_notes":"Exact correction instruction"}`,600);
-      const result=JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0]??'null');
-      if (!result){console.error(`[isabella] No result for ${item.agent_name}`);continue;}
-      if (result.cleared){
-        cleared++;
-        await updateCSQ(item.id,{isabella_flags:result.flags??'none',isabella_cleared_at:new Date().toISOString(),status:'isabella_cleared'});
-      } else {
-        const retryCount=item.retry_count??0;
-        if (retryCount>=2){
-          rejected++;
-          await updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,governance_cleared:false,status:'rejected'});
-          console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
-        } else {
-          sentBack++;
-          await updateCSQ(item.id,{isabella_flags:result.flags,correction_notes:result.correction_notes,status:'needs_correction'});
-          await runCorrectionAgent(item,result.correction_notes,retryCount+1);
-          console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount+1})`);
-        }
-      }
-    } catch(error){console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`,error);}
-  }
-  console.log(`[isabella] ${pending.length} reviewed: ${cleared} cleared, ${sentBack} sent back, ${rejected} rejected`);
-  return {reviewed:pending.length,cleared,sent_back:sentBack,rejected};
-}
-
-// Command Chain — Governance Panel
-async function runGovernancePanel(): Promise<{reviewed:number;cleared:number;blocked:number}> {
-  const items=await getCSQItems('isabella_cleared');
-  console.log(`[governance] Reviewing ${items.length} Isabella-cleared items...`);
-  if (items.length===0) return {reviewed:0,cleared:0,blocked:0};
-  let cleared=0; let blocked=0;
-  const updates:Promise<void>[]=[];
-  for (const item of items){
-    try {
-      const isInternal=INTERNAL_CATEGORIES.includes(item.category);
-      const isClientFacing=CLIENT_FACING_CATEGORIES.includes(item.category);
-      let rulesBlock='';
-      if (isInternal){rulesBlock=`INTERNAL OPERATIONAL CONTENT. Goes to AI Twin only. Never published.\nBLOCK ONLY IF: (1) specific factual error misleading DeAnna, (2) false credential claim about DeAnna, (3) named contractual obligation, (4) false financial figure vs known pricing: Strategic Diagnostic $3,497 | Executive Diagnostic $4,997 | Course $1,497-$12,997.\nIf NONE present, MUST return cleared:true.`;}
-      else if (isClientFacing){rulesBlock=`CLIENT-FACING CONTENT. Will be published or sent to clients/community subscribers.\nBLOCK ONLY IF: (1) income guarantee without disclaimer, (2) false credential claim, (3) named privacy violation, (4) contractual guarantee creating legal liability, (5) false financial figure vs known pricing.\nIf NONE present, MUST return cleared:true.`;}
-      else{rulesBlock=`Unclassified. Apply internal rules. BLOCK ONLY IF factual error, false credential, named contractual obligation, or false financial figure. If NONE, MUST return cleared:true.`;}
-      const raw=await callAnthropic(`${GENIUS_MODE}\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella has already cleared trademark and service class compliance — FINAL. Do NOT re-check.\n${rulesBlock}\nAGENT: ${item.agent_name} | DIVISION: ${item.division} | CATEGORY: ${item.category} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON:\nIf cleared: {"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No blocking conditions present.","legal_notes":"No legal risk detected.","flags":"none"}\nIf blocked: {"cleared":false,"compliance_score":3,"governance_notes":"Condition violated: [exact text]","legal_notes":"[issue]","flags":"[exact phrase]"}`,800);
-      const result=JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0]??'null');
-      if (!result) throw new Error('Governance response unparseable');
-      if (result.cleared){cleared++;updates.push(updateCSQ(item.id,{governance_cleared:true,compliance_score:result.compliance_score??8,governance_notes:result.governance_notes??'',legal_notes:result.legal_notes??'',governance_flags:result.flags??'none',governance_cleared_at:new Date().toISOString(),status:'governance_cleared'}));}
-      else{blocked++;updates.push(updateCSQ(item.id,{governance_cleared:false,governance_notes:result.governance_notes??'Blocked',governance_flags:result.flags??'review_failed',governance_cleared_at:new Date().toISOString(),status:'rejected'}));}
-    } catch(error){console.error(`[governance] Failed item ${item.id}:`,error);blocked++;updates.push(updateCSQ(item.id,{governance_cleared:false,governance_notes:'Governance review failed.',governance_cleared_at:new Date().toISOString(),status:'governance_error'}));}
-  }
-  await Promise.all(updates);
-  console.log(`[governance] ${items.length} reviewed: ${cleared} cleared, ${blocked} blocked`);
-  return {reviewed:items.length,cleared,blocked};
-}
-
-// Command Chain — Command Layer
-async function runCommandLayer(): Promise<{reviewed:number}> {
-  const items=await getCSQItems('governance_cleared');
-  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (sequential to avoid rate limits)...`);
-  if (items.length===0) return {reviewed:0};
-  for (const item of items){
-    try {
-      const [rawRaymond,rawTravis,rawPriya]=await Promise.all([
-        callAnthropic(`${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Content cleared by Isabella and Governance. Assess strategic priority.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`,400),
-        callAnthropic(`${GENIUS_MODE}\nYou are Travis Weston, Assistant Chief of Staff for DRU AI Consulting. Package this for the AI Twin.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON: {"organized":true,"package_notes":"one sentence on how this fits today's briefing"}`,400),
-        callAnthropic(`${GENIUS_MODE}\nYou are Priya Sharma, Executive Assistant to DeAnna R. Upshaw. Flag anything time-sensitive or requiring DeAnna's personal action today.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nIn 1-2 sentences, add your executive perspective.`,200),
-      ]);
-      const raymond=JSON.parse(rawRaymond.match(/\{[\s\S]*\}/)?.[0]??'null');
-      const travis=JSON.parse(rawTravis.match(/\{[\s\S]*\}/)?.[0]??'null');
-      await updateCSQ(item.id,{raymond_reviewed:true,raymond_notes:raymond?.notes??'',raymond_priority:raymond?.priority??'normal',raymond_action:raymond?.action??'route_to_twin',travis_notes:travis?.package_notes??'',priya_notes:rawPriya.trim(),command_approved_at:new Date().toISOString(),status:'command_approved',priority:raymond?.priority??'normal'});
-    } catch(error){console.error(`[executive_leadership] Failed item ${item.id}:`,error);}
-  }
-  console.log(`[executive_leadership] ${items.length} items command-approved`);
-  return {reviewed:items.length};
-}
-
-// Command Chain — Twin Synthesis
-async function runTwinSynthesis(): Promise<{cards_created:number;items_synthesized:number}> {
-  const items=await getCSQItems('command_approved');
-  console.log(`[twin] Synthesizing ${items.length} command-approved items...`);
-  if (items.length===0){console.log('[twin] No items to synthesize today.');return {cards_created:0,items_synthesized:0};}
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const byDivision:Record<string,CSQItem[]>={};
-  for (const item of items){if (!byDivision[item.division]) byDivision[item.division]=[];byDivision[item.division].push(item);}
-  const [rejectedItems,correctionItems]=await Promise.all([getCSQItems('rejected'),getCSQItems('needs_correction')]);
-  const flagsByDivision:Record<string,string[]>={};
-  for (const r of rejectedItems){if (!flagsByDivision[r.division]) flagsByDivision[r.division]=[];flagsByDivision[r.division].push(`${r.agent_name} — REJECTED after max retries: ${r.isabella_flags??r.correction_notes??'compliance issue'}`);}
-  for (const c of correctionItems){if (!flagsByDivision[c.division]) flagsByDivision[c.division]=[];flagsByDivision[c.division].push(`${c.agent_name} — CORRECTION PENDING: ${c.correction_notes??c.isabella_flags??'compliance review'}`);}
-  const triggeredAt=new Date().toISOString();
-  const approvalMap:Record<string,string>={};
-  const allSummary=items.map(i=>`${i.agent_name} (${i.division}): ${i.raw_output.slice(0,150)}... Raymond: ${i.raymond_notes??''} | Priya: ${i.priya_notes??''}`).join('\n');
-
-  const dailyBriefingPromise=(async()=>{
-    const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (sbUrl&&sbKey){
-      const todayStart=new Date(); todayStart.setHours(0,0,0,0);
-      const chk=await fetch(`${sbUrl}/rest/v1/approvals?category=eq.daily_briefing&created_at=gte.${todayStart.toISOString()}&limit=1`,{headers:{apikey:sbKey,Authorization:`Bearer ${sbKey}`}});
-      if (chk.ok){const ex=await chk.json();if (Array.isArray(ex)&&ex.length>0){console.log('[twin] Daily briefing already exists for today — skipping duplicate');return;}}
-    }
-    await callTwin(`You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,1200)
-    .then(async synthesis=>{
-      const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division:'Command',task_brief:`Daily Briefing — ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:items.some(i=>i.priority==='high')?'high':'normal',category:'daily_briefing',platform:null});
-      if (id){approvalMap['Command']=id;}
-      console.log(`[twin] Daily Briefing card written`);
-    })
-    .catch(err=>{console.error('[twin] Daily Briefing synthesis failed:',err);});
-  })();
-
-  const divisionSynthesisPromises=Object.entries(byDivision).filter(([division])=>division!=='Community Connection').map(async([division,divItems])=>{
-    const content=divItems.map(i=>`**${i.agent_name}** (${i.task.replace(/_/g,' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes??''} | Travis: ${i.travis_notes??''} | Priya: ${i.priya_notes??''}`).join('\n\n---\n\n');
-    try {
-      const divFlags=flagsByDivision[division]??[];
-      const flagsSection=divFlags.length>0?`\n\nCOMPLIANCE FLAGS — include at end of card as "## Compliance Flags" section:\n${divFlags.map(f=>`- ${f}`).join('\n')}`:'';
-      const synthesis=await callTwin(getDivisionPrompt(division,today,content)+flagsSection,1500);
-      const id=await writeApproval({source:'twin_synthesis',trigger_type:'cron_twin_synthesis',agent_name:"DeAnna's AI Twin",agent_role:'Master Orchestrator',division,task_brief:`${division} — ${divItems.length} agent${divItems.length>1?'s':''} | ${today}`,output:synthesis,status:'pending',notify_deanna:true,priority:divItems.some(i=>i.priority==='high')?'high':'normal',category:getDivisionCategory(division),platform:null});
-      if (id){approvalMap[division]=id;console.log(`[twin] ${division} card written`);}
-    } catch(err){console.error(`[twin] ${division} synthesis failed:`,err);}
-  });
-
-  await Promise.all([dailyBriefingPromise,...divisionSynthesisPromises]);
-
-  const hasHighPriority=items.some(i=>i.priority==='high');
-  const commandApprovalId=approvalMap['Command']??null;
-  if (commandApprovalId){
-    const divisionCount=Object.keys(approvalMap).length;
-    const label=hasHighPriority?`🚨 HIGH ALERT — Intelligence Hub ready. ${divisionCount} division cards + 1 Daily Briefing. Action required.`:`Intelligence Hub is ready. ${divisionCount} division cards + 1 Daily Briefing waiting for review.`;
-    const webhookUrl=process.env.GHL_NOTIFICATION_WEBHOOK_URL;
-    if (webhookUrl){
-      try {
-        await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'druaiconsulting@gmail.com',phone:'+19796186671',first_name:'DeAnna',last_name:'Upshaw',agent_name:"DeAnna's AI Twin",division:'Command',task:'Daily Briefing',approval_id:commandApprovalId,summary:label,triggered_at:triggeredAt,review_url:'https://app.druaiconsulting.com/admin-approvals',sms_body:`DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,email_subject:`DRU AI Consulting — ${hasHighPriority?'🚨 High Alert — ':''}Intelligence Hub Ready`,email_body:`${label}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`})});
-        console.log(`[twin] ONE daily notification sent — ${hasHighPriority?'HIGH ALERT':'standard'}`);
-      } catch(error){console.warn('[twin] Daily notification failed (non-fatal):',error);}
-    }
-  }
-
-  for (const item of items){
-    if (SOCIAL_DIVISIONS.includes(item.division)&&CLIENT_FACING_CATEGORIES.includes(item.category)){
-      try {
-        let postContent=item.raw_output;
-        const complianceCutoffs=['## COMPLIANCE AUDIT','COMPLIANCE AUDIT','## Isabella','CORRECTION REQUIRED'];
-        for (const cutoff of complianceCutoffs){const idx=postContent.indexOf(cutoff);if (idx!==-1) postContent=postContent.slice(0,idx).trim();}
-        postContent=postContent.replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1');
-        postContent=postContent.split(/\n{2,}/).map((p:string)=>p.replace(/\n/g,' ').trim()).filter((p:string)=>p.length>0).join('\n\n');
-        const platformLabel=getPlatformLabel(item.category);
-        await writeApproval({source:`${item.agent_id}_social`,trigger_type:item.category,agent_name:item.agent_name,agent_role:item.division,division:item.division,task_brief:`${platformLabel} — ${item.agent_name} | ${today}`,output:postContent,status:'pending',notify_deanna:false,priority:'normal',category:'social',platform:platformLabel});
-        console.log(`[twin] Social card: ${item.agent_name} → ${platformLabel}`);
-      } catch(err){console.error(`[twin] Social card failed for ${item.agent_name}:`,err);}
-    }
-  }
-
-  for (const item of items){
-    const divisionApprovalId=approvalMap[item.division]??null;
-    await updateCSQ(item.id,{twin_processed:true,twin_synthesis:`Division card: ${item.division}`,approval_id:divisionApprovalId,twin_processed_at:new Date().toISOString(),status:'twin_processed'});
-  }
-
-  const cardsCreated=Object.keys(approvalMap).length;
-  console.log(`[twin] Synthesis complete — ${cardsCreated+1} division cards written`);
-  return {cards_created:cardsCreated+1,items_synthesized:items.length};
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req:any,res:any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin','*');
@@ -679,11 +417,7 @@ export default async function handler(req:any,res:any): Promise<void> {
   const triggeredAt=new Date().toISOString();
   console.log(`[ghl-agent-trigger] ${route.agent_name} | ${route.division} | ${sourceLabel}`);
 
-  if (route.pipeline==='cmd_isabella'){const r=await runIsabella();res.status(202).json({success:true,agent:route.agent_name,...r});}
-  else if (route.pipeline==='cmd_governance'){const r=await runGovernancePanel();res.status(202).json({success:true,agent:route.agent_name,...r});}
-  else if (route.pipeline==='cmd_command_layer'){const r=await runCommandLayer();res.status(202).json({success:true,agent:route.agent_name,...r});}
-  else if (route.pipeline==='cmd_twin'){const r=await runTwinSynthesis();res.status(202).json({success:true,agent:route.agent_name,...r});}
-  else if (route.pipeline==='p1_omar'){const omar=await runOmar();const ryan=await runRyan(omar);res.status(202).json({success:true,agent:route.agent_name,leads_scanned:omar.total_leads_scanned,high_intent:omar.high_intent_leads.length,crm_updates:ryan.crm_updates});}
+  if (route.pipeline==='p1_omar'){const omar=await runOmar();const ryan=await runRyan(omar);res.status(202).json({success:true,agent:route.agent_name,leads_scanned:omar.total_leads_scanned,high_intent:omar.high_intent_leads.length,crm_updates:ryan.crm_updates});}
   else if (route.pipeline==='p1_serena'){const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™ (Discover Diagnose Design Deploy Dominate), 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_mateo'){const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confident with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
