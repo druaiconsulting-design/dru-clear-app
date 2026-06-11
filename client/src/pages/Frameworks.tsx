@@ -106,11 +106,15 @@ const pRow        = { display: "flex", alignItems: "center", justifyContent: "sp
 const pRowGold    = { ...pRow, borderLeft: "3px solid #D4AF37" } as const;
 const pRowMag     = { ...pRow, borderLeft: "3px solid #C2185B" } as const;
 const pName       = { fontFamily: "'Playfair Display', serif", fontSize: "0.88rem", fontWeight: 600, color: "#0A2342", margin: "0 0 3px" } as const;
-const pSub        = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", color: "rgba(10,35,66,0.5)", margin: 0, lineHeight: 1.5 } as const;
+const pSub        = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.5)", margin: 0, lineHeight: 1.5 } as const;
 const pPrice      = { fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 700, color: "#D4AF37", whiteSpace: "nowrap" as const, textAlign: "right" as const } as const;
-const pMeta       = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.35)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
-const pReportTag  = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(10,35,66,0.05)", border: "1px solid rgba(10,35,66,0.12)", color: "rgba(10,35,66,0.5)" } as const;
-const anchorTag   = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.12)", color: "#D4AF37", marginRight: 5 } as const;
+const pMeta       = { fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.35)", textAlign: "right" as const, whiteSpace: "nowrap" as const } as const;
+const pReportTag  = { display: "inline-block", marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "rgba(10,35,66,0.05)", border: "1px solid rgba(10,35,66,0.12)", color: "rgba(10,35,66,0.5)" } as const;
+const anchorTag   = { display: "inline-block", fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(212,175,55,0.12)", color: "#D4AF37", marginRight: 5 } as const;
+
+// Step card wrappers
+const stepCardGold = { ...pSection, background: "#FFFFFF", border: "0.5px solid rgba(10,35,66,0.1)", borderLeft: "3px solid #D4AF37", borderRadius: 12, padding: "1.25rem" } as const;
+const stepCardMag  = { ...pSection, background: "#FFFFFF", border: "0.5px solid rgba(10,35,66,0.1)", borderLeft: "3px solid #C2185B", borderRadius: 12, padding: "1.25rem" } as const;
 
 type ModalConfig = { url: string; title: string } | null;
 
@@ -142,17 +146,21 @@ function PathwaySection() {
 }
 
 function StepPathwayLabel({ stages, colors }: { stages: string; colors: string[] }) {
-  const parts = stages.split(" + ");
+  const isMagenta = colors[0] === "#C2185B";
+  const hasMultiple = stages.includes("&");
   return (
-    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", color: "rgba(10,35,66,0.5)", marginTop: 2 }}>
-      Pathway Stage{parts.length > 1 ? "s" : ""}:{" "}
-      {parts.map((p, i) => (
-        <span key={p}>
-          <strong style={{ color: colors[i] || colors[0] }}>{p}</strong>
-          {i < parts.length - 1 && <span style={{ color: "rgba(10,35,66,0.4)" }}> + </span>}
-        </span>
-      ))}
-    </p>
+    <div style={{
+      display: "inline-block",
+      background: isMagenta ? "rgba(194,24,91,0.1)" : "rgba(212,175,55,0.12)",
+      border: `1px solid ${isMagenta ? "rgba(194,24,91,0.45)" : "rgba(212,175,55,0.45)"}`,
+      borderRadius: 20,
+      padding: "4px 14px",
+      marginBottom: 3,
+    }}>
+      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, color: colors[0] }}>
+        Pathway Stage{hasMultiple ? "s" : ""}: {stages}
+      </span>
+    </div>
   );
 }
 
@@ -230,17 +238,17 @@ export default function Frameworks() {
 
         {/* Strategic Outcomes */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(10,35,66,0.45)", fontWeight: 600, marginBottom: 10 }}>Strategic Outcomes</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(10,35,66,0.45)", fontWeight: 600, marginBottom: 10 }}>Strategic Outcomes</p>
           <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
             {["Innovation", "Effectiveness", "Integration", "Performance"].map((o) => (
-              <span key={o} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.5)", color: "#D4AF37" }}>{o}</span>
+              <span key={o} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.5)", color: "#D4AF37" }}>{o}</span>
             ))}
           </div>
         </div>
 
         {/* Hero */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your Investment in Transformation</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.75rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your Investment in Transformation</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.85rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.875rem" }}>Every transformation begins<br />with clarity.</h1>
           <p style={{ color: "rgba(10,35,66,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.8, maxWidth: 500, margin: "0 auto 1.5rem" }}>
             The DRU AI Transformation Pathway™ is a proven, sequential journey that moves you from awareness to full organizational activation. Every client walks the same five stages — no shortcuts, no skipped steps.
@@ -249,7 +257,7 @@ export default function Frameworks() {
         </div>
 
         {/* STEP 1 */}
-        <div style={pSection}>
+        <div style={stepCardGold}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 700, color: "#3a2e00" }}>1</span>
@@ -257,7 +265,7 @@ export default function Frameworks() {
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 600, color: "#0A2342", margin: 0 }}>Take the Assessment</p>
               <StepPathwayLabel stages="Discover" colors={["#D4AF37"]} />
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Uncover where you are and where you want to be</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Uncover where you are and where you want to be</p>
             </div>
             <div style={pDivider} />
           </div>
@@ -271,15 +279,15 @@ export default function Frameworks() {
         </div>
 
         {/* STEP 2 */}
-        <div style={pSection}>
+        <div style={stepCardGold}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 700, color: "#3a2e00" }}>2</span>
             </div>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 600, color: "#0A2342", margin: 0 }}>Complete Your Diagnostic</p>
-              <StepPathwayLabel stages="Diagnose + Design" colors={["#D4AF37", "#D4AF37"]} />
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Required investment to move forward in the pathway</p>
+              <StepPathwayLabel stages="Diagnose & Design" colors={["#D4AF37"]} />
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Required investment to move forward in the pathway</p>
             </div>
             <div style={pDivider} />
           </div>
@@ -317,22 +325,22 @@ export default function Frameworks() {
         </div>
 
         {/* STEP 3 */}
-        <div style={{ ...pSection, marginTop: "1.5rem" }}>
+        <div style={{ ...stepCardMag, marginTop: "1.5rem" }}>
           <div style={pStepHeader}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#C2185B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.8rem", fontWeight: 700, color: "#FFFFFF" }}>3</span>
             </div>
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", fontWeight: 600, color: "#0A2342", margin: 0 }}>Activate Your Transformation</p>
-              <StepPathwayLabel stages="Deploy + Dominate" colors={["#C2185B", "#C2185B"]} />
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Post-diagnostic · Virtual delivery</p>
+              <StepPathwayLabel stages="Deploy & Dominate" colors={["#C2185B"]} />
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.4)", marginTop: 1 }}>Post-diagnostic · Virtual delivery</p>
             </div>
             <div style={pDivider} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Individual Frameworks</p>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(10,35,66,0.35)", fontStyle: "italic", margin: 0 }}>See Detail Below</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Individual Frameworks</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.35)", fontStyle: "italic", margin: 0 }}>See Detail Below</p>
           </div>
           {[
             { name: "DRU CLEAR™",       sub: "Flagship · Connects all 4 frameworks", price: "$7,500", gold: true },
@@ -353,8 +361,8 @@ export default function Frameworks() {
           ))}
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Bundles</p>
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.35)", fontStyle: "italic", margin: 0 }}>Available after your diagnostic session</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Bundles</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.35)", fontStyle: "italic", margin: 0 }}>Available after your diagnostic session</p>
           </div>
           <div style={pRowMag}>
             <div style={{ flex: 1 }}>
@@ -384,7 +392,7 @@ export default function Frameworks() {
         <div style={{ textAlign: "center", padding: "2rem 1.5rem", background: "#FFFFFF", borderRadius: 12, border: "1px solid rgba(10,35,66,0.1)", marginBottom: "3rem" }}>
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", color: "#0A2342", fontWeight: 600, marginBottom: 8 }}>Every journey starts with the assessment.</p>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(10,35,66,0.55)", lineHeight: 1.75, marginBottom: 20 }}>Discover your gaps. See where you are.<br />Define where you are destined to be.</p>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(10,35,66,0.45)", marginBottom: 14 }}>Choose Your Diagnostic</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(10,35,66,0.45)", marginBottom: 14 }}>Choose Your Diagnostic</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360, margin: "0 auto" }}>
             <button onClick={() => openModal(PAYMENT_EXECUTIVE_URL, "Executive Diagnostic — $4,997")} style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.875rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
               Book Executive Diagnostic →
@@ -419,7 +427,7 @@ export default function Frameworks() {
               </div>
               <div style={{ padding: "1.25rem 1.5rem" }}>
                 <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.35rem", fontWeight: 700, marginBottom: "0.25rem" }}>{fw.name}</h2>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.7rem", letterSpacing: "0.06em", marginBottom: fw.theme ? "0.4rem" : "1rem" }}>{fw.tagline}</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.75rem", letterSpacing: "0.06em", marginBottom: fw.theme ? "0.4rem" : "1rem" }}>{fw.tagline}</p>
                 {fw.theme && <p style={{ fontFamily: "'Inter', sans-serif", color: "#D4AF37", fontSize: "0.75rem", fontStyle: "italic", marginBottom: "1rem", opacity: 0.85 }}>{fw.theme}</p>}
                 {fw.intro.split("\n\n").map((para, i) => (
                   <p key={i} style={{ color: "rgba(10,35,66,0.75)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.75, marginBottom: "0.875rem" }}>{para}</p>
@@ -441,8 +449,23 @@ export default function Frameworks() {
                   </div>
                 )}
                 <div style={{ marginBottom: "1.25rem" }}>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Ideal for</p>
                   <p style={{ color: "rgba(10,35,66,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", lineHeight: 1.6 }}>{fw.whoFor}</p>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "0.875rem", marginBottom: "1rem" }}>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(10,35,66,0.4)", marginBottom: "0.5rem" }}>Investment</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderTop: "0.5px solid rgba(10,35,66,0.1)" }}>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>Framework Investment</span>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#D4AF37", fontWeight: 600 }}>{fw.price}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderTop: "0.5px solid rgba(10,35,66,0.1)" }}>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>Sessions</span>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.7)" }}>3 sessions · 90 min · Virtual</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderTop: "0.5px solid rgba(10,35,66,0.1)" }}>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>Required First Step</span>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.7)" }}>Diagnostic session (SD or ED)</span>
+                  </div>
                 </div>
                 <button onClick={() => openModal(fw.paymentUrl, `${fw.name} — ${fw.price}`)} style={{ display: "block", width: "100%", background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.75rem 1rem", borderRadius: 6, border: "none", cursor: "pointer" }}>
                   Get Started →
@@ -454,7 +477,7 @@ export default function Frameworks() {
 
         {/* In-person */}
         <div style={{ marginTop: "2rem", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "1.25rem 1.5rem", textAlign: "center" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Engagement Pricing</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>In-Person Engagement Pricing</p>
           <p style={{ color: "rgba(10,35,66,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>Available for on-site facilitation. Custom pricing varies with team size, location, and scope.</p>
           <button onClick={() => openModal(CALENDAR_INPERSON_URL, "In-Person Engagement — Schedule a Call")} style={{ background: "transparent", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", border: "none", cursor: "pointer", padding: 0 }}>
             Schedule a Call Today! →
