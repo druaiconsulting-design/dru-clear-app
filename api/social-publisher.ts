@@ -1,5 +1,5 @@
 // api/social-publisher.ts
-// Vercel edge function — sends approved LinkedIn post to Make.com → LinkedIn
+// Vercel edge function — sends approved social post to Make.com → LinkedIn, Facebook, Instagram
 export const config = { runtime: "edge" };
 
 export default async function handler(req: Request) {
@@ -13,7 +13,7 @@ export default async function handler(req: Request) {
     return new Response("ok", { headers: CORS });
   }
 
-  const { content, platform, approval_id } = await req.json();
+  const { content, platform, approval_id, video_url, image_url } = await req.json();
 
   const makeWebhookUrl = process.env.MAKE_LINKEDIN_WEBHOOK_URL;
   if (!makeWebhookUrl) {
@@ -29,9 +29,11 @@ export default async function handler(req: Request) {
     body: JSON.stringify({
       post_content: content,
       agent_name:   "Darius King",
-      category:     "linkedin_post",
+      category:     "social_post",
       platform,
       approval_id,
+      video_url:    video_url  ?? null,
+      image_url:    image_url  ?? null,
     }),
   });
 
