@@ -17,6 +17,8 @@ interface Approval {
   status: ApprovalStatus; ghl_contact_id: string | null; notify_deanna: boolean;
   priority: Priority; category: string; platform: string | null;
   context: string | null; archived: boolean;
+  video_url: string | null;
+  image_url: string | null;
 }
 
 interface FlaggedComment {
@@ -250,6 +252,13 @@ export default function AdminApprovals() {
   const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([]);
   const [flaggedLoading, setFlaggedLoading]   = useState(true);
   const [savingComment, setSavingComment]     = useState<string | null>(null);
+  const [mediaUrls, setMediaUrls]             = useState<Record<string, { video_url: string; image_url: string }>>({});
+
+  const getMediaUrls = (id: string, approval?: Approval) =>
+    mediaUrls[id] ?? { video_url: approval?.video_url || '', image_url: approval?.image_url || '' };
+
+  const setMediaUrl = (id: string, field: 'video_url' | 'image_url', value: string) =>
+    setMediaUrls(prev => ({ ...prev, [id]: { ...getMediaUrls(id), [field]: value } }));
 
   const fetchApprovals = async () => {
     const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
@@ -330,15 +339,35 @@ export default function AdminApprovals() {
 
   const handleApprove = async (id: string) => {
     setSaving(id);
-    const { error } = await supabase.from("approvals").update({ status: "approved" }).eq("id", id);
-    if (error) { setSaving(null); return; }
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
+    const media = getMediaUrls(id, approval);
+
+    const updatePayload: Record<string, any> = { status: "approved" };
+    if (approval.category === "social") {
+      if (media.video_url) updatePayload.video_url = media.video_url;
+      if (media.image_url) updatePayload.image_url = media.image_url;
+    }
+
+    const { error } = await supabase.from("approvals").update(updatePayload).eq("id", id);
+    if (error) { setSaving(null); return; }
+
     const content = approval.edited_output || approval.output;
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      try { const res = await fetch("/api/social-publisher", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content, platform: approval.platform, approval_id: id }) }); setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" })); }
-      catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+      try {
+        const res = await fetch("/api/social-publisher", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            content,
+            platform: approval.platform,
+            approval_id: id,
+            video_url: media.video_url || null,
+            image_url: media.image_url || null,
+          })
+        });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postToCommunity(approval, content);
@@ -377,14 +406,34 @@ export default function AdminApprovals() {
   const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
   const handleEditSave  = async (id: string) => {
     setSaving(id);
-    await supabase.from("approvals").update({ edited_output: editText, status:"approved" }).eq("id", id);
-    setEditingId(null);
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
+    const media = getMediaUrls(id, approval);
+
+    const updatePayload: Record<string, any> = { edited_output: editText, status: "approved" };
+    if (approval.category === "social") {
+      if (media.video_url) updatePayload.video_url = media.video_url;
+      if (media.image_url) updatePayload.image_url = media.image_url;
+    }
+
+    await supabase.from("approvals").update(updatePayload).eq("id", id);
+    setEditingId(null);
+
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      try { const res = await fetch("/api/social-publisher", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content: editText, platform: approval.platform, approval_id: id }) }); setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" })); }
-      catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+      try {
+        const res = await fetch("/api/social-publisher", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            content: editText,
+            platform: approval.platform,
+            approval_id: id,
+            video_url: media.video_url || null,
+            image_url: media.image_url || null,
+          })
+        });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postToCommunity(approval, editText);
@@ -601,13 +650,15 @@ export default function AdminApprovals() {
               const isCCPost      = approval.category === "community_post";
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = !isApprovalCard(approval);
+              const isSocial      = approval.category === "social";
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
               const hasConversation = !!approval.context && approval.context !== "null";
+              const currentMedia  = getMediaUrls(approval.id, approval);
 
               return (
                 <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.35)" : isCCPost ? "rgba(45,90,142,0.35)" : isKnowledge ? "rgba(10,35,66,0.12)" : approval.status === "pending" ? "rgba(212,175,55,0.25)" : "rgba(10,35,66,0.08)"}`, background: approval.status !== "pending" ? "rgba(10,35,66,0.02)" : isPostTrigger ? "rgba(194,24,91,0.03)" : isCCPost ? "rgba(45,90,142,0.03)" : isKnowledge ? "rgba(10,35,66,0.02)" : "#FFFFFF", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
 
-                  {/* Card Header — stays dark */}
+                  {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
@@ -618,6 +669,11 @@ export default function AdminApprovals() {
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
+                      {isSocial && (currentMedia.video_url || currentMedia.image_url) && (
+                        <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(76,175,80,0.15)", border:"1px solid rgba(76,175,80,0.4)", color:"#4CAF50" }}>
+                          {currentMedia.video_url ? "📹 Video" : "🖼 Image"} Ready
+                        </span>
+                      )}
                       {hasConversation && !qs.open && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.1)", border:"1px solid rgba(212,175,55,0.3)", color:"rgba(212,175,55,0.8)" }}>💬 Conversation saved</span>}
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
@@ -646,6 +702,42 @@ export default function AdminApprovals() {
                       )}
                     </div>
                   </div>
+
+                  {/* Media URLs — social posts only */}
+                  {isSocial && approval.status === "pending" && (
+                    <div style={{ padding:"0 1rem 0.875rem" }}>
+                      <div style={{ background:"rgba(10,35,66,0.02)", border:"1px solid rgba(10,35,66,0.08)", borderRadius:8, padding:"0.75rem 1rem" }}>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.625rem", margin:"0 0 0.625rem" }}>Media · Optional</p>
+                        <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.4rem" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
+                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:76, flexShrink:0 }}>Video URL</span>
+                            <input
+                              type="text"
+                              value={currentMedia.video_url}
+                              onChange={e => setMediaUrl(approval.id, 'video_url', e.target.value)}
+                              placeholder={`https://vz-65fe52c5-439.b-cdn.net/[video-guid]/play_720p.mp4`}
+                              style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.video_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
+                            />
+                          </div>
+                          <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
+                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:76, flexShrink:0 }}>Image URL</span>
+                            <input
+                              type="text"
+                              value={currentMedia.image_url}
+                              onChange={e => setMediaUrl(approval.id, 'image_url', e.target.value)}
+                              placeholder={`https://vz-65fe52c5-439.b-cdn.net/[video-guid]/thumbnail.jpg`}
+                              style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.image_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
+                            />
+                          </div>
+                        </div>
+                        {currentMedia.image_url && (
+                          <div style={{ marginTop:"0.5rem" }}>
+                            <img src={currentMedia.image_url} alt="Preview" onError={e => (e.currentTarget.style.display = 'none')} style={{ height:56, borderRadius:4, border:"1px solid rgba(10,35,66,0.1)", objectFit:"cover" as const }} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Lead Direction */}
                   {isLead && approval.status === "pending" && editingId !== approval.id && (
@@ -733,7 +825,7 @@ export default function AdminApprovals() {
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
                           <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
-                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : "Approve ✓"}
+                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
                           </button>
                         </>
                       )}
