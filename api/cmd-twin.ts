@@ -2,6 +2,7 @@
 // AI Twin Synthesis — runs daily at 18:40 UTC via dru-twin-synthesis-daily
 // Picks up command_approved items, synthesizes division cards + daily briefing
 // Fires ONE GHL notification to DeAnna when complete
+// PHASE 2: Detects Darius multi-platform JSON → populates linkedin_content, facebook_content, instagram_caption
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
@@ -16,6 +17,14 @@ interface CSQItem {
   task: string; category: string; raw_output: string; priority: string;
   retry_count?: number; raymond_notes?: string; travis_notes?: string;
   priya_notes?: string; isabella_flags?: string; correction_notes?: string;
+}
+
+interface MultiPlatformPost {
+  linkedin_content: string;
+  facebook_content: string;
+  instagram_caption: string;
+  hook?: string;
+  content_type?: string;
 }
 
 async function callTwin(prompt: string, maxTokens = 2000): Promise<string> {
@@ -85,6 +94,23 @@ function getPlatformLabel(category: string): string {
     localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
   };
   return map[category] ?? 'Social';
+}
+
+function tryParseMultiPlatform(rawOutput: string): MultiPlatformPost | null {
+  try {
+    const jsonStr = rawOutput.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    if (
+      typeof parsed.linkedin_content === 'string' &&
+      typeof parsed.facebook_content === 'string' &&
+      typeof parsed.instagram_caption === 'string'
+    ) {
+      return parsed as MultiPlatformPost;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function getDivisionPrompt(division: string, today: string, content: string): string {
@@ -215,23 +241,44 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
   }
 
   // Social media approval cards
+  // PHASE 2: Detect Darius multi-platform JSON → populate new columns
+  // Backward compat: all other agents continue using single-platform string flow
   for (const item of items) {
     if (SOCIAL_DIVISIONS.includes(item.division) && CLIENT_FACING_CATEGORIES.includes(item.category)) {
       try {
-        let postContent = item.raw_output;
-        const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
-        for (const cutoff of complianceCutoffs) { const idx = postContent.indexOf(cutoff); if (idx !== -1) postContent = postContent.slice(0, idx).trim(); }
-        postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
-        postContent = postContent.split(/\n{2,}/).map((p: string) => p.replace(/\n/g, ' ').trim()).filter((p: string) => p.length > 0).join('\n\n');
-        const platformLabel = getPlatformLabel(item.category);
-        await writeApproval({
-          source: `${item.agent_id}_social`, trigger_type: item.category,
-          agent_name: item.agent_name, agent_role: item.division, division: item.division,
-          task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
-          output: postContent, status: 'pending', notify_deanna: false,
-          priority: 'normal', category: 'social', platform: platformLabel,
-        });
-        console.log(`[twin] Social card: ${item.agent_name} → ${platformLabel}`);
+        const multiPlatform = tryParseMultiPlatform(item.raw_output);
+
+        if (multiPlatform) {
+          // Multi-platform card — Darius Phase 2 structured output
+          await writeApproval({
+            source: `${item.agent_id}_social`, trigger_type: item.category,
+            agent_name: item.agent_name, agent_role: item.division, division: item.division,
+            task_brief: `Social — ${item.agent_name} | ${today}`,
+            output: multiPlatform.linkedin_content,
+            linkedin_content: multiPlatform.linkedin_content,
+            facebook_content: multiPlatform.facebook_content,
+            instagram_caption: multiPlatform.instagram_caption,
+            status: 'pending', notify_deanna: false,
+            priority: 'normal', category: 'social', platform: 'LinkedIn',
+          });
+          console.log(`[twin] Multi-platform social card: ${item.agent_name} (LinkedIn + Facebook + Instagram)`);
+        } else {
+          // Single-platform card — existing behavior for all other agents
+          let postContent = item.raw_output;
+          const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
+          for (const cutoff of complianceCutoffs) { const idx = postContent.indexOf(cutoff); if (idx !== -1) postContent = postContent.slice(0, idx).trim(); }
+          postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+          postContent = postContent.split(/\n{2,}/).map((p: string) => p.replace(/\n/g, ' ').trim()).filter((p: string) => p.length > 0).join('\n\n');
+          const platformLabel = getPlatformLabel(item.category);
+          await writeApproval({
+            source: `${item.agent_id}_social`, trigger_type: item.category,
+            agent_name: item.agent_name, agent_role: item.division, division: item.division,
+            task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
+            output: postContent, status: 'pending', notify_deanna: false,
+            priority: 'normal', category: 'social', platform: platformLabel,
+          });
+          console.log(`[twin] Social card: ${item.agent_name} → ${platformLabel}`);
+        }
       } catch (err) { console.error(`[twin] Social card failed for ${item.agent_name}:`, err); }
     }
   }
