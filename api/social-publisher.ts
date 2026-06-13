@@ -121,7 +121,7 @@ export default async function handler(req: Request) {
         is_active:        true,
       };
 
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseUrl = "https://dsflijqygsegonwxauce.supabase.co";
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
       await fetch(`${supabaseUrl}/rest/v1/social_assets`, {
