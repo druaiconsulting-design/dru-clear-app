@@ -184,6 +184,28 @@ ${FRAMEWORK_KNOWLEDGE}
 === END AGENT KNOWLEDGE BASE ===`.trim();
 }
 
+// CROSS-READ HELPER — reads recent CSQ outputs from specified agents
+// Used by Camila and Nia to ground their outputs in live ecosystem intelligence
+async function getCrossRead(agentIds: string[], days = 7): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceDate = since.toISOString().split('T')[0];
+    const idList = agentIds.join(',');
+    const query = `${url}/rest/v1/chief_of_staff_queue?agent_id=in.(${idList})&run_date=gte.${sinceDate}&order=created_at.desc&limit=12&select=agent_name,division,raw_output,run_date`;
+    const res = await fetch(query, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!res.ok) return '';
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return '';
+    return (data as Record<string, string>[]).map(item =>
+      `[${item.agent_name} — ${item.run_date}]\n${(item.raw_output || '').slice(0, 450)}`
+    ).join('\n\n---\n\n');
+  } catch { return ''; }
+}
+
 async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500): Promise<string|null> {
   try {
     const agentKnowledge = await getAgentKnowledge();
@@ -231,16 +253,32 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
 }
 
 // P2
-async function runCamila(): Promise<number> {
-  const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return 0;
-  const now=new Date(); const monday=new Date(now); monday.setDate(now.getDate()-now.getDay()+1); monday.setHours(0,0,0,0);
-  const weekOf=monday.toISOString().split('T')[0];
-  const days=[1,2,3,4,5].map(d=>{const date=new Date(monday);date.setDate(monday.getDate()+d-1);return{day_number:d,scheduled_for:date.toISOString().split('T')[0]};});
-  const text = await callAnthropic(`${GENIUS_MODE}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting. Frameworks (always ™): DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nGenerate 5 LinkedIn posts (Mon-Fri). Day 1:thought_leadership|Day 2:educational|Day 3:engagement|Day 4:story_insight|Day 5:soft_promotional. Each: compelling hook, 150-250 words, one framework, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nReturn ONLY valid JSON: [{"day_number":1,"framework_covered":"DRU CLEAR™","post_type":"thought_leadership","hook":"...","content":"...","hashtags":"#AILeadership"}]`,3000);
-  const posts=JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim());
-  for (const post of posts){const day=days.find(d=>d.day_number===post.day_number)??days[0];await fetch(`${url}/rest/v1/content_queue`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({week_of:weekOf,day_number:post.day_number,scheduled_for:day.scheduled_for,platform:'linkedin',framework_covered:post.framework_covered,post_type:post.post_type,hook:post.hook,content:post.content,hashtags:post.hashtags,status:'queued'})});}
-  return posts.length;
+// FIXED: Camila now writes to CSQ like all other agents — full chain (Isabella → Governance → Command Layer → Twin)
+// PHASE 3: Reads ecosystem intelligence from Revenue, Client Delivery, and Analytics before generating
+// content_queue write removed — everything flows through CSQ
+async function runCamila(): Promise<string|null> {
+  const ecosystemIntel = await getCrossRead(['ryan','serena','keisha','leila','hyunji']);
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const brandMarks=await fetchBrandMarks();
+  return await runAgentToCSQ(
+    'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
+    `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI." Today: ${today}.
+TRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}
+SERVICE CLASS RULES: Classes 35, 41, 42 only.
+
+ECOSYSTEM INTELLIGENCE THIS WEEK — read from your team before writing. Use these real signals to inform content themes, angles, and language that resonates with actual pipeline activity and client context. Do not invent scenarios when real ones are available:
+${ecosystemIntel || 'No prior intelligence available — use framework rotation.'}
+
+Generate this week's LinkedIn content strategy brief. Include:
+- This week's overarching theme and positioning angle based on ecosystem signals
+- Day-by-day content direction (Mon–Fri): post type, framework focus, hook direction, audience angle
+- Key messages to amplify based on what Revenue, Client Delivery, and Analytics are surfacing
+- Framework rotation plan ensuring all 4 frameworks get coverage across the week (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™)
+- CTA alignment: all posts drive to assessment.druaiconsulting.com
+
+Write as a strategic brief that Darius King can execute from. Be specific about angles, not generic. Every framework reference must include ™.`,
+    'normal',0,null,2000
+  );
 }
 
 // PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON
@@ -301,14 +339,17 @@ async function runRavi(): Promise<string|null> {
 }
 
 // P3
+// PHASE 3 UPDATED: Nia reads Client Delivery + Revenue intelligence before generating
+// Grounds content in real client experiences and pipeline signals — not invented scenarios
 async function runNia(): Promise<string|null> {
   const brandMarks=await fetchBrandMarks();
+  const clientIntel = await getCrossRead(['keisha','leila','ryan']);
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const contentTypeMap:Record<string,string>={Monday:'thought_leadership_article',Tuesday:'framework_explainer',Wednesday:'executive_faq_guide',Thursday:'client_transformation_story',Friday:'trend_analysis_piece'};
   const contentType=contentTypeMap[dayOfWeek]??'thought_leadership_article';
   const contentInstructions:Record<string,string>={thought_leadership_article:`Write a 600-800 word thought leadership article positioning DeAnna R. Upshaw as the AI Authority. Compelling headline, 3-4 sections, one DRU framework reference, CTA to assessment.druaiconsulting.com.`,framework_explainer:`Write a 500-700 word framework explainer for one of DeAnna's proprietary frameworks. What it is, why it matters, core components, real-world application, CTA to assessment.druaiconsulting.com.`,executive_faq_guide:`Write a 600-800 word FAQ guide answering 5 pressing executive questions about AI adoption. One DRU framework per answer. CTA to assessment.druaiconsulting.com.`,client_transformation_story:`Write a 500-700 word composite client transformation story using the DRU AI Transformation Pathway™. Before state, intervention, transformation, outcomes, CTA to assessment.druaiconsulting.com.`,trend_analysis_piece:`Write a 600-800 word trend analysis on a current AI leadership trend. Position DeAnna as the authority. CTA to assessment.druaiconsulting.com.`};
-  return await runAgentToCSQ('nia','Nia Robinson','Marketing','daily_content_creation','content_creation',`You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nTODAY'S CONTENT TYPE: ${contentType}\n${contentInstructions[contentType]}\nEvery piece must include assessment.druaiconsulting.com as the primary CTA.`,'normal',0,null,2000);
+  return await runAgentToCSQ('nia','Nia Robinson','Marketing','daily_content_creation','content_creation',`You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nTODAY'S CONTENT TYPE: ${contentType}\n${contentInstructions[contentType]}\n\nCLIENT & REVENUE INTELLIGENCE — ground your content in these real signals from your team. When writing transformation stories or client scenarios, draw from this actual context rather than inventing generic examples:\n${clientIntel || 'No prior intelligence available — draw from framework-based scenarios.'}\nEvery piece must include assessment.druaiconsulting.com as the primary CTA.`,'normal',0,null,2000);
 }
 async function runLuca(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -475,7 +516,7 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_zara'){const id=await runAgentToCSQ('zara','Zara Ahmed','Revenue, Growth & Sales','product_launch_readiness','product_launch',`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course, Community Connection Navigator $47/mo / Accelerator $147/mo. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing insight, next week priority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p2_camila'){const count=await runCamila();res.status(202).json({success:true,agent:route.agent_name,posts_generated:count});}
+  else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_yara'){
