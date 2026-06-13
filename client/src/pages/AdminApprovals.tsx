@@ -9,6 +9,7 @@ const supabase = createClient(
 
 type ApprovalStatus = "pending" | "approved" | "rejected" | "edited";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
+type PlatformTab    = "LinkedIn" | "Facebook" | "Instagram";
 
 interface Approval {
   id: string; created_at: string; source: string; trigger_type: string;
@@ -19,6 +20,10 @@ interface Approval {
   context: string | null; archived: boolean;
   video_url: string | null;
   image_url: string | null;
+  linkedin_content: string | null;
+  facebook_content: string | null;
+  instagram_caption: string | null;
+  instagram_video_url: string | null;
 }
 
 interface FlaggedComment {
@@ -35,6 +40,8 @@ interface QuestionState {
   selectedAgent: { agent_id: string; agent_name: string; role: string } | null;
   input: string; messages: ConversationMessage[]; loading: boolean;
 }
+
+interface MediaState { video_url: string; image_url: string; instagram_video_url: string; }
 
 const LEAD_DIRECTIONS = [
   { value: "assessment_invite", label: "Assessment Invite" },
@@ -187,6 +194,11 @@ function isApprovalCard(approval: Approval): boolean {
   return APPROVAL_CATEGORIES.has(approval.category);
 }
 
+function isMultiPlatformCard(approval: Approval): boolean {
+  return approval.category === 'social' &&
+    !!(approval.linkedin_content && approval.facebook_content && approval.instagram_caption);
+}
+
 function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "social") {
     const platform = approval.platform ?? "Social";
@@ -244,6 +256,7 @@ export default function AdminApprovals() {
   const [activeFilter, setActiveFilter]       = useState<string>("knowledge");
   const [editingId, setEditingId]             = useState<string | null>(null);
   const [editText, setEditText]               = useState("");
+  const [editingPlatform, setEditingPlatform] = useState<PlatformTab | null>(null);
   const [saving, setSaving]                   = useState<string | null>(null);
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
@@ -252,13 +265,43 @@ export default function AdminApprovals() {
   const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([]);
   const [flaggedLoading, setFlaggedLoading]   = useState(true);
   const [savingComment, setSavingComment]     = useState<string | null>(null);
-  const [mediaUrls, setMediaUrls]             = useState<Record<string, { video_url: string; image_url: string }>>({});
+  const [mediaUrls, setMediaUrls]             = useState<Record<string, MediaState>>({});
+  const [platformTabs, setPlatformTabs]       = useState<Record<string, PlatformTab>>({});
+  const [platformToggles, setPlatformToggles] = useState<Record<string, Record<string, boolean>>>({});
 
-  const getMediaUrls = (id: string, approval?: Approval) =>
-    mediaUrls[id] ?? { video_url: approval?.video_url || '', image_url: approval?.image_url || '' };
+  const getMediaUrls = (id: string, approval?: Approval): MediaState =>
+    mediaUrls[id] ?? {
+      video_url: approval?.video_url || '',
+      image_url: approval?.image_url || '',
+      instagram_video_url: approval?.instagram_video_url || '',
+    };
 
-  const setMediaUrl = (id: string, field: 'video_url' | 'image_url', value: string) =>
+  const setMediaUrl = (id: string, field: keyof MediaState, value: string) =>
     setMediaUrls(prev => ({ ...prev, [id]: { ...getMediaUrls(id), [field]: value } }));
+
+  const getActivePlatformTab = (id: string): PlatformTab => platformTabs[id] ?? 'LinkedIn';
+
+  const getActivePlatformContent = (approval: Approval): string => {
+    const tab = getActivePlatformTab(approval.id);
+    if (tab === 'Facebook') return approval.facebook_content ?? approval.output;
+    if (tab === 'Instagram') return approval.instagram_caption ?? approval.output;
+    return approval.linkedin_content ?? approval.output;
+  };
+
+  const getPlatformToggle = (id: string, platform: string): boolean =>
+    platformToggles[id]?.[platform] ?? true;
+
+  const togglePlatform = (id: string, platform: string) => {
+    setPlatformToggles(prev => ({
+      ...prev,
+      [id]: { LinkedIn: true, Facebook: true, Instagram: true, ...prev[id], [platform]: !(prev[id]?.[platform] ?? true) },
+    }));
+  };
+
+  const getSelectedPlatforms = (id: string): string[] => {
+    const toggles = platformToggles[id] ?? { LinkedIn: true, Facebook: true, Instagram: true };
+    return ['LinkedIn', 'Facebook', 'Instagram'].filter(p => toggles[p] !== false);
+  };
 
   const fetchApprovals = async () => {
     const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
@@ -337,6 +380,34 @@ export default function AdminApprovals() {
     } catch (err) { console.error('[community_post]', err); return false; }
   };
 
+  const fireSocialPublisher = async (approval: Approval, overrideContent?: { linkedin?: string; facebook?: string; instagram?: string }): Promise<boolean> => {
+    const media = getMediaUrls(approval.id, approval);
+    const isMulti = isMultiPlatformCard(approval);
+    try {
+      const res = await fetch("/api/social-publisher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isMulti ? {
+          approval_id: approval.id,
+          linkedin_content: overrideContent?.linkedin ?? approval.linkedin_content ?? approval.output,
+          facebook_content: overrideContent?.facebook ?? approval.facebook_content ?? '',
+          instagram_caption: overrideContent?.instagram ?? approval.instagram_caption ?? '',
+          video_url: media.video_url || null,
+          instagram_video_url: media.instagram_video_url || null,
+          image_url: media.image_url || null,
+          platforms_selected: getSelectedPlatforms(approval.id),
+        } : {
+          content: approval.edited_output || approval.output,
+          platform: approval.platform,
+          approval_id: approval.id,
+          video_url: media.video_url || null,
+          image_url: media.image_url || null,
+        })
+      });
+      return res.ok;
+    } catch { return false; }
+  };
+
   const handleApprove = async (id: string) => {
     setSaving(id);
     const approval = approvals.find(a => a.id === id);
@@ -347,6 +418,7 @@ export default function AdminApprovals() {
     if (approval.category === "social") {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
+      if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
     }
 
     const { error } = await supabase.from("approvals").update(updatePayload).eq("id", id);
@@ -355,19 +427,8 @@ export default function AdminApprovals() {
     const content = approval.edited_output || approval.output;
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      try {
-        const res = await fetch("/api/social-publisher", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            content,
-            platform: approval.platform,
-            approval_id: id,
-            video_url: media.video_url || null,
-            image_url: media.image_url || null,
-          })
-        });
-        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
-      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+      const ok = await fireSocialPublisher(approval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postToCommunity(approval, content);
@@ -403,37 +464,52 @@ export default function AdminApprovals() {
   const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"approved" }).eq("id", id); setSaving(null); };
   const handleClearFlag     = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_flagged: false }).eq("id", id); setSavingComment(null); };
   const handleRemoveComment = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_active: false }).eq("id", id); setSavingComment(null); };
-  const handleEditStart = (approval: Approval) => { setEditingId(approval.id); setEditText(approval.edited_output || approval.output); };
-  const handleEditSave  = async (id: string) => {
+
+  const handleEditStart = (approval: Approval) => {
+    setEditingId(approval.id);
+    if (isMultiPlatformCard(approval)) {
+      const tab = getActivePlatformTab(approval.id);
+      setEditingPlatform(tab);
+      setEditText(getActivePlatformContent(approval));
+    } else {
+      setEditingPlatform(null);
+      setEditText(approval.edited_output || approval.output);
+    }
+  };
+
+  const handleEditSave = async (id: string) => {
     setSaving(id);
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
     const media = getMediaUrls(id, approval);
+    const isMulti = isMultiPlatformCard(approval);
 
-    const updatePayload: Record<string, any> = { edited_output: editText, status: "approved" };
+    const updatePayload: Record<string, any> = { status: "approved" };
+    if (isMulti && editingPlatform) {
+      if (editingPlatform === 'LinkedIn') updatePayload.linkedin_content = editText;
+      if (editingPlatform === 'Facebook') updatePayload.facebook_content = editText;
+      if (editingPlatform === 'Instagram') updatePayload.instagram_caption = editText;
+    }
+    updatePayload.edited_output = editText;
     if (approval.category === "social") {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
+      if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
     }
 
     await supabase.from("approvals").update(updatePayload).eq("id", id);
     setEditingId(null);
+    setEditingPlatform(null);
 
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      try {
-        const res = await fetch("/api/social-publisher", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            content: editText,
-            platform: approval.platform,
-            approval_id: id,
-            video_url: media.video_url || null,
-            image_url: media.image_url || null,
-          })
-        });
-        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
-      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+      const overrideContent = isMulti && editingPlatform ? {
+        linkedin: editingPlatform === 'LinkedIn' ? editText : (approval.linkedin_content ?? approval.output),
+        facebook: editingPlatform === 'Facebook' ? editText : (approval.facebook_content ?? ''),
+        instagram: editingPlatform === 'Instagram' ? editText : (approval.instagram_caption ?? ''),
+      } : undefined;
+      const ok = await fireSocialPublisher({ ...approval, edited_output: editText }, overrideContent);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await postToCommunity(approval, editText);
@@ -651,9 +727,12 @@ export default function AdminApprovals() {
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = !isApprovalCard(approval);
               const isSocial      = approval.category === "social";
+              const isMulti       = isMultiPlatformCard(approval);
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
               const hasConversation = !!approval.context && approval.context !== "null";
               const currentMedia  = getMediaUrls(approval.id, approval);
+              const activePlatformTab = getActivePlatformTab(approval.id);
+              const activeContent = isMulti ? getActivePlatformContent(approval) : (approval.edited_output || approval.output);
 
               return (
                 <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.35)" : isCCPost ? "rgba(45,90,142,0.35)" : isKnowledge ? "rgba(10,35,66,0.12)" : approval.status === "pending" ? "rgba(212,175,55,0.25)" : "rgba(10,35,66,0.08)"}`, background: approval.status !== "pending" ? "rgba(10,35,66,0.02)" : isPostTrigger ? "rgba(194,24,91,0.03)" : isCCPost ? "rgba(45,90,142,0.03)" : isKnowledge ? "rgba(10,35,66,0.02)" : "#FFFFFF", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
@@ -662,6 +741,7 @@ export default function AdminApprovals() {
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
+                      {isMulti && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", color:"rgba(255,255,255,0.8)" }}>3 Platforms</span>}
                       {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge Vault</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
@@ -669,7 +749,7 @@ export default function AdminApprovals() {
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
-                      {isSocial && (currentMedia.video_url || currentMedia.image_url) && (
+                      {isSocial && !isMulti && (currentMedia.video_url || currentMedia.image_url) && (
                         <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(76,175,80,0.15)", border:"1px solid rgba(76,175,80,0.4)", color:"#4CAF50" }}>
                           {currentMedia.video_url ? "📹 Video" : "🖼 Image"} Ready
                         </span>
@@ -687,6 +767,34 @@ export default function AdminApprovals() {
                     </div>
                   </div>
 
+                  {/* Platform Tabs — multi-platform social cards only */}
+                  {isMulti && (
+                    <div style={{ background:"rgba(10,35,66,0.03)", borderBottom:"1px solid rgba(10,35,66,0.08)", padding:"0.5rem 1rem", display:"flex", gap:"0.4rem", alignItems:"center" }}>
+                      {(['LinkedIn', 'Facebook', 'Instagram'] as PlatformTab[]).map(platform => (
+                        <button
+                          key={platform}
+                          onClick={() => setPlatformTabs(prev => ({ ...prev, [approval.id]: platform }))}
+                          style={{
+                            fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700,
+                            padding:"0.3rem 0.75rem", borderRadius:20, cursor:"pointer",
+                            border:`1px solid ${PLATFORM_COLORS[platform]}`,
+                            background: activePlatformTab === platform ? PLATFORM_COLORS[platform] : "transparent",
+                            color: activePlatformTab === platform ? "#FFFFFF" : PLATFORM_COLORS[platform],
+                            transition:"all 0.15s ease",
+                          }}
+                        >
+                          {platform}
+                          {editingId === approval.id && editingPlatform === platform && (
+                            <span style={{ marginLeft:4, opacity:0.8 }}>✏</span>
+                          )}
+                        </button>
+                      ))}
+                      <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.58rem", color:"rgba(10,35,66,0.35)", marginLeft:"0.5rem" }}>
+                        Viewing {activePlatformTab} content
+                      </span>
+                    </div>
+                  )}
+
                   {/* Card Body */}
                   <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
                     <div>
@@ -698,10 +806,36 @@ export default function AdminApprovals() {
                       {editingId === approval.id ? (
                         <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
                       ) : (
-                        <div>{renderDraft(approval.edited_output || approval.output)}</div>
+                        <div>{renderDraft(activeContent)}</div>
                       )}
                     </div>
                   </div>
+
+                  {/* Platform Toggles — multi-platform pending cards */}
+                  {isMulti && approval.status === "pending" && editingId !== approval.id && (
+                    <div style={{ padding:"0 1rem 0.75rem" }}>
+                      <div style={{ background:"rgba(10,35,66,0.02)", border:"1px solid rgba(10,35,66,0.08)", borderRadius:8, padding:"0.625rem 1rem", display:"flex", alignItems:"center", gap:"1.25rem", flexWrap:"wrap" as const }}>
+                        <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, color:"rgba(10,35,66,0.45)", letterSpacing:"0.08em", textTransform:"uppercase" as const, flexShrink:0 }}>Post to:</span>
+                        {(['LinkedIn', 'Facebook', 'Instagram'] as PlatformTab[]).map(platform => {
+                          const checked = getPlatformToggle(approval.id, platform);
+                          return (
+                            <label key={platform} style={{ display:"flex", alignItems:"center", gap:"0.35rem", cursor:"pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => togglePlatform(approval.id, platform)}
+                                style={{ accentColor: PLATFORM_COLORS[platform], width:14, height:14 }}
+                              />
+                              <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, color: checked ? PLATFORM_COLORS[platform] : "rgba(10,35,66,0.3)", transition:"color 0.15s" }}>{platform}</span>
+                            </label>
+                          );
+                        })}
+                        {getSelectedPlatforms(approval.id).length === 0 && (
+                          <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.6rem", color:"#C2185B" }}>Select at least one platform</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Media URLs — social posts only */}
                   {isSocial && approval.status === "pending" && (
@@ -710,22 +844,34 @@ export default function AdminApprovals() {
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.625rem", margin:"0 0 0.625rem" }}>Media · Optional</p>
                         <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.4rem" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
-                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:76, flexShrink:0 }}>Video URL</span>
+                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:100, flexShrink:0 }}>Video URL{isMulti ? " (LinkedIn + FB)" : ""}</span>
                             <input
                               type="text"
                               value={currentMedia.video_url}
                               onChange={e => setMediaUrl(approval.id, 'video_url', e.target.value)}
-                              placeholder={`https://vz-65fe52c5-439.b-cdn.net/[video-guid]/play_720p.mp4`}
+                              placeholder="https://vz-65fe52c5-439.b-cdn.net/[video-guid]/play_720p.mp4"
                               style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.video_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                             />
                           </div>
+                          {isMulti && (
+                            <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
+                              <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(194,24,91,0.7)", minWidth:100, flexShrink:0 }}>IG Reel URL (9:16)</span>
+                              <input
+                                type="text"
+                                value={currentMedia.instagram_video_url}
+                                onChange={e => setMediaUrl(approval.id, 'instagram_video_url', e.target.value)}
+                                placeholder="https://vz-65fe52c5-439.b-cdn.net/[reel-guid]/play_720p.mp4"
+                                style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.instagram_video_url ? "rgba(194,24,91,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
+                              />
+                            </div>
+                          )}
                           <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
-                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:76, flexShrink:0 }}>Image URL</span>
+                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:100, flexShrink:0 }}>Image URL</span>
                             <input
                               type="text"
                               value={currentMedia.image_url}
                               onChange={e => setMediaUrl(approval.id, 'image_url', e.target.value)}
-                              placeholder={`https://vz-65fe52c5-439.b-cdn.net/[video-guid]/thumbnail.jpg`}
+                              placeholder="https://vz-65fe52c5-439.b-cdn.net/[image-guid]/thumbnail.jpg"
                               style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.image_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                             />
                           </div>
@@ -823,16 +969,23 @@ export default function AdminApprovals() {
                       {!isKnowledge && approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
                         <>
                           <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
-                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>Edit</button>
-                          <button onClick={() => handleApprove(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
+                            {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
+                          </button>
+                          <button
+                            onClick={() => handleApprove(approval.id)}
+                            disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
+                            style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
                             {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
                           </button>
                         </>
                       )}
                       {editingId === approval.id && (
                         <>
-                          <button onClick={() => setEditingId(null)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
-                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>{saving === approval.id ? "Saving..." : "Save & Approve"}</button>
+                          <button onClick={() => { setEditingId(null); setEditingPlatform(null); }} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
+                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                            {saving === approval.id ? "Saving..." : isMulti ? `Save ${editingPlatform} & Publish` : "Save & Approve"}
+                          </button>
                         </>
                       )}
                       {approval.status !== "pending" && editingId !== approval.id && (
