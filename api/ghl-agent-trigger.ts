@@ -265,6 +265,41 @@ async function runDarius(): Promise<string|null> {
   return csqId;
 }
 
+
+// P2 UPDATED: Ravi reads Darius's post from CSQ before generating brief
+// Visual must support and reinforce today's copy — not a separate concept
+async function runRavi(): Promise<string|null> {
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const todayDate=new Date().toISOString().split('T')[0];
+  const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // Read today's Darius post from CSQ — align design brief with the actual copy
+  let dariusContent=''; let dariusHook='';
+  if (url&&key){
+    const r=await fetch(`${url}/rest/v1/chief_of_staff_queue?agent_id=eq.darius&created_at=gte.${todayDate}T00:00:00&order=created_at.desc&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+    if (r.ok){
+      const data=await r.json();
+      if (data?.[0]?.raw_output){
+        try {
+          const parsed=JSON.parse(data[0].raw_output);
+          dariusContent=parsed.linkedin_content||data[0].raw_output;
+          dariusHook=parsed.hook||'';
+        } catch { dariusContent=data[0].raw_output.slice(0,600); }
+      }
+    }
+  }
+
+  const postContext=dariusContent
+    ? `TODAY\'S POST FROM DARIUS — your brief must visually support this exact message:\n\n${dariusContent}\n${dariusHook?`HOOK: ${dariusHook}`:''}`
+    : 'No Darius post found today — generate a general DRU CLEAR™ diagnostic theme brief.';
+
+  return await runAgentToCSQ(
+    'ravi','Ravi Gupta','Content & Brand','generate_design_brief','design_brief',
+    `You are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Today: ${today}. CTA destination: assessment.druaiconsulting.com.\n\n${postContext}\n\nGenerate a complete LinkedIn visual design brief (1200×627px) where the visual DIRECTLY SUPPORTS and VISUALLY REINFORCES today\'s post. The image and copy must tell the same story — not separate concepts.\n\nInclude:\n- STRATEGIC INTENT (aligned to today\'s post theme and audience)\n- VISUAL CONCEPT (concept name + metaphor that matches the post message)\n- LAYOUT ARCHITECTURE (canvas 1200×627px, bifurcated left/right, bottom CTA strip)\n- COLOR PALETTE with application logic (Navy #0A2342, Gold #D4AF37, Magenta #C2185B)\n- IMAGE DIRECTION (left hemisphere: problem/chaos state matching post theme; right hemisphere: clarity/solution state)\n- TYPOGRAPHY HIERARCHY (headline pulled from or inspired by today\'s hook; subheadline; body copy; CTA button)\n- AI IMAGE GENERATION PROMPTS (left hemisphere, right hemisphere, combined scene — ready to paste into Creator Studio)\n- DESIGN SPECIFICATIONS (PNG 1200×627px @ 300DPI, RGB, optimized <500KB)`,
+    'normal',0,null,2500
+  );
+}
+
 // P3
 async function runNia(): Promise<string|null> {
   const brandMarks=await fetchBrandMarks();
@@ -442,7 +477,7 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_camila'){const count=await runCamila();res.status(202).json({success:true,agent:route.agent_name,posts_generated:count});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p2_ravi'){const today4=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});const id=await runAgentToCSQ('ravi','Ravi Gupta','Content & Brand','generate_design_brief','design_brief',`You are Ravi Gupta, Graphic Designer for DRU AI Consulting. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Generate creative design brief for today's LinkedIn visual. Include: visual concept, layout, color palette, image direction, typography, AI image generation prompt. Today: ${today4}. CTA destination: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_yara'){
     const urlY=process.env.VITE_SUPABASE_URL; const keyY=process.env.SUPABASE_SERVICE_ROLE_KEY; let topPost='';
     if (urlY&&keyY){const mondayY=new Date();mondayY.setDate(mondayY.getDate()-mondayY.getDay()+1);const weekOfY=mondayY.toISOString().split('T')[0];const r=await fetch(`${urlY}/rest/v1/content_queue?week_of=eq.${weekOfY}&status=neq.queued&order=day_number.asc&limit=1`,{headers:{apikey:keyY,Authorization:`Bearer ${keyY}`}});if (r.ok){const q=await r.json();if (q.length>0) topPost=`${q[0].hook}\n\n${q[0].content}\n\n${q[0].hashtags}`;}}
