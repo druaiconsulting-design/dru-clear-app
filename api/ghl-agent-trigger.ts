@@ -242,15 +242,25 @@ async function runCamila(): Promise<number> {
   for (const post of posts){const day=days.find(d=>d.day_number===post.day_number)??days[0];await fetch(`${url}/rest/v1/content_queue`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({week_of:weekOf,day_number:post.day_number,scheduled_for:day.scheduled_for,platform:'linkedin',framework_covered:post.framework_covered,post_type:post.post_type,hook:post.hook,content:post.content,hashtags:post.hashtags,status:'queued'})});}
   return posts.length;
 }
+
+// PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON
 async function runDarius(): Promise<string|null> {
   const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
   const today=new Date().toISOString().split('T')[0];
   const now=new Date(); const monday=new Date(now); monday.setDate(now.getDate()-now.getDay()+1);
   const weekOf=monday.toISOString().split('T')[0];
-  let postContent=''; let queueId:string|null=null;
-  if (url&&key){const res=await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&status=eq.queued&scheduled_for=eq.${today}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});if (res.ok){const queue=await res.json();if(queue.length>0){queueId=queue[0].id;postContent=`${queue[0].hook}\n\n${queue[0].content}\n\n${queue[0].hashtags}`;}}}
-  if (!postContent){const brandMarks=await fetchBrandMarks();postContent=await callAnthropic(`${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting. Write ONE LinkedIn post that stops executives mid-scroll.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nFORMAT: 150-250 words. Strong hook. CTA pointing to assessment.druaiconsulting.com. 3-5 hashtags.`);}
-  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:postContent,priority:'normal',status:'pending',retry_count:0});
+  let topicBrief=''; let queueId:string|null=null;
+  if (url&&key){
+    const res=await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&status=eq.queued&scheduled_for=eq.${today}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+    if (res.ok){const queue=await res.json();if(queue.length>0){queueId=queue[0].id;topicBrief=`Framework: ${queue[0].framework_covered} | Type: ${queue[0].post_type} | Hook direction: ${queue[0].hook} | Content direction: ${queue[0].content}`;}}
+  }
+  const brandMarks=await fetchBrandMarks();
+  const topicContext=topicBrief||`Generate a thought leadership topic on Leadership with AI using one of these frameworks: ${brandMarks}`;
+  const structuredOutput=await callAnthropic(
+    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    2500
+  );
+  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
   if (queueId&&url&&key){await fetch(`${url}/rest/v1/content_queue?id=eq.${queueId}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({status:'submitted',submitted_at:new Date().toISOString()})});}
   return csqId;
 }
