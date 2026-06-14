@@ -41,7 +41,7 @@ export default async function handler(req: Request) {
         facebook_content:    body.facebook_content,
         instagram_caption:   body.instagram_caption,
         post_content:        body.linkedin_content, // backward compat for existing Make modules
-        platforms_selected:  body.platforms_selected ?? ["LinkedIn", "Facebook", "Instagram"],
+        platforms_selected: (body.platforms_selected ?? ["LinkedIn", "Facebook", "Instagram"]).join(","),
         agent_name:          "Darius King",
         category:            "social_post",
         approval_id:         body.approval_id,
