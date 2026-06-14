@@ -1,7 +1,8 @@
 // api/social-publisher.ts
-// Sends approved social post to Make.com Social Media Flow.
-// ONE webhook call per post. platforms_selected sent as comma-separated string.
-// Make Router filters: platforms_selected Contains LinkedIn / Facebook / Instagram
+// ONE webhook call to Make. Router filters on content fields:
+//   LinkedIn branch:  linkedin_content  Is not empty
+//   Facebook branch:  facebook_content  Is not empty
+//   Instagram branch: instagram_caption Is not empty
 
 export const config = { runtime: "edge" };
 
@@ -26,8 +27,7 @@ export default async function handler(req: Request) {
     );
   }
 
-  // Resolve selected platforms from either a platforms_selected array (multi-platform card)
-  // or a platform string (single-platform card). Default to LinkedIn if neither is present.
+  // Resolve selected platforms
   const selectedPlatforms: string[] =
     Array.isArray(body.platforms_selected) && body.platforms_selected.length > 0
       ? body.platforms_selected
@@ -35,23 +35,22 @@ export default async function handler(req: Request) {
         ? [body.platform]
         : ["LinkedIn"];
 
-  // Comma-separated string — Make's "Contains" filter works on this:
-  //   LinkedIn branch:  platforms_selected Contains LinkedIn
-  //   Facebook branch:  platforms_selected Contains Facebook
-  //   Instagram branch: platforms_selected Contains Instagram
-  // "platforms_selected" is already in Make's detected schema so no re-detection needed.
-  const platformsStr = selectedPlatforms.join(",");
+  const onLinkedIn  = selectedPlatforms.includes("LinkedIn");
+  const onFacebook  = selectedPlatforms.includes("Facebook");
+  const onInstagram = selectedPlatforms.includes("Instagram");
 
+  // Only populate a platform's content field if that platform is selected.
+  // Make Router filters on: linkedin_content / facebook_content / instagram_caption Is not empty.
+  // These fields are already in Make's detected schema — no re-detection needed.
   const payload = {
-    platforms_selected:  selectedPlatforms,
-    platform:            selectedPlatforms[0],            // backward compat for Make module mappings
-    linkedin_content:    body.linkedin_content  || body.content || "",
-    facebook_content:    body.facebook_content  || body.content || "",
-    instagram_caption:   body.instagram_caption || body.content || "",
-    post_content:        body.linkedin_content  || body.content || "",
+    linkedin_content:    onLinkedIn  ? (body.linkedin_content  || body.content || "") : "",
+    facebook_content:    onFacebook  ? (body.facebook_content  || body.content || "") : "",
+    instagram_caption:   onInstagram ? (body.instagram_caption || body.content || "") : "",
+    post_content:        body.linkedin_content || body.content || "",
     agent_name:          "Darius King",
     category:            "social_post",
     approval_id:         body.approval_id,
+    platforms_selected:  selectedPlatforms,
     video_url:           body.video_url          ?? null,
     instagram_video_url: body.instagram_video_url ?? null,
     image_url:           body.image_url           ?? null,
@@ -66,7 +65,7 @@ export default async function handler(req: Request) {
   if (!res.ok) {
     const err = await res.text();
     return new Response(
-      JSON.stringify({ error: "Make.com webhook failed", detail: err, approval_id: body.approval_id }),
+      JSON.stringify({ error: "Make webhook failed", detail: err, approval_id: body.approval_id }),
       { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
@@ -98,7 +97,7 @@ export default async function handler(req: Request) {
           asset_url:        assetUrl,
           asset_type:       assetType,
           category:         "social_post",
-          platform:         platformsStr,
+          platform:         selectedPlatforms.join(", "),
           thumbnail_url:    thumbnailUrl,
           bunny_library_id: assetType === "video" ? "681486" : null,
           bunny_video_id:   bunnyVideoId,
@@ -111,14 +110,9 @@ export default async function handler(req: Request) {
       console.error("social_assets insert failed:", e);
     }
   }
-  // ── END SOCIAL ASSETS ─────────────────────────────────────────────────────
 
   return new Response(
-    JSON.stringify({
-      success:        true,
-      platforms_sent: selectedPlatforms,
-      approval_id:    body.approval_id,
-    }),
+    JSON.stringify({ success: true, platforms_sent: selectedPlatforms, approval_id: body.approval_id }),
     { headers: { ...CORS, "Content-Type": "application/json" } }
   );
 }
