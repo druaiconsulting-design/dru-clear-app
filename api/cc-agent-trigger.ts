@@ -250,6 +250,8 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   } catch (error) { console.error(`[${agentId}] Community reply error:`, error); return { approval_id: null }; }
 }
 
+// ─── Scan 1: Navigator → Accelerator upgrade ─────────────────────────────────
+
 async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return false;
@@ -266,6 +268,37 @@ async function fireAaliyahUpsellCard(memberId: string, firstName: string, email:
   await writeToApprovals({ source: 'cc_upsell_scan', trigger_type: 'cc_upsell_scan', agent_name: 'Aaliyah Foster', agent_role: 'Outreach', division: 'Community Connection', task_brief: `MEMBER_ID:${memberId} | ${emailLine} | ${phoneLine} | Signal: ${signalReason}`, original_content: `Community post: "${postTitle}" — Navigator member showing Accelerator-ready signals`, output: outreach, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'HIGH', category: 'cc_upsell_outreach', platform: null, context: null, archived: false });
   console.log(`[aaliyah] Upsell card written for member ${memberId} — ${firstName}`);
 }
+
+// ─── Scan 2: Framework & Bundle signals — all members ────────────────────────
+
+async function hasRecentFrameworkCard(memberId: string): Promise<boolean> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const res = await fetch(`${url}/rest/v1/approvals?category=eq.cc_framework_outreach&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) return false;
+  const data = await res.json(); return Array.isArray(data) && data.length > 0;
+}
+
+async function fireFrameworkBundleCard(memberId: string, firstName: string, tier: string, email: string | null, phone: string | null, signalReason: string, target: string, postTitle: string): Promise<void> {
+  const offerMap: Record<string, { label: string; price: string; cta: string }> = {
+    dru_clear:        { label: 'DRU CLEAR™',                    price: '$7,500',  cta: 'https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec' },
+    five_c:           { label: '5C Cultural DNA™',              price: '$6,000',  cta: 'https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def' },
+    five_d:           { label: '5D Leadership™',                price: '$6,500',  cta: 'https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc' },
+    ai_sales_mastery: { label: 'AI Sales Mastery™',             price: '$6,000',  cta: 'https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe' },
+    bundle_full:      { label: 'Full Ecosystem Bundle',         price: '$26,000', cta: 'https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff' },
+    bundle_plus_two:  { label: 'DRU CLEAR™ + 2 Frameworks',    price: '$19,500', cta: 'https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645' },
+    bundle_plus_one:  { label: 'DRU CLEAR™ + 1 Framework',     price: '$13,500', cta: 'https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645' },
+  };
+  const offer = offerMap[target] ?? offerMap['dru_clear'];
+  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nA ${tier} member named ${firstName} is showing strong interest in ${offer.label} (${offer.price}).\nCommunity intelligence: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personalized outreach message (100-120 words). Feel personal and specific. Reference their community engagement. Articulate the value of ${offer.label} for their specific AI leadership journey. CTA: ${offer.cta}\nWrite ONLY the message.`;
+  const outreach = enforceTM(await callAnthropic(prompt, 400));
+  const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
+  const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
+  await writeToApprovals({ source: 'cc_framework_scan', trigger_type: 'cc_framework_scan', agent_name: 'Aaliyah Foster', agent_role: 'Outreach', division: 'Community Connection', task_brief: `MEMBER_ID:${memberId} | ${emailLine} | ${phoneLine} | Offer: ${offer.label} ${offer.price} | Signal: ${signalReason}`, original_content: `Community post: "${postTitle}" — ${tier} member showing ${offer.label} interest`, output: outreach, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'HIGH', category: 'cc_framework_outreach', platform: null, context: null, archived: false });
+  console.log(`[aaliyah] Framework card written for member ${memberId} — ${firstName} | ${offer.label}`);
+}
+
 async function runUpsellScan(): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) { console.error('[upsell_scan] Missing env vars'); return; }
@@ -275,20 +308,45 @@ async function runUpsellScan(): Promise<void> {
   const posts = await postsRes.json();
   if (!Array.isArray(posts) || !posts.length) { console.log('[upsell_scan] No recent member posts — scan complete'); return; }
   let signalsFound = 0;
+
   for (const post of posts) {
     const memberId = post.agent_id; if (!memberId) continue;
-    const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=eq.navigator&select=id,first_name,email,phone&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+
+    // Fetch profile — navigator OR accelerator
+    const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=in.(navigator,accelerator)&select=id,first_name,email,phone,tier&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!profileRes.ok) continue;
     const profiles = await profileRes.json(); if (!Array.isArray(profiles) || !profiles.length) continue;
     const profile = profiles[0];
-    const alreadyFlagged = await hasRecentUpsellCard(memberId);
-    if (alreadyFlagged) { console.log(`[upsell_scan] ${profile.first_name} — card exists, skipping`); continue; }
-    const detectionPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA Navigator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing Accelerator-ready signals? Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
-    const detection = await callAnthropic(detectionPrompt, 120);
-    if (!detection.includes('UPSELL SIGNAL: YES')) { console.log(`[upsell_scan] No signal for ${profile.first_name}`); continue; }
-    const reasonMatch = detection.match(/REASON:\s*(.+)/); const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
-    await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title);
-    signalsFound++;
+    const tier: string = profile.tier ?? 'navigator';
+
+    // ── Scan 1: Navigator → Accelerator upgrade ──────────────────────────────
+    if (tier === 'navigator') {
+      const alreadyFlagged = await hasRecentUpsellCard(memberId);
+      if (!alreadyFlagged) {
+        const detectionPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA Navigator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing Accelerator-ready signals? Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
+        const detection = await callAnthropic(detectionPrompt, 120);
+        if (detection.includes('UPSELL SIGNAL: YES')) {
+          const reasonMatch = detection.match(/REASON:\s*(.+)/); const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
+          await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title);
+          signalsFound++;
+        } else { console.log(`[upsell_scan] No Accelerator signal for ${profile.first_name}`); }
+      } else { console.log(`[upsell_scan] ${profile.first_name} — Accelerator card exists, skipping`); }
+    }
+
+    // ── Scan 2: Framework & Bundle signals — all members ────────────────────
+    const alreadyFrameworkFlagged = await hasRecentFrameworkCard(memberId);
+    if (!alreadyFrameworkFlagged) {
+      const frameworkPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA ${tier} member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals for any DRU AI Consulting framework or bundle? Scan for signals of:\nFRAMEWORKS (a la carte):\n- dru_clear: DRU CLEAR™ ($7,500) — mentions clarity framework, AI readiness, connecting strategy\n- five_c: 5C Cultural DNA™ ($6,000) — mentions culture, communication, collaboration, cultural shift\n- five_d: 5D Leadership™ ($6,500) — mentions leadership development, team, organizational leadership\n- ai_sales_mastery: AI Sales Mastery™ ($6,000) — mentions sales, DISC, revenue, client relationships\nBUNDLES:\n- bundle_full: Full Ecosystem $26,000 — mentions full transformation, entire program, everything\n- bundle_plus_two: DRU CLEAR + 2 frameworks $19,500 — mentions combining two frameworks\n- bundle_plus_one: DRU CLEAR + 1 framework $13,500 — mentions adding a framework to DRU CLEAR\nPick the single strongest signal only. Respond EXACTLY in one of these formats:\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: dru_clear | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_c | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_d | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: ai_sales_mastery | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_full | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_two | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_one | REASON: [one sentence]\nFRAMEWORK SIGNAL: NO`;
+      const frameworkDetection = await callAnthropic(frameworkPrompt, 150);
+      if (frameworkDetection.includes('FRAMEWORK SIGNAL: YES')) {
+        const reasonMatch  = frameworkDetection.match(/REASON:\s*(.+)/);
+        const targetMatch  = frameworkDetection.match(/TARGET:\s*(dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one)/);
+        const reason  = reasonMatch?.[1]?.trim()  ?? 'Member showing framework interest';
+        const target  = targetMatch?.[1]?.trim()  ?? 'dru_clear';
+        await fireFrameworkBundleCard(memberId, profile.first_name, tier, profile.email ?? null, profile.phone ?? null, reason, target, post.title);
+        signalsFound++;
+      } else { console.log(`[upsell_scan] No framework signal for ${profile.first_name}`); }
+    } else { console.log(`[upsell_scan] ${profile.first_name} — framework card exists, skipping`); }
   }
   console.log(`[upsell_scan] Complete — ${posts.length} posts scanned, ${signalsFound} signals fired`);
 }
