@@ -115,6 +115,15 @@ const DIVISIONS = [
       { name: "Tariq Oladele",    role: "Revenue Intel. · Revenue Acceleration",       src: photo("men",   23) },
     ],
   },
+  {
+    name: "Accelerator Circle", tag: "Client-Facing", fullWidth: true,
+    border: "rgba(212,175,55,0.5)", headerBg: "#0A2342",
+    agents: [
+      { name: "Petra Vance",    role: "Accelerator Circle Leader ★",                   src: photo("women", 62) },
+      { name: "Matthew Elliot", role: "AC Member Experience",                           src: photo("men",   82) },
+      { name: "Renata Cruz",    role: "AC Strategy · AI Implementation & Leadership",  src: photo("women", 68) },
+    ],
+  },
 ];
 
 export default function AdminOrg() {
