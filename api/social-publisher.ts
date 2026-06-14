@@ -43,7 +43,7 @@ export default async function handler(req: Request) {
   const platformsStr = selectedPlatforms.join(",");
 
   const payload = {
-    platforms_selected:  platformsStr,
+    platforms_selected:  selectedPlatforms,
     platform:            selectedPlatforms[0],            // backward compat for Make module mappings
     linkedin_content:    body.linkedin_content  || body.content || "",
     facebook_content:    body.facebook_content  || body.content || "",
