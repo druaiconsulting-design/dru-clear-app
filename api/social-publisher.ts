@@ -28,11 +28,8 @@ export default async function handler(req: Request) {
   }
 
   // Detect multi-platform vs single-platform payload
-  const isMultiPlatform = !!(
-    body.linkedin_content &&
-    body.facebook_content &&
-    body.instagram_caption
-  );
+  // Use platforms_selected array as the signal — empty-string content fields caused false negatives
+  const isMultiPlatform = Array.isArray(body.platforms_selected);
 
   // ── SINGLE-PLATFORM (Phase 1 backward compat) ─────────────────────────────
   if (!isMultiPlatform) {
