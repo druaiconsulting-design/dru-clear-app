@@ -1,8 +1,7 @@
 // api/social-publisher.ts
-// Vercel edge function — sends approved social post to Make.com → LinkedIn, Facebook, Instagram
-// UPDATED: Fires one Make webhook call per selected platform so Make Router filters work correctly.
-//          Each call carries a single `platform` field ("LinkedIn" | "Facebook" | "Instagram")
-//          plus the full content fields so existing Make module mappings are unchanged.
+// Sends approved social post to Make.com Social Media Flow.
+// ONE webhook call per post. platforms_selected sent as comma-separated string.
+// Make Router filters: platforms_selected Contains LinkedIn / Facebook / Instagram
 
 export const config = { runtime: "edge" };
 
@@ -27,113 +26,62 @@ export default async function handler(req: Request) {
     );
   }
 
-  // Detect multi-platform vs single-platform payload
-  // Use platforms_selected array as the signal — empty-string content fields caused false negatives
-  const isMultiPlatform = Array.isArray(body.platforms_selected);
-
-  // ── SINGLE-PLATFORM (Phase 1 backward compat) ─────────────────────────────
-  if (!isMultiPlatform) {
-    const res = await fetch(makeWebhookUrl, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        post_content: body.content,
-        agent_name:   "Darius King",
-        category:     "social_post",
-        platform:     body.platform,
-        approval_id:  body.approval_id,
-        video_url:    body.video_url  ?? null,
-        image_url:    body.image_url  ?? null,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      return new Response(
-        JSON.stringify({ error: "Make.com webhook failed", detail: err, approval_id: body.approval_id }),
-        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, multi_platform: false, approval_id: body.approval_id }),
-      { headers: { ...CORS, "Content-Type": "application/json" } }
-    );
-  }
-
-  // ── MULTI-PLATFORM: one Make call per selected platform ───────────────────
-  // Each call has a single `platform` string so Make Router filters work:
-  //   LinkedIn branch filter: platform Equal to "LinkedIn"
-  //   Facebook branch filter: platform Equal to "Facebook"
-  //   Instagram branch filter: platform Equal to "Instagram"
-
+  // Resolve selected platforms from either a platforms_selected array (multi-platform card)
+  // or a platform string (single-platform card). Default to LinkedIn if neither is present.
   const selectedPlatforms: string[] =
     Array.isArray(body.platforms_selected) && body.platforms_selected.length > 0
       ? body.platforms_selected
-      : ["LinkedIn", "Facebook", "Instagram"];
+      : body.platform
+        ? [body.platform]
+        : ["LinkedIn"];
 
-  const results = await Promise.allSettled(
-    selectedPlatforms.map(async (platform: string) => {
-      const payload = {
-        // Single platform for this call — Make Router filters on this field
-        platform,
+  // Comma-separated string — Make's "Contains" filter works on this:
+  //   LinkedIn branch:  platforms_selected Contains LinkedIn
+  //   Facebook branch:  platforms_selected Contains Facebook
+  //   Instagram branch: platforms_selected Contains Instagram
+  // "platforms_selected" is already in Make's detected schema so no re-detection needed.
+  const platformsStr = selectedPlatforms.join(",");
 
-        // Full content fields — existing Make module mappings unchanged
-        linkedin_content:    body.linkedin_content,
-        facebook_content:    body.facebook_content,
-        instagram_caption:   body.instagram_caption,
-        post_content:        body.linkedin_content, // backward compat
+  const payload = {
+    platforms_selected:  platformsStr,
+    platform:            selectedPlatforms[0],            // backward compat for Make module mappings
+    linkedin_content:    body.linkedin_content  || body.content || "",
+    facebook_content:    body.facebook_content  || body.content || "",
+    instagram_caption:   body.instagram_caption || body.content || "",
+    post_content:        body.linkedin_content  || body.content || "",
+    agent_name:          "Darius King",
+    category:            "social_post",
+    approval_id:         body.approval_id,
+    video_url:           body.video_url          ?? null,
+    instagram_video_url: body.instagram_video_url ?? null,
+    image_url:           body.image_url           ?? null,
+  };
 
-        // Metadata
-        agent_name:          "Darius King",
-        category:            "social_post",
-        approval_id:         body.approval_id,
+  const res = await fetch(makeWebhookUrl, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+  });
 
-        // Media — Instagram gets its own reel URL if provided
-        video_url:           platform === "Instagram"
-                               ? (body.instagram_video_url ?? body.video_url ?? null)
-                               : (body.video_url ?? null),
-        instagram_video_url: body.instagram_video_url ?? null,
-        image_url:           body.image_url           ?? null,
-      };
-
-      const res = await fetch(makeWebhookUrl, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Make webhook failed for ${platform}: ${err}`);
-      }
-
-      return platform;
-    })
-  );
-
-  const succeeded = results
-    .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
-    .map(r => r.value);
-
-  const failed = results
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .map(r => r.reason?.message ?? "unknown error");
+  if (!res.ok) {
+    const err = await res.text();
+    return new Response(
+      JSON.stringify({ error: "Make.com webhook failed", detail: err, approval_id: body.approval_id }),
+      { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+    );
+  }
 
   // ── SOCIAL ASSETS: Auto-log on successful publish ─────────────────────────
   const assetUrl = body.video_url || body.image_url || null;
-
-  if (assetUrl && succeeded.length > 0) {
+  if (assetUrl) {
     try {
-      const assetType   = body.video_url ? "video" : "image";
-      const urlParts    = assetUrl.split("/");
+      const assetType    = body.video_url ? "video" : "image";
+      const urlParts     = assetUrl.split("/");
       const bunnyVideoId = assetType === "video" ? urlParts[urlParts.length - 2] : null;
       const thumbnailUrl = assetType === "video"
         ? assetUrl.replace("/play_720p.mp4", "/thumbnail.jpg")
         : assetUrl;
-
-      const today = new Date().toISOString().slice(0, 10);
-
+      const today       = new Date().toISOString().slice(0, 10);
       const supabaseUrl = "https://dsflijqygsegonwxauce.supabase.co";
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -150,7 +98,7 @@ export default async function handler(req: Request) {
           asset_url:        assetUrl,
           asset_type:       assetType,
           category:         "social_post",
-          platform:         succeeded.join(", "),
+          platform:         platformsStr,
           thumbnail_url:    thumbnailUrl,
           bunny_library_id: assetType === "video" ? "681486" : null,
           bunny_video_id:   bunnyVideoId,
@@ -160,25 +108,15 @@ export default async function handler(req: Request) {
         }),
       });
     } catch (e) {
-      // Non-fatal — publish already succeeded
       console.error("social_assets insert failed:", e);
     }
   }
   // ── END SOCIAL ASSETS ─────────────────────────────────────────────────────
 
-  if (failed.length > 0 && succeeded.length === 0) {
-    return new Response(
-      JSON.stringify({ error: "All platform webhooks failed", details: failed, approval_id: body.approval_id }),
-      { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
-    );
-  }
-
   return new Response(
     JSON.stringify({
       success:        true,
-      multi_platform: true,
-      platforms_sent: succeeded,
-      platforms_failed: failed.length > 0 ? failed : undefined,
+      platforms_sent: selectedPlatforms,
       approval_id:    body.approval_id,
     }),
     { headers: { ...CORS, "Content-Type": "application/json" } }
