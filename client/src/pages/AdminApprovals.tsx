@@ -379,13 +379,13 @@ export default function AdminApprovals() {
       const lines = cleanContent.split('\n').filter((l: string) => l.trim());
       const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
       if (postId) {
-        const { data: updated, error } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId).select('id');
-        if (error) return false;
-        if (!updated || updated.length === 0) {
-          const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
-          if (insertError) return false;
-        }
-        return true;
+        // UPDATE only — no select (RLS was silently blocking return of updated rows, causing false fallthrough to INSERT)
+        const { error: updateError } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId);
+        if (!updateError) return true;
+        // UPDATE errored — try INSERT as true fallback (new record)
+        const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
+        if (!insertError || (insertError as any).code === '23505') return true; // 23505 = duplicate key = UPDATE already worked
+        return false;
       }
       const { error: insertError } = await supabase.from('community_posts').insert({ title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
       if (insertError) return false;
