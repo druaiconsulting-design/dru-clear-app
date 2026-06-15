@@ -221,11 +221,37 @@ async function runVictor(): Promise<{ approval_id: string | null; post_id: strin
 }
 async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('sasha', 'Sasha Kim', 'ai_sales_mastery_insight', 'framework_lesson', 'community_lesson', `You are Sasha Kim, Revenue Intelligence Specialist for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite an AI SALES MASTERY™ INSIGHT focused on DISC Behavioral Intelligence. 200-250 words. Cover: how understanding behavioral styles (D/I/S/C) changes how executives sell AI transformation, one behavioral pattern that blocks AI adoption and how to address it, one immediately applicable communication strategy. CTA: assessment.druaiconsulting.com`);
+  const agentKnowledge = await getAgentKnowledge();
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nYou are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content.\nWrite a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF (200-250 words). Apply DISC Behavioral Intelligence to AI consulting sales. Cover: one DISC-based insight on how a specific buyer profile (D, I, S, or C) approaches AI buying decisions, one behavioral signal that indicates readiness to engage, one communication strategy DeAnna can deploy today in a prospect or client conversation. Be specific, tactical, and immediately actionable. This is her secret weapon.\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+  try {
+    const raw = await callAnthropic(prompt, 1000);
+    const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+    const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
+    const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    const title = enforceTM(parsed.title || 'Sasha Kim — Sales Intelligence');
+    const content = enforceTM(parsed.content || raw);
+    const approval_id = await writeToApprovals({ source: 'sasha_sales_intel', trigger_type: 'sales_intelligence', agent_name: 'Sasha Kim', agent_role: 'AI Sales Mastery™ Intelligence', division: 'Revenue, Growth & Sales', task_brief: `DISC Intelligence | ${today}`, original_content: null, output: `${title}\n\n${content}`, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'revenue_growth', platform: null, context: null, archived: false });
+    console.log(`[sasha] Sales intelligence card → approvals: ${approval_id ?? 'failed'}`);
+    return { approval_id, post_id: null };
+  } catch (error) { console.error('[sasha] Sales intel error:', error); return { approval_id: null, post_id: null }; }
 }
 async function runTariq(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('tariq', 'Tariq Oladele', 'ai_revenue_acceleration', 'framework_lesson', 'community_lesson', `You are Tariq Oladele, Revenue Intelligence Analyst for DRU AI Consulting's Community Connection division. Today: ${today}.\nYou and Sasha Kim are the AI Sales Mastery™ team. Sasha covers DISC Behavioral Intelligence. Your lane is AI Revenue Acceleration.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite an AI REVENUE ACCELERATION insight. 200-250 words. Cover: one AI-powered revenue strategy executives can deploy this week, one conversion insight specific to B2B consulting, one revenue metric every AI-era leader should be tracking. CTA: assessment.druaiconsulting.com`);
+  const agentKnowledge = await getAgentKnowledge();
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nYou are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content.\nWrite a DAILY REVENUE ACCELERATION INTELLIGENCE BRIEF (200-250 words). Cover: one AI-powered revenue strategy DeAnna can deploy or share with a client this week, one conversion insight specific to executive AI consulting (what moves high-ticket clients from interest to commitment), one revenue or pipeline metric DeAnna should be watching. Be specific, tactical, and immediately actionable. This is her competitive edge.\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+  try {
+    const raw = await callAnthropic(prompt, 1000);
+    const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+    const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
+    const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    const title = enforceTM(parsed.title || 'Tariq Oladele — Revenue Intelligence');
+    const content = enforceTM(parsed.content || raw);
+    const approval_id = await writeToApprovals({ source: 'tariq_revenue_intel', trigger_type: 'sales_intelligence', agent_name: 'Tariq Oladele', agent_role: 'Revenue Acceleration Intelligence', division: 'Revenue, Growth & Sales', task_brief: `Revenue Intelligence | ${today}`, original_content: null, output: `${title}\n\n${content}`, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'revenue_growth', platform: null, context: null, archived: false });
+    console.log(`[tariq] Revenue intelligence card → approvals: ${approval_id ?? 'failed'}`);
+    return { approval_id, post_id: null };
+  } catch (error) { console.error('[tariq] Revenue intel error:', error); return { approval_id: null, post_id: null }; }
 }
 async function runZoe(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
