@@ -11,16 +11,12 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 
 const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
-  cron_dominique_daily_insight:  { agent_id: 'dominique',   agent_name: 'Dominique Carter', task: 'daily_leadership_insight',    pipeline: 'p9_dominique' },
-  cron_elijah_framework_lesson:  { agent_id: 'elijah',      agent_name: 'Elijah Brooks',    task: 'framework_micro_lesson',      pipeline: 'p9_elijah' },
-  cron_solange_action_challenge: { agent_id: 'solange',     agent_name: 'Solange Dupont',   task: 'daily_action_challenge',      pipeline: 'p9_solange' },
-  cron_isaiah_webb_framework:    { agent_id: 'isaiah_webb', agent_name: 'Isaiah Webb',      task: 'weekly_framework_training',   pipeline: 'p9_isaiah_webb' },
-  cron_nadia_strategic_edge:     { agent_id: 'nadia',       agent_name: 'Nadia Osei',       task: 'strategic_edge_insight',      pipeline: 'p9_nadia' },
-  cron_victor_engagement:        { agent_id: 'victor',      agent_name: 'Victor Reyes',     task: 'community_engagement_post',   pipeline: 'p9_victor' },
+  // ── Daily community seed — rotates Zoe / Micah / Victor (one post per day) ──
+  cron_community_seed:            { agent_id: 'community_seed', agent_name: 'Community Seed',  task: 'daily_community_seed',        pipeline: 'p9_community_seed' },
+  // ── Sales intelligence — private cards for DeAnna only ───────────────────────
   cron_sasha_sales_insight:      { agent_id: 'sasha',       agent_name: 'Sasha Kim',        task: 'ai_sales_mastery_insight',    pipeline: 'p9_sasha' },
   cron_tariq_sales_content:      { agent_id: 'tariq',       agent_name: 'Tariq Oladele',    task: 'ai_revenue_acceleration',     pipeline: 'p9_tariq' },
-  cron_zoe_community_lead:       { agent_id: 'zoe',         agent_name: 'Zoe Beaumont',     task: 'daily_community_facilitation',pipeline: 'p9_zoe' },
-  cron_micah_member_experience:  { agent_id: 'micah',       agent_name: 'Micah Santos',     task: 'daily_member_experience',     pipeline: 'p9_micah' },
+  // ── Upsell scan & manual reply ───────────────────────────────────────────────
   cron_cc_upsell_scan:           { agent_id: 'upsell_scan', agent_name: 'Upsell Scanner',   task: 'cc_upsell_scan',              pipeline: 'p9_upsell_scan' },
   cc_agent_reply:                { agent_id: 'cc_agent',    agent_name: 'Community Agent',  task: 'community_reply',             pipeline: 'p9_cc_reply' },
 };
@@ -217,7 +213,7 @@ async function runNadia(): Promise<{ approval_id: string | null; post_id: string
 }
 async function runVictor(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement', `You are Victor Reyes, Culture DNA Community Builder for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion. 150-200 words. Include: one bold observation about AI leadership culture, a 5C Cultural DNA™ framework lens, one community discussion question (formatted in bold). Pure education — no calls to action.`);
+  return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement', `You are Victor Reyes, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: peer-to-peer — you are a fellow business owner sharing a bold observation, honest tension, or real pattern you've noticed. NOT a teacher or expert. Think: what would make someone at a mastermind table lean forward and say "yes, exactly that." End with one sharp question for the room. No framework lessons. No calls to action. Just a real conversation opener.`);
 }
 async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -260,9 +256,9 @@ async function runZoe(): Promise<{ approval_id: string | null; post_id: string |
   if (url && key) {
     const since = new Date(); since.setHours(since.getHours() - 48);
     const r = await fetch(`${url}/rest/v1/community_posts?published_at=gte.${since.toISOString()}&order=published_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (r.ok) { const posts = await r.json(); if (posts.length > 0) recentPostsSummary = posts.map((p: any) => `${p.agent_name} (${p.post_type}): ${p.title}`).join('\n'); }
+    if (r.ok) { const posts = await r.json(); if (posts.length > 0) recentPostsSummary = posts.map((p: any) => `${p.agent_name}: ${p.title}`).join('\n'); }
   }
-  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'strategic_edge', 'community_edge', `You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY (last 48 hours):\n${recentPostsSummary}\nWrite a daily community leadership post (200-250 words). Voice: warm authority. Reference recent community activity where relevant to create continuity. Pure education — no calls to action.`);
+  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'strategic_edge', 'community_edge', `You are Zoe Beaumont, a community leader and fellow business owner inside the DRU AI Leadership Ecosystem™. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY:\n${recentPostsSummary}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm peer-to-peer — you are a trusted peer reflecting on something real you've noticed, felt, or been sitting with. NOT a coach, NOT educational content. Like what you'd say to open a meaningful conversation at a mastermind table. Where relevant, build naturally off recent community activity to create continuity. End with one genuine question for the room. No calls to action.`);
 }
 async function runMicah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -272,7 +268,16 @@ async function runMicah(): Promise<{ approval_id: string | null; post_id: string
     const r = await fetch(`${url}/rest/v1/profiles?tier=in.(navigator,accelerator)&order=updated_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const members = await r.json(); if (members.length > 0) memberContext = `Active members: ${members.length} navigator/accelerator subscribers.`; }
   }
-  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'daily_insight', 'community_engagement', `You are Micah Santos, Member Experience Manager for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a DAILY MEMBER EXPERIENCE post (150-200 words). Voice: warm, encouraging, community-focused. Reference DRU AI Transformation Pathway™. Celebrate the journey members are on. Pure education — no calls to action.`);
+  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'daily_insight', 'community_engagement', `You are Micah Santos, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm and human — you are a fellow business owner who wants to celebrate wins, invite honesty, or open up something real you've been sitting with. NOT educational. NOT a coach post. Like a message you'd send to a group chat of people you trust. Invite others to share their own experience. End with one open, genuine question. No calls to action.`);
+}
+
+// ─── Daily Community Seed — rotates Zoe / Micah / Victor (one post per day) ──
+async function runCommunitySeed(): Promise<{ approval_id: string | null; post_id: string | null }> {
+  const slot = new Date().getDate() % 3;
+  if (slot === 0) return runZoe();
+  if (slot === 1) return runMicah();
+  return runVictor();
+}
 }
 
 async function runCCAgentReply(postId: string, postTitle: string, postContent: string, postType: string, routeTo: 'zoe' | 'micah'): Promise<{ approval_id: string | null }> {
@@ -436,7 +441,11 @@ export default async function handler(req: any, res: any): Promise<void> {
   const route = CC_AGENT_ROUTES[triggerType];
   if (!route) { res.status(400).json({ error: `Unknown CC trigger_type: ${triggerType}` }); return; }
   console.log(`[cc-agent-trigger] ${route.agent_name} | Community Connection | ${req.body?.source ?? 'webhook'}`);
-  const runners: Record<string, () => Promise<{ approval_id: string | null; post_id: string | null }>> = { p9_dominique: runDominique, p9_elijah: runElijah, p9_solange: runSolange, p9_isaiah_webb: runIsaiahWebb, p9_nadia: runNadia, p9_victor: runVictor, p9_sasha: runSasha, p9_tariq: runTariq, p9_zoe: runZoe, p9_micah: runMicah };
+  const runners: Record<string, () => Promise<{ approval_id: string | null; post_id: string | null }>> = {
+    p9_community_seed: runCommunitySeed,
+    p9_sasha: runSasha,
+    p9_tariq: runTariq,
+  };
   const runner = runners[route.pipeline];
   if (!runner) {
     if (route.pipeline === 'p9_upsell_scan') { await runUpsellScan(); res.status(202).json({ success: true, agent: 'Upsell Scanner', message: 'Scan complete' }); return; }
