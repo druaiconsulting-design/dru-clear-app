@@ -62,6 +62,18 @@ async function writeToApprovals(record: Record<string, unknown>): Promise<string
   const data = await res.json(); return data?.[0]?.id ?? null;
 }
 
+// Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
+async function postAcknowledgmentComment(postId: string, firstName: string, signalContext: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  try {
+    const prompt = `${GENIUS_MODE}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Do NOT mention products, pricing, services, or include any links. Be warm, human, and community-focused. Write ONLY the reply text.`;
+    const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
+    await fetch(`${url}/rest/v1/community_comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Micah Santos', content: acknowledgment, is_flagged: false, is_active: true }) });
+    console.log(`[micah] Acknowledgment posted to post ${postId} for ${firstName}`);
+  } catch (err) { console.error('[acknowledgment] Failed:', err); }
+}
+
 // ─── Agent Knowledge Base (inline) ─────────────────────────────────────────
 // UPDATED: Full framework knowledge — identical to ghl-agent-trigger.ts
 // Agent prompts unchanged — framework assignment per agent already correct
@@ -179,33 +191,33 @@ async function runCCAgent(agentId: string, agentName: string, task: string, post
 
 async function runDominique(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('dominique', 'Dominique Carter', 'daily_leadership_insight', 'daily_insight', 'community_insight', `You are Dominique Carter, CLEAR Vision Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a DAILY LEADERSHIP WITH AI INSIGHT applying the DRU CLEAR™ framework — Clarity & Leadership — to a real AI leadership challenge executives face today. Audience: C-suite and senior leaders navigating AI adoption. 150-200 words. Structure: one sharp opening insight, DRU CLEAR™ framework application (2-3 sentences), one executive reflection question. Close with: assessment.druaiconsulting.com`);
+  return runCCAgent('dominique', 'Dominique Carter', 'daily_leadership_insight', 'daily_insight', 'community_insight', `You are Dominique Carter, CLEAR Vision Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a DAILY LEADERSHIP WITH AI INSIGHT applying the DRU CLEAR™ framework — Clarity & Leadership — to a real AI leadership challenge executives face today. Audience: C-suite and senior leaders navigating AI adoption. 150-200 words. Structure: one sharp opening insight, DRU CLEAR™ framework application (2-3 sentences), one executive reflection question. Pure education — no calls to action.`);
 }
 async function runElijah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const components: Record<string, string> = { Monday: 'Alignment — ensuring AI strategy aligns with organizational goals', Tuesday: 'Execution — deploying AI systematically and at scale', Wednesday: 'Results — measuring and communicating AI ROI and impact', Thursday: 'Alignment — realigning teams when AI initiatives drift', Friday: 'Execution & Results — closing the gap between AI strategy and outcomes' };
   const component = components[dayOfWeek] ?? 'Alignment — ensuring AI strategy aligns with organizational goals';
-  return runCCAgent('elijah', 'Elijah Brooks', 'framework_micro_lesson', 'framework_lesson', 'community_lesson', `You are Elijah Brooks, Framework Educator for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a FRAMEWORK MICRO-LESSON on today's DRU CLEAR™ component: ${component}. 200-250 words. Cover: what this component means in practice, why executives consistently underinvest in it, one practical application exercise completable in under 10 minutes. End with "Today's Micro-Action:" (one sentence). CTA: assessment.druaiconsulting.com`);
+  return runCCAgent('elijah', 'Elijah Brooks', 'framework_micro_lesson', 'framework_lesson', 'community_lesson', `You are Elijah Brooks, Framework Educator for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a FRAMEWORK MICRO-LESSON on today's DRU CLEAR™ component: ${component}. 200-250 words. Cover: what this component means in practice, why executives consistently underinvest in it, one practical application exercise completable in under 10 minutes. End with "Today's Micro-Action:" (one sentence). Pure education — no calls to action.`);
 }
 async function runSolange(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('solange', 'Solange Dupont', 'daily_action_challenge', 'action_challenge', 'community_challenge', `You are Solange Dupont, 5D Elevation Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite TODAY'S ACTION CHALLENGE using the 5D Leadership™ framework. 150-200 words. Structure: bold Challenge Statement (one sentence), context explaining why this matters for AI-era leaders (2-3 sentences), 3-step challenge instructions numbered (each doable in under 10 minutes), expected outcome, 24-hour commitment close. CTA: assessment.druaiconsulting.com`);
+  return runCCAgent('solange', 'Solange Dupont', 'daily_action_challenge', 'action_challenge', 'community_challenge', `You are Solange Dupont, 5D Elevation Team Lead for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite TODAY'S ACTION CHALLENGE using the 5D Leadership™ framework. 150-200 words. Structure: bold Challenge Statement (one sentence), context explaining why this matters for AI-era leaders (2-3 sentences), 3-step challenge instructions numbered (each doable in under 10 minutes), expected outcome, 24-hour commitment close. Pure education — no calls to action.`);
 }
 async function runIsaiahWebb(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const dimensions: Record<string, string> = { Monday: 'Direction — establishing clear AI vision and purpose', Tuesday: 'Development — building AI capability and team fluency', Wednesday: 'Discipline — creating AI governance and consistency', Thursday: 'Distinction — differentiating through AI-powered leadership', Friday: 'Dominance — achieving and sustaining AI competitive advantage' };
   const dimension = dimensions[dayOfWeek] ?? 'Direction — establishing clear AI vision and purpose';
-  return runCCAgent('isaiah_webb', 'Isaiah Webb', 'weekly_framework_training', 'framework_training', 'community_training', `You are Isaiah Webb, 5D Elevation Trainer for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite FRAMEWORK TRAINING CONTENT on today's 5D Leadership™ dimension: ${dimension}. 250-300 words. Include: concept deep-dive, one real-world scenario, one skill-building exercise, this week's leadership reflection journal prompt. CTA: assessment.druaiconsulting.com`);
+  return runCCAgent('isaiah_webb', 'Isaiah Webb', 'weekly_framework_training', 'framework_training', 'community_training', `You are Isaiah Webb, 5D Elevation Trainer for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite FRAMEWORK TRAINING CONTENT on today's 5D Leadership™ dimension: ${dimension}. 250-300 words. Include: concept deep-dive, one real-world scenario, one skill-building exercise, this week's leadership reflection journal prompt. Pure education — no calls to action.`);
 }
 async function runNadia(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('nadia', 'Nadia Osei', 'strategic_edge_insight', 'strategic_edge', 'community_edge', `You are Nadia Osei, Culture DNA Strategist for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite DEANNA'S STRATEGIC EDGE — premium insider intelligence for community members. 200-250 words. Reveal one strategic insight about AI leadership culture that gives executives a genuine competitive edge. Apply the 5C Cultural DNA™ framework lens. End with one specific action that DeAnna's clients take that executives operating without this framework do not. CTA: assessment.druaiconsulting.com`);
+  return runCCAgent('nadia', 'Nadia Osei', 'strategic_edge_insight', 'strategic_edge', 'community_edge', `You are Nadia Osei, Culture DNA Strategist for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a COMMUNITY STRATEGIC INSIGHT — a substantive, educational perspective on AI leadership culture. 200-250 words. Apply the 5C Cultural DNA™ framework lens. Reveal one meaningful insight about how AI-era leaders can strengthen their organizational culture. End with one reflective question for the community to sit with. Pure education — no calls to action.`);
 }
 async function runVictor(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement', `You are Victor Reyes, Culture DNA Community Builder for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion. 150-200 words. Include: one bold observation about AI leadership culture, a 5C Cultural DNA™ framework lens, one community discussion question (formatted in bold). CTA: assessment.druaiconsulting.com`);
+  return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement', `You are Victor Reyes, Culture DNA Community Builder for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a COMMUNITY ENGAGEMENT POST that sparks meaningful discussion. 150-200 words. Include: one bold observation about AI leadership culture, a 5C Cultural DNA™ framework lens, one community discussion question (formatted in bold). Pure education — no calls to action.`);
 }
 async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -224,7 +236,7 @@ async function runZoe(): Promise<{ approval_id: string | null; post_id: string |
     const r = await fetch(`${url}/rest/v1/community_posts?published_at=gte.${since.toISOString()}&order=published_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const posts = await r.json(); if (posts.length > 0) recentPostsSummary = posts.map((p: any) => `${p.agent_name} (${p.post_type}): ${p.title}`).join('\n'); }
   }
-  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'strategic_edge', 'community_edge', `You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY (last 48 hours):\n${recentPostsSummary}\nWrite a daily community leadership post (200-250 words). Voice: warm authority.\nAfter the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any Navigator subscriber ready for Accelerator — route to Aaliyah Foster]"\nCTA: assessment.druaiconsulting.com`);
+  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'strategic_edge', 'community_edge', `You are Zoe Beaumont, Community Connection Division Leader for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY (last 48 hours):\n${recentPostsSummary}\nWrite a daily community leadership post (200-250 words). Voice: warm authority. Reference recent community activity where relevant to create continuity. Pure education — no calls to action.`);
 }
 async function runMicah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -234,7 +246,7 @@ async function runMicah(): Promise<{ approval_id: string | null; post_id: string
     const r = await fetch(`${url}/rest/v1/profiles?tier=in.(navigator,accelerator)&order=updated_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const members = await r.json(); if (members.length > 0) memberContext = `Active members: ${members.length} navigator/accelerator subscribers.`; }
   }
-  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'daily_insight', 'community_engagement', `You are Micah Santos, Member Experience Manager for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a DAILY MEMBER EXPERIENCE post (150-200 words). Voice: warm, encouraging, community-focused. Reference DRU AI Transformation Pathway™.\nAfter the post, on a new line write: "UPSELL SIGNAL: [one sentence identifying any Navigator subscriber showing Accelerator-ready patterns — route to Aaliyah Foster]"\nCTA: assessment.druaiconsulting.com`);
+  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'daily_insight', 'community_engagement', `You are Micah Santos, Member Experience Manager for DRU AI Consulting's Community Connection division. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a DAILY MEMBER EXPERIENCE post (150-200 words). Voice: warm, encouraging, community-focused. Reference DRU AI Transformation Pathway™. Celebrate the journey members are on. Pure education — no calls to action.`);
 }
 
 async function runCCAgentReply(postId: string, postTitle: string, postContent: string, postType: string, routeTo: 'zoe' | 'micah'): Promise<{ approval_id: string | null }> {
@@ -245,7 +257,7 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor\n- Connect to a relevant DRU framework (DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™)\n- Add one strategic insight that elevates the conversation\n- Invite further reflection or engagement\n- Your voice: grounded, clear, purposeful`;
   const micahInstructions = `- Acknowledge the member personally — make them feel genuinely seen\n- Validate their experience with specificity\n- Add warmth, encouragement, and a sense of belonging\n- Your voice: warm, engaged, human`;
-  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'}\nIf CTA fits naturally: assessment.druaiconsulting.com`;
+  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
   try {
     const raw = await callAnthropic(prompt, 600);
     const corrected = enforceTM(raw);
@@ -268,17 +280,27 @@ async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return false;
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const res = await fetch(`${url}/rest/v1/approvals?category=eq.cc_upsell_outreach&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const res = await fetch(`${url}/rest/v1/approvals?category=eq.community_opportunity&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   if (!res.ok) return false;
   const data = await res.json(); return Array.isArray(data) && data.length > 0;
 }
-async function fireAaliyahUpsellCard(memberId: string, firstName: string, email: string | null, phone: string | null, signalReason: string, postTitle: string): Promise<void> {
-  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nA Navigator member named ${firstName} is showing strong signals of readiness to upgrade to Accelerator ($167/mo).\nCommunity intelligence: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personalized outreach message (100-120 words) inviting ${firstName} to upgrade. Feel personal and specific. Reference their community engagement. Articulate Accelerator value. CTA: https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1\nWrite ONLY the message.`;
-  const outreach = enforceTM(await callAnthropic(prompt, 400));
+async function fireAaliyahUpsellCard(memberId: string, firstName: string, email: string | null, phone: string | null, signalReason: string, postTitle: string, postId: string, postContent: string): Promise<void> {
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  await writeToApprovals({ source: 'cc_upsell_scan', trigger_type: 'cc_upsell_scan', agent_name: 'Aaliyah Foster', agent_role: 'Outreach', division: 'Community Connection', task_brief: `MEMBER_ID:${memberId} | ${emailLine} | ${phoneLine} | Signal: ${signalReason}`, original_content: `Community post: "${postTitle}" — Navigator member showing Accelerator-ready signals`, output: outreach, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'HIGH', category: 'cc_upsell_outreach', platform: null, context: null, archived: false });
-  console.log(`[aaliyah] Upsell card written for member ${memberId} — ${firstName}`);
+  // Auto-post warm community acknowledgment (no approval needed)
+  await postAcknowledgmentComment(postId, firstName, signalReason);
+  // Write opportunity intelligence card for DeAnna (Knowledge card — no approve button)
+  await writeToApprovals({
+    source: 'aaliyah_opportunity', trigger_type: 'community_opportunity',
+    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
+    division: 'Community Connection',
+    task_brief: `${firstName} · Navigator → Accelerator | ${emailLine} | ${phoneLine}`,
+    original_content: `Post: "${postTitle}"\nSignal: ${signalReason}`,
+    output: `OPPORTUNITY — ${firstName}\n\nSignal: ${signalReason}\n\nPost: "${postTitle}"\n\nExcerpt: "${postContent.slice(0, 400)}"\n\n${emailLine} | ${phoneLine}\n\nAcknowledgment posted to their community thread. Ready for your personal outreach.`,
+    edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true,
+    priority: 'HIGH', category: 'community_opportunity', platform: null, context: null, archived: false,
+  });
+  console.log(`[aaliyah] Opportunity card written for ${firstName} | acknowledgment posted to post ${postId}`);
 }
 
 // ─── Scan 2: Framework & Bundle signals — all members ────────────────────────
@@ -287,28 +309,38 @@ async function hasRecentFrameworkCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return false;
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const res = await fetch(`${url}/rest/v1/approvals?category=eq.cc_framework_outreach&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const res = await fetch(`${url}/rest/v1/approvals?category=eq.community_opportunity&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
   if (!res.ok) return false;
   const data = await res.json(); return Array.isArray(data) && data.length > 0;
 }
 
-async function fireFrameworkBundleCard(memberId: string, firstName: string, tier: string, email: string | null, phone: string | null, signalReason: string, target: string, postTitle: string): Promise<void> {
-  const offerMap: Record<string, { label: string; price: string; cta: string }> = {
-    dru_clear:        { label: 'DRU CLEAR™',                    price: '$7,500',  cta: 'https://link.druaiconsulting.com/payment-link/69e41757557558e89e520dec' },
-    five_c:           { label: '5C Cultural DNA™',              price: '$6,000',  cta: 'https://link.druaiconsulting.com/payment-link/69e4194e557558e89e520def' },
-    five_d:           { label: '5D Leadership™',                price: '$6,500',  cta: 'https://link.druaiconsulting.com/payment-link/69e418197dd3512d920772fc' },
-    ai_sales_mastery: { label: 'AI Sales Mastery™',             price: '$6,000',  cta: 'https://link.druaiconsulting.com/payment-link/69e419bb7dd3512d920772fe' },
-    bundle_full:      { label: 'Full Ecosystem Bundle',         price: '$26,000', cta: 'https://link.druaiconsulting.com/payment-link/69e41a287dd3512d920772ff' },
-    bundle_plus_two:  { label: 'DRU CLEAR™ + 2 Frameworks',    price: '$19,500', cta: 'https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645' },
-    bundle_plus_one:  { label: 'DRU CLEAR™ + 1 Framework',     price: '$13,500', cta: 'https://link.druaiconsulting.com/payment-link/69dc91c480425dc02fbc7645' },
+async function fireFrameworkBundleCard(memberId: string, firstName: string, tier: string, email: string | null, phone: string | null, signalReason: string, target: string, postTitle: string, postId: string, postContent: string): Promise<void> {
+  const offerMap: Record<string, { label: string }> = {
+    dru_clear:        { label: 'DRU CLEAR™' },
+    five_c:           { label: '5C Cultural DNA™' },
+    five_d:           { label: '5D Leadership™' },
+    ai_sales_mastery: { label: 'AI Sales Mastery™' },
+    bundle_full:      { label: 'Full Ecosystem Bundle' },
+    bundle_plus_two:  { label: 'DRU CLEAR™ + 2 Frameworks' },
+    bundle_plus_one:  { label: 'DRU CLEAR™ + 1 Framework' },
   };
   const offer = offerMap[target] ?? offerMap['dru_clear'];
-  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nA ${tier} member named ${firstName} is showing strong interest in ${offer.label} (${offer.price}).\nCommunity intelligence: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personalized outreach message (100-120 words). Feel personal and specific. Reference their community engagement. Articulate the value of ${offer.label} for their specific AI leadership journey. CTA: ${offer.cta}\nWrite ONLY the message.`;
-  const outreach = enforceTM(await callAnthropic(prompt, 400));
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  await writeToApprovals({ source: 'cc_framework_scan', trigger_type: 'cc_framework_scan', agent_name: 'Aaliyah Foster', agent_role: 'Outreach', division: 'Community Connection', task_brief: `MEMBER_ID:${memberId} | ${emailLine} | ${phoneLine} | Offer: ${offer.label} ${offer.price} | Signal: ${signalReason}`, original_content: `Community post: "${postTitle}" — ${tier} member showing ${offer.label} interest`, output: outreach, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true, priority: 'HIGH', category: 'cc_framework_outreach', platform: null, context: null, archived: false });
-  console.log(`[aaliyah] Framework card written for member ${memberId} — ${firstName} | ${offer.label}`);
+  // Auto-post warm community acknowledgment (no approval needed)
+  await postAcknowledgmentComment(postId, firstName, signalReason);
+  // Write opportunity intelligence card for DeAnna (Knowledge card — no approve button)
+  await writeToApprovals({
+    source: 'cc_framework_scan', trigger_type: 'community_opportunity',
+    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
+    division: 'Community Connection',
+    task_brief: `${firstName} · ${tier} | Interest: ${offer.label} | ${emailLine} | ${phoneLine}`,
+    original_content: `Post: "${postTitle}"\nSignal: ${signalReason}`,
+    output: `OPPORTUNITY — ${firstName}\n\nFramework Interest: ${offer.label}\nSignal: ${signalReason}\n\nPost: "${postTitle}"\n\nExcerpt: "${postContent.slice(0, 400)}"\n\n${emailLine} | ${phoneLine}\n\nAcknowledgment posted to their community thread. Ready for your personal outreach.`,
+    edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true,
+    priority: 'HIGH', category: 'community_opportunity', platform: null, context: null, archived: false,
+  });
+  console.log(`[aaliyah] Framework opportunity card written for ${firstName} | ${offer.label} | acknowledgment posted to post ${postId}`);
 }
 
 async function runUpsellScan(): Promise<void> {
@@ -339,7 +371,7 @@ async function runUpsellScan(): Promise<void> {
         const detection = await callAnthropic(detectionPrompt, 120);
         if (detection.includes('UPSELL SIGNAL: YES')) {
           const reasonMatch = detection.match(/REASON:\s*(.+)/); const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
-          await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title);
+          await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title, post.id, post.content || '');
           signalsFound++;
         } else { console.log(`[upsell_scan] No Accelerator signal for ${profile.first_name}`); }
       } else { console.log(`[upsell_scan] ${profile.first_name} — Accelerator card exists, skipping`); }
@@ -355,7 +387,7 @@ async function runUpsellScan(): Promise<void> {
         const targetMatch  = frameworkDetection.match(/TARGET:\s*(dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one)/);
         const reason  = reasonMatch?.[1]?.trim()  ?? 'Member showing framework interest';
         const target  = targetMatch?.[1]?.trim()  ?? 'dru_clear';
-        await fireFrameworkBundleCard(memberId, profile.first_name, tier, profile.email ?? null, profile.phone ?? null, reason, target, post.title);
+        await fireFrameworkBundleCard(memberId, profile.first_name, tier, profile.email ?? null, profile.phone ?? null, reason, target, post.title, post.id, post.content || '');
         signalsFound++;
       } else { console.log(`[upsell_scan] No framework signal for ${profile.first_name}`); }
     } else { console.log(`[upsell_scan] ${profile.first_name} — framework card exists, skipping`); }
