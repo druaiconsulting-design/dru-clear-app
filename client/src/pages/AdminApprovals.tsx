@@ -89,13 +89,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   community_connection:"Community Connection", community_post:"CC Post", other:"Other",
   community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
   cc_upsell_outreach:"CC Upsell Signal",
+  community_opportunity:"CC Opportunity",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
   "community_connection","community_post","social","email","proposal","content","other",
-  "community_comment_reply","CC Post Triggers","cc_upsell_outreach",
+  "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity",
 ];
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
@@ -219,6 +220,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "community_comment_reply")     return { text: "CC Agent Reply",     color: "#2D5A8E" };
   if (approval.category === "CC Post Triggers")            return { text: "CC Policy Violation",color: "#C2185B" };
   if (approval.category === "cc_upsell_outreach")          return { text: "CC Upsell Signal",   color: "#D4AF37" };
+  if (approval.category === "community_opportunity")        return { text: "CC Opportunity",      color: "#C2185B" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
@@ -240,6 +242,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
   if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
   if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -250,6 +253,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "community_comment_reply") return "Agent Reply";
   if (approval.category === "CC Post Triggers")        return "Violation Report";
   if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
+  if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
