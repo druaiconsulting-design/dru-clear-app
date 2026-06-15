@@ -58,7 +58,7 @@ const PDF_CATEGORIES = new Set([
 ]);
 
 const APPROVAL_CATEGORIES = new Set([
-  "social", "community_comment_reply", "cc_upsell_outreach",
+  "social", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post",
 ]);
 
@@ -90,13 +90,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
   cc_upsell_outreach:"CC Upsell Signal",
   community_opportunity:"CC Opportunity",
+  ac_upsell_outreach:"AC Upsell Outreach",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
   "community_connection","community_post","social","email","proposal","content","other",
-  "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity",
+  "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
@@ -221,6 +222,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "CC Post Triggers")            return { text: "CC Policy Violation",color: "#C2185B" };
   if (approval.category === "cc_upsell_outreach")          return { text: "CC Upsell Signal",   color: "#D4AF37" };
   if (approval.category === "community_opportunity")        return { text: "CC Opportunity",      color: "#C2185B" };
+  if (approval.category === "ac_upsell_outreach")           return { text: "AC Upsell",           color: "#D4AF37" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
@@ -243,6 +245,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
   if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -254,6 +257,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "CC Post Triggers")        return "Violation Report";
   if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
   if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
+  if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
@@ -263,6 +267,7 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
   if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
   if (approval.category === "community_post")          return status === "posted" ? "✓ Posted to Community" : status === "posting" ? "Posting..."          : "⚠ Post Failed";
   if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"       : status === "posting" ? "Sending..."          : "⚠ Send Failed";
+  if (approval.category === "ac_upsell_outreach")      return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
@@ -466,6 +471,14 @@ export default function AdminApprovals() {
         const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
         const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
         const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trigger_type:"cc_upsell_outreach", agent_name:"Aaliyah Foster", outreach_message: content, email: emailMatch?.[1] ?? "", phone: phoneMatch?.[1] ?? "", task_brief: approval.task_brief, approval_id: id }) });
+        setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
+      } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
+    } else if (approval.category === "ac_upsell_outreach") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      try {
+        const emailMatch = (approval.task_brief || "").match(/Email:\s*([^\s|]+)/);
+        const phoneMatch = (approval.task_brief || "").match(/Phone:\s*([^\s|]+)/);
+        const res = await fetch("https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trigger_type:"ac_upsell_outreach", agent_name:"Aaliyah Foster", outreach_message: content, email: emailMatch?.[1] ?? "", phone: phoneMatch?.[1] ?? "", task_brief: approval.task_brief, approval_id: id }) });
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
