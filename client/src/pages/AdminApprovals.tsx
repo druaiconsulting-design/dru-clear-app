@@ -190,6 +190,17 @@ function renderDraft(text: string) {
   ));
 }
 
+function stripUpsellSignal(text: string): string {
+  const idx = text.indexOf('UPSELL SIGNAL:');
+  return idx !== -1 ? text.slice(0, idx).trim() : text;
+}
+
+function getUpsellSignal(text: string): string | null {
+  const idx = text.indexOf('UPSELL SIGNAL:');
+  if (idx === -1) return null;
+  return text.slice(idx + 'UPSELL SIGNAL:'.length).trim() || null;
+}
+
 function isApprovalCard(approval: Approval): boolean {
   return APPROVAL_CATEGORIES.has(approval.category);
 }
@@ -222,7 +233,8 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
     const raw = approval.task_brief || '';
     const parts = raw.split('|').map((s: string) => s.trim()).filter(Boolean);
     const contributors = parts.length > 1 ? parts.slice(1).join(' · ') : raw.replace(/post_id:[a-zA-Z0-9-]+\s*\|?\s*/g, '').trim() || raw;
-    return { heading: "Contributors", content: contributors || null };
+    const dateStr = new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return { heading: "Contributors", content: contributors ? `${contributors} | ${dateStr}` : dateStr };
   }
   if (approval.category === "daily_briefing")          return { heading: "Today's Date",    content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
   if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
@@ -361,20 +373,21 @@ export default function AdminApprovals() {
 
   const postToCommunity = async (approval: Approval, content: string): Promise<boolean> => {
     try {
+      const cleanContent = stripUpsellSignal(content);
       const postIdMatch = (approval.task_brief || '').match(/post_id:([a-zA-Z0-9-]+)/);
       const postId = postIdMatch?.[1];
-      const lines = content.split('\n').filter((l: string) => l.trim());
+      const lines = cleanContent.split('\n').filter((l: string) => l.trim());
       const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
       if (postId) {
-        const { data: updated, error } = await supabase.from('community_posts').update({ is_active: true, content, published_at: new Date().toISOString() }).eq('id', postId).select('id');
+        const { data: updated, error } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId).select('id');
         if (error) return false;
         if (!updated || updated.length === 0) {
-          const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
+          const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
           if (insertError) return false;
         }
         return true;
       }
-      const { error: insertError } = await supabase.from('community_posts').insert({ title, content, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
+      const { error: insertError } = await supabase.from('community_posts').insert({ title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
       if (insertError) return false;
       return true;
     } catch (err) { console.error('[community_post]', err); return false; }
@@ -800,13 +813,22 @@ export default function AdminApprovals() {
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
+                      {isCCPost && (() => {
+                        const signal = getUpsellSignal(approval.edited_output || approval.output);
+                        return signal ? (
+                          <div style={{ marginTop:"0.75rem", padding:"0.5rem 0.625rem", background:"rgba(212,175,55,0.07)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:6 }}>
+                            <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.85)", fontSize:"0.52rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, margin:"0 0 0.25rem" }}>Upsell Signal</p>
+                            <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.65)", fontSize:"0.68rem", lineHeight:1.5, margin:0 }}>{signal}</p>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{draftHead}</p>
                       {editingId === approval.id ? (
                         <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
                       ) : (
-                        <div>{renderDraft(activeContent)}</div>
+                        <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
                       )}
                     </div>
                   </div>
