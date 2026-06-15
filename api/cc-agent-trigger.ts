@@ -149,17 +149,29 @@ async function runCCAgent(agentId: string, agentName: string, task: string, post
   try {
     const agentKnowledge = await getAgentKnowledge();
     const raw = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`, 1500);
-    let title = ''; let content = '';
+    let title = ''; let content = ''; let upsellSignal: string | null = null;
     try {
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      title = parsed.title || agentName; content = parsed.content || raw;
+      // Strip code fences then extract JSON by first { → last } — handles any trailing text (e.g. UPSELL SIGNAL)
+      const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace  = cleaned.lastIndexOf('}');
+      if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON found');
+      const jsonStr  = cleaned.slice(firstBrace, lastBrace + 1);
+      const afterJson = cleaned.slice(lastBrace + 1).trim();
+      const parsed   = JSON.parse(jsonStr);
+      title   = parsed.title   || agentName;
+      content = parsed.content || raw;
+      // Capture UPSELL SIGNAL appended outside the JSON (Zoe / Micah agents)
+      const upsellMatch = afterJson.match(/UPSELL SIGNAL:\s*([\s\S]+)/);
+      upsellSignal = upsellMatch?.[1]?.trim() ?? null;
     } catch {
       const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
       title = `${agentName} — ${dateStr}`; content = raw;
     }
     title = enforceTM(title); content = enforceTM(content);
+    const output = upsellSignal ? `${title}\n\n${content}\n\nUPSELL SIGNAL: ${upsellSignal}` : `${title}\n\n${content}`;
     const post_id = await writeToCommunityPosts({ title, content, post_type: postType, tier_required: 'navigator', agent_id: agentId, agent_name: agentName, published_at: new Date().toISOString(), is_active: false });
-    const approval_id = await writeToApprovals({ source: `${agentId}_cc`, trigger_type: category, agent_name: agentName, agent_role: 'Community Connection', division: 'Community Connection', task_brief: post_id ? `post_id:${post_id} | ${agentName} | ${task.replace(/_/g, ' ')}` : `${agentName} | ${task.replace(/_/g, ' ')}`, original_content: null, output: `${title}\n\n${content}`, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'community_post', platform: 'Community', context: null, archived: false });
+    const approval_id = await writeToApprovals({ source: `${agentId}_cc`, trigger_type: category, agent_name: agentName, agent_role: 'Community Connection', division: 'Community Connection', task_brief: post_id ? `post_id:${post_id} | ${agentName} | ${task.replace(/_/g, ' ')}` : `${agentName} | ${task.replace(/_/g, ' ')}`, original_content: null, output, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'community_post', platform: 'Community', context: null, archived: false });
     console.log(`[${agentId}] CC post → approvals: ${approval_id ?? 'failed'} | community_posts: ${post_id ?? 'failed'}`);
     return { approval_id, post_id };
   } catch (error) { console.error(`[${agentId}] CC agent error:`, error); return { approval_id: null, post_id: null }; }
