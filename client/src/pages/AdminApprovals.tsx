@@ -486,7 +486,8 @@ export default function AdminApprovals() {
       setEditText(getActivePlatformContent(approval));
     } else {
       setEditingPlatform(null);
-      setEditText(approval.edited_output || approval.output);
+      const rawText = approval.edited_output || approval.output;
+      setEditText(approval.category === 'community_post' ? stripUpsellSignal(rawText) : rawText);
     }
   };
 
