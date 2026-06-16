@@ -84,7 +84,7 @@ function Router() {
         if (session) {
           const isAdminUser =
             session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
-          window.location.href = isAdminUser ? "/admin" : "/portal";
+          window.location.href = isAdminUser ? "/admin" : "https://members.druaiconsulting.com";
         }
       });
       return;
@@ -145,7 +145,7 @@ function Router() {
         }
         const isAdminUser =
           data.session.user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL;
-        window.location.replace(isAdminUser ? "/admin" : "/portal");
+        window.location.replace(isAdminUser ? "/admin" : "https://members.druaiconsulting.com");
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,12 +169,8 @@ function Router() {
       setTitle("DRU CLEAR™ AI Readiness Assessment");
       return <DruClearApp />;
     }
-    if (isLoggedIn) {
-      window.location.replace(isAdmin ? "/admin" : "/portal");
-      return null;
-    }
-    setTitle("Sign In · DRU CLEAR™");
-    return <Login />;
+    window.location.replace("/admin");
+    return null;
   }
 
   if (path === "/roi" || path === "/roi/") {
@@ -199,8 +195,8 @@ function Router() {
     return <ResetPassword />;
   }
   if (path === "/login" || path === "/login/") {
-    setTitle("Sign In · DRU CLEAR™");
-    return <Login />;
+    window.location.replace("/admin");
+    return null;
   }
 
   if (path === "/thank-you-ed" || path === "/thank-you-ed/") {
@@ -291,28 +287,27 @@ function Router() {
 
   // ── Protected Routes ────────────────────────────────────────────────────────
   if (path === "/portal" || path === "/portal/") {
-    setTitle("My Portal · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
-    return <Portal />;
+    window.location.replace("https://members.druaiconsulting.com");
+    return null;
   }
   if (path === "/my-results" || path === "/my-results/") {
     setTitle("My Assessment Results · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <MyResults />;
   }
   if (path === "/resources" || path === "/resources/") {
     setTitle("Knowledge Vault · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Resources />;
   }
   if (path === "/daily" || path === "/daily/") {
     setTitle("Daily Connections · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Daily />;
   }
   if (path === "/frameworks" || path === "/frameworks/") {
     setTitle("Frameworks · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Frameworks />;
   }
   if (path === "/community/accelerator" || path === "/community/accelerator/") {
@@ -322,17 +317,17 @@ function Router() {
   }
   if (path === "/community" || path === "/community/") {
     setTitle("Community · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Community />;
   }
   if (path === "/lab" || path === "/lab/") {
     setTitle("Leadership Lab · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Lab />;
   }
   if (path === "/affiliate" || path === "/affiliate/") {
     setTitle("Affiliate · DRU CLEAR™");
-    if (!isLoggedIn) return <Login />;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
     return <Affiliate />;
   }
   if (path === "/twin" || path === "/twin/") {
@@ -345,10 +340,10 @@ function Router() {
   setTitle("DRU CLEAR™");
   if (isAssessmentDomain) return <DruClearApp />;
   if (isLoggedIn) {
-    window.location.replace(isAdmin ? "/admin" : "/portal");
+    window.location.replace(isAdmin ? "/admin" : "https://members.druaiconsulting.com");
     return null;
   }
-  return <Login />;
+  window.location.replace("/admin"); return null;
 }
 
 function App() {
