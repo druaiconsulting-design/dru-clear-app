@@ -339,17 +339,66 @@ async function runRavi(): Promise<string|null> {
 }
 
 // P3
-// PHASE 3 UPDATED: Nia reads Client Delivery + Revenue intelligence before generating
-// Grounds content in real client experiences and pipeline signals — not invented scenarios
+// NIA ROBINSON — Content Strategist
+// Schedule: Wed/Sat/Sun = LinkedIn posts | Thu = Lead, Clarity, Win! newsletter x3 | Fri = LinkedIn native article
+// Mon/Tue = Darius days, Nia returns null
 async function runNia(): Promise<string|null> {
-  const brandMarks=await fetchBrandMarks();
-  const clientIntel = await getCrossRead(['keisha','leila','ryan']);
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const contentTypeMap:Record<string,string>={Monday:'thought_leadership_article',Tuesday:'framework_explainer',Wednesday:'executive_faq_guide',Thursday:'client_transformation_story',Friday:'trend_analysis_piece'};
-  const contentType=contentTypeMap[dayOfWeek]??'thought_leadership_article';
-  const contentInstructions:Record<string,string>={thought_leadership_article:`Write a 600-800 word thought leadership article positioning DeAnna R. Upshaw as the AI Authority. Compelling headline, 3-4 sections, one DRU framework reference, CTA to assessment.druaiconsulting.com.`,framework_explainer:`Write a 500-700 word framework explainer for one of DeAnna's proprietary frameworks. What it is, why it matters, core components, real-world application, CTA to assessment.druaiconsulting.com.`,executive_faq_guide:`Write a 600-800 word FAQ guide answering 5 pressing executive questions about AI adoption. One DRU framework per answer. CTA to assessment.druaiconsulting.com.`,client_transformation_story:`Write a 500-700 word composite client transformation story using the DRU AI Transformation Pathway™. Before state, intervention, transformation, outcomes, CTA to assessment.druaiconsulting.com.`,trend_analysis_piece:`Write a 600-800 word trend analysis on a current AI leadership trend. Position DeAnna as the authority. CTA to assessment.druaiconsulting.com.`};
-  return await runAgentToCSQ('nia','Nia Robinson','Marketing','daily_content_creation','content_creation',`You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nTODAY'S CONTENT TYPE: ${contentType}\n${contentInstructions[contentType]}\n\nCLIENT & REVENUE INTELLIGENCE — ground your content in these real signals from your team. When writing transformation stories or client scenarios, draw from this actual context rather than inventing generic examples:\n${clientIntel || 'No prior intelligence available — draw from framework-based scenarios.'}\nEvery piece must include assessment.druaiconsulting.com as the primary CTA.`,'normal',0,null,2000);
+  const brandMarks   = await fetchBrandMarks();
+  const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
+  const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+  const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  const trademarks   = `TRADEMARK RULES: Always ™ on every mention. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
+
+  // ── WEDNESDAY / SATURDAY / SUNDAY — LinkedIn Post (200-300 words) ──────────
+  if (['Wednesday','Saturday','Sunday'].includes(dayOfWeek)) {
+    const postTypeMap:Record<string,string> = { Wednesday:'thought_leadership', Saturday:'framework_spotlight', Sunday:'executive_insight' };
+    const postInstructions:Record<string,string> = {
+      thought_leadership: `Write a 200-300 word LinkedIn post positioning DeAnna R. Upshaw as the AI Authority. Strong hook on line one — no fluff. One sharp insight executives need about AI leadership today. One DRU framework reference (™). End with: assessment.druaiconsulting.com. Max 3 relevant hashtags.`,
+      framework_spotlight: `Write a 200-300 word LinkedIn post spotlighting one proprietary framework (™). Hook: the problem it solves. Body: what shifts when leaders apply it. One concrete real-world example. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
+      executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference (™). CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
+    };
+    return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
+      `You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${postInstructions[postTypeMap[dayOfWeek]]}\nCLIENT INTELLIGENCE — ground examples in real signals, not invented scenarios:\n${clientIntel||'No prior intelligence — draw from framework-based scenarios.'}`,
+      'normal',0,null,800);
+  }
+
+  // ── FRIDAY — LinkedIn Native Article (500-700 words, ARTICLE FORMAT) ────────
+  if (dayOfWeek === 'Friday') {
+    const topics = ['ai_changes_leadership','framework_deep_dive','transformation_story','executive_ai_mistakes','ai_culture_shift'];
+    const topic  = topics[new Date().getDate() % topics.length];
+    const articleInstructions:Record<string,string> = {
+      ai_changes_leadership: `Write a 500-700 word LinkedIn native article on how AI is reshaping executive leadership in 2026. Scroll-stopping headline. Strong intro. 3-4 sections with subheadings. One DRU framework (™). Closing CTA: "Start your AI readiness assessment → assessment.druaiconsulting.com".`,
+      framework_deep_dive:   `Write a 500-700 word LinkedIn native article doing a deep dive on one proprietary framework (™). What it is, why it exists, what changes when leaders apply it, real-world impact. CTA: assessment.druaiconsulting.com.`,
+      transformation_story:  `Write a 500-700 word LinkedIn native article as a composite client transformation story using the DRU AI Transformation Pathway™. Before → intervention → transformation → measurable shift. Real, not salesy. CTA: assessment.druaiconsulting.com.`,
+      executive_ai_mistakes: `Write a 500-700 word LinkedIn native article on the top mistakes executives make implementing AI. DeAnna as the authority who's seen it firsthand. One framework (™) as the solution lens. CTA: assessment.druaiconsulting.com.`,
+      ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA™. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
+    };
+    return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
+      `## ARTICLE FORMAT — LinkedIn Native Article\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${articleInstructions[topic]}\nCLIENT INTELLIGENCE:\n${clientIntel||'No prior intelligence — draw from framework-based scenarios.'}`,
+      'normal',0,null,1500);
+  }
+
+  // ── THURSDAY — Lead, Clarity, Win! Newsletter × 3 tiers ─────────────────────
+  if (dayOfWeek === 'Thursday') {
+    const topic = `AI leadership insight grounded in one DRU framework (™) — ${today}`;
+
+    // Non-member edition
+    await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_nonmember','newsletter_nonmember',
+      `## LEAD, CLARITY, WIN! — Non-Member Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Executives who have NOT yet joined DRU AI Consulting.\n${trademarks}\nDEPTH: Surface — reveal the problem clearly, hint at the solution, stop before delivering it. Hook them on the promise.\nFORMAT: Subject line | Opening hook (2-3 sentences that stop them) | The problem (1 paragraph — they should feel seen) | A glimpse of what's possible (1 paragraph — tease, do NOT teach) | CTA\nCTA: "Your AI transformation starts with one assessment. → assessment.druaiconsulting.com"\nTOPIC: ${topic}\nDo NOT give away framework IP. No framework detail — name only.`,
+      'normal',0,null,1000);
+
+    // Navigator edition
+    await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_navigator','newsletter_navigator',
+      `## LEAD, CLARITY, WIN! — Navigator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Navigator members ($97/mo) — executives who completed the assessment and joined.\n${trademarks}\nDEPTH: Medium — apply one framework concept to a real leadership challenge. Give real value but leave the full system for the 90-Day Journey.\nFORMAT: Subject line | Opening (acknowledge where they are as executives) | One framework concept + one action step they can take this week | What becomes possible when they go deeper | CTA\nCTA: "Ready to go all in? Start your 90-Day Transformation Pathway. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
+      'normal',0,null,1000);
+
+    // Accelerator edition
+    return await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
+      `## LEAD, CLARITY, WIN! — Accelerator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${trademarks}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Subject line | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
+      'normal',0,null,1000);
+  }
+
+  return null; // Monday, Tuesday — Darius days
 }
 async function runLuca(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
