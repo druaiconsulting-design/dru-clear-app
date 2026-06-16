@@ -39,6 +39,7 @@ export interface CommunityPost {
   agent_id: string; agent_name: string;
   published_at: string; is_active: boolean;
   pdf_url?: string; video_url?: string; image_url?: string;
+  content_es?: string | null;
   // Engagement fields
   category?:   PostCategory;
   is_pinned?:  boolean;
