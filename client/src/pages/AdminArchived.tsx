@@ -103,11 +103,19 @@ export default function AdminArchived() {
   const orderedCategories   = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
   const allCategories       = [...orderedCategories, ...remainingCategories];
-  const filtered = activeFilter === "all"
-    ? approvals
-    : activeFilter === "ready_to_use"
-      ? approvals.filter(a => a.status === "ready_to_use")
-      : approvals.filter(a => a.category === activeFilter);
+  const SOCIAL_MEDIA_PLATFORMS = new Set(['LinkedIn','Facebook','Instagram','X','TikTok','YouTube','Social','Email','Press','Localization','Outreach']);
+
+  const getFiltered = () => {
+    if (activeFilter === "all")          return approvals;
+    if (activeFilter === "social_media") return approvals.filter(a => a.category === "social" && SOCIAL_MEDIA_PLATFORMS.has(a.platform ?? ''));
+    if (activeFilter === "design")       return approvals.filter(a => a.platform === "Design");
+    if (activeFilter === "copy")         return approvals.filter(a => a.platform === "Copy");
+    if (activeFilter === "course")       return approvals.filter(a => a.platform === "Course");
+    if (activeFilter === "video")        return approvals.filter(a => a.platform === "Video");
+    if (activeFilter === "proposal")     return approvals.filter(a => a.platform === "Proposal");
+    return approvals;
+  };
+  const filtered = getFiltered();
 
   const tabStyle = (active: boolean) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
@@ -141,7 +149,7 @@ export default function AdminArchived() {
           {[
             { label:"Total Archived", value:approvals.length,                                                 color:"rgba(10,35,66,0.6)" },
             { label:"Approved",       value:approvals.filter(a => a.status === "approved").length,            color:"#4CAF50" },
-            { label:"Ready to Use",   value:approvals.filter(a => a.status === "ready_to_use").length,        color:"#0A2342" },
+            { label:"Ready to Use",   value:approvals.filter(a => a.status === "ready_to_use").length,        color:"#D4AF37" },
             { label:"Rejected",       value:approvals.filter(a => a.status === "rejected").length,            color:"#C2185B" },
           ].map(s => (
             <div key={s.label} style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"0.875rem 1rem" }}>
@@ -151,15 +159,21 @@ export default function AdminArchived() {
           ))}
         </div>
 
-        {/* Filter Tabs */}
+        {/* Filter Pills — content type only, status is shown on each card */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
-          <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>All ({approvals.length})</button>
-          <button onClick={() => setActiveFilter("ready_to_use")} style={{ ...tabStyle(activeFilter === "ready_to_use"), background: activeFilter === "ready_to_use" ? "#0A2342" : undefined, color: activeFilter === "ready_to_use" ? "#FAFAF8" : undefined }}>
-            Ready to Use ({approvals.filter(a => a.status === "ready_to_use").length})
+          <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>
+            All ({approvals.length})
           </button>
-          {allCategories.map(cat => (
-            <button key={cat} onClick={() => setActiveFilter(cat)} style={tabStyle(activeFilter === cat)}>
-              {CATEGORY_LABELS[cat] || cat} ({approvals.filter(a => a.category === cat).length})
+          {[
+            { key:"social_media", label:"Social Media", count: approvals.filter(a => a.category === "social" && new Set(['LinkedIn','Facebook','Instagram','X','TikTok','YouTube','Social','Email','Press','Localization','Outreach']).has(a.platform ?? '')).length },
+            { key:"design",       label:"Design",       count: approvals.filter(a => a.platform === "Design").length },
+            { key:"copy",         label:"Copy",         count: approvals.filter(a => a.platform === "Copy").length },
+            { key:"course",       label:"Course",       count: approvals.filter(a => a.platform === "Course").length },
+            { key:"video",        label:"Video",        count: approvals.filter(a => a.platform === "Video").length },
+            { key:"proposal",     label:"Proposal",     count: approvals.filter(a => a.platform === "Proposal").length },
+          ].filter(pill => pill.count > 0).map(pill => (
+            <button key={pill.key} onClick={() => setActiveFilter(pill.key)} style={tabStyle(activeFilter === pill.key)}>
+              {pill.label} ({pill.count})
             </button>
           ))}
         </div>
@@ -177,7 +191,7 @@ export default function AdminArchived() {
               const badge      = getBadgeInfo(approval);
               const isBriefing = approval.category !== "social";
               return (
-                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:"1px solid rgba(10,35,66,0.1)", background:"rgba(10,35,66,0.02)", opacity:0.85 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:"1px solid rgba(10,35,66,0.1)", borderLeft: approval.status === "ready_to_use" ? "3px solid #D4AF37" : "1px solid rgba(10,35,66,0.1)", background:"rgba(10,35,66,0.02)", opacity:0.85 }}>
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
@@ -185,7 +199,7 @@ export default function AdminArchived() {
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "ready_to_use" ? "#0A2342" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status === "ready_to_use" ? "READY TO USE" : approval.status}</span>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "ready_to_use" ? "#D4AF37" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status === "ready_to_use" ? "READY TO USE" : approval.status}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
