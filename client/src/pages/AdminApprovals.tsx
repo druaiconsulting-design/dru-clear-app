@@ -24,6 +24,7 @@ interface Approval {
   facebook_content: string | null;
   instagram_caption: string | null;
   instagram_video_url: string | null;
+  spanish_content: string | null;
 }
 
 interface FlaggedComment {
@@ -190,6 +191,15 @@ function renderDraft(text: string) {
       {para.replace(/\n/g, ' ')}
     </p>
   ));
+}
+
+function parseYaraBilingual(output: string): { english: string; spanish: string } {
+  const englishMatch = output.match(/##\s*ENGLISH VERSION[^:\n]*[:\n]+([\s\S]*?)(?=##\s*SPANISH VERSION|$)/i);
+  const spanishMatch = output.match(/##\s*SPANISH VERSION[^:\n]*[:\n]+([\s\S]*?)(?=Localization notes|Translated hashtags|$)/i);
+  return {
+    english: englishMatch?.[1]?.trim() || output,
+    spanish: spanishMatch?.[1]?.trim() || '',
+  };
 }
 
 function stripUpsellSignal(text: string): string {
@@ -400,6 +410,20 @@ export default function AdminApprovals() {
       if (insertError) return false;
       return true;
     } catch (err) { console.error('[community_post]', err); return false; }
+  };
+
+  // Yara — post English to both CC + ACC communities, Spanish stored in content_es
+  const postYaraToCommunity = async (approval: Approval): Promise<boolean> => {
+    try {
+      const content   = approval.linkedin_content || approval.output;
+      const contentEs = approval.spanish_content || null;
+      const lines     = content.split('\n').filter((l: string) => l.trim());
+      const title     = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || 'Yara Mansour Post';
+      const base = { title, content, content_es: contentEs, agent_name: 'Yara Mansour', post_type: 'agent', is_active: true, published_at: new Date().toISOString() };
+      const { error: ccErr }  = await supabase.from('community_posts').insert({ ...base, tier_required: 'navigator',    channel: 'main' });
+      const { error: accErr } = await supabase.from('community_posts').insert({ ...base, tier_required: 'accelerator', channel: 'accelerator_circle' });
+      return !ccErr && !accErr;
+    } catch (err) { console.error('[yara_community]', err); return false; }
   };
 
   const fireSocialPublisher = async (approval: Approval, overrideContent?: { linkedin?: string; facebook?: string; instagram?: string }): Promise<boolean> => {
@@ -1018,6 +1042,20 @@ export default function AdminApprovals() {
                             style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
                             {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
                           </button>
+                          {/* Yara — Post to Community button (CC + ACC, English + Spanish toggle) */}
+                          {isMulti && approval.platform === 'LinkedIn' && approval.agent_name === 'Yara Mansour' && approval.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                setSaving(approval.id);
+                                const ok = await postYaraToCommunity(approval);
+                                setPublishStatus(prev => ({ ...prev, [`${approval.id}_community`]: ok ? "posted" : "failed" }));
+                                setSaving(null);
+                              }}
+                              disabled={saving === approval.id}
+                              style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid #C2185B", background:"transparent", color:"#C2185B", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                              {publishStatus[`${approval.id}_community`] === 'posted' ? "✓ Posted" : publishStatus[`${approval.id}_community`] === 'failed' ? "⚠ Failed" : "🌐 Post to Community"}
+                            </button>
+                          )}
                         </>
                       )}
                       {editingId === approval.id && (
