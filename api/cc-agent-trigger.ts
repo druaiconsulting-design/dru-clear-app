@@ -3,6 +3,10 @@
 // ARCHITECTURE v2: CC agents write DIRECTLY to approvals (bypass daily CSQ chain)
 // KNOWLEDGE INJECTION: getAgentKnowledge() inlined directly (no separate module)
 // UPDATED: Full FRAMEWORK_KNOWLEDGE — matches ghl-agent-trigger.ts (agent prompts unchanged)
+// UPDATED: Sasha covers full DISC spectrum every run (3x/week: Sun/Tue/Thu)
+// UPDATED: Tariq day-specific angles (Mon=Strategy, Wed=Conversion, Sat=Pipeline)
+// UPDATED: Bidirectional getPeerCrossRead between Sasha and Tariq (same IP ecosystem)
+// NEW ROUTES: cron_sasha_tuesday, cron_sasha_thursday, cron_tariq_wednesday, cron_tariq_saturday
 
 export const config = { maxDuration: 60 };
 
@@ -12,22 +16,27 @@ interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pip
 
 const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
   // ── Daily community seed — rotates Zoe / Micah / Victor (one post per day) ──
-  cron_community_seed:            { agent_id: 'community_seed', agent_name: 'Community Seed',  task: 'daily_community_seed',        pipeline: 'p9_community_seed' },
-  // ── Sales intelligence — private cards for DeAnna only ───────────────────────
-  cron_sasha_sales_insight:      { agent_id: 'sasha',       agent_name: 'Sasha Kim',        task: 'ai_sales_mastery_insight',    pipeline: 'p9_sasha' },
-  cron_tariq_sales_content:      { agent_id: 'tariq',       agent_name: 'Tariq Oladele',    task: 'ai_revenue_acceleration',     pipeline: 'p9_tariq' },
+  cron_community_seed:     { agent_id: 'community_seed', agent_name: 'Community Seed',  task: 'daily_community_seed',     pipeline: 'p9_community_seed' },
+  // ── Sasha Kim — AI Sales Mastery™ DISC intelligence (Sun / Tue / Thu) ────────
+  cron_sasha_sales_insight: { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
+  cron_sasha_tuesday:       { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
+  cron_sasha_thursday:      { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
+  // ── Tariq Oladele — Revenue Acceleration (Mon / Wed / Sat) ──────────────────
+  cron_tariq_sales_content: { agent_id: 'tariq', agent_name: 'Tariq Oladele', task: 'ai_revenue_acceleration',  pipeline: 'p9_tariq' },
+  cron_tariq_wednesday:     { agent_id: 'tariq', agent_name: 'Tariq Oladele', task: 'ai_revenue_acceleration',  pipeline: 'p9_tariq' },
+  cron_tariq_saturday:      { agent_id: 'tariq', agent_name: 'Tariq Oladele', task: 'ai_revenue_acceleration',  pipeline: 'p9_tariq' },
   // ── Upsell scan & manual reply ───────────────────────────────────────────────
-  cron_cc_upsell_scan:           { agent_id: 'upsell_scan', agent_name: 'Upsell Scanner',   task: 'cc_upsell_scan',              pipeline: 'p9_upsell_scan' },
-  cc_agent_reply:                { agent_id: 'cc_agent',    agent_name: 'Community Agent',  task: 'community_reply',             pipeline: 'p9_cc_reply' },
+  cron_cc_upsell_scan:  { agent_id: 'upsell_scan', agent_name: 'Upsell Scanner',  task: 'cc_upsell_scan',   pipeline: 'p9_upsell_scan' },
+  cc_agent_reply:       { agent_id: 'cc_agent',    agent_name: 'Community Agent', task: 'community_reply',  pipeline: 'p9_cc_reply'    },
 };
 
 const TM_PAIRS: [RegExp, string][] = [
-  [/DRU CLEAR(?!™)/g,                       'DRU CLEAR™'],
-  [/DRU AI Leadership Ecosystem(?!™)/g,     'DRU AI Leadership Ecosystem™'],
-  [/DRU AI Transformation Pathway(?!™)/g,   'DRU AI Transformation Pathway™'],
-  [/5C Cultural DNA(?!™)/g,                 '5C Cultural DNA™'],
-  [/5D Leadership(?!™)/g,                   '5D Leadership™'],
-  [/AI Sales Mastery(?!™)/g,                'AI Sales Mastery™'],
+  [/DRU CLEAR(?!™)/g,                           'DRU CLEAR™'],
+  [/DRU AI Leadership Ecosystem(?!™)/g,         'DRU AI Leadership Ecosystem™'],
+  [/DRU AI Transformation Pathway(?!™)/g,       'DRU AI Transformation Pathway™'],
+  [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
+  [/5D Leadership(?!™)/g,                       '5D Leadership™'],
+  [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
   [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
 ];
 function enforceTM(content: string): string {
@@ -58,6 +67,23 @@ async function writeToApprovals(record: Record<string, unknown>): Promise<string
   const data = await res.json(); return data?.[0]?.id ?? null;
 }
 
+// ─── Cross-read: Sasha ↔ Tariq (reads from approvals, not CSQ) ──────────────
+// Both write to approvals, not chief_of_staff_queue, so we read from there directly.
+async function getPeerCrossRead(source: string, limit = 2): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const query = `${url}/rest/v1/approvals?source=eq.${source}&order=created_at.desc&limit=${limit}&select=agent_name,output,created_at`;
+    const res = await fetch(query, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!res.ok) return '';
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return '';
+    return (data as Record<string, string>[]).map(item =>
+      `[${item.agent_name} — ${new Date(item.created_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}]\n${(item.output || '').slice(0, 500)}`
+    ).join('\n\n---\n\n');
+  } catch { return ''; }
+}
+
 // Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
 async function postAcknowledgmentComment(postId: string, firstName: string, signalContext: string): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -71,8 +97,6 @@ async function postAcknowledgmentComment(postId: string, firstName: string, sign
 }
 
 // ─── Agent Knowledge Base (inline) ─────────────────────────────────────────
-// UPDATED: Full framework knowledge — identical to ghl-agent-trigger.ts
-// Agent prompts unchanged — framework assignment per agent already correct
 const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
 const FRAMEWORK_KNOWLEDGE = `
 ## THE DRU AI TRANSFORMATION PATHWAY™
@@ -140,16 +164,7 @@ async function getAgentKnowledge(): Promise<string> {
   } catch(err){console.error('[agentKnowledge] fetch error:',err);}
   if (tmMarks.length===0) tmMarks=CC_FALLBACK_TM_MARKS;
   const tmList=tmMarks.map(m=>`  - ${m}`).join('\n');
-  return `=== DRU AI CONSULTING — AGENT KNOWLEDGE BASE ===
-
-PROTECTED IP MARKS — TM REQUIRED ON EVERY USE, NO EXCEPTIONS:
-${tmList}
-
-RULES: Every mark above MUST include TM every time. NO other terms carry TM.
-Do NOT add TM to anything not on this list. 'DRU AI Consulting' = business name, NO TM.
-REQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)
-${FRAMEWORK_KNOWLEDGE}
-=== END AGENT KNOWLEDGE BASE ===`.trim();
+  return `=== DRU AI CONSULTING — AGENT KNOWLEDGE BASE ===\n\nPROTECTED IP MARKS — TM REQUIRED ON EVERY USE, NO EXCEPTIONS:\n${tmList}\n\nRULES: Every mark above MUST include TM every time. NO other terms carry TM.\nDo NOT add TM to anything not on this list. 'DRU AI Consulting' = business name, NO TM.\nREQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)\n${FRAMEWORK_KNOWLEDGE}\n=== END AGENT KNOWLEDGE BASE ===`.trim();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -159,7 +174,6 @@ async function runCCAgent(agentId: string, agentName: string, task: string, post
     const raw = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`, 1500);
     let title = ''; let content = ''; let upsellSignal: string | null = null;
     try {
-      // Strip code fences then extract JSON by first { → last } — handles any trailing text (e.g. UPSELL SIGNAL)
       const cleaned = raw.replace(/```json\s*|```/g, '').trim();
       const firstBrace = cleaned.indexOf('{');
       const lastBrace  = cleaned.lastIndexOf('}');
@@ -169,7 +183,6 @@ async function runCCAgent(agentId: string, agentName: string, task: string, post
       const parsed   = JSON.parse(jsonStr);
       title   = parsed.title   || agentName;
       content = parsed.content || raw;
-      // Capture UPSELL SIGNAL appended outside the JSON (Zoe / Micah agents)
       const upsellMatch = afterJson.match(/UPSELL SIGNAL:\s*([\s\S]+)/);
       upsellSignal = upsellMatch?.[1]?.trim() ?? null;
     } catch {
@@ -215,40 +228,126 @@ async function runVictor(): Promise<{ approval_id: string | null; post_id: strin
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   return runCCAgent('victor', 'Victor Reyes', 'community_engagement_post', 'daily_insight', 'community_engagement', `You are Victor Reyes, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: peer-to-peer — you are a fellow business owner sharing a bold observation, honest tension, or real pattern you've noticed. NOT a teacher or expert. Think: what would make someone at a mastermind table lean forward and say "yes, exactly that." End with one sharp question for the room. No framework lessons. No calls to action. Just a real conversation opener.`);
 }
+
+// ─── Sasha Kim — AI Sales Mastery™ Intelligence (Sun / Tue / Thu) ────────────
+// Covers ALL FOUR DISC profiles every run. Cross-reads Tariq before writing.
 async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const agentKnowledge = await getAgentKnowledge();
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nYou are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content.\nWrite a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF (200-250 words). Apply DISC Behavioral Intelligence to AI consulting sales. Cover: one DISC-based insight on how a specific buyer profile (D, I, S, or C) approaches AI buying decisions, one behavioral signal that indicates readiness to engage, one communication strategy DeAnna can deploy today in a prospect or client conversation. Be specific, tactical, and immediately actionable. This is her secret weapon.\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+
+  // Cross-read Tariq's most recent briefs — same IP ecosystem, content should flow together
+  const tariqContext = await getPeerCrossRead('tariq_revenue_intel', 2);
+  const peerSection = tariqContext
+    ? `\n\nTARIQ'S RECENT REVENUE INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${tariqContext}\n`
+    : '';
+
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting. Today: ${today}.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+SERVICE CLASSES: All content within Classes 35, 41, 42 only.
+You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content.
+${peerSection}
+Write a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF (280-320 words). Apply DISC Behavioral Intelligence across ALL FOUR buyer profiles.
+
+Cover ALL FOUR DISC profiles every brief — one section per profile:
+
+D — DOMINANT: How D-style buyers approach AI consulting decisions. What drives them (speed, ROI, control). One behavioral signal that indicates readiness. One communication strategy DeAnna can deploy immediately.
+
+I — INFLUENTIAL: How I-style buyers engage with AI consulting. What builds their enthusiasm and trust. One behavioral signal that indicates readiness. One communication strategy that resonates with their vision.
+
+S — STEADY: How S-style buyers evaluate AI investments. Their need for certainty, proof, and relational safety. One behavioral signal that indicates readiness. One communication strategy that reduces risk perception.
+
+C — CONSCIENTIOUS: How C-style buyers research AI solutions. Their analytical triggers and what they need to commit. One behavioral signal that indicates readiness. One communication strategy that satisfies their need for detail.
+
+Where Tariq's recent revenue intelligence connects — integrate it naturally. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
+Be specific, tactical, and immediately actionable. This is DeAnna's secret weapon.
+Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+
   try {
-    const raw = await callAnthropic(prompt, 1000);
+    const raw = await callAnthropic(prompt, 1200);
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
     const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-    const title = enforceTM(parsed.title || 'Sasha Kim — Sales Intelligence');
+    const title   = enforceTM(parsed.title   || 'Sasha Kim — AI Sales Mastery™ DISC Intelligence');
     const content = enforceTM(parsed.content || raw);
-    const approval_id = await writeToApprovals({ source: 'sasha_sales_intel', trigger_type: 'sales_intelligence', agent_name: 'Sasha Kim', agent_role: 'AI Sales Mastery™ Intelligence', division: 'Revenue, Growth & Sales', task_brief: `DISC Intelligence | ${today}`, original_content: null, output: `${title}\n\n${content}`, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'revenue_growth', platform: null, context: null, archived: false });
-    console.log(`[sasha] Sales intelligence card → approvals: ${approval_id ?? 'failed'}`);
+    const approval_id = await writeToApprovals({
+      source: 'sasha_sales_intel', trigger_type: 'sales_intelligence',
+      agent_name: 'Sasha Kim', agent_role: 'AI Sales Mastery™ Intelligence',
+      division: 'Revenue, Growth & Sales',
+      task_brief: `DISC Intelligence — All 4 Profiles | ${today}`,
+      original_content: null, output: `${title}\n\n${content}`, edited_output: null,
+      status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL',
+      category: 'revenue_growth', platform: null, context: null, archived: false,
+    });
+    console.log(`[sasha] DISC Intelligence card → approvals: ${approval_id ?? 'failed'}`);
     return { approval_id, post_id: null };
   } catch (error) { console.error('[sasha] Sales intel error:', error); return { approval_id: null, post_id: null }; }
 }
+
+// ─── Tariq Oladele — Revenue Acceleration (Mon / Wed / Sat) ──────────────────
+// Day-specific angles. Cross-reads Sasha before writing.
 async function runTariq(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
   const agentKnowledge = await getAgentKnowledge();
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nYou are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content.\nWrite a DAILY REVENUE ACCELERATION INTELLIGENCE BRIEF (200-250 words). Cover: one AI-powered revenue strategy DeAnna can deploy or share with a client this week, one conversion insight specific to executive AI consulting (what moves high-ticket clients from interest to commitment), one revenue or pipeline metric DeAnna should be watching. Be specific, tactical, and immediately actionable. This is her competitive edge.\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+
+  // Cross-read Sasha's most recent briefs — same IP ecosystem
+  const sashaContext = await getPeerCrossRead('sasha_sales_intel', 2);
+  const peerSection = sashaContext
+    ? `\n\nSASHA'S RECENT DISC INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${sashaContext}\n`
+    : '';
+
+  // Day-specific angle
+  const angleMap: Record<string, { label: string; instruction: string }> = {
+    Monday: {
+      label: 'Revenue Strategy',
+      instruction: `Write a REVENUE STRATEGY BRIEF — the big picture move DeAnna should be making or recommending to clients this week. One AI-powered revenue strategy at the strategic level. Why it matters now. How to position it. What result it produces. Connect to Sasha's DISC intelligence where it strengthens the strategy.`,
+    },
+    Wednesday: {
+      label: 'Conversion Intelligence',
+      instruction: `Write a CONVERSION INTELLIGENCE BRIEF — what moves high-ticket clients from interest to commitment in executive AI consulting. One DISC-informed conversion insight that connects directly to how different buyer profiles decide. Reference Sasha's DISC intelligence and show how the conversion play plays differently for D, I, S, or C buyers.`,
+    },
+    Saturday: {
+      label: 'Pipeline & Application',
+      instruction: `Write a PIPELINE & APPLICATION BRIEF — what DeAnna should deploy in the coming week. One pipeline metric to watch. One concrete application move (conversation, follow-up, positioning play). One forward-looking insight about next week's revenue opportunities. Bring Sasha's DISC intelligence forward — how does it shape pipeline action this week?`,
+    },
+  };
+
+  const angle = angleMap[dayOfWeek] ?? angleMap['Monday'];
+
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting. Today: ${today}.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+SERVICE CLASSES: All content within Classes 35, 41, 42 only.
+You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content.
+TODAY'S ANGLE: ${angle.label}
+${peerSection}
+${angle.instruction}
+
+200-250 words. Be specific, tactical, and immediately actionable. This is DeAnna's competitive edge — every insight should feel like something she can act on today or this week.
+Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
+
   try {
     const raw = await callAnthropic(prompt, 1000);
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
     const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-    const title = enforceTM(parsed.title || 'Tariq Oladele — Revenue Intelligence');
+    const title   = enforceTM(parsed.title   || `Tariq Oladele — ${angle.label}`);
     const content = enforceTM(parsed.content || raw);
-    const approval_id = await writeToApprovals({ source: 'tariq_revenue_intel', trigger_type: 'sales_intelligence', agent_name: 'Tariq Oladele', agent_role: 'Revenue Acceleration Intelligence', division: 'Revenue, Growth & Sales', task_brief: `Revenue Intelligence | ${today}`, original_content: null, output: `${title}\n\n${content}`, edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL', category: 'revenue_growth', platform: null, context: null, archived: false });
-    console.log(`[tariq] Revenue intelligence card → approvals: ${approval_id ?? 'failed'}`);
+    const approval_id = await writeToApprovals({
+      source: 'tariq_revenue_intel', trigger_type: 'sales_intelligence',
+      agent_name: 'Tariq Oladele', agent_role: 'Revenue Acceleration Intelligence',
+      division: 'Revenue, Growth & Sales',
+      task_brief: `${angle.label} | ${today}`,
+      original_content: null, output: `${title}\n\n${content}`, edited_output: null,
+      status: 'pending', ghl_contact_id: null, notify_deanna: false, priority: 'NORMAL',
+      category: 'revenue_growth', platform: null, context: null, archived: false,
+    });
+    console.log(`[tariq] ${angle.label} card → approvals: ${approval_id ?? 'failed'}`);
     return { approval_id, post_id: null };
   } catch (error) { console.error('[tariq] Revenue intel error:', error); return { approval_id: null, post_id: null }; }
 }
+
 async function runZoe(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -278,7 +377,6 @@ async function runCommunitySeed(): Promise<{ approval_id: string | null; post_id
   if (slot === 1) return runMicah();
   return runVictor();
 }
-}
 
 async function runCCAgentReply(postId: string, postTitle: string, postContent: string, postType: string, routeTo: 'zoe' | 'micah'): Promise<{ approval_id: string | null }> {
   const isZoe = routeTo === 'zoe';
@@ -306,7 +404,6 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
 }
 
 // ─── Scan 1: Navigator → Accelerator upgrade ─────────────────────────────────
-
 async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return false;
@@ -318,9 +415,7 @@ async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
 async function fireAaliyahUpsellCard(memberId: string, firstName: string, email: string | null, phone: string | null, signalReason: string, postTitle: string, postId: string, postContent: string): Promise<void> {
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  // Auto-post warm community acknowledgment (no approval needed)
   await postAcknowledgmentComment(postId, firstName, signalReason);
-  // Write opportunity intelligence card for DeAnna (Knowledge card — no approve button)
   await writeToApprovals({
     source: 'aaliyah_opportunity', trigger_type: 'community_opportunity',
     agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
@@ -335,7 +430,6 @@ async function fireAaliyahUpsellCard(memberId: string, firstName: string, email:
 }
 
 // ─── Scan 2: Framework & Bundle signals — all members ────────────────────────
-
 async function hasRecentFrameworkCard(memberId: string): Promise<boolean> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return false;
@@ -344,7 +438,6 @@ async function hasRecentFrameworkCard(memberId: string): Promise<boolean> {
   if (!res.ok) return false;
   const data = await res.json(); return Array.isArray(data) && data.length > 0;
 }
-
 async function fireFrameworkBundleCard(memberId: string, firstName: string, tier: string, email: string | null, phone: string | null, signalReason: string, target: string, postTitle: string, postId: string, postContent: string): Promise<void> {
   const offerMap: Record<string, { label: string }> = {
     dru_clear:        { label: 'DRU CLEAR™' },
@@ -358,9 +451,7 @@ async function fireFrameworkBundleCard(memberId: string, firstName: string, tier
   const offer = offerMap[target] ?? offerMap['dru_clear'];
   const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
   const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  // Auto-post warm community acknowledgment (no approval needed)
   await postAcknowledgmentComment(postId, firstName, signalReason);
-  // Write opportunity intelligence card for DeAnna (Knowledge card — no approve button)
   await writeToApprovals({
     source: 'cc_framework_scan', trigger_type: 'community_opportunity',
     agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
@@ -386,15 +477,12 @@ async function runUpsellScan(): Promise<void> {
 
   for (const post of posts) {
     const memberId = post.agent_id; if (!memberId) continue;
-
-    // Fetch profile — navigator OR accelerator
     const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=in.(navigator,accelerator)&select=id,first_name,email,phone,tier&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!profileRes.ok) continue;
     const profiles = await profileRes.json(); if (!Array.isArray(profiles) || !profiles.length) continue;
     const profile = profiles[0];
     const tier: string = profile.tier ?? 'navigator';
 
-    // ── Scan 1: Navigator → Accelerator upgrade ──────────────────────────────
     if (tier === 'navigator') {
       const alreadyFlagged = await hasRecentUpsellCard(memberId);
       if (!alreadyFlagged) {
@@ -408,7 +496,6 @@ async function runUpsellScan(): Promise<void> {
       } else { console.log(`[upsell_scan] ${profile.first_name} — Accelerator card exists, skipping`); }
     }
 
-    // ── Scan 2: Framework & Bundle signals — all members ────────────────────
     const alreadyFrameworkFlagged = await hasRecentFrameworkCard(memberId);
     if (!alreadyFrameworkFlagged) {
       const frameworkPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA ${tier} member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals for any DRU AI Consulting framework or bundle? Scan for signals of:\nFRAMEWORKS (a la carte):\n- dru_clear: DRU CLEAR™ ($7,500) — mentions clarity framework, AI readiness, connecting strategy\n- five_c: 5C Cultural DNA™ ($6,000) — mentions culture, communication, collaboration, cultural shift\n- five_d: 5D Leadership™ ($6,500) — mentions leadership development, team, organizational leadership\n- ai_sales_mastery: AI Sales Mastery™ ($6,000) — mentions sales, DISC, revenue, client relationships\nBUNDLES:\n- bundle_full: Full Ecosystem $26,000 — mentions full transformation, entire program, everything\n- bundle_plus_two: DRU CLEAR + 2 frameworks $19,500 — mentions combining two frameworks\n- bundle_plus_one: DRU CLEAR + 1 framework $13,500 — mentions adding a framework to DRU CLEAR\nPick the single strongest signal only. Respond EXACTLY in one of these formats:\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: dru_clear | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_c | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_d | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: ai_sales_mastery | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_full | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_two | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_one | REASON: [one sentence]\nFRAMEWORK SIGNAL: NO`;
@@ -443,8 +530,8 @@ export default async function handler(req: any, res: any): Promise<void> {
   console.log(`[cc-agent-trigger] ${route.agent_name} | Community Connection | ${req.body?.source ?? 'webhook'}`);
   const runners: Record<string, () => Promise<{ approval_id: string | null; post_id: string | null }>> = {
     p9_community_seed: runCommunitySeed,
-    p9_sasha: runSasha,
-    p9_tariq: runTariq,
+    p9_sasha:          runSasha,
+    p9_tariq:          runTariq,
   };
   const runner = runners[route.pipeline];
   if (!runner) {
