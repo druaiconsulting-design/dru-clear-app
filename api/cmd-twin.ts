@@ -23,6 +23,7 @@ interface MultiPlatformPost {
   linkedin_content: string;
   facebook_content: string;
   instagram_caption: string;
+  spanish_content?: string;
   hook?: string;
   content_type?: string;
 }
@@ -259,10 +260,11 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
             linkedin_content: multiPlatform.linkedin_content,
             facebook_content: multiPlatform.facebook_content,
             instagram_caption: multiPlatform.instagram_caption,
+            ...(multiPlatform.spanish_content ? { spanish_content: multiPlatform.spanish_content } : {}),
             status: 'pending', notify_deanna: false,
             priority: 'normal', category: 'social', platform: 'LinkedIn',
           });
-          console.log(`[twin] Multi-platform social card: ${item.agent_name} (LinkedIn + Facebook + Instagram)`);
+          console.log(`[twin] Multi-platform social card: ${item.agent_name} (LinkedIn + Facebook + Instagram${multiPlatform.spanish_content ? ' + Spanish' : ''})`);
         } else {
           // Single-platform card — existing behavior for all other agents
           let postContent = item.raw_output;
