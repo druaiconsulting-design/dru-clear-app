@@ -60,7 +60,7 @@ const PDF_CATEGORIES = new Set([
 
 const APPROVAL_CATEGORIES = new Set([
   "social", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
-  "CC Post Triggers", "lead_intelligence", "community_post",
+  "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
 ]);
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -237,6 +237,10 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "cc_upsell_outreach")          return { text: "CC Upsell Signal",   color: "#D4AF37" };
   if (approval.category === "community_opportunity")        return { text: "CC Opportunity",      color: "#C2185B" };
   if (approval.category === "ac_upsell_outreach")           return { text: "AC Upsell",           color: "#D4AF37" };
+  if (approval.category === "social_response") {
+    const platform = approval.platform ?? "Social";
+    return { text: `${platform} Response`, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
+  }
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
@@ -260,6 +264,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -272,6 +277,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
   if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
   if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
+  if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
@@ -458,10 +464,33 @@ export default function AdminApprovals() {
     } catch { return false; }
   };
 
+  // Fires approved social response reply back to Make.com → posts to platform
+  const fireSocialReply = async (approval: Approval): Promise<boolean> => {
+    try {
+      let ctx: Record<string, string> = {};
+      try { if (approval.context) ctx = JSON.parse(approval.context); } catch { /* ignore */ }
+      const res = await fetch("/api/social-reply-publisher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approval_id:      approval.id,
+          platform:         ctx.platform         ?? approval.platform ?? "",
+          interaction_type: ctx.interaction_type  ?? "",
+          interaction_id:   ctx.interaction_id    ?? null,
+          post_id:          ctx.post_id           ?? null,
+          reply_text:       approval.edited_output || approval.output,
+          author_handle:    ctx.author_handle     ?? null,
+        }),
+      });
+      return res.ok;
+    } catch { return false; }
+  };
+
   const handleApprove = async (id: string) => {
     setSaving(id);
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
+
     const media = getMediaUrls(id, approval);
 
     const updatePayload: Record<string, any> = { status: "approved" };
@@ -512,6 +541,10 @@ export default function AdminApprovals() {
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await downloadPDF(approval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "social_response") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireSocialReply(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     }
     setSaving(null);
@@ -1060,7 +1093,7 @@ export default function AdminApprovals() {
                               onClick={() => handleApprove(approval.id)}
                               disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
                               style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
                             </button>
                           )}
                           {/* Ready to Use bank — available on ALL social cards for content banking */}
