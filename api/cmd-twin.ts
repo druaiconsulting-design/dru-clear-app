@@ -12,6 +12,10 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 const SOCIAL_DIVISIONS = ['Content & Brand', 'Marketing'];
 const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
 
+// Agents that always get their own standalone Intelligence Hub card
+// regardless of division — never buried in division synthesis
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos'];
+
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
   task: string; category: string; raw_output: string; priority: string;
@@ -283,6 +287,37 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
           console.log(`[twin] Social card: ${item.agent_name} → ${platformLabel}`);
         }
       } catch (err) { console.error(`[twin] Social card failed for ${item.agent_name}:`, err); }
+    }
+  }
+
+  // CONTENT_ALWAYS_SURFACE: Force standalone cards for key content agents
+  // Skips agents already handled by social card flow to avoid duplicates
+  for (const item of items) {
+    const isAlreadySocial = SOCIAL_DIVISIONS.includes(item.division) && CLIENT_FACING_CATEGORIES.includes(item.category);
+    if (isAlreadySocial) continue;
+    const shouldSurface = CONTENT_ALWAYS_SURFACE.some(name =>
+      item.agent_name.toLowerCase().includes(name.toLowerCase())
+    );
+    if (shouldSurface) {
+      try {
+        await writeApproval({
+          source: `${item.agent_id}_content`,
+          trigger_type: item.category,
+          agent_name: item.agent_name,
+          agent_role: item.division,
+          division: item.division,
+          task_brief: `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
+          output: item.raw_output,
+          status: 'pending',
+          notify_deanna: false,
+          priority: item.priority === 'high' ? 'high' : 'normal',
+          category: 'content_review',
+          platform: null,
+        });
+        console.log(`[twin] CONTENT_ALWAYS_SURFACE standalone card: ${item.agent_name}`);
+      } catch (err) {
+        console.error(`[twin] Standalone card failed for ${item.agent_name}:`, err);
+      }
     }
   }
 
