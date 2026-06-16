@@ -7,7 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | "edited";
+type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
 type PlatformTab    = "LinkedIn" | "Facebook" | "Instagram";
 
@@ -68,7 +68,11 @@ const PLATFORM_COLORS: Record<string, string> = {
   General:"#0A2342", X:"#14171A", TikTok:"#010101", YouTube:"#FF0000",
   Pinterest:"#E60023", Content:"#163D6E", Press:"#8A6E1A", Design:"#7A0F38",
   Localization:"#A68920", Copy:"#E0527E", Outreach:"#2E6DAB", Community:"#2D5A8E",
+  Proposal:"#5C4B8A", Course:"#2E7D8E", Video:"#1A5276",
 };
+
+// Cards that go to the Ready to Use folder — internal review, no external publish
+const READY_TO_USE_PLATFORMS = new Set(['Copy', 'Proposal', 'Design', 'Course', 'Video']);
 
 const DIVISION_COLORS: Record<string, string> = {
   "Revenue, Growth & Sales":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
@@ -514,6 +518,12 @@ export default function AdminApprovals() {
   };
 
   const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected", archived: true }).eq("id", id); setSaving(null); };
+  const handleReadyToUse = async (id: string) => {
+    setSaving(id);
+    await supabase.from("approvals").update({ status: "ready_to_use", archived: true }).eq("id", id);
+    setApprovals(prev => prev.filter(a => a.id !== id));
+    setSaving(null);
+  };
   const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
   const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"approved" }).eq("id", id); setSaving(null); };
   const handleClearFlag     = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_flagged: false }).eq("id", id); setSavingComment(null); };
@@ -783,6 +793,7 @@ export default function AdminApprovals() {
               const isKnowledge   = !isApprovalCard(approval);
               const isSocial      = approval.category === "social";
               const isMulti       = isMultiPlatformCard(approval);
+              const isReadyToUse  = isSocial && READY_TO_USE_PLATFORMS.has(approval.platform ?? '');
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
               const hasConversation = !!approval.context && approval.context !== "null";
               const currentMedia  = getMediaUrls(approval.id, approval);
@@ -1036,12 +1047,31 @@ export default function AdminApprovals() {
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
                           </button>
-                          <button
-                            onClick={() => handleApprove(approval.id)}
-                            disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
-                            style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                            {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
-                          </button>
+                          {/* Ready to Use — internal review cards (Chloe, Kwame, Theo, Jordan, Simone, Amelia) */}
+                          {isReadyToUse ? (
+                            <button
+                              onClick={() => handleReadyToUse(approval.id)}
+                              disabled={saving === approval.id}
+                              style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                              {saving === approval.id ? "..." : "Ready to Use ✓"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleApprove(approval.id)}
+                              disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
+                              style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : "Approve ✓"}
+                            </button>
+                          )}
+                          {/* Ready to Use bank — available on ALL social cards for content banking */}
+                          {isSocial && !isReadyToUse && approval.status === 'pending' && (
+                            <button
+                              onClick={() => handleReadyToUse(approval.id)}
+                              disabled={saving === approval.id}
+                              style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.3)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                              Bank ✓
+                            </button>
+                          )}
                           {/* Yara — Post to Community button (CC + ACC, English + Spanish toggle) */}
                           {isMulti && approval.platform === 'LinkedIn' && approval.agent_name === 'Yara Mansour' && approval.status === 'pending' && (
                             <button
