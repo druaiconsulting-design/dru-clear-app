@@ -17,6 +17,7 @@ import ThankYouFullEcosystem from "./pages/ThankYouFullEcosystem";
 import Resources from "./pages/Resources";
 import Daily from "./pages/Daily";
 import Community from "./pages/community";
+import AcceleratorCircle from "./pages/community/AcceleratorCircle";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
@@ -313,6 +314,11 @@ function Router() {
     setTitle("Frameworks · DRU CLEAR™");
     if (!isLoggedIn) return <Login />;
     return <Frameworks />;
+  }
+  if (path === "/community/accelerator" || path === "/community/accelerator/") {
+    setTitle("Accelerator Circle · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AcceleratorCircle />;
   }
   if (path === "/community" || path === "/community/") {
     setTitle("Community · DRU CLEAR™");
