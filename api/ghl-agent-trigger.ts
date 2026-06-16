@@ -266,18 +266,39 @@ async function runCamila(): Promise<string|null> {
 TRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}
 SERVICE CLASS RULES: Classes 35, 41, 42 only.
 
-ECOSYSTEM INTELLIGENCE THIS WEEK — read from your team before writing. Use these real signals to inform content themes, angles, and language that resonates with actual pipeline activity and client context. Do not invent scenarios when real ones are available:
+ECOSYSTEM INTELLIGENCE THIS WEEK — use these real signals to inform content themes, angles, and language. Do not invent scenarios when real ones are available:
 ${ecosystemIntel || 'No prior intelligence available — use framework rotation.'}
 
-Generate this week's LinkedIn content strategy brief. Include:
-- This week's overarching theme and positioning angle based on ecosystem signals
-- Day-by-day content direction (Mon–Fri): post type, framework focus, hook direction, audience angle
-- Key messages to amplify based on what Revenue, Client Delivery, and Analytics are surfacing
-- Framework rotation plan ensuring all 4 frameworks get coverage across the week (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™)
-- CTA alignment: all posts drive to assessment.druaiconsulting.com
+Generate this week's FULL CONTENT STRATEGY BRIEF covering both Darius King (social posts) and Nia Robinson (thought leadership, articles, newsletters). They must tell one cohesive story across all formats.
 
-Write as a strategic brief that Darius King can execute from. Be specific about angles, not generic. Every framework reference must include ™.`,
-    'normal',0,null,2000
+## WEEKLY THEME & POSITIONING
+- This week's overarching theme and positioning angle based on ecosystem signals
+- Core message that runs through ALL content this week
+- Framework rotation plan ensuring all 4 frameworks get coverage (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™)
+
+## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)
+Day-by-day direction for Darius:
+- Monday: post type, framework focus, hook direction, audience angle
+- Tuesday: post type, framework focus, hook direction, audience angle
+- Thursday: post type, framework focus, hook direction, audience angle
+- Friday: post type, framework focus, hook direction, audience angle
+CTA alignment: all posts drive to assessment.druaiconsulting.com
+
+## NIA ROBINSON — Thought Leadership & Newsletters (Wed/Thu/Fri/Sat/Sun)
+- Wednesday LinkedIn post angle (200-300 words, educational)
+- Thursday newsletter theme for all 3 Lead, Clarity, Win! editions:
+  · Non-member edition: what problem to surface, how deep to go, hook direction
+  · Navigator edition: which framework concept to apply, what action step to suggest
+  · Accelerator edition: which strategic implementation angle to take
+- Friday native article topic and angle (500-700 words)
+- Saturday LinkedIn post angle (framework spotlight direction)
+- Sunday LinkedIn post angle (executive insight direction)
+
+## KEY MESSAGES TO AMPLIFY
+Based on Revenue, Client Delivery, and Analytics signals — what should dominate messaging this week.
+
+Be specific about angles, not generic. Every framework reference must include ™.`,
+    'normal',0,null,2500
   );
 }
 
@@ -342,12 +363,20 @@ async function runRavi(): Promise<string|null> {
 // NIA ROBINSON — Content Strategist
 // Schedule: Wed/Sat/Sun = LinkedIn posts | Thu = Lead, Clarity, Win! newsletter x3 | Fri = LinkedIn native article
 // Mon/Tue = Darius days, Nia returns null
+// Reads Camila's weekly brief for strategic alignment before writing anything
 async function runNia(): Promise<string|null> {
   const brandMarks   = await fetchBrandMarks();
   const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
+  const camilaBrief  = await getCrossRead(['camila']);
   const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const trademarks   = `TRADEMARK RULES: Always ™ on every mention. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
+  const strategyContext = camilaBrief
+    ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
+    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.';
+  const intelContext = clientIntel
+    ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
+    : '\nNo prior intelligence — draw from framework-based scenarios.';
 
   // ── WEDNESDAY / SATURDAY / SUNDAY — LinkedIn Post (200-300 words) ──────────
   if (['Wednesday','Saturday','Sunday'].includes(dayOfWeek)) {
@@ -358,7 +387,7 @@ async function runNia(): Promise<string|null> {
       executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference (™). CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
     };
     return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
-      `You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${postInstructions[postTypeMap[dayOfWeek]]}\nCLIENT INTELLIGENCE — ground examples in real signals, not invented scenarios:\n${clientIntel||'No prior intelligence — draw from framework-based scenarios.'}`,
+      `You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${strategyContext}\n${postInstructions[postTypeMap[dayOfWeek]]}\n${intelContext}`,
       'normal',0,null,800);
   }
 
@@ -374,27 +403,29 @@ async function runNia(): Promise<string|null> {
       ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA™. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
     };
     return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
-      `## ARTICLE FORMAT — LinkedIn Native Article\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${articleInstructions[topic]}\nCLIENT INTELLIGENCE:\n${clientIntel||'No prior intelligence — draw from framework-based scenarios.'}`,
+      `## ARTICLE FORMAT — LinkedIn Native Article\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${trademarks}\n${strategyContext}\n${articleInstructions[topic]}\n${intelContext}`,
       'normal',0,null,1500);
   }
 
   // ── THURSDAY — Lead, Clarity, Win! Newsletter × 3 tiers ─────────────────────
   if (dayOfWeek === 'Thursday') {
-    const topic = `AI leadership insight grounded in one DRU framework (™) — ${today}`;
+    const topic = camilaBrief
+      ? `This week's theme from your content strategy brief — align the newsletter to the week's direction`
+      : `AI leadership insight grounded in one DRU framework (™) — ${today}`;
 
     // Non-member edition
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_nonmember','newsletter_nonmember',
-      `## LEAD, CLARITY, WIN! — Non-Member Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Executives who have NOT yet joined DRU AI Consulting.\n${trademarks}\nDEPTH: Surface — reveal the problem clearly, hint at the solution, stop before delivering it. Hook them on the promise.\nFORMAT: Subject line | Opening hook (2-3 sentences that stop them) | The problem (1 paragraph — they should feel seen) | A glimpse of what's possible (1 paragraph — tease, do NOT teach) | CTA\nCTA: "Your AI transformation starts with one assessment. → assessment.druaiconsulting.com"\nTOPIC: ${topic}\nDo NOT give away framework IP. No framework detail — name only.`,
+      `## LEAD, CLARITY, WIN! — Non-Member Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Executives who have NOT yet joined DRU AI Consulting.\n${trademarks}\n${strategyContext}\nDEPTH: Surface — reveal the problem clearly, hint at the solution, stop before delivering it. Hook them on the promise.\nFORMAT: Subject line | Opening hook (2-3 sentences that stop them) | The problem (1 paragraph — they should feel seen) | A glimpse of what's possible (1 paragraph — tease, do NOT teach) | CTA\nCTA: "Your AI transformation starts with one assessment. → assessment.druaiconsulting.com"\nTOPIC: ${topic}\nDo NOT give away framework IP. No framework detail — name only.`,
       'normal',0,null,1000);
 
     // Navigator edition
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_navigator','newsletter_navigator',
-      `## LEAD, CLARITY, WIN! — Navigator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Navigator members ($97/mo) — executives who completed the assessment and joined.\n${trademarks}\nDEPTH: Medium — apply one framework concept to a real leadership challenge. Give real value but leave the full system for the 90-Day Journey.\nFORMAT: Subject line | Opening (acknowledge where they are as executives) | One framework concept + one action step they can take this week | What becomes possible when they go deeper | CTA\nCTA: "Ready to go all in? Start your 90-Day Transformation Pathway. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
+      `## LEAD, CLARITY, WIN! — Navigator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Navigator members ($97/mo) — executives who completed the assessment and joined.\n${trademarks}\n${strategyContext}\nDEPTH: Medium — apply one framework concept to a real leadership challenge. Give real value but leave the full system for the 90-Day Journey.\nFORMAT: Subject line | Opening (acknowledge where they are as executives) | One framework concept + one action step they can take this week | What becomes possible when they go deeper | CTA\nCTA: "Ready to go all in? Start your 90-Day Transformation Pathway. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
       'normal',0,null,1000);
 
     // Accelerator edition
     return await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
-      `## LEAD, CLARITY, WIN! — Accelerator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${trademarks}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Subject line | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
+      `## LEAD, CLARITY, WIN! — Accelerator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${trademarks}\n${strategyContext}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Subject line | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}`,
       'normal',0,null,1000);
   }
 
