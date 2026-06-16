@@ -12,6 +12,12 @@
     },
     "api/send-notification.ts": {
       "maxDuration": 30
+    },
+    "api/social-response-trigger.ts": {
+      "maxDuration": 30
+    },
+    "api/social-reply-publisher.ts": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
