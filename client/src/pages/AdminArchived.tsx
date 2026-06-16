@@ -7,7 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | "edited";
+type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
 
 interface Approval {
@@ -103,7 +103,11 @@ export default function AdminArchived() {
   const orderedCategories   = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
   const allCategories       = [...orderedCategories, ...remainingCategories];
-  const filtered            = activeFilter === "all" ? approvals : approvals.filter(a => a.category === activeFilter);
+  const filtered = activeFilter === "all"
+    ? approvals
+    : activeFilter === "ready_to_use"
+      ? approvals.filter(a => a.status === "ready_to_use")
+      : approvals.filter(a => a.category === activeFilter);
 
   const tabStyle = (active: boolean) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
@@ -133,11 +137,12 @@ export default function AdminArchived() {
         </div>
 
         {/* Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
           {[
-            { label:"Total Archived", value:approvals.length,                                      color:"rgba(10,35,66,0.6)" },
-            { label:"Approved",       value:approvals.filter(a => a.status === "approved").length,  color:"#4CAF50" },
-            { label:"Rejected",       value:approvals.filter(a => a.status === "rejected").length,  color:"#C2185B" },
+            { label:"Total Archived", value:approvals.length,                                                 color:"rgba(10,35,66,0.6)" },
+            { label:"Approved",       value:approvals.filter(a => a.status === "approved").length,            color:"#4CAF50" },
+            { label:"Ready to Use",   value:approvals.filter(a => a.status === "ready_to_use").length,        color:"#0A2342" },
+            { label:"Rejected",       value:approvals.filter(a => a.status === "rejected").length,            color:"#C2185B" },
           ].map(s => (
             <div key={s.label} style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
@@ -149,6 +154,9 @@ export default function AdminArchived() {
         {/* Filter Tabs */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
           <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>All ({approvals.length})</button>
+          <button onClick={() => setActiveFilter("ready_to_use")} style={{ ...tabStyle(activeFilter === "ready_to_use"), background: activeFilter === "ready_to_use" ? "#0A2342" : undefined, color: activeFilter === "ready_to_use" ? "#FAFAF8" : undefined }}>
+            Ready to Use ({approvals.filter(a => a.status === "ready_to_use").length})
+          </button>
           {allCategories.map(cat => (
             <button key={cat} onClick={() => setActiveFilter(cat)} style={tabStyle(activeFilter === cat)}>
               {CATEGORY_LABELS[cat] || cat} ({approvals.filter(a => a.category === cat).length})
@@ -177,7 +185,7 @@ export default function AdminArchived() {
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status}</span>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "ready_to_use" ? "#0A2342" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status === "ready_to_use" ? "READY TO USE" : approval.status}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
