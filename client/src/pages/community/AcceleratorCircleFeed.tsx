@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './types';
 import type { CommunityPost, Tier } from './types';
-import ComposeBox from './ComposeBox';
+import ACCComposeBox from './ACCComposeBox';
 import PostCard from './PostCard';
 import MemberProfile from '../community-engagement/MemberProfile';
 
@@ -184,14 +184,11 @@ export default function AcceleratorCircleFeed({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <ComposeBox
+              <ACCComposeBox
                 userId={userId}
                 userName={userName}
                 userPhotoUrl={userPhotoUrl}
                 onPostSubmitted={handleMemberPost}
-                channel="accelerator_circle"
-                tierRequired="accelerator"
-                placeholder="Share with the Accelerator Circle..."
               />
               {posts.map((post, i) => (
                 <PostCard
