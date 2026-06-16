@@ -10,7 +10,7 @@ export const config = { maxDuration: 300 };
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
 
 const SOCIAL_DIVISIONS = ['Content & Brand', 'Marketing'];
-const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement'];
+const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
@@ -92,6 +92,7 @@ function getPlatformLabel(category: string): string {
     twitter_post: 'X', tiktok_post: 'TikTok', youtube_post: 'YouTube', social_post: 'Social',
     content_creation: 'Content', press_release: 'Press', design_brief: 'Design',
     localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
+    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
   };
   return map[category] ?? 'Social';
 }
