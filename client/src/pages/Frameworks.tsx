@@ -361,7 +361,7 @@ export default function Frameworks() {
           ))}
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px 2px" }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Bundles</p>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.8)", fontWeight: 600, margin: 0 }}>Activate Your Transformation in 90 Days</p>
             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.35)", fontStyle: "italic", margin: 0 }}>Available after your diagnostic session</p>
           </div>
           <div style={pRowMag}>
