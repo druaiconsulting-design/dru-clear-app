@@ -952,12 +952,12 @@ export default function AdminApprovals() {
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.625rem", margin:"0 0 0.625rem" }}>Media · Optional</p>
                         <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.4rem" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
-                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:100, flexShrink:0 }}>Video URL{isMulti ? " (LinkedIn + FB)" : ""}</span>
+                            <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:100, flexShrink:0 }}>Bunny MP4 URL{isMulti ? " (LinkedIn + FB)" : ""}</span>
                             <input
                               type="text"
                               value={currentMedia.video_url}
                               onChange={e => setMediaUrl(approval.id, 'video_url', e.target.value)}
-                              placeholder="Paste Bunny MP4 URL (copy Video ID from Bunny → play_720p.mp4)"
+                              placeholder="Paste Bunny MP4 URL — play_720p.mp4"
                               style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.video_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                             />
                           </div>
@@ -968,7 +968,7 @@ export default function AdminApprovals() {
                                 type="text"
                                 value={currentMedia.instagram_video_url}
                                 onChange={e => setMediaUrl(approval.id, 'instagram_video_url', e.target.value)}
-                                placeholder="https://vz-65fe52c5-439.b-cdn.net/[reel-guid]/play_720p.mp4"
+                                placeholder="Paste Bunny MP4 URL — play_720p.mp4 (9:16 reel)"
                                 style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.instagram_video_url ? "rgba(194,24,91,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                               />
                             </div>
