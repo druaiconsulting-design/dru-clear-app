@@ -957,7 +957,7 @@ export default function AdminApprovals() {
                               type="text"
                               value={currentMedia.video_url}
                               onChange={e => setMediaUrl(approval.id, 'video_url', e.target.value)}
-                              placeholder="https://vz-65fe52c5-439.b-cdn.net/[video-guid]/play_720p.mp4"
+                              placeholder="Paste Bunny MP4 URL (copy Video ID from Bunny → play_720p.mp4)"
                               style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.video_url ? "rgba(76,175,80,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                             />
                           </div>
