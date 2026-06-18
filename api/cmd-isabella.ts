@@ -194,17 +194,10 @@ async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRet
   } catch (error) { console.error(`[isabella] Correction failed for ${item.agent_name}:`, error); }
 }
 
-async function runIsabella(): Promise<{ reviewed: number; cleared: number; sent_back: number; rejected: number }> {
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const pending = await getCSQItems('pending', 25, cutoff);
-  console.log(`[isabella] Reviewing ${pending.length} pending items (max 25, 48hr window, Sonnet sequential)...`);
-  if (pending.length === 0) return { reviewed: 0, cleared: 0, sent_back: 0, rejected: 0 };
-  let cleared = 0; let sentBack = 0; let rejected = 0;
-
-  for (const item of pending) {
-    try {
-      const raw = await callTwin(
-        `${GENIUS_MODE}
+async function processIsabellaItem(item: CSQItem): Promise<'cleared' | 'sent_back' | 'rejected' | 'error'> {
+  try {
+    const raw = await callTwin(
+      `${GENIUS_MODE}
 
 You are Isabella Moreno, Director of Compliance for DRU AI Consulting.
 
@@ -232,41 +225,63 @@ CONTENT: ${item.raw_output}
 Output ONLY this JSON:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
 OR: {"cleared":false,"flags":"specific issue","correction_notes":"Exact correction instruction"}`,
-        600
-      );
+      600
+    );
 
-      const result = JSON.parse(extractJSON(raw));
+    const result = JSON.parse(extractJSON(raw));
 
-      if (result.cleared) {
-        cleared++;
+    if (result.cleared) {
+      await updateCSQ(item.id, {
+        isabella_flags: result.flags ?? 'none',
+        isabella_cleared_at: new Date().toISOString(),
+        status: 'isabella_cleared',
+      });
+      return 'cleared';
+    } else {
+      const retryCount = item.retry_count ?? 0;
+      if (retryCount >= 2) {
         await updateCSQ(item.id, {
-          isabella_flags: result.flags ?? 'none',
-          isabella_cleared_at: new Date().toISOString(),
-          status: 'isabella_cleared',
+          isabella_flags: result.flags,
+          correction_notes: result.correction_notes,
+          governance_cleared: false,
+          status: 'rejected',
         });
+        console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
+        return 'rejected';
       } else {
-        const retryCount = item.retry_count ?? 0;
-        if (retryCount >= 2) {
-          rejected++;
-          await updateCSQ(item.id, {
-            isabella_flags: result.flags,
-            correction_notes: result.correction_notes,
-            governance_cleared: false,
-            status: 'rejected',
-          });
-          console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
-        } else {
-          sentBack++;
-          await updateCSQ(item.id, {
-            isabella_flags: result.flags,
-            correction_notes: result.correction_notes,
-            status: 'needs_correction',
-          });
-          await runCorrectionAgent(item, result.correction_notes, retryCount + 1);
-          console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount + 1})`);
-        }
+        await updateCSQ(item.id, {
+          isabella_flags: result.flags,
+          correction_notes: result.correction_notes,
+          status: 'needs_correction',
+        });
+        await runCorrectionAgent(item, result.correction_notes, retryCount + 1);
+        console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount + 1})`);
+        return 'sent_back';
       }
-    } catch (error) { console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`, error); }
+    }
+  } catch (error) {
+    console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`, error);
+    return 'error';
+  }
+}
+
+async function runIsabella(): Promise<{ reviewed: number; cleared: number; sent_back: number; rejected: number }> {
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const pending = await getCSQItems('pending', 25, cutoff);
+  console.log(`[isabella] Reviewing ${pending.length} pending items (max 25, 48hr window, concurrent batches of 5)...`);
+  if (pending.length === 0) return { reviewed: 0, cleared: 0, sent_back: 0, rejected: 0 };
+  let cleared = 0; let sentBack = 0; let rejected = 0;
+  const BATCH_SIZE = 5;
+
+  for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+    const batch = pending.slice(i, i + BATCH_SIZE);
+    const outcomes = await Promise.all(batch.map(processIsabellaItem));
+    for (const outcome of outcomes) {
+      if (outcome === 'cleared') cleared++;
+      else if (outcome === 'rejected') rejected++;
+      else if (outcome === 'sent_back') sentBack++;
+      // 'error' → no counter increment, item stays pending and will be retried next run
+    }
   }
 
   console.log(`[isabella] ${pending.length} reviewed: ${cleared} cleared, ${sentBack} sent back, ${rejected} rejected`);
