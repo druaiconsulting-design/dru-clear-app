@@ -12,6 +12,16 @@ const GHL_LAB_WEBHOOK_URL =
 type VideoType  = "monthly" | "community";
 type CommTarget = "open" | "accelerator";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Accepts either a clean Bunny link (Direct Play or Embed) OR the full HTML
+// snippet Bunny's "Embed" box gives you, and always returns just the clean URL.
+function cleanBunnyUrl(raw: string): string {
+  const trimmed = raw.trim();
+  const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
+  return srcMatch ? srcMatch[1] : trimmed;
+}
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
@@ -65,7 +75,7 @@ export default function AdminLab() {
         title:         labTitle.trim(),
         month_year:    labMonth.trim(),
         content:       labText.trim(),
-        video_url:     labVideoUrl.trim(),
+        video_url:     cleanBunnyUrl(labVideoUrl),
         thumbnail_url: labThumbUrl.trim() || null,
         is_active:     true,
       });
@@ -102,7 +112,7 @@ export default function AdminLab() {
       const { error: dbError } = await supabase.from("community_posts").insert({
         title:         commTitle.trim(),
         content:       commText.trim(),
-        video_url:     commVideoUrl.trim(),
+        video_url:     cleanBunnyUrl(commVideoUrl),
         thumbnail_url: commThumbUrl.trim() || null,
         tier_required: commTarget === "accelerator" ? "accelerator" : "navigator",
         post_type:     "leadership_video",
