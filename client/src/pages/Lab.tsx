@@ -8,6 +8,7 @@ interface LabVideo {
   title: string;
   month_year: string;
   video_url: string;
+  thumbnail_url?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -111,6 +112,7 @@ export default function Lab() {
                       controlsList="nodownload"
                       disablePictureInPicture
                       playsInline
+                      poster={activeVideo.thumbnail_url || undefined}
                       onContextMenu={(e) => e.preventDefault()}
                       style={{ width: "100%", borderRadius: 8, background: "#000", maxHeight: 500, display: "block" }}
                     >
@@ -132,9 +134,14 @@ export default function Lab() {
                       style={{ background: activeVideo?.id === video.id ? "rgba(212,175,55,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${activeVideo?.id === video.id ? "rgba(212,175,55,0.35)" : "rgba(255,255,255,0.08)"}`, borderRadius: 8, padding: "0.875rem 1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.15s" }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,175,55,0.35)"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = activeVideo?.id === video.id ? "rgba(212,175,55,0.35)" : "rgba(255,255,255,0.08)"; }}>
-                      <div>
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "3px" }}>{video.month_year}</p>
-                        <p style={{ fontFamily: "'Inter', sans-serif", color: "#FFFFFF", fontSize: "0.8rem", margin: 0 }}>{video.title}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        {video.thumbnail_url && (
+                          <img src={video.thumbnail_url} alt="" style={{ width: 56, aspectRatio: "16/9", objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />
+                        )}
+                        <div>
+                          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "3px" }}>{video.month_year}</p>
+                          <p style={{ fontFamily: "'Inter', sans-serif", color: "#FFFFFF", fontSize: "0.8rem", margin: 0 }}>{video.title}</p>
+                        </div>
                       </div>
                       <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.6)", letterSpacing: "0.06em", flexShrink: 0 }}>▶ Play</span>
                     </div>
