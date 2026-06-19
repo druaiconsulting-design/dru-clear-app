@@ -287,8 +287,10 @@ function Router() {
 
   // ── Protected Routes ────────────────────────────────────────────────────────
   if (path === "/portal" || path === "/portal/") {
-    window.location.replace("https://members.druaiconsulting.com");
-    return null;
+    if (!isLoggedIn) { window.location.replace("/admin"); return null; }
+    if (!isAdmin) { window.location.replace("https://members.druaiconsulting.com"); return null; }
+    setTitle("Welcome Back · DRU CLEAR™");
+    return <Portal />;
   }
   if (path === "/my-results" || path === "/my-results/") {
     setTitle("My Assessment Results · DRU CLEAR™");
