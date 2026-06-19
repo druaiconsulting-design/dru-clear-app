@@ -39,6 +39,7 @@ export default function AdminLab() {
   const [labMonth,    setLabMonth]    = useState("");
   const [labText,     setLabText]     = useState("");
   const [labVideoUrl, setLabVideoUrl] = useState("");
+  const [labThumbUrl, setLabThumbUrl] = useState("");
   const [publishing,  setPublishing]  = useState(false);
   const [published,   setPublished]   = useState(false);
   const [error,       setError]       = useState("");
@@ -47,6 +48,7 @@ export default function AdminLab() {
   const [commTitle,      setCommTitle]      = useState("");
   const [commText,       setCommText]       = useState("");
   const [commVideoUrl,   setCommVideoUrl]   = useState("");
+  const [commThumbUrl,   setCommThumbUrl]   = useState("");
   const [commTarget,     setCommTarget]     = useState<CommTarget>("open");
   const [commPublishing, setCommPublishing] = useState(false);
   const [commPublished,  setCommPublished]  = useState(false);
@@ -60,11 +62,12 @@ export default function AdminLab() {
     setPublishing(true); setError(""); setPublished(false);
     try {
       const { error: dbError } = await supabase.from("lab_videos").insert({
-        title:      labTitle.trim(),
-        month_year: labMonth.trim(),
-        content:    labText.trim(),
-        video_url:  labVideoUrl.trim(),
-        is_active:  true,
+        title:         labTitle.trim(),
+        month_year:    labMonth.trim(),
+        content:       labText.trim(),
+        video_url:     labVideoUrl.trim(),
+        thumbnail_url: labThumbUrl.trim() || null,
+        is_active:     true,
       });
       if (dbError) throw dbError;
 
@@ -81,7 +84,7 @@ export default function AdminLab() {
       });
 
       setPublished(true);
-      setLabTitle(""); setLabMonth(""); setLabText(""); setLabVideoUrl("");
+      setLabTitle(""); setLabMonth(""); setLabText(""); setLabVideoUrl(""); setLabThumbUrl("");
       setTimeout(() => setPublished(false), 5000);
     } catch (err) {
       setError((err instanceof Error ? err.message : null) || "Publish failed. Please try again.");
@@ -100,6 +103,7 @@ export default function AdminLab() {
         title:         commTitle.trim(),
         content:       commText.trim(),
         video_url:     commVideoUrl.trim(),
+        thumbnail_url: commThumbUrl.trim() || null,
         tier_required: commTarget === "accelerator" ? "accelerator" : "navigator",
         post_type:     "leadership_video",
         agent_name:    "DeAnna Upshaw",
@@ -109,7 +113,7 @@ export default function AdminLab() {
       if (dbError) throw dbError;
 
       setCommPublished(true);
-      setCommTitle(""); setCommText(""); setCommVideoUrl(""); setCommTarget("open");
+      setCommTitle(""); setCommText(""); setCommVideoUrl(""); setCommThumbUrl(""); setCommTarget("open");
       setTimeout(() => setCommPublished(false), 5000);
     } catch (err) {
       setCommError((err instanceof Error ? err.message : null) || "Publish failed. Please try again.");
@@ -204,6 +208,18 @@ export default function AdminLab() {
                     value={labVideoUrl} onChange={e => { setLabVideoUrl(e.target.value); setError(""); }}
                     style={inputStyle} />
                 </div>
+
+                <div>
+                  <label style={labelStyle}>Thumbnail URL (optional)</label>
+                  <input type="text" placeholder="Paste Bunny Stream Thumbnail URL"
+                    value={labThumbUrl} onChange={e => setLabThumbUrl(e.target.value)}
+                    style={inputStyle} />
+                  {labThumbUrl.trim() && (
+                    <img src={labThumbUrl.trim()} alt="Thumbnail preview"
+                      style={{ marginTop: "0.5rem", width: 160, aspectRatio: "16/9", objectFit: "cover", borderRadius: 6, border: "1px solid rgba(10,35,66,0.15)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </div>
               </div>
 
               {error && (
@@ -258,6 +274,18 @@ export default function AdminLab() {
                   <input type="text" placeholder="Paste Bunny Stream embed URL"
                     value={commVideoUrl} onChange={e => { setCommVideoUrl(e.target.value); setCommError(""); }}
                     style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Thumbnail URL (optional)</label>
+                  <input type="text" placeholder="Paste Bunny Stream Thumbnail URL"
+                    value={commThumbUrl} onChange={e => setCommThumbUrl(e.target.value)}
+                    style={inputStyle} />
+                  {commThumbUrl.trim() && (
+                    <img src={commThumbUrl.trim()} alt="Thumbnail preview"
+                      style={{ marginTop: "0.5rem", width: 160, aspectRatio: "16/9", objectFit: "cover", borderRadius: 6, border: "1px solid rgba(10,35,66,0.15)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  )}
                 </div>
 
                 <div>
