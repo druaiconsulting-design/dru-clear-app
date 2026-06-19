@@ -141,6 +141,16 @@ ${instruction}
 Write as DeAnna speaking to herself. Start with ## ${division}.`;
 }
 
+// Returns the YYYY-MM-DD calendar date string in America/Chicago for a given Date.
+// Used to compare calendar days in DeAnna's local timezone rather than raw UTC midnight,
+// which previously caused late-night UTC writes (e.g. 00:22 UTC) to be miscounted as
+// "today" even though they were still "yesterday evening" in Chicago.
+function chicagoDateString(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+}
+
 async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthesized: number }> {
   const items = await getCSQItems('command_approved');
   console.log(`[twin] Synthesizing ${items.length} command-approved items...`);
@@ -171,11 +181,21 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
   // Daily Briefing (deduplicated)
   const dailyBriefingPromise = (async () => {
     if (sbUrl && sbKey) {
-      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-      const chk = await fetch(`${sbUrl}/rest/v1/approvals?category=eq.daily_briefing&created_at=gte.${todayStart.toISOString()}&limit=1`, {
+      // Look back 30 hours (covers any Chicago/UTC offset) and compare Chicago calendar
+      // dates directly, instead of comparing raw UTC timestamps against UTC midnight.
+      const lookbackStart = new Date(Date.now() - 30 * 60 * 60 * 1000);
+      const chk = await fetch(`${sbUrl}/rest/v1/approvals?category=eq.daily_briefing&created_at=gte.${lookbackStart.toISOString()}&order=created_at.desc`, {
         headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` },
       });
-      if (chk.ok) { const ex = await chk.json(); if (Array.isArray(ex) && ex.length > 0) { console.log('[twin] Daily briefing already exists for today — skipping duplicate'); return; } }
+      if (chk.ok) {
+        const ex = await chk.json();
+        const todayChicago = chicagoDateString(new Date());
+        const alreadyExists = Array.isArray(ex) && ex.some((row: { created_at: string }) => chicagoDateString(new Date(row.created_at)) === todayChicago);
+        if (alreadyExists) {
+          console.log('[twin] Daily briefing already exists for today (America/Chicago) — skipping duplicate');
+          return;
+        }
+      }
     }
     await callTwin(
       `You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,
