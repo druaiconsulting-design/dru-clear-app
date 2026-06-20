@@ -4,8 +4,70 @@ import type { CommunityPost } from './types';
 import MemberAvatar from './MemberAvatar';
 import CommentSection from './CommentSection';
 import LevelBadge from '../community-engagement/LevelBadge';
+import { DEFAULT_LEVEL_NAME } from '../../lib/communityLevels';
 
-// ── Video embed detector ──────────────────────────────────────────────────────
+const APP_URL = 'https://app.druaiconsulting.com';
+
+// ── Bunny video player (fetches signed token before rendering) ────────────────
+function BunnyVideoPlayer({ embedUrl }: { embedUrl: string }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading,   setLoading]   = useState(true);
+
+  useEffect(() => {
+    const videoId = embedUrl.match(/(?:iframe|player)\.mediadelivery\.net\/(?:embed|play)\/[^/]+\/([^/?]+)/)?.[1];
+    if (!videoId) { setLoading(false); return; }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setLoading(false); return; }
+
+      fetch(`/api/bunny-token?videoId=${videoId}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(({ url }) => setSignedUrl(url ?? null))
+        .catch(() => setSignedUrl(null))
+        .finally(() => setLoading(false));
+    });
+  }, [embedUrl]);
+
+  if (loading) {
+    return (
+      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, background: '#F8F6F2' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.35)' }}>
+            Loading video…
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!signedUrl) {
+    return (
+      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, background: '#F8F6F2' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '12px', color: 'rgba(10,35,66,0.35)' }}>
+            Video unavailable
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+      <iframe
+        src={signedUrl}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="Video"
+      />
+    </div>
+  );
+}
+
+// ── Non-Bunny video embed detector ────────────────────────────────────────────
 function getVideoEmbed(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
@@ -61,10 +123,14 @@ export default function PostCard({
 }) {
   const isMemberPost = post.post_type === 'member_post';
   const paragraphs   = formatContent(post.content);
+  const [showSpanish, setShowSpanish] = useState(false);
+  const contentEs = (post as any).content_es as string | null | undefined;
   const category     = (post as any).category  as string  ?? 'general';
-  const memberLevel  = isMemberPost ? (levelMap[post.agent_id] ?? 'Connected') : null;
+  const memberLevel  = isMemberPost ? (levelMap[post.agent_id] ?? DEFAULT_LEVEL_NAME) : null;
+  const isBunnyVideo = !!(post.video_url && post.video_url.includes('mediadelivery.net'));
 
   const [pinned,       setPinned]       = useState<boolean>((post as any).is_pinned ?? false);
+  const [videoStarted, setVideoStarted] = useState(false);
   const [pinLoading,   setPinLoading]   = useState(false);
   const [hearted,      setHearted]      = useState(false);
   const [heartCount,   setHeartCount]   = useState(0);
@@ -73,20 +139,16 @@ export default function PostCard({
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentQueued,  setAgentQueued]  = useState(false);
-  const [showSpanish,  setShowSpanish]  = useState(false);
-  const contentEs = (post as any).content_es as string | null | undefined;
 
   useEffect(() => {
     if (!userId) return;
 
-    // Check if current user hearted this post
     supabase.from('community_reactions')
       .select('id', { count: 'exact', head: true })
       .eq('post_id', post.id).eq('member_id', userId)
       .eq('reaction_type', 'heart').is('comment_id', null)
       .then(({ count }) => { if ((count ?? 0) > 0) setHearted(true); });
 
-    // Fetch total heart count for this post (visible to everyone)
     supabase.from('community_reactions')
       .select('id', { count: 'exact', head: true })
       .eq('post_id', post.id)
@@ -134,7 +196,7 @@ export default function PostCard({
     if (agentLoading || agentQueued) return;
     setAgentLoading(true);
     try {
-      await fetch('/api/cc-agent-trigger', {
+      await fetch(`${APP_URL}/api/cc-agent-trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,7 +220,7 @@ export default function PostCard({
   };
 
   const countLabel      = commentCount === null ? '' : commentCount > 0 ? ` · ${commentCount}` : '';
-  const videoEmbed      = post.video_url ? getVideoEmbed(post.video_url) : null;
+  const videoEmbed      = (post.video_url && !isBunnyVideo) ? getVideoEmbed(post.video_url) : null;
   const topBorderColor  = pinned || !isMemberPost ? '#B8941F' : '#2D5A8E';
   const cardShadow      = pinned ? '0 1px 4px rgba(212,175,55,0.18)' : '0 1px 4px rgba(10,35,66,0.06)';
   const cardShadowHover = pinned ? '0 4px 20px rgba(212,175,55,0.22)' : '0 4px 20px rgba(10,35,66,0.1)';
@@ -219,7 +281,7 @@ export default function PostCard({
         </div>
       </div>
 
-      {/* ── Title — agent posts only ───────────────────────────────────────── */}
+      {/* ── Title — agent/admin posts only ────────────────────────────────── */}
       {!isMemberPost && post.title && (
         <h3 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: '17px', fontWeight: '600', lineHeight: '1.45', marginBottom: '16px' }}>
           {post.title}
@@ -248,15 +310,37 @@ export default function PostCard({
         </div>
       )}
 
-      {/* ── Video embed ───────────────────────────────────────────────────── */}
-      {post.video_url && videoEmbed && (
+      {/* ── Bunny video (signed token) ────────────────────────────────────── */}
+      {isBunnyVideo && (
+        <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
+          {videoStarted || !post.thumbnail_url ? (
+            <BunnyVideoPlayer embedUrl={post.video_url!} />
+          ) : (
+            <button
+              onClick={() => setVideoStarted(true)}
+              aria-label="Play video"
+              style={{ position: 'relative', display: 'block', width: '100%', padding: 0, border: 'none', cursor: 'pointer', background: 'none' }}
+            >
+              <img src={post.thumbnail_url} alt="" style={{ width: '100%', display: 'block', aspectRatio: '16/9', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,35,66,0.25)', transition: 'background 0.15s' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>
+                  <div style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '10px 0 10px 16px', borderColor: 'transparent transparent transparent #0A2342', marginLeft: 4 }} />
+                </div>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── YouTube / Vimeo / Loom embed ──────────────────────────────────── */}
+      {post.video_url && !isBunnyVideo && videoEmbed && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8', position: 'relative', paddingBottom: '56.25%', height: 0 }}>
           <iframe src={videoEmbed} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="Video" />
         </div>
       )}
 
-      {/* ── Direct video ──────────────────────────────────────────────────── */}
-      {post.video_url && !videoEmbed && (
+      {/* ── Direct video (non-Bunny, non-embed) ───────────────────────────── */}
+      {post.video_url && !isBunnyVideo && !videoEmbed && (
         <div style={{ marginTop: '12px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #F0EDE8' }}>
           <video src={post.video_url} controls style={{ width: '100%', maxHeight: '400px', display: 'block', background: '#000' }} />
         </div>
@@ -337,3 +421,4 @@ export default function PostCard({
     </div>
   );
 }
+
