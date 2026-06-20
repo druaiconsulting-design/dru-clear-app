@@ -1,24 +1,11 @@
-import { useState, useEffect } from 'react';
+\import { useState, useEffect } from 'react';
 import { supabase } from '../community/types';
 import type { Tier } from '../community/types';
 import LevelBadge from './LevelBadge';
 import MemberAvatar from '../community/MemberAvatar';
 import MemberProfile from './MemberProfile';
 import NavBar from '../../components/NavBar';
-
-// ── Gap signal ────────────────────────────────────────────────────────────────
-const LEVEL_RANK: Record<string, number>   = { Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5 };
-const PATHWAY_RANK: Record<string, number> = { Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5 };
-
-interface GapSignal { label: string; bg: string; color: string; }
-function getGapSignal(level: string, stage: string): GapSignal | null {
-  const l = LEVEL_RANK[level] ?? 0;
-  const p = PATHWAY_RANK[stage] ?? 0;
-  if (!l || !p) return null;
-  if (l > p)   return { label: 'Hot Lead',       bg: '#FBEAF0', color: '#72243E' };
-  if (l === p) return { label: 'Aligned',        bg: '#EAF3DE', color: '#27500A' };
-  return         { label: 'Retention Risk', bg: '#FAEEDA', color: '#633806' };
-}
+import { useCommunityLevels, getGapSignal } from '../../lib/communityLevels';
 
 interface LeaderboardRow {
   id:              string;
@@ -52,6 +39,7 @@ export default function Leaderboard({
   const [myRow,            setMyRow]            = useState<LeaderboardRow | null>(null);
   const [loading,          setLoading]          = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const levels = useCommunityLevels();
 
   useEffect(() => {
     const load = async () => {
@@ -84,7 +72,7 @@ export default function Leaderboard({
   const renderRow = (row: LeaderboardRow, isMe: boolean) => {
     const r   = getRowRank(row);
     const p   = getRowPts(row);
-    const gap = isAdmin ? getGapSignal(row.community_level, row.pathway_stage) : null;
+    const gap = isAdmin ? getGapSignal(row.community_level, row.pathway_stage, levels) : null;
     return (
       <div
         key={row.id}
@@ -179,9 +167,9 @@ export default function Leaderboard({
           {isAdmin && (
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px', padding: '12px 16px', background: '#FAFAF8', border: '1px solid #E8E4DF', borderRadius: '8px' }}>
               {[
-                { label: 'Hot Lead',       bg: '#FBEAF0', color: '#72243E', tip: 'Engagement ahead of pathway — ready to buy' },
-                { label: 'Aligned',        bg: '#EAF3DE', color: '#27500A', tip: 'Getting full value at their stage'            },
-                { label: 'Retention Risk', bg: '#FAEEDA', color: '#633806', tip: 'Pathway ahead of engagement — re-engage'      },
+                { label: 'Hot Lead',       bg: '#ECC2D1', color: '#C2185B', tip: 'Engagement ahead of pathway — ready to buy' },
+                { label: 'Aligned',        bg: '#D2DBE5', color: '#1B4D8E', tip: 'Getting full value at their stage'            },
+                { label: 'Retention Risk', bg: '#F2EACE', color: '#947B27', tip: 'Pathway ahead of engagement — re-engage'      },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ display: 'inline-block', fontSize: '10px', fontWeight: '700', fontFamily: "'Montserrat', sans-serif", padding: '2px 8px', borderRadius: '4px', background: s.bg, color: s.color }}>{s.label}</span>
