@@ -85,7 +85,7 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
     if (!activeLesson?.bunny_video_id || !session?.access_token) return;
     let cancelled = false;
     setVideoLoading(true);
-    fetch(`https://members.druaiconsulting.com/api/bunny-token?videoId=${activeLesson.bunny_video_id}`, {
+    fetch(`https://members.druaiconsulting.com/api/bunny-course-token?videoId=${activeLesson.bunny_video_id}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
       .then(resp => (resp.ok ? resp.json() : null))
