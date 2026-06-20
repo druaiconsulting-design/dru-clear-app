@@ -1,4 +1,4 @@
-\import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../community/types';
 import type { Tier } from '../community/types';
 import LevelBadge from './LevelBadge';
