@@ -2,18 +2,17 @@
 // LEVEL BADGE — shared component for community-engagement directory
 // Used by: PostCard.tsx, Leaderboard.tsx
 // Import: import LevelBadge from '../community-engagement/LevelBadge';
+//
+// Colors/names now come from the shared community_level_tiers table via
+// useCommunityLevels() — see src/lib/communityLevels.ts. Edit tiers there
+// (or in Supabase), not here.
 // =============================================================================
 
-export const LEVEL_STYLES: Record<string, { bg: string; color: string }> = {
-  Connected:   { bg: '#F1EFE8', color: '#5F5E5A' },
-  Contributor: { bg: '#E6F1FB', color: '#185FA5' },
-  Cultivator:  { bg: '#EAF3DE', color: '#27500A' },
-  Cornerstone: { bg: '#FAEEDA', color: '#633806' },
-  Changemaker: { bg: '#0A2342', color: '#D4AF37' },
-};
+import { useCommunityLevels, levelStyle } from '../../lib/communityLevels';
 
 export default function LevelBadge({ level }: { level: string }) {
-  const s = LEVEL_STYLES[level] || LEVEL_STYLES.Connected;
+  const levels = useCommunityLevels();
+  const s = levelStyle(level, levels);
   return (
     <span style={{
       display:       'inline-block',
