@@ -430,8 +430,8 @@ export default function AdminApprovals() {
       const lines     = content.split('\n').filter((l: string) => l.trim());
       const title     = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || 'Yara Mansour Post';
       const base = { title, content, content_es: contentEs, agent_name: 'Yara Mansour', post_type: 'agent', is_active: true, published_at: new Date().toISOString() };
-      const { error: ccErr }  = await supabase.from('community_posts').insert({ ...base, tier_required: 'navigator',    channel: 'main' });
-      const { error: accErr } = await supabase.from('community_posts').insert({ ...base, tier_required: 'accelerator', channel: 'accelerator_circle' });
+      const { error: ccErr }  = await supabase.from('community_posts').insert({ ...base, tier_required: 'navigator' });
+      const { error: accErr } = await supabase.from('community_posts').insert({ ...base, tier_required: 'accelerator' });
       return !ccErr && !accErr;
     } catch (err) { console.error('[yara_community]', err); return false; }
   };
