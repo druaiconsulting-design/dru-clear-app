@@ -48,6 +48,7 @@ export default function CommunityFeed({
     const { data, error } = await supabase
       .from('community_posts').select('*')
       .eq('is_active', true)
+      .neq('tier_required', 'accelerator')
       .order('is_pinned', { ascending: false })
       .order('published_at', { ascending: false })
       .limit(50);
@@ -122,7 +123,7 @@ export default function CommunityFeed({
     const channel = supabase.channel('community_posts_live')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_posts' }, (payload) => {
         const updated = payload.new as CommunityPost;
-        if (updated.is_active) {
+        if (updated.is_active && updated.tier_required !== 'accelerator') {
           setPosts(prev => {
             const exists = prev.find(p => p.id === updated.id);
             if (exists) return prev.map(p => p.id === updated.id ? updated : p);
@@ -133,7 +134,7 @@ export default function CommunityFeed({
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, (payload) => {
         const newPost = payload.new as CommunityPost;
-        if (newPost.is_active) {
+        if (newPost.is_active && newPost.tier_required !== 'accelerator') {
           setPosts(prev => {
             if (prev.find(p => p.id === newPost.id)) return prev;
             setLiveCount(c => c + 1);
