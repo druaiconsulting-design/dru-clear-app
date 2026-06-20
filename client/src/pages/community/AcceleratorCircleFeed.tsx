@@ -60,12 +60,12 @@ export default function AcceleratorCircleFeed({
     setPhotoMap(pm);
     setLevelMap(lm);
 
-    // Load posts filtered by channel
+    // Load posts tagged for the Accelerator Circle
     const { data: postsData, error } = await supabase
       .from('community_posts')
       .select('*')
       .eq('is_active', true)
-      .eq('channel', 'accelerator_circle')
+      .eq('tier_required', 'accelerator')
       .order('is_pinned',    { ascending: false })
       .order('published_at', { ascending: false })
       .limit(50);
@@ -98,10 +98,10 @@ export default function AcceleratorCircleFeed({
     const realtimeChannel = supabase.channel('acc_circle_posts_live')
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'community_posts',
-        filter: 'channel=eq.accelerator_circle',
+        filter: 'tier_required=eq.accelerator',
       }, (payload) => {
         const newPost = payload.new as CommunityPost;
-        if (!newPost.is_active) return;
+        if (!newPost.is_active || newPost.tier_required !== 'accelerator') return;
         setPosts(prev => prev.find(p => p.id === newPost.id) ? prev : [newPost, ...prev]);
         if (newPost.agent_id) {
           supabase.from('profiles').select('id, photo_url, community_level').eq('id', newPost.agent_id).single()
@@ -110,10 +110,10 @@ export default function AcceleratorCircleFeed({
       })
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'community_posts',
-        filter: 'channel=eq.accelerator_circle',
+        filter: 'tier_required=eq.accelerator',
       }, (payload) => {
         const updated = payload.new as CommunityPost;
-        if (updated.is_active) {
+        if (updated.is_active && updated.tier_required === 'accelerator') {
           setPosts(prev => {
             const exists = prev.find(p => p.id === updated.id);
             if (exists) return prev.map(p => p.id === updated.id ? updated : p);
