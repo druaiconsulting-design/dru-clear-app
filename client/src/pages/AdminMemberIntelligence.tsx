@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
 import MemberAvatar from "./community/MemberAvatar";
+import { useCommunityLevels, getGapSignal, levelRank, PATHWAY_STAGES, DEFAULT_LEVEL_NAME, type LevelTier } from "../lib/communityLevels";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -15,20 +16,12 @@ interface Member {
   photo_url: string | null;
 }
 
-const LEVEL_RANK: Record<string, number> = {
-  Connected:1, Contributor:2, Cultivator:3, Cornerstone:4, Changemaker:5,
-};
-const PATHWAY_RANK: Record<string, number> = {
-  Discover:1, Diagnose:2, Design:3, Deploy:4, Dominate:5,
-};
-
-function getGapSignal(level: string | null, pathway: string | null): { label: string; bg: string; textColor: string } {
-  const l = LEVEL_RANK[level ?? ''] ?? 0;
-  const p = PATHWAY_RANK[pathway ?? ''] ?? 0;
-  if (l === 0) return { label:'No Activity',    bg:'rgba(10,35,66,0.05)', textColor:'rgba(10,35,66,0.35)' };
-  if (p === 0 || l > p) return { label:'Hot Lead',       bg:'#FBEAF0',            textColor:'#72243E' };
-  if (l === p)           return { label:'Aligned',        bg:'#EAF3DE',            textColor:'#27500A' };
-  return                        { label:'Retention Risk', bg:'#FAEEDA',            textColor:'#633806' };
+// Local shape kept identical to the rest of this file (textColor, not color) —
+// adapts the shared module's { label, bg, color } into what this page expects.
+function gapSignalFor(level: string | null, pathway: string | null, levels: LevelTier[]): { label: string; bg: string; textColor: string } {
+  const signal = getGapSignal(level ?? '', pathway ?? '', levels);
+  if (!signal) return { label: 'No Activity', bg: 'rgba(10,35,66,0.05)', textColor: 'rgba(10,35,66,0.35)' };
+  return { label: signal.label, bg: signal.bg, textColor: signal.color };
 }
 
 type SignalFilter = 'all' | 'Hot Lead' | 'Aligned' | 'Retention Risk' | 'No Activity';
@@ -37,6 +30,7 @@ type SortBy       = 'points' | 'name' | 'level' | 'pathway';
 const PAGE_SIZE = 50;
 
 export default function AdminMemberIntelligence() {
+  const levels = useCommunityLevels();
   const [members,      setMembers]      = useState<Member[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [search,       setSearch]       = useState('');
@@ -63,7 +57,7 @@ export default function AdminMemberIntelligence() {
 
   useEffect(() => { setPage(1); }, [search, signalFilter, tierFilter, sortBy]);
 
-  const withSignal = useMemo(() => members.map(m => ({ ...m, signal: getGapSignal(m.community_level, m.pathway_stage) })), [members]);
+  const withSignal = useMemo(() => members.map(m => ({ ...m, signal: gapSignalFor(m.community_level, m.pathway_stage, levels) })), [members, levels]);
 
   const counts = useMemo(() => ({
     total:      withSignal.length,
@@ -83,11 +77,11 @@ export default function AdminMemberIntelligence() {
     }
     return [...r].sort((a, b) => {
       if (sortBy === 'name')    return `${a.first_name}${a.last_name}`.localeCompare(`${b.first_name}${b.last_name}`);
-      if (sortBy === 'level')   return (LEVEL_RANK[b.community_level ?? ''] ?? 0) - (LEVEL_RANK[a.community_level ?? ''] ?? 0);
-      if (sortBy === 'pathway') return (PATHWAY_RANK[b.pathway_stage ?? ''] ?? 0) - (PATHWAY_RANK[a.pathway_stage ?? ''] ?? 0);
+      if (sortBy === 'level')   return levelRank(b.community_level ?? '', levels) - levelRank(a.community_level ?? '', levels);
+      if (sortBy === 'pathway') return PATHWAY_STAGES.indexOf((b.pathway_stage ?? '') as typeof PATHWAY_STAGES[number]) - PATHWAY_STAGES.indexOf((a.pathway_stage ?? '') as typeof PATHWAY_STAGES[number]);
       return (b.clarity_points ?? 0) - (a.clarity_points ?? 0);
     });
-  }, [withSignal, signalFilter, tierFilter, search, sortBy]);
+  }, [withSignal, signalFilter, tierFilter, search, sortBy, levels]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -168,8 +162,8 @@ export default function AdminMemberIntelligence() {
         <div style={{ display:'flex', gap:'0.5rem', marginBottom:'0.75rem', flexWrap:'wrap' }}>
           <button onClick={() => setSignalFilter('all')}            style={filterBtn(signalFilter === 'all',            '#D4AF37')}>All ({counts.total})</button>
           <button onClick={() => setSignalFilter('Hot Lead')}       style={filterBtn(signalFilter === 'Hot Lead',       '#C2185B')}>Hot Lead ({counts.hotLead})</button>
-          <button onClick={() => setSignalFilter('Aligned')}        style={filterBtn(signalFilter === 'Aligned',        '#43A047')}>Aligned ({counts.aligned})</button>
-          <button onClick={() => setSignalFilter('Retention Risk')} style={filterBtn(signalFilter === 'Retention Risk', '#E67E22')}>Retention Risk ({counts.retention})</button>
+          <button onClick={() => setSignalFilter('Aligned')}        style={filterBtn(signalFilter === 'Aligned',        '#1B4D8E')}>Aligned ({counts.aligned})</button>
+          <button onClick={() => setSignalFilter('Retention Risk')} style={filterBtn(signalFilter === 'Retention Risk', '#947B27')}>Retention Risk ({counts.retention})</button>
           <button onClick={() => setSignalFilter('No Activity')}    style={filterBtn(signalFilter === 'No Activity',    'rgba(10,35,66,0.45)')}>No Activity ({counts.noActivity})</button>
         </div>
 
@@ -228,7 +222,7 @@ export default function AdminMemberIntelligence() {
                     {member.tier === 'accelerator' ? 'Accelerator' : 'Navigator'}
                   </span>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', flexShrink:0 }}>
-                    <span style={{ fontFamily:"'Inter', sans-serif", fontSize:'0.68rem', color:'rgba(212,175,55,0.9)', fontWeight:600 }}>{member.community_level ?? 'Connected'}</span>
+                    <span style={{ fontFamily:"'Inter', sans-serif", fontSize:'0.68rem', color:'rgba(212,175,55,0.9)', fontWeight:600 }}>{member.community_level ?? DEFAULT_LEVEL_NAME}</span>
                     <span style={{ color:'rgba(10,35,66,0.2)', fontSize:'0.6rem' }}>→</span>
                     <span style={{ fontFamily:"'Inter', sans-serif", fontSize:'0.68rem', color:'rgba(10,35,66,0.5)' }}>{member.pathway_stage ?? 'None'}</span>
                   </div>
