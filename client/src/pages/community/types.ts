@@ -30,7 +30,7 @@ export type PostType     = 'daily_insight' | 'framework_lesson' | 'action_challe
 export type TierRequired = 'all' | 'navigator' | 'accelerator';
 export type NotifType    = 'mention' | 'reply' | 'new_post' | 'new_agent_post';
 export type PostCategory = 'win' | 'question' | 'resource' | 'challenge' | 'general';
-export type CommunityLevel = 'Connected' | 'Contributor' | 'Cultivator' | 'Cornerstone' | 'Changemaker';
+export type CommunityLevel = 'Connected' | 'Communicated' | 'Contributor' | 'Encourager' | 'Leader' | 'Influencer' | 'Cultivator' | 'Cornerstone' | 'Changemaker';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 export interface CommunityPost {
