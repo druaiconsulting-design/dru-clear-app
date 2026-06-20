@@ -5,8 +5,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 
-const BUNNY_LIBRARY_ID = import.meta.env.VITE_BUNNY_LIBRARY_ID || "";
-
 const PAYMENT_LINKS = {
   self_paced:  "https://link.druaiconsulting.com/payment-link/69f55d0cb615f70a8a33b5fd",
   live_cohort: "https://link.druaiconsulting.com/payment-link/69f55e7bb18c99dd72d3c0e5",
@@ -45,7 +43,7 @@ function ProgressRing({ percent }: { percent: number }) {
 }
 
 export default function CourseDashboard({ adminPreview = false }: { adminPreview?: boolean }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, session } = useAuth();
   const [enrollment, setEnrollment]     = useState<Enrollment | null | "loading">("loading");
   const [modules, setModules]           = useState<Module[]>([]);
   const [lessons, setLessons]           = useState<Lesson[]>([]);
@@ -53,6 +51,8 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [completing, setCompleting]     = useState(false);
   const [railOpen, setRailOpen]         = useState(true);
+  const [videoUrl, setVideoUrl]         = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -74,6 +74,26 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
     supabase.from("course_progress").select("lesson_id, completed").eq("user_id", user.id)
       .then(({ data }) => setProgress((data as Progress[]) || []));
   }, [user?.id]);
+
+  // Fetch a signed Bunny playback URL for the active lesson — never embed
+  // the unsigned iframe URL directly, since this is paid course content.
+  // The Bunny credentials live only in the members repo's Vercel project,
+  // so this calls out to that repo's endpoint rather than keeping a
+  // duplicate copy of the secrets here.
+  useEffect(() => {
+    setVideoUrl(null);
+    if (!activeLesson?.bunny_video_id || !session?.access_token) return;
+    let cancelled = false;
+    setVideoLoading(true);
+    fetch(`https://members.druaiconsulting.com/api/bunny-token?videoId=${activeLesson.bunny_video_id}`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(resp => (resp.ok ? resp.json() : null))
+      .then(data => { if (!cancelled && data?.url) setVideoUrl(data.url); })
+      .catch(err => console.error("[CourseDashboard] bunny token error:", err))
+      .finally(() => { if (!cancelled) setVideoLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeLesson?.bunny_video_id, session?.access_token]);
 
   const completedIds    = useMemo(() => new Set(progress.filter(p => p.completed).map(p => p.lesson_id)), [progress]);
   const totalLessons    = lessons.length;
@@ -231,13 +251,17 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
 
               {/* Video player — dark background stays */}
               <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, borderRadius: 10, overflow: "hidden", background: "#0A2342", border: "1px solid rgba(10,35,66,0.15)", marginBottom: "1.25rem" }}>
-                {activeLesson.bunny_video_id && BUNNY_LIBRARY_ID ? (
+                {activeLesson.bunny_video_id && videoUrl ? (
                   <iframe
-                    src={`https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${activeLesson.bunny_video_id}?autoplay=false&loop=false&muted=false&preload=true&responsive=true`}
+                    src={videoUrl}
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                     allowFullScreen
                   />
+                ) : activeLesson.bunny_video_id && videoLoading ? (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.75rem", fontFamily: "'Montserrat', sans-serif", letterSpacing: "0.08em" }}>LOADING VIDEO…</span>
+                  </div>
                 ) : (
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
                     <span style={{ fontSize: "2.5rem", opacity: 0.3 }}>🎬</span>
