@@ -3,23 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 import AdminLayout from '../components/AdminLayout'
 import LevelBadge from './community-engagement/LevelBadge'
 import MemberAvatar from './community/MemberAvatar'
+import { useCommunityLevels, getGapSignal } from '../lib/communityLevels'
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 )
-
-// ── Level thresholds — matches compute_community_level() in Supabase ──────────
-const LEVELS = [
-  { name: 'Connected',   min: 0    },
-  { name: 'Contributor', min: 50   },
-  { name: 'Cultivator',  min: 150  },
-  { name: 'Cornerstone', min: 400  },
-  { name: 'Changemaker', min: 1000 },
-] as const
-
-const LEVEL_RANK:   Record<string, number> = { Connected:1, Contributor:2, Cultivator:3, Cornerstone:4, Changemaker:5 }
-const PATHWAY_RANK: Record<string, number> = { Discover:1,  Diagnose:2,   Design:3,     Deploy:4,      Dominate:5    }
 
 interface LeaderboardRow {
   id:              string
@@ -32,15 +21,6 @@ interface LeaderboardRow {
   all_time_rank:   number
   weekly_points:   number
   weekly_rank:     number
-}
-
-function getGapSignal(level: string, pathway: string) {
-  const l = LEVEL_RANK[level]   ?? 0
-  const p = PATHWAY_RANK[pathway] ?? 0
-  if (!l)      return { label: 'No Activity',    bg: 'rgba(10,35,66,0.05)', color: 'rgba(10,35,66,0.35)' }
-  if (l > p)   return { label: 'Hot Lead',        bg: '#FBEAF0',             color: '#72243E'              }
-  if (l === p) return { label: 'Aligned',         bg: '#EAF3DE',             color: '#27500A'              }
-  return         { label: 'Retention Risk',  bg: '#FAEEDA',             color: '#633806'              }
 }
 
 // =============================================================================
@@ -76,17 +56,18 @@ export default function AdminLeaderboard() {
   const medal      = (n: number) => n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : null
 
   // ── Selected member stats helpers ─────────────────────────────────────────
-  const m              = selectedMember
-  const communityLevel = m?.community_level ?? 'Connected'
-  const clarityPts     = m?.clarity_points  ?? 0
-  const safeIdx        = Math.max(0, LEVELS.findIndex(l => l.name === communityLevel))
-  const currentLevel   = LEVELS[safeIdx]
-  const nextLevel      = LEVELS[safeIdx + 1] ?? null
-  const pointsToNext   = nextLevel ? Math.max(0, nextLevel.min - clarityPts) : 0
-  const progressPct    = nextLevel
+  const levels          = useCommunityLevels()
+  const m               = selectedMember
+  const communityLevel  = m?.community_level ?? 'Connected'
+  const clarityPts      = m?.clarity_points  ?? 0
+  const safeIdx         = Math.max(0, levels.findIndex(l => l.name === communityLevel))
+  const currentLevel    = levels[safeIdx]
+  const nextLevel       = levels[safeIdx + 1] ?? null
+  const pointsToNext    = nextLevel ? Math.max(0, nextLevel.min - clarityPts) : 0
+  const progressPct     = nextLevel
     ? Math.min(100, ((clarityPts - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100)
     : 100
-  const gap = m ? getGapSignal(m.community_level, m.pathway_stage) : null
+  const gap = m ? getGapSignal(m.community_level, m.pathway_stage, levels) : null
 
   return (
     <AdminLayout currentPath={window.location.pathname}>
@@ -232,7 +213,7 @@ export default function AdminLeaderboard() {
                     </div>
                     <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 'max-content' }}>
-                        {LEVELS.map((level, i) => {
+                        {levels.map((level, i) => {
                           const isUnlocked = safeIdx >= i
                           const isCurrent  = level.name === communityLevel
                           return (
@@ -253,7 +234,7 @@ export default function AdminLeaderboard() {
                                   {level.min === 0 ? '0 pts' : `${level.min} pts`}
                                 </span>
                               </div>
-                              {i < LEVELS.length - 1 && (
+                              {i < levels.length - 1 && (
                                 <div style={{ width: '32px', height: '2px', background: isUnlocked && !isCurrent ? '#D4AF37' : '#E0DDD7', margin: '17px 0 0', flexShrink: 0 }} />
                               )}
                             </div>
@@ -301,7 +282,8 @@ export default function AdminLeaderboard() {
               ) : sortedRows.map(row => {
                 const rank       = getRowRank(row)
                 const pts        = getRowPts(row)
-                const rowGap     = getGapSignal(row.community_level, row.pathway_stage)
+                const rowGap     = getGapSignal(row.community_level, row.pathway_stage, levels)
+                  ?? { label: 'No Activity', bg: 'rgba(10,35,66,0.05)', color: 'rgba(10,35,66,0.35)' }
                 const isSelected = selectedMember?.id === row.id
                 return (
                   <div
@@ -345,9 +327,9 @@ export default function AdminLeaderboard() {
             <div style={{ marginTop: '16px', padding: '12px 16px', background: '#FAFAF8', border: '1px solid #E8E4DF', borderRadius: '8px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: '700', color: 'rgba(10,35,66,0.4)', letterSpacing: '0.5px' }}>SIGNALS:</span>
               {[
-                { label: 'Hot Lead',       bg: '#FBEAF0', color: '#72243E', tip: 'Engagement ahead — ready to invest' },
-                { label: 'Aligned',        bg: '#EAF3DE', color: '#27500A', tip: 'Getting full value' },
-                { label: 'Retention Risk', bg: '#FAEEDA', color: '#633806', tip: 'Re-engage now' },
+                { label: 'Hot Lead',       bg: '#ECC2D1', color: '#C2185B', tip: 'Engagement ahead — ready to invest' },
+                { label: 'Aligned',        bg: '#D2DBE5', color: '#1B4D8E', tip: 'Getting full value' },
+                { label: 'Retention Risk', bg: '#F2EACE', color: '#947B27', tip: 'Re-engage now' },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: s.bg, color: s.color }}>{s.label}</span>
