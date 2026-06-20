@@ -272,3 +272,4 @@ export default function AdminMemberIntelligence() {
     </AdminLayout>
   );
 }
+
