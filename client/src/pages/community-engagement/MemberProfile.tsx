@@ -2,13 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, formatRelativeTime } from '../community/types';
 import LevelBadge from './LevelBadge';
 import MemberAvatar from '../community/MemberAvatar';
-
-// ── Gap signal ────────────────────────────────────────────────────────────────
-const LEVEL_RANK: Record<string, number>   = { Connected: 1, Contributor: 2, Cultivator: 3, Cornerstone: 4, Changemaker: 5 };
-const PATHWAY_RANK: Record<string, number> = { Discover: 1, Diagnose: 2, Design: 3, Deploy: 4, Dominate: 5 };
-
-// ── Pathway config ────────────────────────────────────────────────────────────
-const PATHWAY_STAGES = ['Discover', 'Diagnose', 'Design', 'Deploy', 'Dominate'] as const;
+import { useCommunityLevels, getGapSignal, PATHWAY_STAGES, DEFAULT_LEVEL_NAME } from '../../lib/communityLevels';
 
 const PATHWAY_COPY: Record<string, string> = {
   Discover: 'Your AI readiness score is your starting point. Your transformation journey begins here.',
@@ -91,17 +85,13 @@ export default function MemberProfile({
     load();
   }, [profileUserId]);
 
+  const levels = useCommunityLevels();
   const isSelf   = profileUserId === viewerUserId;
   const fullName = profile ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() : '';
 
-  const gap = isAdmin && profile ? (() => {
-    const l = LEVEL_RANK[profile.community_level] ?? 0;
-    const p = PATHWAY_RANK[profile.pathway_stage ?? ''] ?? 0;
-    if (!l || !p) return null;
-    if (l > p)   return { label: 'Hot Lead',       bg: '#FBEAF0', color: '#72243E' };
-    if (l === p) return { label: 'Aligned',        bg: '#EAF3DE', color: '#27500A' };
-    return         { label: 'Retention Risk', bg: '#FAEEDA', color: '#633806' };
-  })() : null;
+  const gap = isAdmin && profile
+    ? getGapSignal(profile.community_level, profile.pathway_stage ?? '', levels)
+    : null;
 
   return (
     <div
@@ -143,7 +133,7 @@ export default function MemberProfile({
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <LevelBadge level={profile.community_level || 'Connected'} />
+                  <LevelBadge level={profile.community_level || DEFAULT_LEVEL_NAME} />
                   {gap && (
                     <span style={{ display: 'inline-block', fontSize: '10px', fontWeight: '700', fontFamily: "'Montserrat', sans-serif", padding: '2px 8px', borderRadius: '4px', background: gap.bg, color: gap.color }}>
                       {gap.label}
@@ -184,7 +174,7 @@ export default function MemberProfile({
                 <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '14px', overflowX: 'auto', paddingBottom: '4px' }}>
                   {PATHWAY_STAGES.map((stage, i) => {
                     const isCurrent  = stage === profile.pathway_stage;
-                    const isComplete = (PATHWAY_RANK[stage] ?? 0) < (PATHWAY_RANK[profile.pathway_stage ?? ''] ?? 0);
+                    const isComplete = PATHWAY_STAGES.indexOf(stage) < PATHWAY_STAGES.indexOf((profile.pathway_stage ?? '') as typeof PATHWAY_STAGES[number]);
                     return (
                       <div key={stage} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
