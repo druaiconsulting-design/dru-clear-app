@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import AdminLayout from '../components/AdminLayout'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI ARSENAL — ADMIN VIEW (read-only)
-// Data source: https://members.druaiconsulting.com/api/ai-arsenal
-// The catalog itself lives in druaiconsulting-members/src/data/aiArsenalData.ts
-// and is edited there. This page is a window into that data, not a second
-// copy of it — there is intentionally no save/edit path here.
+// Data source: Supabase table `ai_arsenal_categories` (run ai-arsenal-migration.sql
+// once to create + populate it from src/data/aiArsenalData.ts).
+// This table is a copy of the members-repo catalog as of the migration date —
+// it does NOT auto-sync. Editing a tool here changes only what admin sees;
+// editing aiArsenalData.ts changes only what members see. Keep that in mind
+// until/unless the two are unified onto one source of truth.
+// No write controls on this page by design — it's read-only.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   Beginner: '#D4AF37',
@@ -28,33 +37,36 @@ interface Tool {
   alsoUsedIn?: string[]
 }
 
-interface ToolCategory {
+interface CategoryRow {
   id: string
   title: string
   description: string
-  imageFile: string
+  image_file: string
   tools: Tool[]
+  quick_recommendations: { need: string; tool: string }[] | null
+  sort_order: number
 }
 
 export default function AdminAIArsenal() {
-  const [categories, setCategories] = useState<ToolCategory[]>([])
+  const [categories, setCategories] = useState<CategoryRow[]>([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
   const [openId, setOpenId]         = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
-      try {
-        const resp = await fetch('https://members.druaiconsulting.com/api/ai-arsenal')
-        if (!resp.ok) throw new Error(`Request failed (${resp.status})`)
-        const json = await resp.json()
-        setCategories(json.categories ?? [])
-      } catch (err) {
-        console.error('[AdminAIArsenal] fetch error:', err)
-        setError('Could not load the AI Arsenal catalog. The members site may be unreachable.')
-      } finally {
-        setLoading(false)
+      const { data, error } = await supabase
+        .from('ai_arsenal_categories')
+        .select('*')
+        .order('sort_order', { ascending: true })
+
+      if (error) {
+        console.error('[AdminAIArsenal] supabase error:', error)
+        setError('Could not load the AI Arsenal catalog from Supabase.')
+      } else {
+        setCategories((data ?? []) as CategoryRow[])
       }
+      setLoading(false)
     }
     load()
   }, [])
@@ -75,7 +87,7 @@ export default function AdminAIArsenal() {
               AI Arsenal
             </h1>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.45)', fontSize: '0.75rem', marginTop: '4px', margin: 0 }}>
-              {loading ? 'Loading catalog…' : `${categories.length} categories · ${totalTools} tools · read-only — edit aiArsenalData.ts to make changes`}
+              {loading ? 'Loading catalog…' : `${categories.length} categories · ${totalTools} tools · read-only — this is a snapshot, edit aiArsenalData.ts for the live members site`}
             </p>
           </div>
           <div
@@ -100,8 +112,16 @@ export default function AdminAIArsenal() {
           </div>
         )}
 
+        {!loading && !error && categories.length === 0 && (
+          <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '16px', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.35)' }}>
+              No categories found — run ai-arsenal-migration.sql in the Supabase SQL editor first.
+            </div>
+          </div>
+        )}
+
         {/* ── Category list ───────────────────────────────────────────────── */}
-        {!loading && !error && (
+        {!loading && !error && categories.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {categories.map(cat => {
               const isOpen = openId === cat.id
@@ -114,7 +134,7 @@ export default function AdminAIArsenal() {
                     style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', cursor: 'pointer' }}
                   >
                     <img
-                      src={`https://members.druaiconsulting.com/${cat.imageFile}`}
+                      src={`https://members.druaiconsulting.com/${cat.image_file}`}
                       alt=""
                       style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: '#0A2342' }}
                     />
@@ -152,7 +172,7 @@ export default function AdminAIArsenal() {
                             <tr key={tool.name} style={{ borderTop: '1px solid #F1EFE8' }}>
                               <td style={{ padding: '10px 8px', color: '#0A2342', fontWeight: 600 }}>
                                 <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0A2342', textDecoration: 'none' }}>
-                                  {tool.displayUrl ? tool.name : tool.name} ↗
+                                  {tool.name} ↗
                                 </a>
                               </td>
                               <td style={{ padding: '10px 8px' }}>
