@@ -59,6 +59,7 @@ const SECTIONS: Section[] = [
       { icon: '🎬', label: "DeAnna's Leadership Lab", path: '/admin-lab' },
       { icon: '📄', label: 'Weekly Resources PDF',    path: '/admin-resources' },
       { icon: '📋', label: 'Onboarding Checklist',    path: '/admin-onboarding' },
+      { icon: '🧰', label: 'AI Arsenal',               path: '/admin-ai-arsenal' },
     ],
   },
   {
