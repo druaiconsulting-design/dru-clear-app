@@ -1,28 +1,25 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import AdminLayout from '../components/AdminLayout'
+import AdminToolCategoryModal from './AdminToolCategoryModal'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI ARSENAL — ADMIN VIEW (read-only)
 // Data source: Supabase table `ai_arsenal_categories` (run ai-arsenal-migration.sql
 // once to create + populate it from src/data/aiArsenalData.ts).
-// This table is a copy of the members-repo catalog as of the migration date —
-// it does NOT auto-sync. Editing a tool here changes only what admin sees;
-// editing aiArsenalData.ts changes only what members see. Keep that in mind
-// until/unless the two are unified onto one source of truth.
-// No write controls on this page by design — it's read-only.
+// This table is a snapshot of the members-repo catalog as of the migration
+// date — it does NOT auto-sync. Editing a tool here changes only what admin
+// sees; editing aiArsenalData.ts changes only what members see.
+// Visual design intentionally mirrors AIArsenal.tsx / ToolCategoryModal.tsx
+// on the members site — same card grid, same modal layout — minus the
+// member-only features (bookmarks, AI summarize, paywall) that don't apply
+// to an internal, already-logged-in admin view.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 )
-
-const DIFFICULTY_COLOR: Record<string, string> = {
-  Beginner: '#D4AF37',
-  Intermediate: '#C2185B',
-  Advanced: '#1B4D8E',
-}
 
 interface Tool {
   name: string
@@ -47,11 +44,63 @@ interface CategoryRow {
   sort_order: number
 }
 
+// ─── Category card (matches members-site CategoryCard exactly) ────────────
+
+function CategoryCard({ title, description, imageFile, onClick }: { title: string; description: string; imageFile: string; onClick: () => void }) {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'missing'>('loading')
+
+  useEffect(() => {
+    if (!imageFile) { setStatus('missing'); return }
+    let active = true
+    const img = new Image()
+    img.onload = () => { if (active) setStatus('ok') }
+    img.onerror = () => { if (active) setStatus('missing') }
+    img.src = `https://members.druaiconsulting.com/${imageFile}`
+    return () => { active = false }
+  }, [imageFile])
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: '#fff', border: '1px solid rgba(10,35,66,0.08)', borderRadius: 12,
+        padding: 0, textAlign: 'left', cursor: 'pointer', overflow: 'hidden',
+        transition: 'transform 0.12s, box-shadow 0.12s',
+      }}
+      onMouseEnter={e => {
+        ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)'
+        ;(e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'
+      }}
+      onMouseLeave={e => {
+        ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
+        ;(e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'
+      }}
+    >
+      <div style={{
+        aspectRatio: '16/9',
+        background: status === 'ok'
+          ? `#0A2342 url(https://members.druaiconsulting.com/${imageFile}) center/cover no-repeat`
+          : 'linear-gradient(135deg, #0A2342, #1B4D8E)',
+      }} />
+      <div style={{ padding: '14px 16px 16px' }}>
+        <div style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 14.5, fontWeight: 700, color: '#0A2342', marginBottom: 4 }}>
+          {title}
+        </div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: 'rgba(10,35,66,0.5)', lineHeight: 1.5 }}>
+          {description}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function AdminAIArsenal() {
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
-  const [openId, setOpenId]         = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -71,11 +120,12 @@ export default function AdminAIArsenal() {
     load()
   }, [])
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const totalTools = categories.reduce((sum, c) => sum + c.tools.length, 0)
 
   return (
     <AdminLayout currentPath={window.location.pathname}>
-      <main style={{ flex: 1, padding: '2rem 1.5rem', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+      <main style={{ flex: 1, padding: isMobile ? '20px 12px' : '2rem 1.5rem', maxWidth: 1140, margin: '0 auto', width: '100%' }}>
 
         {/* ── Page header ──────────────────────────────────────────────────── */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -87,14 +137,8 @@ export default function AdminAIArsenal() {
               AI Arsenal
             </h1>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.45)', fontSize: '0.75rem', marginTop: '4px', margin: 0 }}>
-              {loading ? 'Loading catalog…' : `${categories.length} categories · ${totalTools} tools · read-only — this is a snapshot, edit aiArsenalData.ts for the live members site`}
+              {loading ? 'Loading catalog…' : `${categories.length} categories · ${totalTools} tools · read-only — edit aiArsenalData.ts for the live members site`}
             </p>
-          </div>
-          <div
-            onClick={() => window.open('https://members.druaiconsulting.com/ai-arsenal', '_blank', 'noopener,noreferrer')}
-            style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: 'rgba(10,35,66,0.5)', border: '1px solid rgba(10,35,66,0.2)', borderRadius: 8, padding: '0.6rem 1.25rem', letterSpacing: '0.06em', cursor: 'pointer' }}
-          >
-            View live on members site ↗
           </div>
         </div>
 
@@ -120,83 +164,32 @@ export default function AdminAIArsenal() {
           </div>
         )}
 
-        {/* ── Category list ───────────────────────────────────────────────── */}
+        {/* ── Category grid (matches members-site layout exactly) ────────── */}
         {!loading && !error && categories.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {categories.map(cat => {
-              const isOpen = openId === cat.id
-              return (
-                <div key={cat.id} style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '14px', overflow: 'hidden' }}>
-
-                  {/* Category row */}
-                  <div
-                    onClick={() => setOpenId(isOpen ? null : cat.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', cursor: 'pointer' }}
-                  >
-                    <img
-                      src={`https://members.druaiconsulting.com/${cat.image_file}`}
-                      alt=""
-                      style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: '#0A2342' }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Playfair Display', serif", color: '#0A2342', fontSize: '1rem', fontWeight: 700 }}>
-                        {cat.title}
-                      </div>
-                      <div style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.45)', fontSize: '0.75rem', marginTop: '2px' }}>
-                        {cat.description}
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.7rem', fontWeight: 700, color: 'rgba(10,35,66,0.4)', flexShrink: 0 }}>
-                      {cat.tools.length} tools
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'rgba(10,35,66,0.3)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                      ▾
-                    </div>
-                  </div>
-
-                  {/* Expanded tool table */}
-                  {isOpen && (
-                    <div style={{ borderTop: '1px solid #E8E4DF', padding: '4px 20px 16px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem' }}>
-                        <thead>
-                          <tr style={{ textAlign: 'left', color: 'rgba(10,35,66,0.4)', fontSize: '0.68rem', letterSpacing: '0.04em' }}>
-                            <th style={{ padding: '8px 8px', fontWeight: 700 }}>TOOL</th>
-                            <th style={{ padding: '8px 8px', fontWeight: 700 }}>DIFFICULTY</th>
-                            <th style={{ padding: '8px 8px', fontWeight: 700 }}>PRICING</th>
-                            <th style={{ padding: '8px 8px', fontWeight: 700 }}>INPUT MODEL</th>
-                            <th style={{ padding: '8px 8px', fontWeight: 700 }}>BEST FOR</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cat.tools.map(tool => (
-                            <tr key={tool.name} style={{ borderTop: '1px solid #F1EFE8' }}>
-                              <td style={{ padding: '10px 8px', color: '#0A2342', fontWeight: 600 }}>
-                                <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0A2342', textDecoration: 'none' }}>
-                                  {tool.name} ↗
-                                </a>
-                              </td>
-                              <td style={{ padding: '10px 8px' }}>
-                                <span style={{
-                                  display: 'inline-block', padding: '2px 10px', borderRadius: 999,
-                                  fontSize: '0.68rem', fontWeight: 700, color: '#FFFFFF',
-                                  background: DIFFICULTY_COLOR[tool.difficulty] ?? '#0A2342',
-                                }}>
-                                  {tool.difficulty}
-                                </span>
-                              </td>
-                              <td style={{ padding: '10px 8px', color: 'rgba(10,35,66,0.7)' }}>{tool.pricingModel}</td>
-                              <td style={{ padding: '10px 8px', color: 'rgba(10,35,66,0.7)' }}>{tool.inputModel}</td>
-                              <td style={{ padding: '10px 8px', color: 'rgba(10,35,66,0.55)' }}>{tool.bestFor}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: 16,
+          }}>
+            {categories.map(cat => (
+              <CategoryCard
+                key={cat.id}
+                title={cat.title}
+                description={cat.description}
+                imageFile={cat.image_file}
+                onClick={() => setActiveCategory(cat.id)}
+              />
+            ))}
           </div>
+        )}
+
+        {activeCategory && (
+          <AdminToolCategoryModal
+            categories={categories}
+            categoryId={activeCategory}
+            onClose={() => setActiveCategory(null)}
+            onNavigate={setActiveCategory}
+          />
         )}
       </main>
     </AdminLayout>
