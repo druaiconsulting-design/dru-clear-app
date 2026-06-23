@@ -29,6 +29,7 @@ import AdminLab from "./pages/AdminLab";
 import AdminWeekly from "./pages/AdminWeekly";
 import AdminCourses from "./pages/AdminCourses";
 import AdminLeaderboard from "./pages/AdminLeaderboard";
+import AdminAIArsenal from "./pages/AdminAIArsenal";
 import CourseDashboard from "./pages/CourseDashboard";
 import Twin from "./pages/Twin";
 import Lab from "./pages/Lab";
@@ -283,6 +284,11 @@ function Router() {
     setTitle("Leaderboard · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminLeaderboard />;
+  }
+  if (path === "/admin-ai-arsenal" || path === "/admin-ai-arsenal/") {
+    setTitle("AI Arsenal · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminAIArsenal />;
   }
 
   // ── Protected Routes ────────────────────────────────────────────────────────
