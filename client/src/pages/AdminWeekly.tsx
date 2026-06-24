@@ -16,11 +16,39 @@ export default function AdminWeekly() {
     }
     setPublishing(true); setError(""); setPublished(false);
     try {
-      const { error: dbError } = await supabase.from("weekly_pdfs").insert({
-        title: pdfTitle.trim(), week_of: pdfWeekOf.trim(),
-        pdf_url: pdfUrl.trim(), is_active: true,
-      });
-      if (dbError) throw dbError;
+      const trimmedTitle = pdfTitle.trim();
+
+      // Case-insensitive match: if a row with this title already exists,
+      // update it (refresh URL/week + bump created_at so it reads as
+      // current) instead of inserting a duplicate. Avoids two rows for
+      // the same PDF when a Get URL link expires and needs replacing.
+      const { data: existing, error: lookupError } = await supabase
+        .from("weekly_pdfs")
+        .select("id")
+        .ilike("title", trimmedTitle)
+        .limit(1)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("weekly_pdfs")
+          .update({
+            week_of: pdfWeekOf.trim(),
+            pdf_url: pdfUrl.trim(),
+            is_active: true,
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("weekly_pdfs").insert({
+          title: trimmedTitle, week_of: pdfWeekOf.trim(),
+          pdf_url: pdfUrl.trim(), is_active: true,
+        });
+        if (insertError) throw insertError;
+      }
+
       setPublished(true);
       setPdfTitle(""); setPdfWeekOf(""); setPdfUrl("");
       setTimeout(() => setPublished(false), 5000);
@@ -105,9 +133,9 @@ export default function AdminWeekly() {
         <div style={{ marginTop: "1.5rem", background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "1rem 1.25rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.72rem", fontWeight: 700, marginBottom: "0.5rem" }}>How it works</p>
           <ul style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.55)", fontSize: "0.72rem", lineHeight: 1.8, paddingLeft: "1.25rem", margin: 0 }}>
-            <li>The row is saved to the <code style={{ background: "rgba(10,35,66,0.06)", padding: "1px 5px", borderRadius: 3 }}>weekly_pdfs</code> table with <code style={{ background: "rgba(10,35,66,0.06)", padding: "1px 5px", borderRadius: 3 }}>is_active: true</code></li>
-            <li>The most recent active row appears as the current week's PDF on the members Resources page</li>
-            <li>Older rows stay in the table — never delete rows</li>
+            <li>Publishing checks for an existing row with the same title (case-insensitive) — if found, it updates that row's URL and week instead of creating a duplicate; if not, it creates a new row</li>
+            <li>The most recent row (by last updated) appears as the current week's PDF on the members Resources page</li>
+            <li>Older, different-titled rows stay in the table as Archive — they're never deleted automatically</li>
             <li>Accelerator members only — Navigator and free-tier members won't see this on their Resources page</li>
             <li>The pasted URL has an expiry set when you generate it — pick "1 year" so it doesn't quietly break; you'll need to re-publish with a fresh URL once it does</li>
           </ul>
