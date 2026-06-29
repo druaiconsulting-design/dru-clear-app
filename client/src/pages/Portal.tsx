@@ -26,12 +26,13 @@ function getUserDisplay(user: any): { firstName: string; avatarUrl: string | nul
   return { firstName: displayFirst, avatarUrl, initials };
 }
 
-function PortalAvatar({ user }: { user: any }) {
+function PortalAvatar({ user, avatarOverride }: { user: any; avatarOverride?: string | null }) {
   const { avatarUrl, initials } = getUserDisplay(user);
   const [imgError, setImgError] = useState(false);
-  if (avatarUrl && !imgError) {
+  const src = avatarOverride || avatarUrl;
+  if (src && !imgError) {
     return (
-      <img src={avatarUrl} alt="Profile" onError={() => setImgError(true)}
+      <img src={src} alt="Profile" onError={() => setImgError(true)}
         style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(212,175,55,0.5)", flexShrink: 0 }} />
     );
   }
@@ -136,6 +137,16 @@ export default function Portal() {
   const [passkeyLoading,   setPasskeyLoading]   = useState(false);
   const [passkeyMessage,   setPasskeyMessage]   = useState("");
   const [passkeyDismissed, setPasskeyDismissed] = useState(false);
+  const [photoUrl,         setPhotoUrl]         = useState<string | null>(null);
+
+  // Pull the saved photo from the profiles table — `user.picture` only ever
+  // reflects Supabase Auth metadata, not a photo uploaded via the avatar
+  // change flow, so without this the welcome card avatar never updates.
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("profiles").select("photo_url").eq("id", user.id).single()
+      .then(({ data }) => { if (data?.photo_url) setPhotoUrl(data.photo_url); });
+  }, [user?.id]);
 
   useEffect(() => {
     async function checkPasskey() {
@@ -213,7 +224,7 @@ export default function Portal() {
           <div style={{ marginBottom: "2rem" }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1rem" }}>Your Transformational Connection</p>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
-              {user && <PortalAvatar user={user} />}
+              {user && <PortalAvatar user={user} avatarOverride={photoUrl} />}
               <div>
                 <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: isMobile() ? "1.5rem" : "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>
                   {userDisplay.firstName
