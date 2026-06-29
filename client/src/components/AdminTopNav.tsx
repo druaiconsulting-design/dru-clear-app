@@ -155,6 +155,13 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
     return () => { scrollEl?.removeEventListener('scroll', handleScroll) }
   }, [isMobile])
 
+  // ── Fetch saved profile photo (so it persists across logins/reloads) ──────
+  useEffect(() => {
+    if (!(user as any)?.id) return
+    supabase.from('profiles').select('photo_url').eq('id', (user as any).id).single()
+      .then(({ data }) => { if (data?.photo_url) setLocalAvatar(data.photo_url) })
+  }, [(user as any)?.id])
+
   // ── Fetch notifications ───────────────────────────────────────────────────
   useEffect(() => {
     if (!(user as any)?.id) return
@@ -204,20 +211,30 @@ export default function AdminTopNav({ onToggleSidebar, currentPath }: AdminTopNa
   }
 
   // ── Avatar upload ─────────────────────────────────────────────────────────
+  // Path MUST be `${userId}/avatar.ext` (folder = userId) to satisfy the
+  // Storage RLS policy on the `avatars` bucket, which checks
+  // (storage.foldername(name))[1] = auth.uid(). A flat filename like
+  // `${userId}.ext` has no folder segment, so the policy rejects the upload
+  // with a 400 — this is why admin photo changes silently failed while the
+  // member-side upload (which already used this folder pattern) worked.
+  // Also writes to `profiles.photo_url`, the column every other read path
+  // in the app (Leaderboard, MemberProfile, CommunityFeed, etc.) actually uses.
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !(user as any)?.id) return
     setAvatarUploading(true)
-    const ext      = file.name.split('.').pop()
-    const fileName = `${(user as any).id}.${ext}`
+    const ext  = file.name.split('.').pop()
+    const path = `${(user as any).id}/avatar.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file, { upsert: true })
+      .upload(path, file, { upsert: true })
     if (!uploadError) {
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
-      const publicUrl = urlData.publicUrl
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', (user as any).id)
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}` // cache-bust so the new image shows immediately
+      await supabase.from('profiles').update({ photo_url: publicUrl }).eq('id', (user as any).id)
       setLocalAvatar(publicUrl)
+    } else {
+      console.error('Avatar upload failed:', uploadError.message)
     }
     setAvatarUploading(false)
   }
