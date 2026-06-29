@@ -24,13 +24,14 @@ function getUserDisplay(user: any): { name: string; firstName: string; avatarUrl
   return { name: fullName || email, firstName: displayFirst, avatarUrl, initials };
 }
 
-function Avatar({ user, size = 30 }: { user: any; size?: number }) {
+function Avatar({ user, size = 30, avatarOverride }: { user: any; size?: number; avatarOverride?: string | null }) {
   const { avatarUrl, initials } = getUserDisplay(user);
   const [imgError, setImgError] = useState(false);
-  if (avatarUrl && !imgError) {
+  const src = avatarOverride || avatarUrl;
+  if (src && !imgError) {
     return (
       <img
-        src={avatarUrl}
+        src={src}
         alt="Profile"
         onError={() => setImgError(true)}
         style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(212,175,55,0.5)", flexShrink: 0 }}
@@ -48,6 +49,7 @@ function Avatar({ user, size = 30 }: { user: any; size?: number }) {
 export default function NavBar({ active }: { active?: string }) {
   const [menuOpen, setMenuOpen]   = useState(false);
   const [userTier, setUserTier]   = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl]   = useState<string | null>(null);
   const { isLoggedIn, isAdmin, user, logout } = useAuth();
   const userDisplay = user ? getUserDisplay(user) : null;
 
@@ -55,6 +57,15 @@ export default function NavBar({ active }: { active?: string }) {
     if (!isLoggedIn || !(user as any)?.id) { setUserTier(null); return; }
     supabase.from("profiles").select("tier").eq("id", (user as any).id).single()
       .then(({ data }) => setUserTier(data?.tier ?? null));
+  }, [isLoggedIn, (user as any)?.id]);
+
+  // Pull the saved photo from the profiles table — user.picture only ever
+  // reflects Supabase Auth metadata, not a photo uploaded via the avatar
+  // change flow, so without this the nav avatar never updates.
+  useEffect(() => {
+    if (!isLoggedIn || !(user as any)?.id) { setPhotoUrl(null); return; }
+    supabase.from("profiles").select("photo_url").eq("id", (user as any).id).single()
+      .then(({ data }) => { if (data?.photo_url) setPhotoUrl(data.photo_url); });
   }, [isLoggedIn, (user as any)?.id]);
 
   const handleLogout = async () => { await logout(); };
@@ -186,7 +197,7 @@ export default function NavBar({ active }: { active?: string }) {
         {/* User avatar + logout */}
         {isLoggedIn && user && (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "0.5rem" }}>
-            <Avatar user={user} size={30} />
+            <Avatar user={user} size={30} avatarOverride={photoUrl} />
             <button onClick={handleLogout}
               style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.5)", background: "transparent", border: "1px solid rgba(255,255,255,0.15)", padding: "0.35rem 0.8rem", borderRadius: 4, cursor: "pointer", transition: "all 0.2s" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.35)"; (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
@@ -220,7 +231,7 @@ export default function NavBar({ active }: { active?: string }) {
 
           {isLoggedIn && user && userDisplay && (
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 0.5rem 0.875rem", borderBottom: "1px solid rgba(212,175,55,0.15)", marginBottom: "0.25rem" }}>
-              <Avatar user={user} size={38} />
+              <Avatar user={user} size={38} avatarOverride={photoUrl} />
               <div>
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#FFFFFF", fontWeight: 700, fontSize: "0.78rem", margin: "0 0 1px" }}>{userDisplay.firstName}</p>
                 <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", margin: 0 }}>{user.email}</p>
