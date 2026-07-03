@@ -1,5 +1,7 @@
 // DRU AI Leadership Ecosystem™ — api/ac-agent-trigger.ts
-// P10 Accelerator Circle Division — Petra / Matthew / Renata + upsell scan + reply
+// P10 Accelerator Circle Division — Matthew (Leader) / Petra (Member Experience) / Renata (Strategy) + upsell scan + reply
+// UPDATED: Matthew Elliot is AC Leader, Petra Vance is AC Member Experience (roles swapped)
+// UPDATED: post_type is always 'agent' — daily_insight / strategic_edge belong to Daily Connection only
 // MIRRORS cc-agent-trigger.ts with all Layer 2 edits applied
 // TIER: accelerator only | CHANNEL: accelerator_circle | NO CTA | NO SELLING IN POSTS
 
@@ -71,14 +73,14 @@ async function postACKnowledgmentComment(postId: string, firstName: string, sign
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
-    const prompt = `${GENIUS_MODE}\n\nYou are Matthew Elliot, Accelerator Circle Member Experience Manager for DRU AI Consulting.\nAn Accelerator member named ${firstName} has been engaging in a meaningful way inside the Accelerator Circle.\nContext: "${signalContext}"\n\nWrite a warm, executive-appropriate community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out directly to explore how to go deeper together. Do NOT mention products, pricing, or services. Be warm, peer-level, and genuine. Write ONLY the reply text.`;
+    const prompt = `${GENIUS_MODE}\n\nYou are Petra Vance, Accelerator Circle Member Experience Manager for DRU AI Consulting.\nAn Accelerator member named ${firstName} has been engaging in a meaningful way inside the Accelerator Circle.\nContext: "${signalContext}"\n\nWrite a warm, executive-appropriate community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out directly to explore how to go deeper together. Do NOT mention products, pricing, or services. Be warm, peer-level, and genuine. Write ONLY the reply text.`;
     const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
     await fetch(`${url}/rest/v1/community_comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Matthew Elliot', content: acknowledgment, is_flagged: false, is_active: true }),
+      body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Petra Vance', content: acknowledgment, is_flagged: false, is_active: true }),
     });
-    console.log(`[matthew] AC acknowledgment posted to post ${postId} for ${firstName}`);
+    console.log(`[petra] AC acknowledgment posted to post ${postId} for ${firstName}`);
   } catch (err) { console.error('[ac_acknowledgment] Failed:', err); }
 }
 
@@ -212,9 +214,9 @@ async function runACAgent(
   }
 }
 
-// ─── Petra Vance — AC Community Leader ───────────────────────────────────────
+// ─── Matthew Elliot — AC Leader ──────────────────────────────────────────────
 
-async function runPetra(): Promise<{ approval_id: string | null; post_id: string | null }> {
+async function runMatthew(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   let recentACPosts = 'No recent Accelerator Circle activity available.';
@@ -230,8 +232,8 @@ async function runPetra(): Promise<{ approval_id: string | null; post_id: string
     }
   }
   return runACAgent(
-    'petra', 'Petra Vance', 'ac_community_facilitation', 'strategic_edge', 'ac_community_facilitation',
-    `You are Petra Vance, a community leader inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
+    'matthew', 'Matthew Elliot', 'ac_community_facilitation', 'agent', 'ac_community_facilitation',
+    `You are Matthew Elliot, a community leader inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
 TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 AUDIENCE: Accelerator members — executives mid-transformation. They have already committed. Speak as a peer who has been in the room.
@@ -241,9 +243,9 @@ Write a MASTERMIND CONVERSATION STARTER for this exclusive executive community. 
   );
 }
 
-// ─── Matthew Elliot — AC Member Experience ───────────────────────────────────
+// ─── Petra Vance — AC Member Experience ──────────────────────────────────────
 
-async function runMatthew(): Promise<{ approval_id: string | null; post_id: string | null }> {
+async function runPetra(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   let memberContext = 'No recent Accelerator member data available.';
@@ -258,8 +260,8 @@ async function runMatthew(): Promise<{ approval_id: string | null; post_id: stri
     }
   }
   return runACAgent(
-    'matthew', 'Matthew Elliot', 'ac_member_experience', 'daily_insight', 'ac_member_experience',
-    `You are Matthew Elliot, a member of the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
+    'petra', 'Petra Vance', 'ac_member_experience', 'agent', 'ac_member_experience',
+    `You are Petra Vance, a member of the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
 TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 AUDIENCE: Accelerator members navigating real implementation — not theory, not inspiration. Acknowledge the friction.
@@ -284,7 +286,7 @@ async function runRenata(): Promise<{ approval_id: string | null; post_id: strin
   const todayFocus = focus[dayOfWeek] ?? focus['Monday'];
 
   return runACAgent(
-    'renata', 'Renata Cruz', 'ac_strategy_insight', 'strategic_edge', 'ac_strategy_insight',
+    'renata', 'Renata Cruz', 'ac_strategy_insight', 'agent', 'ac_strategy_insight',
     `You are Renata Cruz, a strategy and culture thinker inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
 TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
@@ -296,6 +298,7 @@ Write a MASTERMIND CONVERSATION STARTER at the highest executive level. 150-200 
 }
 
 // ─── Daily AC Seed — rotates Petra / Matthew / Renata (one post per day) ─────
+// Matthew = AC Leader · Petra = Member Experience · Renata = Strategy
 async function runACCommunitySeed(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const slot = new Date().getDate() % 3;
   if (slot === 0) return runPetra();
@@ -315,13 +318,13 @@ async function runACAgentReply(
   const isPetra    = routeTo === 'petra';
   const agentId    = isPetra ? 'petra'        : 'matthew';
   const agentName  = isPetra ? 'Petra Vance'  : 'Matthew Elliot';
-  const agentRole  = isPetra ? 'AC Community Leader' : 'AC Member Experience Manager';
+  const agentRole  = isPetra ? 'AC Member Experience Manager' : 'AC Community Leader';
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
 
-  const petraInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Apply a DRU framework at real depth — not surface level\n- Add one strategic insight that moves the conversation forward\n- Invite further executive-level reflection\n- Voice: sophisticated, grounded, purposeful`;
-  const matthewInstructions = `- Acknowledge the member's reality with executive specificity — make them feel genuinely seen\n- Validate what they are navigating without softening it\n- Add warmth that holds space without pressure\n- Voice: warm executive peer — encouraging and steady`;
+  const petraInstructions = `- Acknowledge the member's reality with executive specificity — make them feel genuinely seen\n- Validate what they are navigating without softening it\n- Add warmth that holds space without pressure\n- Voice: warm executive peer — encouraging and steady`;
+  const matthewInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Apply a DRU framework at real depth — not surface level\n- Add one strategic insight that moves the conversation forward\n- Invite further executive-level reflection\n- Voice: sophisticated, grounded, purposeful`;
 
-  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${agentRole} inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a high-stakes question or executive invitation.' : 'End with a warm, momentum-building close.'} No calls to action.`;
+  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${agentRole} inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a warm, momentum-building close.' : 'End with a high-stakes question or executive invitation.'} No calls to action.`;
 
   try {
     const raw      = await callAnthropic(prompt, 600);
@@ -436,7 +439,7 @@ async function runACUpsellScan(): Promise<void> {
     const alreadyFlagged = await hasRecentACUpsellCard(memberId);
     if (alreadyFlagged) { console.log(`[ac_upsell_scan] ${profile.first_name} — card exists, skipping`); continue; }
 
-    const detectionPrompt = `${GENIUS_MODE}\n\nYou are Petra Vance, Accelerator Circle Division Leader.\nAn Accelerator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals? Scan for:\nDIAGNOSTICS: course ($4,997 on-demand learning), strategic ($3,497 90-min session), executive ($4,997 120-min session)\nFRAMEWORKS: dru_clear ($7,500), five_c ($6,000), five_d ($6,500), ai_sales_mastery ($6,000)\nBUNDLES: bundle_full ($26,000), bundle_plus_two ($19,500), bundle_plus_one ($13,500)\nPick the SINGLE strongest signal only. Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: [course|strategic|executive|dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one] | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
+    const detectionPrompt = `${GENIUS_MODE}\n\nYou are Matthew Elliot, Accelerator Circle Leader.\nAn Accelerator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals? Scan for:\nDIAGNOSTICS: course ($4,997 on-demand learning), strategic ($3,497 90-min session), executive ($4,997 120-min session)\nFRAMEWORKS: dru_clear ($7,500), five_c ($6,000), five_d ($6,500), ai_sales_mastery ($6,000)\nBUNDLES: bundle_full ($26,000), bundle_plus_two ($19,500), bundle_plus_one ($13,500)\nPick the SINGLE strongest signal only. Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: [course|strategic|executive|dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one] | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
 
     const detection = await callAnthropic(detectionPrompt, 150);
     if (!detection.includes('UPSELL SIGNAL: YES')) { console.log(`[ac_upsell_scan] No signal for ${profile.first_name}`); continue; }
