@@ -130,14 +130,14 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          <div style={{ background: "#071A2E", border: "2px solid #D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
+          <div style={{ background: "#D4AF37", border: "2px solid #0A2342", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.6)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(10,35,66,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice</p>
               <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
                 {["DeAnna's Voice", "Persistent Memory", "Routes All Agents"].map(b => (
-                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.3)", color: "#D4AF37" }}>{b}</span>
+                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(10,35,66,0.1)", border: "1px solid rgba(10,35,66,0.3)", color: "#0A2342"" }}>{b}</span>
                 ))}
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          <div style={{ background: "rgba(10,35,66,0.95)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
+          <div style={{ background: "#1B4D8E", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             {!raymondErr ? <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : <div style={fallback("RH", 54)}>RH</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Vice President</p>
@@ -161,7 +161,7 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          <div style={{ background: "rgba(10,35,66,0.75)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+          <div style={{ background: "#0A2342", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
             {!travisErr ? <img src={TRAVIS_PHOTO} alt="Travis Wealthy" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : <div style={fallback("TW", 48)}>TW</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Assistant Vice President</p>
@@ -172,12 +172,12 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          <div style={{ background: "rgba(10,35,66,0.6)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+          <div style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
             {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Supports Raymond & Travis · Executive context & time-sensitive flags</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Supports Raymond & Travis · Executive context & time-sensitive flags</p>
             </div>
           </div>
 
