@@ -11,7 +11,7 @@ const supabase = createClient(
 // All agent + exec photos live in the Supabase public bucket `agent-photos`.
 // Files that don't exist yet fall back to initials automatically and appear
 // as soon as they are uploaded — no code change, no deployment.
-const BUCKET = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/agent-photos`;
+const BUCKET = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/agents-photos`;
 const RAYMOND_PHOTO = `${BUCKET}/exec-raymond-holloway.png`;
 const TRAVIS_PHOTO  = `${BUCKET}/exec-travis-wealthy.png`;
 const PRIYA_PHOTO   = `${BUCKET}/exec-priya-sharma.png`;
