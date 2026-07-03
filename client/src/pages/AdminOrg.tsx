@@ -137,7 +137,7 @@ export default function AdminOrg() {
               <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(10,35,66,0.7)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice</p>
               <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
                 {["DeAnna's Voice", "Persistent Memory", "Routes All Agents"].map(b => (
-                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(10,35,66,0.1)", border: "1px solid rgba(10,35,66,0.3)", color: "#0A2342"" }}>{b}</span>
+                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(10,35,66,0.1)", border: "1px solid rgba(10,35,66,0.3)", color: "#0A2342" }}>{b}</span>
                 ))}
               </div>
             </div>
