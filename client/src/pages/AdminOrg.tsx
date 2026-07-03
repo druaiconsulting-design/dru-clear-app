@@ -64,6 +64,7 @@ export default function AdminOrg() {
         .from("agents")
         .select("*")
         .order("division_sort", { ascending: true })
+        .order("is_leader", { ascending: false })
         .order("sort_order", { ascending: true });
       if (error || !data) { console.error("[AdminOrg] agents fetch failed:", error); setLoading(false); return; }
 
