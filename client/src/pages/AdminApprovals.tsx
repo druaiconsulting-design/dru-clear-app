@@ -854,7 +854,7 @@ export default function AdminApprovals() {
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       {!isBriefing && agentPhotoByName[approval.agent_name] && (
                         <img src={agentPhotoByName[approval.agent_name]} alt={approval.agent_name}
-                          style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />
+                          style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />
                       )}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
                       {isMulti && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", color:"rgba(255,255,255,0.8)" }}>3 Platforms</span>}
