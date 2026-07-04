@@ -309,6 +309,11 @@ export default function AdminApprovals() {
   const [mediaUrls, setMediaUrls]             = useState<Record<string, MediaState>>({});
   const [platformTabs, setPlatformTabs]       = useState<Record<string, PlatformTab>>({});
   const [platformToggles, setPlatformToggles] = useState<Record<string, Record<string, boolean>>>({});
+  // Contributor avatars — pulled live from Supabase `agents` table, keyed by
+  // agents.name (which matches approval.agent_name exactly). Never hardcode a
+  // photo URL here: swap the file in agents-photos + update agents.photo_url
+  // in Supabase and every card here picks it up automatically.
+  const [agentPhotoByName, setAgentPhotoByName] = useState<Record<string, string>>({});
 
   const getMediaUrls = (id: string, approval?: Approval): MediaState =>
     mediaUrls[id] ?? {
@@ -364,8 +369,16 @@ export default function AdminApprovals() {
     setFlaggedLoading(false);
   };
 
+  const fetchAgentPhotos = async () => {
+    const { data, error } = await supabase.from("agents").select("name, photo_url");
+    if (error || !data) { console.error("[agent photos]", error); return; }
+    const byName: Record<string, string> = {};
+    data.forEach((a: any) => { if (a.photo_url && a.name) byName[a.name] = a.photo_url; });
+    setAgentPhotoByName(byName);
+  };
+
   useEffect(() => {
-    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments();
+    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments(); fetchAgentPhotos();
     const channel = supabase.channel("approvals-realtime").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals()).subscribe();
     const commentsChannel = supabase.channel("flagged-comments-realtime").on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments()).subscribe();
     return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); };
@@ -839,6 +852,10 @@ export default function AdminApprovals() {
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
+                      {!isBriefing && agentPhotoByName[approval.agent_name] && (
+                        <img src={agentPhotoByName[approval.agent_name]} alt={approval.agent_name}
+                          style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />
+                      )}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
                       {isMulti && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", color:"rgba(255,255,255,0.8)" }}>3 Platforms</span>}
                       {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge Vault</span>}
