@@ -2,9 +2,9 @@ import NavBar from "../components/NavBar";
 
 const TERMS = [
   { title: "Services", body: "All diagnostic, framework, and ecosystem engagements are delivered virtually via Zoom unless otherwise agreed in writing. Session scheduling begins upon receipt of full or initial payment." },
-  { title: "Payment", body: "Full payment is required before services commence, except for the Full Ecosystem engagement which requires 50% at signing and 50% at completion. All prices are in USD." },
-  { title: "Non-Refundable Policy", body: "All payments are non-refundable. By completing your purchase you acknowledge that you have reviewed the service description, understand the scope of your selected engagement, and are committing to your transformation pathway. No refunds will be issued for any reason including unused sessions, scheduling conflicts, or change of mind." },
-  { title: "Rescheduling", body: "Sessions may be rescheduled with a minimum of 48 hours notice. Sessions cancelled with less than 48 hours notice are forfeited." },
+  { title: "Payment", body: "Full payment is required before services commence, except for the Full Ecosystem engagement, which requires 50% at signing and 50% at completion. All prices are in USD." },
+  { title: "Non-Refundable Policy", body: "All payments are non-refundable. By completing your purchase, you acknowledge that you have reviewed the service description, understand the scope of your selected engagement, and are committing to your transformation pathway. No refunds will be issued for any reason including unused sessions, scheduling conflicts, or change of mind." },
+  { title: "Rescheduling", body: "Sessions may be rescheduled with a minimum of 48 hours' notice. Sessions canceled with less than 48 hours' notice are forfeited." },
   { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, and AI Sales Mastery™ — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
   { title: "Agreement", body: "Completing payment constitutes your agreement to these terms." },
 ];
@@ -44,7 +44,7 @@ export default function TermsPage() {
         <div style={{ marginTop: "2.5rem", padding: "1.25rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Questions?</p>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.6)", lineHeight: 1.7, marginBottom: 6 }}>
-            Contact DRU AI Consulting prior to completing your purchase with any questions regarding these terms.
+            Contact DRU AI Consulting prior to completing your purchase if you have any questions regarding these terms.
           </p>
           <a href="mailto:support@druaiconsulting.com" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.04em", textDecoration: "none" }}>
             support@druaiconsulting.com
