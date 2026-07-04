@@ -42,7 +42,7 @@ const SECTIONS: Section[] = [
   {
     heading: 'VIEW',
     items: [
-      { icon: '👤', label: 'Client View ↗',   path: 'https://members.druaiconsulting.com', external: true },
+      { icon: '👤', label: 'Member View ↗',   path: 'https://members.druaiconsulting.com', external: true },
       { icon: '🎓', label: 'Student View ↗', path: 'https://courses.druaiconsulting.com', external: true },
     ],
   },
