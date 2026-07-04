@@ -3,6 +3,8 @@ import { supabase, checkFlagged, formatRelativeTime } from './types';
 import type { CommunityComment, MemberProfile } from './types';
 import MemberAvatar from './MemberAvatar';
 
+const APP_URL = 'https://app.druaiconsulting.com';
+
 function renderWithMentions(text: string): React.ReactNode[] {
   const parts = text.split(/(@[A-Za-z]+(?:\s[A-Za-z]+)?)/g);
   return parts.map((part, i) =>
@@ -17,11 +19,13 @@ function renderWithMentions(text: string): React.ReactNode[] {
 // =============================================================================
 export default function CommentSection({
   postId, userId, userName, open, onToggle, commentCount, setCommentCount,
+  agentPhotoByName = {},
 }: {
   postId: string; userId: string; userName: string;
   open: boolean; onToggle: () => void;
   commentCount: number | null;
   setCommentCount: (fn: (n: number | null) => number | null) => void;
+  agentPhotoByName?: Record<string, string>; // agent avatars, keyed by agents.name — pulled live from Supabase, never hardcoded
 }) {
   const [comments,        setComments]        = useState<CommunityComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -38,13 +42,13 @@ export default function CommentSection({
   const [heartLoadingComments, setHeartLoadingComments] = useState<Record<string, boolean>>({});
 
   // ── Likes ──────────────────────────────────────────────────────────────────
-  const [likedComments,      setLikedComments]      = useState<Record<string, boolean>>({});
+  const [likedComments,       setLikedComments]       = useState<Record<string, boolean>>({});
   const [likeLoadingComments, setLikeLoadingComments] = useState<Record<string, boolean>>({});
   const [likeCounts,          setLikeCounts]          = useState<Record<string, number>>({});
 
   // ── Replies ────────────────────────────────────────────────────────────────
-  const [replyingToId,   setReplyingToId]   = useState<string | null>(null);
-  const [replyContent,   setReplyContent]   = useState('');
+  const [replyingToId,    setReplyingToId]    = useState<string | null>(null);
+  const [replyContent,    setReplyContent]    = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -65,8 +69,6 @@ export default function CommentSection({
 
         if (loaded.length > 0 && userId) {
           const ids = loaded.map(c => c.id);
-
-          // Batch fetch all reactions for this post's comments
           supabase.from('community_reactions')
             .select('comment_id, reaction_type, member_id')
             .in('comment_id', ids)
@@ -76,11 +78,9 @@ export default function CommentSection({
               const lc: Record<string, number>  = {};
               (rData ?? []).forEach((r: any) => {
                 if (!r.comment_id) return;
-                // Like counts visible to everyone
                 if (r.reaction_type === 'like') {
                   lc[r.comment_id] = (lc[r.comment_id] ?? 0) + 1;
                 }
-                // Per-user state
                 if (r.member_id === userId) {
                   if (r.reaction_type === 'heart') hm[r.comment_id] = true;
                   if (r.reaction_type === 'like')  lm[r.comment_id] = true;
@@ -158,7 +158,11 @@ export default function CommentSection({
     for (const name of names) {
       const { data: profiles } = await supabase.from('profiles').select('id').eq('first_name', name).in('tier', ['navigator','accelerator']).neq('id', userId);
       for (const p of profiles ?? []) {
-        fetch('/api/send-notification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient_id: p.id, sender_id: userId, post_id: pid, comment_id: commentId, type: 'mention', message: `${userName} mentioned you in a comment`, sender_name: userName }) });
+        fetch(`${APP_URL}/api/send-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipient_id: p.id, sender_id: userId, post_id: pid, comment_id: commentId, type: 'mention', message: `${userName} mentioned you in a comment`, sender_name: userName }),
+        });
       }
     }
   };
@@ -227,8 +231,7 @@ export default function CommentSection({
     setHeartLoadingComments(prev => ({ ...prev, [commentId]: true }));
     if (heartedComments[commentId]) {
       await supabase.from('community_reactions').delete()
-        .eq('comment_id', commentId).eq('member_id', userId)
-        .eq('reaction_type', 'heart');
+        .eq('comment_id', commentId).eq('member_id', userId).eq('reaction_type', 'heart');
       setHeartedComments(prev => ({ ...prev, [commentId]: false }));
     } else {
       await supabase.from('community_reactions')
@@ -244,8 +247,7 @@ export default function CommentSection({
     setLikeLoadingComments(prev => ({ ...prev, [commentId]: true }));
     if (likedComments[commentId]) {
       await supabase.from('community_reactions').delete()
-        .eq('comment_id', commentId).eq('member_id', userId)
-        .eq('reaction_type', 'like');
+        .eq('comment_id', commentId).eq('member_id', userId).eq('reaction_type', 'like');
       setLikedComments(prev => ({ ...prev, [commentId]: false }));
       setLikeCounts(prev => ({ ...prev, [commentId]: Math.max(0, (prev[commentId] ?? 1) - 1) }));
     } else {
@@ -260,10 +262,9 @@ export default function CommentSection({
   const getDisplayName = (c: CommunityComment) =>
     c.agent_name ? c.agent_name : c.member_id === userId ? 'You' : (c as any).profiles?.first_name ?? 'Member';
   const getPhoto = (c: CommunityComment) =>
-    c.agent_name ? null : (c as any).profiles?.photo_url;
+    c.agent_name ? agentPhotoByName[c.agent_name] : (c as any).profiles?.photo_url;
 
-  // ── Nest comments: top-level + their replies ───────────────────────────────
-  const topLevel = comments.filter(c => !(c as any).parent_comment_id);
+  const topLevel  = comments.filter(c => !(c as any).parent_comment_id);
   const repliesFor = (parentId: string) => comments.filter(c => (c as any).parent_comment_id === parentId);
 
   if (!open) return null;
@@ -271,7 +272,7 @@ export default function CommentSection({
   // ── Render a single comment row ────────────────────────────────────────────
   const renderComment = (comment: CommunityComment, isReply = false) => (
     <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-      <MemberAvatar firstName={getDisplayName(comment)} photoUrl={getPhoto(comment)} size={isReply ? 24 : 28} />
+      <MemberAvatar firstName={getDisplayName(comment)} photoUrl={getPhoto(comment)} size={42} />
       <div style={{ flex: 1, background: comment.agent_name ? '#EEF3FA' : '#FAFAF8', border: `1px solid ${comment.agent_name ? '#C0D0E8' : '#F0EDE8'}`, borderRadius: '8px', padding: '10px 12px' }}>
 
         {/* Header */}
@@ -317,10 +318,10 @@ export default function CommentSection({
               {renderWithMentions(comment.content)}
             </p>
 
-            {/* ── Reaction row: Heart · Like · Reply ─────────────────────── */}
+            {/* ── Reaction row ─────────────────────────────────────────── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '8px' }}>
 
-              {/* Heart — toggle only, no count */}
+              {/* Heart */}
               <button
                 onClick={() => handleCommentHeart(comment.id)}
                 disabled={heartLoadingComments[comment.id]}
@@ -334,7 +335,7 @@ export default function CommentSection({
                 </span>
               </button>
 
-              {/* Like — toggle with count */}
+              {/* Like */}
               <button
                 onClick={() => handleCommentLike(comment.id)}
                 disabled={likeLoadingComments[comment.id]}
@@ -343,9 +344,7 @@ export default function CommentSection({
                 onMouseEnter={e => { if (!likeLoadingComments[comment.id]) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
               >
-                <span style={{ fontSize: '13px', color: likedComments[comment.id] ? '#B8941F' : 'rgba(10,35,66,0.22)', transition: 'color 0.15s ease' }}>
-                  👍
-                </span>
+                <span style={{ fontSize: '13px', color: likedComments[comment.id] ? '#B8941F' : 'rgba(10,35,66,0.22)', transition: 'color 0.15s ease' }}>👍</span>
                 {(likeCounts[comment.id] ?? 0) > 0 && (
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: '600', color: likedComments[comment.id] ? '#B8941F' : 'rgba(10,35,66,0.4)', transition: 'color 0.15s ease' }}>
                     {likeCounts[comment.id]}
@@ -353,7 +352,7 @@ export default function CommentSection({
                 )}
               </button>
 
-              {/* Reply — top-level comments only */}
+              {/* Reply */}
               {!isReply && (
                 <button
                   onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)}
@@ -383,7 +382,6 @@ export default function CommentSection({
             <div key={comment.id}>
               {renderComment(comment, false)}
 
-              {/* Inline reply input */}
               {replyingToId === comment.id && (
                 <div style={{ marginTop: '8px', marginLeft: '38px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <textarea
@@ -408,7 +406,6 @@ export default function CommentSection({
                 </div>
               )}
 
-              {/* Nested replies — indented, one level */}
               {repliesFor(comment.id).length > 0 && (
                 <div style={{ marginTop: '8px', marginLeft: '38px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {repliesFor(comment.id).map(reply => renderComment(reply, true))}
