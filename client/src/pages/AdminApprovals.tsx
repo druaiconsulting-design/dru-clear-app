@@ -852,7 +852,7 @@ export default function AdminApprovals() {
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
-                      {agentPhotoByName[approval.agent_name] && (
+                      {!isBriefing && approval.agent_name !== "DeAnna's AI Twin" && agentPhotoByName[approval.agent_name] && (
                         <img src={agentPhotoByName[approval.agent_name]} alt={approval.agent_name}
                           style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />
                       )}
@@ -916,6 +916,14 @@ export default function AdminApprovals() {
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
+                      {isBriefing && divAgents.length > 0 && (
+                        <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.5rem", marginTop:"0.75rem" }}>
+                          {divAgents.filter(a => a.agent_name !== "DeAnna's AI Twin" && agentPhotoByName[a.agent_name]).map(a => (
+                            <img key={a.agent_id} src={agentPhotoByName[a.agent_name]} alt={a.agent_name} title={`${a.agent_name} · ${a.role}`}
+                              style={{ width:30, height:30, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.4)" }} />
+                          ))}
+                        </div>
+                      )}
                       {isCCPost && (() => {
                         const signal = getUpsellSignal(approval.edited_output || approval.output);
                         return signal ? (
