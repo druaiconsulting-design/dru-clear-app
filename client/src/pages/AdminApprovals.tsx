@@ -852,7 +852,7 @@ export default function AdminApprovals() {
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
-                      {!isBriefing && agentPhotoByName[approval.agent_name] && (
+                      {agentPhotoByName[approval.agent_name] && (
                         <img src={agentPhotoByName[approval.agent_name]} alt={approval.agent_name}
                           style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />
                       )}
