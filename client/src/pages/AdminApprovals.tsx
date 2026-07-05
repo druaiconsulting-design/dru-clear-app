@@ -916,14 +916,22 @@ export default function AdminApprovals() {
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
-                      {isBriefing && divAgents.length > 0 && (
-                        <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.6rem", marginTop:"0.75rem" }}>
-                          {divAgents.filter(a => a.agent_name !== "DeAnna's AI Twin" && agentPhotoByName[a.agent_name]).map(a => (
-                            <img key={a.agent_id} src={agentPhotoByName[a.agent_name]} alt={a.agent_name} title={`${a.agent_name} · ${a.role}`}
-                              style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.4)" }} />
-                          ))}
-                        </div>
-                      )}
+                      {isBriefing && divAgents.length > 0 && (() => {
+                        const contentText = origCol.content || '';
+                        const eligible = divAgents.filter(a => a.agent_name !== "DeAnna's AI Twin");
+                        const mentioned = eligible.filter(a => contentText.includes(a.agent_name));
+                        const agentsToShow = mentioned.length > 0 ? mentioned : eligible;
+                        const withPhotos = agentsToShow.filter(a => agentPhotoByName[a.agent_name]);
+                        if (withPhotos.length === 0) return null;
+                        return (
+                          <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.6rem", marginTop:"0.75rem" }}>
+                            {withPhotos.map(a => (
+                              <img key={a.agent_id} src={agentPhotoByName[a.agent_name]} alt={a.agent_name} title={`${a.agent_name} · ${a.role}`}
+                                style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.4)" }} />
+                            ))}
+                          </div>
+                        );
+                      })()}
                       {isCCPost && (() => {
                         const signal = getUpsellSignal(approval.edited_output || approval.output);
                         return signal ? (
