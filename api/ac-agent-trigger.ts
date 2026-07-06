@@ -157,6 +157,23 @@ ${FRAMEWORK_KNOWLEDGE}
 === END AGENT KNOWLEDGE BASE ===`.trim();
 }
 
+// Accelerator Circle daily community posts are peer-to-peer only — no framework names,
+// no pricing, no promotion of DRU AI Consulting IP. This replaces getAgentKnowledge()
+// for Matthew / Petra / Renata's daily seed posts (runACAgent), per DeAnna's instruction
+// that the Circle stay true to its stated purpose: peer accountability, deeper strategy,
+// accelerate together — not a sales surface.
+async function getACCommunityKnowledge(): Promise<string> {
+  return `=== ACCELERATOR CIRCLE — COMMUNITY VOICE RULES ===
+This is a peer-to-peer executive community space, not a marketing or sales surface.
+Do NOT reference, name, or promote any DRU AI Consulting framework, program, diagnostic,
+course, bundle, or price — including DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™,
+AI Sales Mastery™, the DRU AI Transformation Pathway™, or From Confusion to Confident
+with AI™. Do not use the ™ symbol at all in this content. Speak only as a fellow
+executive reflecting on real transformation experience — never as a consultant
+promoting an offering.
+=== END ===`.trim();
+}
+
 // ─── Core AC Agent Runner ─────────────────────────────────────────────────────
 // Robust JSON parse — handles code fences and trailing text (mirrors cc-agent-trigger fix)
 
@@ -169,7 +186,7 @@ async function runACAgent(
   prompt: string,
 ): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
-    const agentKnowledge = await getAgentKnowledge();
+    const agentKnowledge = await getACCommunityKnowledge();
     const raw = await callAnthropic(
       `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
       1500,
@@ -233,10 +250,9 @@ async function runMatthew(): Promise<{ approval_id: string | null; post_id: stri
   }
   return runACAgent(
     'matthew', 'Matthew Elliot', 'ac_community_facilitation', 'agent', 'ac_community_facilitation',
-    `You are Matthew Elliot, a community leader inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-AUDIENCE: Accelerator members — executives mid-transformation. They have already committed. Speak as a peer who has been in the room.
+    `You are Matthew Elliot, a community leader inside the Accelerator Circle. Today: ${today}.
+DO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.
+AUDIENCE: Accelerator members — executives mid-transformation who pay a premium monthly membership for real substance. They have already committed. Speak as a peer who has been in the room. Generic reflection or filler is a failure — every post must carry a genuinely sharp, specific insight worth an executive's time.
 RECENT ACCELERATOR CIRCLE ACTIVITY:
 ${recentACPosts}
 Write a MASTERMIND CONVERSATION STARTER for this exclusive executive community. 100-150 words. Voice: peer-to-peer but at executive depth — you are a fellow leader sharing something real you have observed, questioned, or been sitting with at the intersection of AI and organizational transformation. NOT a teacher. NOT a facilitator. The kind of thing that gets a room of executives leaning in. Where relevant, build naturally off recent circle activity. End with one high-stakes question for the room. No calls to action.`,
@@ -261,10 +277,9 @@ async function runPetra(): Promise<{ approval_id: string | null; post_id: string
   }
   return runACAgent(
     'petra', 'Petra Vance', 'ac_member_experience', 'agent', 'ac_member_experience',
-    `You are Petra Vance, a member of the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-AUDIENCE: Accelerator members navigating real implementation — not theory, not inspiration. Acknowledge the friction.
+    `You are Petra Vance, a member of the Accelerator Circle. Today: ${today}.
+DO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.
+AUDIENCE: Accelerator members navigating real implementation — not theory, not inspiration. They pay a premium monthly membership for real substance, so acknowledge the friction specifically and concretely rather than in generalities.
 MEMBER CONTEXT: ${memberContext}
 Write a MASTERMIND CONVERSATION STARTER for this exclusive executive community. 100-150 words. Voice: warm and honest at executive depth — you are a peer who wants to name what is actually happening in the room. Celebrate a real win or open up a genuine implementation challenge. NOT motivational content. NOT coaching. The kind of message you would send to a trusted peer group navigating the same terrain. Invite others to share where they are. End with one genuine, open question. No calls to action.`,
   );
@@ -276,24 +291,22 @@ async function runRenata(): Promise<{ approval_id: string | null; post_id: strin
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
-  const focus: Record<string, { lens: string; framework: string }> = {
-    Monday:    { lens: 'AI Implementation friction',              framework: 'DRU AI Transformation Pathway™ — Deploy phase' },
-    Tuesday:   { lens: 'Leadership culture under AI pressure',    framework: '5C Cultural DNA™ — Culture Transformation dimension' },
-    Wednesday: { lens: 'Execution gap and organizational drift',  framework: 'DRU CLEAR™ — Execution & Results' },
-    Thursday:  { lens: 'Leader identity in the AI era',          framework: '5D Leadership™ — Organization & Visionary dimensions' },
-    Friday:    { lens: 'Where strategy and culture collide',      framework: 'Full DRU AI Leadership Ecosystem™ synthesis' },
+  const focus: Record<string, { lens: string }> = {
+    Monday:    { lens: 'AI Implementation friction' },
+    Tuesday:   { lens: 'Leadership culture under AI pressure' },
+    Wednesday: { lens: 'Execution gap and organizational drift' },
+    Thursday:  { lens: 'Leader identity in the AI era' },
+    Friday:    { lens: 'Where strategy and culture collide' },
   };
   const todayFocus = focus[dayOfWeek] ?? focus['Monday'];
 
   return runACAgent(
     'renata', 'Renata Cruz', 'ac_strategy_insight', 'agent', 'ac_strategy_insight',
-    `You are Renata Cruz, a strategy and culture thinker inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.
-TRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
-SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-AUDIENCE: Senior executives who already understand AI at a strategic level. Do not explain basics. Go deep.
+    `You are Renata Cruz, a strategy and culture thinker inside the Accelerator Circle. Today: ${today}.
+DO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.
+AUDIENCE: Senior executives who already understand AI at a strategic level and pay a premium monthly membership for real substance. Do not explain basics. Go deep. Generic reflection or motivational filler is a failure — every post must contain a genuinely sharp, specific strategic insight worth an executive's time, sourced from real transformation patterns rather than a named methodology.
 TODAY'S LENS: ${todayFocus.lens}
-TODAY'S FRAMEWORK: ${todayFocus.framework}
-Write a MASTERMIND CONVERSATION STARTER at the highest executive level. 150-200 words. Voice: peer-to-peer strategic depth — you are a fellow thinker who synthesizes AI implementation and leadership culture as one inseparable discipline. Share a tension, a pattern, or an insight that only someone inside the transformation would see. Apply today's framework naturally — not as a lesson but as a lens. End with one executive-grade question that has no easy answer. No calls to action.`,
+Write a MASTERMIND CONVERSATION STARTER at the highest executive level. 150-200 words. Voice: peer-to-peer strategic depth — you are a fellow thinker who synthesizes AI implementation and leadership culture as one inseparable discipline. Share a specific tension, pattern, or insight that only someone inside the transformation would see — concrete enough that a sharp executive could act on it, not a platitude. End with one executive-grade question that has no easy answer. No calls to action.`,
   );
 }
 
@@ -322,9 +335,9 @@ async function runACAgentReply(
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
 
   const petraInstructions = `- Acknowledge the member's reality with executive specificity — make them feel genuinely seen\n- Validate what they are navigating without softening it\n- Add warmth that holds space without pressure\n- Voice: warm executive peer — encouraging and steady`;
-  const matthewInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Apply a DRU framework at real depth — not surface level\n- Add one strategic insight that moves the conversation forward\n- Invite further executive-level reflection\n- Voice: sophisticated, grounded, purposeful`;
+  const matthewInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Draw on real experience, not any named methodology or framework\n- Add one strategic insight that moves the conversation forward — specific and substantive, never generic (this member pays a premium monthly membership for real depth)\n- Invite further executive-level reflection\n- Voice: sophisticated, grounded, purposeful`;
 
-  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${agentRole} inside the DRU AI Leadership Ecosystem™ Accelerator Circle. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a warm, momentum-building close.' : 'End with a high-stakes question or executive invitation.'} No calls to action.`;
+  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${agentRole} inside the Accelerator Circle. Today: ${today}.\nDO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a warm, momentum-building close.' : 'End with a high-stakes question or executive invitation.'} No calls to action.`;
 
   try {
     const raw      = await callAnthropic(prompt, 600);
