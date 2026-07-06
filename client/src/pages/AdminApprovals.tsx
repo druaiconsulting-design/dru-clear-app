@@ -420,16 +420,22 @@ export default function AdminApprovals() {
       const postId = postIdMatch?.[1];
       const lines = cleanContent.split('\n').filter((l: string) => l.trim());
       const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
+      // Fallback inserts must route to the correct division — never assume Community
+      // Connection / navigator tier just because the original post_id write failed.
+      const isAC = approval.division === 'Accelerator Circle';
+      const fallbackFields = isAC
+        ? { channel: 'accelerator_circle', tier_required: 'accelerator' }
+        : { tier_required: 'navigator' };
       if (postId) {
         // UPDATE only — no select (RLS was silently blocking return of updated rows, causing false fallthrough to INSERT)
         const { error: updateError } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId);
         if (!updateError) return true;
         // UPDATE errored — try INSERT as true fallback (new record)
-        const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
+        const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
         if (!insertError || (insertError as any).code === '23505') return true; // 23505 = duplicate key = UPDATE already worked
         return false;
       }
-      const { error: insertError } = await supabase.from('community_posts').insert({ title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, tier_required: 'navigator', published_at: new Date().toISOString() });
+      const { error: insertError } = await supabase.from('community_posts').insert({ title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
       if (insertError) return false;
       return true;
     } catch (err) { console.error('[community_post]', err); return false; }
