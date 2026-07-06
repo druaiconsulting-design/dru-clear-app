@@ -3,7 +3,8 @@
 // Platforms: Facebook, Instagram (LinkedIn handled manually)
 // Agents: Dominique (DRU CLEAR™), Isaiah (5D Leadership™), Nadia (5C Cultural DNA™),
 //         Elijah (AI Sales Mastery™), Solange (default catch-all)
-// Architecture: Make.com catches interaction → fires here → classify → dual mode
+// Architecture: Make.com List Posts → List Comments → fires here → dedup → classify → dual mode
+//   Dedup: social_processed_interactions table — each interaction_id handled exactly once
 //   Generic  → returns auto reply text for Make to post immediately
 //   Substantive → saves approval card to Intelligence Hub for DeAnna to approve
 
@@ -70,6 +71,39 @@ async function writeToApprovals(record: Record<string, unknown>): Promise<string
   }
   const data = await res.json();
   return Array.isArray(data) && data[0]?.id ? data[0].id : null;
+}
+
+async function alreadyProcessed(interaction_id: string): Promise<boolean> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+  const res = await fetch(
+    `${url}/rest/v1/social_processed_interactions?interaction_id=eq.${encodeURIComponent(interaction_id)}&select=interaction_id`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) {
+    console.error(`[social-response] Dedup check failed: ${await res.text()}`);
+    return false;
+  }
+  const data = await res.json();
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function markProcessed(interaction_id: string, platform: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const res = await fetch(`${url}/rest/v1/social_processed_interactions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: 'resolution=ignore-duplicates',
+    },
+    body: JSON.stringify({ interaction_id, platform }),
+  });
+  if (!res.ok) console.error(`[social-response] Mark processed failed: ${await res.text()}`);
 }
 
 const AGENT_MAP: Record<string, { name: string; role: string }> = {
@@ -156,6 +190,16 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
+  // Dedup guard: skip anything we've already handled (Make List modules re-send old comments)
+  if (interaction_id) {
+    const seen = await alreadyProcessed(String(interaction_id));
+    if (seen) {
+      console.log(`[social-response] Skipping already-processed interaction ${interaction_id}`);
+      res.status(200).json({ response_type: 'skip', interaction_id });
+      return;
+    }
+  }
+
   console.log(`[social-response] ${platform} ${interaction_type} from @${author_handle ?? author_name}: "${String(text).slice(0, 80)}"`);
 
   try {
@@ -165,6 +209,8 @@ export default async function handler(req: any, res: any): Promise<void> {
       String(interaction_type),
       String(author_name || author_handle || 'someone')
     );
+
+    if (interaction_id) await markProcessed(String(interaction_id), String(platform));
 
     if (is_generic) {
       // Auto-response: Make.com reads reply_text and posts it immediately
