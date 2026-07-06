@@ -206,7 +206,7 @@ async function runACAgent(
 
     const post_id = await writeToCommunityPosts({
       title, content, post_type: postType,
-      channel: 'accelerator_circle', tier_required: 'accelerator',
+      tier_required: 'accelerator',
       agent_id: agentId, agent_name: agentName,
       published_at: new Date().toISOString(), is_active: false,
     });
@@ -240,7 +240,7 @@ async function runMatthew(): Promise<{ approval_id: string | null; post_id: stri
   if (url && key) {
     const since = new Date(); since.setHours(since.getHours() - 48);
     const r = await fetch(
-      `${url}/rest/v1/community_posts?channel=eq.accelerator_circle&published_at=gte.${since.toISOString()}&order=published_at.desc&limit=8`,
+      `${url}/rest/v1/community_posts?tier_required=eq.accelerator&published_at=gte.${since.toISOString()}&order=published_at.desc&limit=8`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } },
     );
     if (r.ok) {
@@ -431,7 +431,7 @@ async function runACUpsellScan(): Promise<void> {
 
   const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   const postsRes = await fetch(
-    `${url}/rest/v1/community_posts?post_type=eq.member_post&channel=eq.accelerator_circle&is_active=eq.true&published_at=gte.${threeHoursAgo}&order=published_at.desc&limit=20`,
+    `${url}/rest/v1/community_posts?post_type=eq.member_post&tier_required=eq.accelerator&is_active=eq.true&published_at=gte.${threeHoursAgo}&order=published_at.desc&limit=20`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` } },
   );
   if (!postsRes.ok) { console.error('[ac_upsell_scan] Failed to fetch posts:', await postsRes.text()); return; }
