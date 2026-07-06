@@ -108,6 +108,7 @@ function CategoryTag({ category }: { category: string }) {
 // =============================================================================
 export default function PostCard({
   post, index, userId, userName, userPhotoUrl, isAdmin, photoMap = {}, levelMap = {},
+  agentPhotoBySlug = {}, agentPhotoByName = {},
   onMemberClick, onPinChange,
 }: {
   post:            CommunityPost;
@@ -118,6 +119,8 @@ export default function PostCard({
   isAdmin:         boolean;
   photoMap?:       Record<string, string>;
   levelMap?:       Record<string, string>;
+  agentPhotoBySlug?: Record<string, string>; // agent avatars, keyed by agents.slug — matches post.agent_id for agent-authored posts
+  agentPhotoByName?: Record<string, string>; // agent avatars, keyed by agents.name — used for comment/reply lookups
   onMemberClick?:  (memberId: string) => void;
   onPinChange?:    (postId: string, isPinned: boolean) => void;
 }) {
@@ -248,7 +251,11 @@ export default function PostCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <MemberAvatar
             firstName={post.agent_name}
-            photoUrl={isMemberPost ? (post.agent_id === userId ? userPhotoUrl : photoMap[post.agent_id]) : undefined}
+            photoUrl={
+              isMemberPost
+                ? (post.agent_id === userId ? userPhotoUrl : photoMap[post.agent_id])
+                : (agentPhotoBySlug[post.agent_id] ?? agentPhotoByName[post.agent_name])
+            }
             size={36}
           />
           <div>
@@ -417,6 +424,7 @@ export default function PostCard({
         postId={post.id} userId={userId} userName={userName}
         open={commentsOpen} onToggle={() => setCommentsOpen(!commentsOpen)}
         commentCount={commentCount} setCommentCount={setCommentCount}
+        agentPhotoByName={agentPhotoByName}
       />
     </div>
   );
