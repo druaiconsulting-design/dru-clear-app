@@ -1,55 +1,50 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabaseClient'
-import { AI_ARSENAL_CATEGORIES } from '../data/aiArsenalData'
-import ToolCategoryModal from '../components/resources/ToolCategoryModal'
-import { NAVIGATOR_PAYMENT_LINK, ACCELERATOR_PAYMENT_LINK } from './community/types'
+import { createClient } from '@supabase/supabase-js'
+import AdminLayout from '../components/AdminLayout'
+import AdminToolCategoryModal from './AdminToolCategoryModal'
 
-// ─── Upgrade gate (free tier) ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AI ARSENAL — ADMIN VIEW (read-only)
+// Data source: Supabase table `ai_arsenal_categories` (run ai-arsenal-migration.sql
+// once to create + populate it from src/data/aiArsenalData.ts).
+// This table is a snapshot of the members-repo catalog as of the migration
+// date — it does NOT auto-sync. Editing a tool here changes only what admin
+// sees; editing aiArsenalData.ts changes only what members see.
+// Visual design intentionally mirrors AIArsenal.tsx / ToolCategoryModal.tsx
+// on the members site — same card grid, same modal layout — minus the
+// member-only features (bookmarks, AI summarize, paywall) that don't apply
+// to an internal, already-logged-in admin view.
+// ─────────────────────────────────────────────────────────────────────────────
 
-function UpgradeGate() {
-  return (
-    <div style={{ padding: '36px 24px', maxWidth: 700, margin: '0 auto' }}>
-      <div style={{
-        background: '#fff', border: '1px solid rgba(212,175,55,0.25)',
-        borderRadius: 16, padding: '40px 32px', textAlign: 'center',
-      }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: '50%',
-          background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px', fontSize: 22,
-        }}>
-          🧰
-        </div>
-        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: '#0A2342', margin: '0 0 10px' }}>
-          AI Arsenal requires Navigator or Accelerator Access 
-        </h2>
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: 'rgba(10,35,66,0.55)', lineHeight: 1.7, margin: '0 0 28px' }}>
-          The full curated tool library — categories, recommendations, and quick-start guidance — unlocks the moment you join Navigator or Accelerator.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href={NAVIGATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{
-            padding: '13px 22px', background: '#0A2342', color: '#fff', borderRadius: 8,
-            fontFamily: 'Montserrat, sans-serif', fontSize: 12.5, fontWeight: 700,
-            letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none',
-          }}>
-            Navigator — $97/mo
-          </a>
-          <a href={ACCELERATOR_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{
-            padding: '13px 22px', background: '#C2185B', color: '#fff', borderRadius: 8,
-            fontFamily: 'Montserrat, sans-serif', fontSize: 12.5, fontWeight: 700,
-            letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none',
-          }}>
-            Accelerator — $197/mo
-          </a>
-        </div>
-      </div>
-    </div>
-  )
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
+
+interface Tool {
+  name: string
+  difficulty: string
+  pricingModel: string
+  inputModel: string
+  url: string
+  displayUrl?: string
+  bestFor: string
+  features: string[]
+  useWhen: string
+  alsoUsedIn?: string[]
 }
 
-// ─── Category card ──────────────────────────────────────────────────────────
+interface CategoryRow {
+  id: string
+  title: string
+  description: string
+  image_file: string
+  tools: Tool[]
+  quick_recommendations: { need: string; tool: string }[] | null
+  sort_order: number
+}
+
+// ─── Category card (matches members-site CategoryCard exactly) ────────────
 
 function CategoryCard({ title, description, imageFile, onClick }: { title: string; description: string; imageFile: string; onClick: () => void }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'missing'>('loading')
@@ -60,7 +55,7 @@ function CategoryCard({ title, description, imageFile, onClick }: { title: strin
     const img = new Image()
     img.onload = () => { if (active) setStatus('ok') }
     img.onerror = () => { if (active) setStatus('missing') }
-    img.src = `/${imageFile}`
+    img.src = `https://members.druaiconsulting.com/${imageFile}`
     return () => { active = false }
   }, [imageFile])
 
@@ -87,7 +82,7 @@ function CategoryCard({ title, description, imageFile, onClick }: { title: strin
         flex: '1 1 auto',
         minHeight: 0,
         background: status === 'ok'
-          ? `#0A2342 url(/${imageFile}) center/cover no-repeat`
+          ? `#0A2342 url(https://members.druaiconsulting.com/${imageFile}) center/cover no-repeat`
           : 'linear-gradient(135deg, #0A2342, #1B4D8E)',
       }} />
       <div style={{ padding: '14px 16px 16px', flexShrink: 0 }}>
@@ -104,169 +99,102 @@ function CategoryCard({ title, description, imageFile, onClick }: { title: strin
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function AIArsenal() {
-  const { isPaid, user } = useAuth()
+export default function AdminAIArsenal() {
+  const [categories, setCategories] = useState<CategoryRow[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [error, setError]           = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
-  const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false)
 
-  // ── Load this member's bookmarked category ids ──
   useEffect(() => {
-    if (!user) return
-    let active = true
-    supabase
-      .from('resource_bookmarks')
-      .select('category_id')
-      .eq('member_id', user.id)
-      .then(({ data }) => {
-        if (active && data) setBookmarkedIds(new Set(data.map(row => row.category_id)))
-      })
-    return () => { active = false }
-  }, [user])
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('ai_arsenal_categories')
+        .select('*')
+        .order('sort_order', { ascending: true })
 
-  // ── Deep link: /resources/ai-arsenal?open=<categoryId> opens that category directly ──
-  useEffect(() => {
-    const openId = new URLSearchParams(window.location.search).get('open')
-    if (openId && AI_ARSENAL_CATEGORIES.some(c => c.id === openId)) {
-      setActiveCategory(openId)
-      window.history.replaceState(null, '', window.location.pathname)
+      if (error) {
+        console.error('[AdminAIArsenal] supabase error:', error)
+        setError('Could not load the AI Arsenal catalog from Supabase.')
+      } else {
+        setCategories((data ?? []) as CategoryRow[])
+      }
+      setLoading(false)
     }
+    load()
   }, [])
 
-  function handleBookmarkChange(categoryId: string, bookmarked: boolean) {
-    setBookmarkedIds(prev => {
-      const next = new Set(prev)
-      if (bookmarked) next.add(categoryId)
-      else next.delete(categoryId)
-      return next
-    })
-  }
-
-  if (!isPaid) return <UpgradeGate />
-
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const visibleCategories = showBookmarkedOnly
-    ? AI_ARSENAL_CATEGORIES.filter(c => bookmarkedIds.has(c.id))
-    : AI_ARSENAL_CATEGORIES
+  const totalTools = categories.reduce((sum, c) => sum + c.tools.length, 0)
 
   return (
-    <div style={{ padding: isMobile ? '20px 12px' : '36px 24px', maxWidth: 1140, margin: '0 auto' }}>
+    <AdminLayout currentPath={window.location.pathname}>
+      <main style={{ flex: 1, padding: isMobile ? '20px 12px' : '2rem 1.5rem', maxWidth: 1140, margin: '0 auto', width: '100%' }}>
 
-      {/* Hero */}
-      <div style={{ marginBottom: 28, borderRadius: 16, overflow: 'hidden' }}>
-        <img
-          src="/arsenal-banner.png"
-          alt="AI Arsenal"
-          style={{ width: '100%', display: 'block' }}
-        />
-      </div>
-
-      {/* Pinned intro post */}
-      <div style={{
-        background: '#fff', border: '1px solid rgba(10,35,66,0.08)', borderRadius: 12,
-        padding: '22px 24px', marginBottom: 28,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <span style={{ fontSize: 16 }}>📌</span>
-          <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 15, fontWeight: 700, color: '#0A2342', margin: 0 }}>
-            Before You Dive In... Please Read
-          </h2>
-        </div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13.5, color: 'rgba(10,35,66,0.7)', lineHeight: 1.75 }}>
-          <p style={{ margin: '0 0 12px' }}>
-            This AI Arsenal is a reference, not a checklist. <strong style={{ color: '#D4AF37' }}>Discover</strong> the specific need for your problem, find what solves it, and keep moving forward. Browsing aimlessly causes tool overload, which we want to avoid.
-          </p>
-          <p style={{ margin: '0 0 12px' }}>
-            <strong style={{ color: '#0A2342' }}>Here's the most important thing to keep in mind before you continue scrolling:</strong>
-          </p>
-          <p style={{ margin: '0 0 12px' }}>
-            You don't have to sign up for or buy all these tools. Take your time — <strong style={{ color: '#D4AF37' }}>learn</strong> each one as necessary, focusing on what's right for your business at the moment.
-          </p>
-          <p style={{ margin: '0 0 16px' }}>
-            Remember 😊 — it's the people, not the tools, that make this community powerful. Ask questions, share what works for you, and rely on those around you. Everyone started somewhere, and no one masters this alone.
-          </p>
-
-          <div style={{ height: 1, background: 'rgba(10,35,66,0.08)', margin: '0 0 16px' }} />
-
-          <p style={{ margin: '0 0 10px' }}>
-            <strong style={{ color: '#0A2342' }}>A few things to keep in mind as you use your AI Arsenal</strong>
-          </p>
-          <ul style={{ margin: '0 0 16px', paddingLeft: 18 }}>
-            <li style={{ marginBottom: 6 }}>Most tools mentioned here offer a free plan or free trial, so you can get started without spending money.</li>
-            <li style={{ marginBottom: 6 }}>Many tools overlap intentionally because different people work differently. There's no single right tool — only what's right for you and your business now.</li>
-            <li style={{ marginBottom: 6 }}>If you're new and unfamiliar with these names, that's perfectly normal. Begin with Claude or ChatGPT.</li>
-            <li>Advanced? Great! Enter with a clear vision, <strong style={{ color: '#D4AF37' }}>discover</strong> a solution, <strong style={{ color: '#D4AF37' }}>learn</strong>, <strong style={{ color: '#D4AF37' }}>apply</strong>, and <strong style={{ color: '#D4AF37' }}>transform</strong>.</li>
-          </ul>
-
-          <p style={{ margin: '0 0 12px' }}>
-            The AI Arsenal is updated regularly as the AI landscape evolves. Have a tool to suggest? Drop it in Community.
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong style={{ color: '#0A2342' }}>Disclaimer:</strong> Some links in this arsenal are affiliate links. We may earn a small commission if you make a purchase, at no extra cost to you.
-          </p>
-        </div>
-      </div>
-
-      {/* Category grid header + bookmark filter toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 700, color: 'rgba(10,35,66,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          {visibleCategories.length} {visibleCategories.length === 1 ? 'Category' : 'Categories'}
-        </div>
-        <button
-          onClick={() => setShowBookmarkedOnly(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
-            background: showBookmarkedOnly ? 'rgba(212,175,55,0.12)' : '#fff',
-            border: showBookmarkedOnly ? '1px solid rgba(212,175,55,0.45)' : '1px solid rgba(10,35,66,0.12)',
-            color: showBookmarkedOnly ? '#B8941F' : 'rgba(10,35,66,0.6)',
-            fontFamily: 'Montserrat, sans-serif', fontSize: 12, fontWeight: 700,
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill={showBookmarkedOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-          </svg>
-          {showBookmarkedOnly ? 'Bookmarked' : 'Show Bookmarked'}
-        </button>
-      </div>
-
-      {/* Category grid */}
-      {visibleCategories.length === 0 ? (
-        <div style={{
-          background: '#fff', border: '1px solid rgba(10,35,66,0.08)', borderRadius: 12,
-          padding: '40px 24px', textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>🔖</div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13.5, color: 'rgba(10,35,66,0.5)' }}>
-            No bookmarked categories yet. Tap the bookmark icon inside any category to save it here.
+        {/* ── Page header ──────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', color: '#B8941F', marginBottom: '6px' }}>
+              DRU AI LEADERSHIP ECOSYSTEM™
+            </div>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: '#0A2342', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
+              AI Arsenal
+            </h1>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.45)', fontSize: '0.75rem', marginTop: '4px', margin: 0 }}>
+              {loading ? 'Loading catalog…' : `${categories.length} categories · ${totalTools} tools · read-only — edit aiArsenalData.ts for the live members site`}
+            </p>
           </div>
         </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-          gap: 16,
-        }}>
-          {visibleCategories.map(cat => (
-            <CategoryCard
-              key={cat.id}
-              title={cat.title}
-              description={cat.description}
-              imageFile={cat.imageFile}
-              onClick={() => setActiveCategory(cat.id)}
-            />
-          ))}
-        </div>
-      )}
 
-      {activeCategory && (
-        <ToolCategoryModal
-          categoryId={activeCategory}
-          onClose={() => setActiveCategory(null)}
-          onNavigate={setActiveCategory}
-          onBookmarkChange={handleBookmarkChange}
-        />
-      )}
-    </div>
+        {/* ── States ───────────────────────────────────────────────────────── */}
+        {loading && (
+          <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '16px', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.35)' }}>Loading AI Arsenal catalog…</div>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '16px', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', marginBottom: '12px' }}>⚠️</div>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: '#C2185B' }}>{error}</div>
+          </div>
+        )}
+
+        {!loading && !error && categories.length === 0 && (
+          <div style={{ background: '#FFFFFF', border: '1px solid #E8E4DF', borderRadius: '16px', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.35)' }}>
+              No categories found — run ai-arsenal-migration.sql in the Supabase SQL editor first.
+            </div>
+          </div>
+        )}
+
+        {/* ── Category grid (matches members-site layout exactly) ────────── */}
+        {!loading && !error && categories.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: 16,
+          }}>
+            {categories.map(cat => (
+              <CategoryCard
+                key={cat.id}
+                title={cat.title}
+                description={cat.description}
+                imageFile={cat.image_file}
+                onClick={() => setActiveCategory(cat.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {activeCategory && (
+          <AdminToolCategoryModal
+            categories={categories}
+            categoryId={activeCategory}
+            onClose={() => setActiveCategory(null)}
+            onNavigate={setActiveCategory}
+          />
+        )}
+      </main>
+    </AdminLayout>
   )
 }
