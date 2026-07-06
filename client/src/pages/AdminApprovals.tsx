@@ -423,9 +423,7 @@ export default function AdminApprovals() {
       // Fallback inserts must route to the correct division — never assume Community
       // Connection / navigator tier just because the original post_id write failed.
       const isAC = approval.division === 'Accelerator Circle';
-      const fallbackFields = isAC
-        ? { channel: 'accelerator_circle', tier_required: 'accelerator' }
-        : { tier_required: 'navigator' };
+      const fallbackFields = { tier_required: isAC ? 'accelerator' : 'navigator' };
       if (postId) {
         // UPDATE only — no select (RLS was silently blocking return of updated rows, causing false fallthrough to INSERT)
         const { error: updateError } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId);
