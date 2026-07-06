@@ -175,8 +175,8 @@ export default async function handler(req: any, res: any): Promise<void> {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const {
-    platform,
-    interaction_type,
+    platform: rawPlatform,
+    interaction_type: rawInteractionType,
     interaction_id,
     text,
     author_name,
@@ -185,8 +185,17 @@ export default async function handler(req: any, res: any): Promise<void> {
     post_id,
   } = req.body || {};
 
-  if (!text || !platform || !interaction_type) {
-    res.status(400).json({ error: 'Missing required fields: platform, interaction_type, text' });
+  // Tolerant normalization: Make may send bundles/blobs/flags — derive clean values here.
+  const platformStr = typeof rawPlatform === 'string' ? rawPlatform : JSON.stringify(rawPlatform ?? '');
+  const platform = platformStr.toLowerCase().includes('instagram') ? 'instagram' : 'facebook';
+  const interaction_type =
+    typeof rawInteractionType === 'string' && /^(comment|reply|mention|dm|message)$/i.test(rawInteractionType)
+      ? rawInteractionType.toLowerCase()
+      : 'comment';
+
+  // Nothing to classify (empty/attachment-only comment) → graceful skip, not an error.
+  if (!text || !String(text).trim()) {
+    res.status(200).json({ response_type: 'skip', reason: 'empty_text', interaction_id: interaction_id ?? null });
     return;
   }
 
