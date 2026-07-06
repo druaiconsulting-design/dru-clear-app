@@ -30,6 +30,25 @@ export default function CommunityFeed({
   const [levelMap, setLevelMap]   = useState<Record<string, string>>({});
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
+  // Agent (non-human) avatars — pulled live from Supabase `agents` table.
+  // Never hardcode a photo URL here: swap the file in agents-photos + update
+  // agents.photo_url in Supabase, and it updates everywhere automatically.
+  const [agentPhotoBySlug, setAgentPhotoBySlug] = useState<Record<string, string>>({});
+  const [agentPhotoByName, setAgentPhotoByName] = useState<Record<string, string>>({});
+
+  const loadAgentPhotos = useCallback(async () => {
+    const { data, error } = await supabase.from('agents').select('slug, name, photo_url');
+    if (error || !data) { console.error('[agent photos]', error); return; }
+    const bySlug: Record<string, string> = {};
+    const byName: Record<string, string> = {};
+    data.forEach((a: any) => {
+      if (a.photo_url && a.slug) bySlug[a.slug] = a.photo_url;
+      if (a.photo_url && a.name) byName[a.name] = a.photo_url;
+    });
+    setAgentPhotoBySlug(bySlug);
+    setAgentPhotoByName(byName);
+  }, []);
+
   const loadPdfs = useCallback(async () => {
     const { data, error } = await supabase.storage.from('pdfs').list('', { sortBy: { column: 'created_at', order: 'desc' } });
     if (error || !data) return;
@@ -104,6 +123,7 @@ export default function CommunityFeed({
     let mounted = true;
     loadPosts().then(loaded => { if (mounted) { setPosts(loaded); setLoading(false); } });
     loadPdfs();
+    loadAgentPhotos();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!mounted || !user) return;
       setUserId(user.id);
@@ -148,7 +168,7 @@ export default function CommunityFeed({
       })
       .subscribe();
     return () => { mounted = false; supabase.removeChannel(channel); };
-  }, [loadPosts, loadPdfs, requestPushPermission, registerPush, cacheMemberProfile]);
+  }, [loadPosts, loadPdfs, loadAgentPhotos, requestPushPermission, registerPush, cacheMemberProfile]);
 
   const handleMemberPost = useCallback((post: CommunityPost) => {
     setPosts(prev => [post, ...prev]);
@@ -265,6 +285,7 @@ export default function CommunityFeed({
                     key={post.id} post={post} index={i}
                     userId={userId} userName={userName} userPhotoUrl={userPhotoUrl}
                     isAdmin={isAdmin} photoMap={photoMap} levelMap={levelMap}
+                    agentPhotoBySlug={agentPhotoBySlug} agentPhotoByName={agentPhotoByName}
                     onMemberClick={setSelectedMemberId}
                     onPinChange={handlePinChange}
                   />
