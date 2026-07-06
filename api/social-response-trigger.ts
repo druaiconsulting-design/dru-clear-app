@@ -195,7 +195,15 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   // Nothing to classify (empty/attachment-only comment) → graceful skip, not an error.
   if (!text || !String(text).trim()) {
-    res.status(200).json({ response_type: 'skip', reason: 'empty_text', interaction_id: interaction_id ?? null });
+    res.status(200).json({
+      response_type: 'skip',
+      reason: 'empty_text',
+      agent: '',
+      reply_text: '',
+      approval_id: null,
+      interaction_id: interaction_id ?? null,
+      post_id: post_id ?? null,
+    });
     return;
   }
 
@@ -204,7 +212,15 @@ export default async function handler(req: any, res: any): Promise<void> {
     const seen = await alreadyProcessed(String(interaction_id));
     if (seen) {
       console.log(`[social-response] Skipping already-processed interaction ${interaction_id}`);
-      res.status(200).json({ response_type: 'skip', interaction_id });
+      res.status(200).json({
+        response_type: 'skip',
+        reason: 'already_processed',
+        agent: '',
+        reply_text: '',
+        approval_id: null,
+        interaction_id: interaction_id ?? null,
+        post_id: post_id ?? null,
+      });
       return;
     }
   }
@@ -226,8 +242,10 @@ export default async function handler(req: any, res: any): Promise<void> {
       console.log(`[social-response] Generic → auto-reply via ${agent}`);
       res.status(200).json({
         response_type: 'auto',
+        reason: '',
         agent,
         reply_text,
+        approval_id: null,
         interaction_id: interaction_id ?? null,
         post_id: post_id ?? null,
       });
@@ -260,7 +278,15 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
 
     console.log(`[social-response] Substantive → hub card ${approval_id} via ${agent}`);
-    res.status(200).json({ response_type: 'hub', agent, approval_id });
+    res.status(200).json({
+      response_type: 'hub',
+      reason: '',
+      agent,
+      reply_text: '',
+      approval_id,
+      interaction_id: interaction_id ?? null,
+      post_id: post_id ?? null,
+    });
 
   } catch (error) {
     console.error('[social-response] Error:', error);
