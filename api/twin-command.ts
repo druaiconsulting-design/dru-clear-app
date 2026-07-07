@@ -132,6 +132,45 @@ async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> 
   return data.content?.[0]?.text ?? "";
 }
 
+// ─── Concurrency lock — prevents fan-out / repeat-fire cascades ──────────────
+// Only ONE on-demand chain may be in flight system-wide at any time.
+// Atomic acquire: UPDATE only succeeds if unlocked OR the existing lock is stale (>5 min old).
+
+async function acquireLock(agentName: string): Promise<boolean> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return true; // fail open only if Supabase env vars are missing entirely
+
+  const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const res = await fetch(
+    `${url}/rest/v1/on_demand_lock?id=eq.1&or=(is_locked.eq.false,locked_at.lt.${staleCutoff})`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({ is_locked: true, locked_at: new Date().toISOString(), locked_by: agentName }),
+    }
+  );
+  if (!res.ok) return false; // fail closed on error — safer than risking a second fire
+  const rows = await res.json();
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function releaseLock(): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  await fetch(`${url}/rest/v1/on_demand_lock?id=eq.1`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ is_locked: false, locked_by: null }),
+  }).catch((err) => console.error("[twin-command] releaseLock failed:", err));
+}
+
 async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -171,6 +210,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
 
+  // ── Concurrency lock — reject immediately if a chain is already in flight ──
+  // This must happen BEFORE the first Anthropic call, since that's where credits
+  // actually get spent. A rejected request costs one cheap DB check, nothing else.
+  const lockAcquired = await acquireLock(agentName);
+  if (!lockAcquired) {
+    console.warn(`[twin-command] 🔒 Rejected — on-demand chain already in flight (requested by: ${agentName})`);
+    res.status(429).json({ success: false, reason: "chain_already_in_flight", agent_name: agentName });
+    return;
+  }
+
   try {
     // Step 1 — Run agent
     const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`, 2000);
@@ -192,15 +241,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     console.log(`[twin-command] ${agentName} output written to CSQ: ${csqId}`);
 
     // Step 3 — Fire on-demand chain (fire and forget)
-    // runOnDemandChain in ghl-agent-trigger handles the full loop:
-    // Isabella retry loop → Governance → Command Layer → Twin synthesis → Intelligence Hub
+    // Lock ownership transfers to process-on-demand.ts, which releases it when
+    // the chain finishes (success, rejection, or error). If the fetch itself
+    // fails to even fire, we release here so the lock never gets stuck.
     if (csqId) {
       fetch(`${baseUrl}/api/process-on-demand`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
         body: JSON.stringify({ csq_id: csqId }),
-      }).catch((err) => console.error("[twin-command] ❌ Failed to fire on-demand chain:", err));
+      }).catch((err) => {
+        console.error("[twin-command] ❌ Failed to fire on-demand chain:", err);
+        releaseLock();
+      });
       console.log(`[twin-command] ✅ On-demand chain fired for CSQ: ${csqId}`);
+    } else {
+      // CSQ write failed — nothing downstream will ever release the lock
+      await releaseLock();
     }
 
     res.status(200).json({
@@ -212,6 +268,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   } catch (err: unknown) {
     console.error("[twin-command] Error:", err);
+    await releaseLock();
     res.status(500).json({ error: String(err) });
   }
 }
