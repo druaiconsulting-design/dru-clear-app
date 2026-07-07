@@ -65,6 +65,7 @@ TASK TYPE → PRIMARY AGENT MAPPING:
 - Outreach, DM, follow-up message → aaliyah (Personalized Outreach)
 - Lead scoring, new leads → omar (Lead Scoring)
 - Community content, member → zoe (Community Connection Leader)
+- Facebook cover, Instagram graphic, banner, image, visual/graphic design, cover photo, design brief → ravi (Graphic Designer)
 
 MESSAGE: "{MESSAGE}"
 
