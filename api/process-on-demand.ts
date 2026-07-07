@@ -354,6 +354,19 @@ Synthesize into a focused, actionable briefing card. Lead with what matters most
   });
 }
 
+// ─── Concurrency lock release ─────────────────────────────────────────────────
+// Lock is acquired by twin-command.ts before this endpoint is called. This
+// endpoint owns releasing it — on every exit path — since it's the long-running
+// half of the chain where most of the credit cost actually happens.
+
+async function releaseLock(): Promise<void> {
+  await fetch(`${SUPABASE_URL}/rest/v1/on_demand_lock?id=eq.1`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify({ is_locked: false, locked_by: null }),
+  }).catch((err) => console.error("[on-demand] releaseLock failed:", err));
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -364,13 +377,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
 
   const { csq_id } = req.body ?? {};
-  if (!csq_id) { res.status(400).json({ error: "csq_id required" }); return; }
+  if (!csq_id) { res.status(400).json({ error: "csq_id required" }); await releaseLock(); return; }
 
   console.log(`[on-demand] 🚀 Starting full chain for CSQ: ${csq_id}`);
 
   let currentId = csq_id as string;
   const complianceFlags: string[] = [];
 
+  // NOTE: lock is acquired by twin-command.ts before this endpoint fires.
+  // This handler owns releasing it on every exit path below (finally block).
   try {
     // ── STEP 1: Isabella retry loop ──────────────────────────
     let isabellaPassed = false;
@@ -484,5 +499,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   } catch (err) {
     console.error("[on-demand] ❌ Chain error:", err);
     res.status(500).json({ error: String(err) });
+  } finally {
+    // Guarantees the lock releases on every exit path — success, every
+    // rejection branch (return inside the try block above), and any error.
+    await releaseLock();
   }
 }
