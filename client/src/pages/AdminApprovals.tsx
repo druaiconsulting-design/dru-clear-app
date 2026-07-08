@@ -24,6 +24,8 @@ interface Approval {
   facebook_content: string | null;
   instagram_caption: string | null;
   instagram_video_url: string | null;
+  facebook_story_video_url: string | null;
+  facebook_story_image_url: string | null;
   spanish_content: string | null;
 }
 
@@ -42,7 +44,7 @@ interface QuestionState {
   input: string; messages: ConversationMessage[]; loading: boolean;
 }
 
-interface MediaState { video_url: string; image_url: string; instagram_video_url: string; }
+interface MediaState { video_url: string; image_url: string; instagram_video_url: string; facebook_story_video_url: string; facebook_story_image_url: string; }
 
 const LEAD_DIRECTIONS = [
   { value: "assessment_invite", label: "Assessment Invite" },
@@ -320,6 +322,8 @@ export default function AdminApprovals() {
       video_url: approval?.video_url || '',
       image_url: approval?.image_url || '',
       instagram_video_url: approval?.instagram_video_url || '',
+      facebook_story_video_url: approval?.facebook_story_video_url || '',
+      facebook_story_image_url: approval?.facebook_story_image_url || '',
     };
 
   const setMediaUrl = (id: string, field: keyof MediaState, value: string) =>
@@ -468,6 +472,8 @@ export default function AdminApprovals() {
           video_url: media.video_url || null,
           instagram_video_url: media.instagram_video_url || null,
           image_url: media.image_url || null,
+          facebook_story_video_url: media.facebook_story_video_url || null,
+          facebook_story_image_url: media.facebook_story_image_url || null,
           platforms_selected: getSelectedPlatforms(approval.id),
         } : {
           content: approval.edited_output || approval.output,
@@ -475,6 +481,8 @@ export default function AdminApprovals() {
           approval_id: approval.id,
           video_url: media.video_url || null,
           image_url: media.image_url || null,
+          facebook_story_video_url: media.facebook_story_video_url || null,
+          facebook_story_image_url: media.facebook_story_image_url || null,
         })
       });
       return res.ok;
@@ -515,6 +523,8 @@ export default function AdminApprovals() {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
       if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
+      if (media.facebook_story_video_url) updatePayload.facebook_story_video_url = media.facebook_story_video_url;
+      if (media.facebook_story_image_url) updatePayload.facebook_story_image_url = media.facebook_story_image_url;
     }
 
     const { error } = await supabase.from("approvals").update(updatePayload).eq("id", id);
@@ -610,6 +620,8 @@ export default function AdminApprovals() {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
       if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
+      if (media.facebook_story_video_url) updatePayload.facebook_story_video_url = media.facebook_story_video_url;
+      if (media.facebook_story_image_url) updatePayload.facebook_story_image_url = media.facebook_story_image_url;
     }
 
     await supabase.from("approvals").update(updatePayload).eq("id", id);
@@ -1009,6 +1021,30 @@ export default function AdminApprovals() {
                                 style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.instagram_video_url ? "rgba(194,24,91,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
                               />
                             </div>
+                          )}
+                          {(isMulti || approval.platform === 'Facebook') && (
+                            <>
+                              <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
+                                <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(24,119,242,0.8)", minWidth:100, flexShrink:0 }}>FB Story Video · 9:16 · 1080×1920</span>
+                                <input
+                                  type="text"
+                                  value={currentMedia.facebook_story_video_url}
+                                  onChange={e => setMediaUrl(approval.id, 'facebook_story_video_url', e.target.value)}
+                                  placeholder="Paste Bunny MP4 URL — play_720p.mp4 (vertical 9:16 only)"
+                                  style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.facebook_story_video_url ? "rgba(24,119,242,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
+                                />
+                              </div>
+                              <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
+                                <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(24,119,242,0.8)", minWidth:100, flexShrink:0 }}>FB Story Image · 9:16 · 1080×1920</span>
+                                <input
+                                  type="text"
+                                  value={currentMedia.facebook_story_image_url}
+                                  onChange={e => setMediaUrl(approval.id, 'facebook_story_image_url', e.target.value)}
+                                  placeholder="https://vz-65fe52c5-439.b-cdn.net/[image-guid]/thumbnail.jpg (vertical 9:16 only)"
+                                  style={{ flex:1, background:"#FFFFFF", border:`1px solid ${currentMedia.facebook_story_image_url ? "rgba(24,119,242,0.4)" : "rgba(10,35,66,0.15)"}`, borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", padding:"0.35rem 0.625rem", outline:"none" }}
+                                />
+                              </div>
+                            </>
                           )}
                           <div style={{ display:"flex", alignItems:"center", gap:"0.625rem" }}>
                             <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:600, color:"rgba(10,35,66,0.45)", minWidth:100, flexShrink:0 }}>Image URL</span>
