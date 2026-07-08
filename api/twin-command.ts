@@ -171,6 +171,55 @@ async function releaseLock(): Promise<void> {
   }).catch((err) => console.error("[twin-command] releaseLock failed:", err));
 }
 
+// ─── Hard daily spend cap — independent of Anthropic's own balance system ────
+// Checked BEFORE any Anthropic API call. This is DeAnna's own ceiling in her own
+// database, not reliant on Anthropic's billing timing at all. Default cap: $10/day
+// (normal usage runs ~$3-5/day). Conservative $0.15 estimate reserved per chain fire
+// to account for Isabella correction retries.
+
+const CHAIN_COST_ESTIMATE = 0.15; // conservative per-fire estimate incl. possible retries
+
+async function checkAndReserveSpend(): Promise<{ ok: boolean; totalSpent?: number; cap?: number }> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { ok: true }; // fail open only if Supabase env vars are missing entirely
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Ensure today's row exists
+  await fetch(`${url}/rest/v1/daily_spend_cap`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: "resolution=ignore-duplicates",
+    },
+    body: JSON.stringify({ spend_date: today }),
+  }).catch(() => {});
+
+  const readRes = await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}&select=total_spent,cap_amount`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!readRes.ok) return { ok: false }; // fail closed on error
+  const rows = await readRes.json();
+  const row = rows[0] ?? { total_spent: 0, cap_amount: 10.0 };
+
+  if (Number(row.total_spent) + CHAIN_COST_ESTIMATE > Number(row.cap_amount)) {
+    console.error(`[twin-command] 🛑 Daily spend cap reached: $${row.total_spent}/$${row.cap_amount}`);
+    return { ok: false, totalSpent: Number(row.total_spent), cap: Number(row.cap_amount) };
+  }
+
+  // Reserve the estimated cost now, before the Anthropic call fires
+  await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ total_spent: Number(row.total_spent) + CHAIN_COST_ESTIMATE, updated_at: new Date().toISOString() }),
+  });
+
+  return { ok: true, totalSpent: Number(row.total_spent) + CHAIN_COST_ESTIMATE, cap: Number(row.cap_amount) };
+}
+
 async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -209,6 +258,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const baseUrl    = "https://app.druaiconsulting.com";
 
   console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
+
+  // ── Hard daily spend cap — the FIRST gate, before anything else spends money ──
+  const spendCheck = await checkAndReserveSpend();
+  if (!spendCheck.ok) {
+    console.warn(`[twin-command] 🛑 Rejected — daily spend cap reached ($${spendCheck.totalSpent ?? "?"}/$${spendCheck.cap ?? "?"})`);
+    res.status(429).json({
+      success: false,
+      reason: "daily_spend_cap_reached",
+      total_spent: spendCheck.totalSpent,
+      cap: spendCheck.cap,
+    });
+    return;
+  }
 
   // ── Concurrency lock — reject immediately if a chain is already in flight ──
   // This must happen BEFORE the first Anthropic call, since that's where credits
