@@ -519,6 +519,7 @@ export default function AdminApprovals() {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
       if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
+      if (media.facebook_reel_url) updatePayload.facebook_reel_url = media.facebook_reel_url;
     }
 
     const { error } = await supabase.from("approvals").update(updatePayload).eq("id", id);
@@ -614,6 +615,7 @@ export default function AdminApprovals() {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
       if (media.instagram_video_url) updatePayload.instagram_video_url = media.instagram_video_url;
+      if (media.facebook_reel_url) updatePayload.facebook_reel_url = media.facebook_reel_url;
     }
 
     await supabase.from("approvals").update(updatePayload).eq("id", id);
