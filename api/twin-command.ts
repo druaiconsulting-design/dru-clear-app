@@ -4,6 +4,7 @@
 // Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Intelligence Hub
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { waitUntil } from "@vercel/functions";
 export const config = { maxDuration: 300 };
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
@@ -307,14 +308,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // the chain finishes (success, rejection, or error). If the fetch itself
     // fails to even fire, we release here so the lock never gets stuck.
     if (csqId) {
-      fetch(`${baseUrl}/api/process-on-demand`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
-        body: JSON.stringify({ csq_id: csqId }),
-      }).catch((err) => {
-        console.error("[twin-command] ❌ Failed to fire on-demand chain:", err);
-        releaseLock();
-      });
+      // Fire the on-demand chain in the background — wrapped in waitUntil so Vercel
+      // keeps this function's execution context alive until the fetch actually
+      // completes, even though the client response is returned immediately below.
+      // Without this, Vercel can freeze/tear down the function the instant the
+      // response is sent, silently killing this fetch before it ever reaches
+      // process-on-demand (confirmed via Vercel logs — zero invocations logged
+      // despite this line running successfully every time).
+      waitUntil(
+        fetch(`${baseUrl}/api/process-on-demand`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
+          body: JSON.stringify({ csq_id: csqId }),
+        }).then((r) => {
+          console.log(`[twin-command] on-demand chain response: ${r.status}`);
+        }).catch((err) => {
+          console.error("[twin-command] ❌ Failed to fire on-demand chain:", err);
+          releaseLock();
+        })
+      );
       console.log(`[twin-command] ✅ On-demand chain fired for CSQ: ${csqId}`);
     } else {
       // CSQ write failed — nothing downstream will ever release the lock
