@@ -54,6 +54,9 @@ export default async function handler(req: Request) {
     video_url:           body.video_url          ?? null,
     instagram_video_url: body.instagram_video_url ?? null,
     image_url:           body.image_url           ?? null,
+    // FB Stories — 9:16 vertical only, sent independently of the regular Facebook post/video fields above
+    facebook_story_video_url: onFacebook ? (body.facebook_story_video_url ?? null) : null,
+    facebook_story_image_url: onFacebook ? (body.facebook_story_image_url ?? null) : null,
   };
 
   const res = await fetch(makeWebhookUrl, {
