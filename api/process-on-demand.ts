@@ -17,7 +17,7 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // same list and logic already used by the daily chain (cmd-twin.ts line 13) — the
 // on-demand chain was missing this branch entirely, which is why on-demand design
 // briefs were coming back as vague commentary instead of Ravi's actual spec.
-const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
+const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_post','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
 
 // Second, independent passthrough mechanism from the daily chain (cmd-twin.ts line 17) —
 // these specific agents ALWAYS surface their raw output regardless of category. This is
