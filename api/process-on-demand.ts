@@ -377,7 +377,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
 
   const { csq_id } = req.body ?? {};
-  if (!csq_id) { res.status(400).json({ error: "csq_id required" }); await releaseLock(); return; }
+  if (!csq_id) { await releaseLock(); res.status(400).json({ error: "csq_id required" }); return; }
 
   console.log(`[on-demand] 🚀 Starting full chain for CSQ: ${csq_id}`);
 
@@ -392,7 +392,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     for (let attempt = 0; attempt <= 3; attempt++) {
       const item = await dbGet("chief_of_staff_queue", currentId);
-      if (!item) { res.status(404).json({ error: "CSQ item not found" }); return; }
+      if (!item) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
 
       console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
       const retryCount = (item.retry_count as number) ?? 0;
@@ -417,6 +417,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           governance_cleared: false,
         });
         console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${item.agent_name} — ${flags}`);
+        await releaseLock();
         res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: item.agent_name, flags });
         return;
       }
@@ -430,14 +431,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       console.log(`[on-demand] 🔄 Correction applied for: ${item.agent_name}`);
 
       const newId = await runCorrectionAgent(item, correctionNotes, retryCount + 1);
-      if (!newId) { res.status(500).json({ error: "Correction agent failed" }); return; }
+      if (!newId) { await releaseLock(); res.status(500).json({ error: "Correction agent failed" }); return; }
       currentId = newId;
     }
 
-    if (!isabellaPassed) { res.status(500).json({ error: "Isabella loop exhausted" }); return; }
+    if (!isabellaPassed) { await releaseLock(); res.status(500).json({ error: "Isabella loop exhausted" }); return; }
 
     const clearedItem = await dbGet("chief_of_staff_queue", currentId);
-    if (!clearedItem) { res.status(404).json({ error: "Cleared item not found" }); return; }
+    if (!clearedItem) { await releaseLock(); res.status(404).json({ error: "Cleared item not found" }); return; }
 
     // ── STEP 2: Governance Panel ─────────────────────────────
     console.log(`[on-demand] Running Governance for: ${clearedItem.agent_name}`);
@@ -451,6 +452,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         status: "rejected",
       });
       console.warn(`[on-demand] ⛔ Governance blocked: ${clearedItem.agent_name}`);
+      await releaseLock();
       res.status(200).json({ success: false, reason: "governance_blocked", agent: clearedItem.agent_name, flags: gov.flags });
       return;
     }
@@ -493,15 +495,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       status:            "twin_processed",
     });
 
+    await releaseLock();
     console.log(`[on-demand] ✅ Chain complete — ${clearedItem.agent_name} | Card: ${approvalId}`);
     res.status(200).json({ success: true, agent_name: clearedItem.agent_name, approval_id: approvalId, final_csq_id: currentId });
 
   } catch (err) {
     console.error("[on-demand] ❌ Chain error:", err);
-    res.status(500).json({ error: String(err) });
-  } finally {
-    // Guarantees the lock releases on every exit path — success, every
-    // rejection branch (return inside the try block above), and any error.
     await releaseLock();
+    res.status(500).json({ error: String(err) });
   }
 }
