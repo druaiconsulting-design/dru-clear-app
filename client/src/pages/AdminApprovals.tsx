@@ -96,13 +96,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
   cc_upsell_outreach:"CC Upsell Signal",
   community_opportunity:"CC Opportunity",
-  ac_upsell_outreach:"AC Upsell Outreach",
+  ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
-  "community_connection","community_post","social","email","proposal","content","other",
+  "community_connection","community_post","social","email","proposal","grants","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
 
@@ -118,6 +118,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"zara",    agent_name:"Zara Ahmed",       role:"Product Launch" },
     { agent_id:"elena",   agent_name:"Elena Vasquez",    role:"Product Knowledge" },
     { agent_id:"kwame",   agent_name:"Kwame Asante",     role:"Proposal Writer" },
+    { agent_id:"adaeze",  agent_name:"Adaeze Nwosu",     role:"Grant Strategist" },
   ],
   "Content & Brand": [
     { agent_id:"camila",  agent_name:"Camila Flores",    role:"Social Media Strategist" },
