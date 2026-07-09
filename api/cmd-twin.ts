@@ -341,6 +341,32 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
     }
   }
 
+  // Grants: Adaeze's findings always get their own standalone "Grants" card,
+  // untouched by division roll-up rewriting — she reports facts, not commentary.
+  for (const item of items) {
+    if (item.category === 'grants') {
+      try {
+        await writeApproval({
+          source: `${item.agent_id}_grants`,
+          trigger_type: item.category,
+          agent_name: item.agent_name,
+          agent_role: item.division,
+          division: item.division,
+          task_brief: `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
+          output: item.raw_output,
+          status: 'pending',
+          notify_deanna: false,
+          priority: item.priority === 'high' ? 'high' : 'normal',
+          category: 'grants',
+          platform: null,
+        });
+        console.log(`[twin] Grants standalone card: ${item.agent_name}`);
+      } catch (err) {
+        console.error(`[twin] Grants card failed for ${item.agent_name}:`, err);
+      }
+    }
+  }
+
   // Mark all items twin_processed
   for (const item of items) {
     const divisionApprovalId = approvalMap[item.division] ?? null;
