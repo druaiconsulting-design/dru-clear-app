@@ -97,6 +97,23 @@ async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_
   }
 }
 
+// ─── Fetch persistent memory — durable facts that survive across chat resets ──
+async function fetchTwinMemory(): Promise<string> {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) return "";
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/twin_memory?id=eq.1&select=content`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+    });
+    if (!res.ok) return "";
+    const rows = await res.json();
+    return rows[0]?.content ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -112,6 +129,14 @@ export default async function handler(req: Request): Promise<Response> {
     const lastUserMessage: string = [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? "";
     const detection = await detectCommand(lastUserMessage, apiKey);
 
+    // ── Persistent memory — injected into every conversation regardless of  ──
+    // ── whether this is an old thread or a fresh one after "New Chat"       ──
+    const memory = await fetchTwinMemory();
+    const baseSystemPrompt = systemPrompt || DEFAULT_SYSTEM;
+    const memorySystemPrompt = memory
+      ? `${baseSystemPrompt}\n\nPERSISTENT MEMORY (durable facts from past conversations — DeAnna started a fresh conversation, but you still know this):\n${memory}`
+      : baseSystemPrompt;
+
     if (detection?.is_command) {
       const { agent_id, agent_name, task } = detection;
 
@@ -122,7 +147,7 @@ export default async function handler(req: Request): Promise<Response> {
         body: JSON.stringify({ agent_id, task }),
       }).catch((err) => console.error("[twin] twin-command fire-and-forget error:", err));
 
-      const commandSystemPrompt = `${systemPrompt || DEFAULT_SYSTEM}
+      const commandSystemPrompt = `${memorySystemPrompt}
 
 COMMAND ROUTING ACTIVE: DeAnna just issued a command. It has been routed to ${agent_name} and is already executing through the full governance chain — Agent → Isabella → Governance Panel → Priya, Travis & Raymond → Twin synthesis → AdminApprovals + GHL notification. Raymond has been notified and is expecting the result.
 
@@ -162,7 +187,7 @@ FORMATTING RULES — strictly enforced:
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: systemPrompt || DEFAULT_SYSTEM, messages: cleanMessages }),
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: memorySystemPrompt, messages: cleanMessages }),
     });
 
     if (!anthropicRes.ok) {
