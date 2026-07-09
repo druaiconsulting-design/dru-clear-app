@@ -3,6 +3,8 @@
 // DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
 // FIX: filter empty assistant messages before sending to Anthropic (prevents 400 on failed-stream history)
 
+import { waitUntil } from "@vercel/functions";
+
 export const config = { runtime: "edge" };
 
 const CORS = {
@@ -141,11 +143,19 @@ export default async function handler(req: Request): Promise<Response> {
       const { agent_id, agent_name, task } = detection;
 
       const baseUrl = "https://app.druaiconsulting.com";
-      fetch(`${baseUrl}/api/twin-command`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id, task }),
-      }).catch((err) => console.error("[twin] twin-command fire-and-forget error:", err));
+      // CRITICAL FIX: this fetch was firing without waitUntil, and the edge
+      // function's execution context was being torn down before it completed —
+      // confirmed via Vercel logs showing zero /api/twin-command invocations
+      // despite Twin's chat response confidently claiming the agent was already
+      // executing. waitUntil keeps this function alive until the call actually
+      // finishes, without making DeAnna wait for it in the chat response.
+      waitUntil(
+        fetch(`${baseUrl}/api/twin-command`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agent_id, task }),
+        }).catch((err) => console.error("[twin] twin-command fire-and-forget error:", err))
+      );
 
       const commandSystemPrompt = `${memorySystemPrompt}
 
