@@ -3,8 +3,6 @@
 // DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
 // FIX: filter empty assistant messages before sending to Anthropic (prevents 400 on failed-stream history)
 
-import { waitUntil } from "@vercel/functions";
-
 export const config = { runtime: "edge" };
 
 const CORS = {
@@ -143,19 +141,38 @@ export default async function handler(req: Request): Promise<Response> {
       const { agent_id, agent_name, task } = detection;
 
       const baseUrl = "https://app.druaiconsulting.com";
-      // CRITICAL FIX: this fetch was firing without waitUntil, and the edge
-      // function's execution context was being torn down before it completed —
-      // confirmed via Vercel logs showing zero /api/twin-command invocations
-      // despite Twin's chat response confidently claiming the agent was already
-      // executing. waitUntil keeps this function alive until the call actually
-      // finishes, without making DeAnna wait for it in the chat response.
-      waitUntil(
-        fetch(`${baseUrl}/api/twin-command`, {
+      // GUARANTEED FIX: waitUntil proved unreliable in this Edge Runtime context —
+      // confirmed via Vercel logs across two separate tests where Twin's chat
+      // response claimed the agent was "executing now" while zero
+      // /api/twin-command invocations ever actually happened. Rather than keep
+      // trying fire-and-forget patterns that can silently die, this now directly
+      // awaits the routing call. Costs a few seconds before Twin's response
+      // starts streaming, but Twin can never again claim work is happening that
+      // isn't. routingSucceeded gates which acknowledgment text gets sent below.
+      let routingSucceeded = true;
+      try {
+        const routeRes = await fetch(`${baseUrl}/api/twin-command`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ agent_id, task }),
-        }).catch((err) => console.error("[twin] twin-command fire-and-forget error:", err))
-      );
+        });
+        if (!routeRes.ok) {
+          routingSucceeded = false;
+          console.error(`[twin] twin-command returned ${routeRes.status}`);
+        }
+      } catch (err) {
+        routingSucceeded = false;
+        console.error("[twin] twin-command call failed:", err);
+      }
+
+      if (!routingSucceeded) {
+        // Be honest instead of pretending it worked — matches this file's
+        // existing error-response pattern (plain JSON, non-200 status).
+        return new Response(
+          JSON.stringify({ error: `Routing to ${agent_name} failed — the request did not actually fire. Please try again.` }),
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
 
       const commandSystemPrompt = `${memorySystemPrompt}
 
