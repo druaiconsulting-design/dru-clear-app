@@ -19,6 +19,14 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // briefs were coming back as vague commentary instead of Ravi's actual spec.
 const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
 
+// Second, independent passthrough mechanism from the daily chain (cmd-twin.ts line 17) —
+// these specific agents ALWAYS surface their raw output regardless of category. This is
+// how Theo (presentation_design), Kwame (proposals), and Amelia (video_production) get
+// their real deliverables through daily, even though their categories aren't in the list
+// above. Missing this the first time meant 3 of DeAnna's 6 quick-command shortcuts would
+// have hit the exact same bug Ravi's design brief did.
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos'];
+
 function getPlatformLabel(category: string): string {
   const map: Record<string, string> = {
     linkedin_post: 'LinkedIn', instagram_post: 'Instagram', facebook_post: 'Facebook',
@@ -333,28 +341,54 @@ async function runTwinSynthesisOnItem(
   // publishing. Running these through the Twin synthesis rewrite below destroys
   // the exact specs (hex codes, image-gen prompts, grid coordinates) the agent
   // was asked to produce. Same branch the daily chain already has (cmd-twin.ts).
-  if (CLIENT_FACING_CATEGORIES.includes(item.category as string)) {
-    console.log(`[on-demand] Client-facing category (${item.category}) — passing raw output through verbatim for ${item.agent_name}`);
+  const isClientFacingCategory = CLIENT_FACING_CATEGORIES.includes(item.category as string);
+  const isAlwaysSurfaceAgent = CONTENT_ALWAYS_SURFACE.some(name =>
+    (item.agent_name as string).toLowerCase().includes(name.toLowerCase())
+  );
+
+  if (isClientFacingCategory || isAlwaysSurfaceAgent) {
+    console.log(`[on-demand] Client-facing (category=${item.category}, always_surface=${isAlwaysSurfaceAgent}) — passing raw output through verbatim for ${item.agent_name}`);
     // Same cleanup as the daily chain (cmd-twin.ts): strip any trailing compliance-audit
     // sections and markdown bold/italic markers, but do NOT rewrite the actual content.
     let content = item.raw_output as string;
     const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
     for (const cutoff of complianceCutoffs) { const idx = content.indexOf(cutoff); if (idx !== -1) content = content.slice(0, idx).trim(); }
     content = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
-    const platformLabel = getPlatformLabel(item.category as string);
+
+    if (isClientFacingCategory) {
+      // Mechanism 1: category-based → "social" card format (Design, LinkedIn, Copy, etc.)
+      const platformLabel = getPlatformLabel(item.category as string);
+      return await dbInsert("approvals", {
+        source:        "twin_on_demand",
+        trigger_type:  item.category,
+        agent_name:    item.agent_name,
+        agent_role:    item.division,
+        division:      item.division,
+        task_brief:    `${platformLabel} — On-Demand: ${item.agent_name} | ${today}`,
+        output:        content,
+        status:        "pending",
+        notify_deanna: true,
+        priority:      "high",
+        category:      "social",
+        platform:      platformLabel,
+      });
+    }
+
+    // Mechanism 2: agent-name-based (Theo, Kwame, Amelia, Jordan, Simone, Chloe) →
+    // "content_review" card format, matching cmd-twin.ts's CONTENT_ALWAYS_SURFACE branch
     return await dbInsert("approvals", {
       source:        "twin_on_demand",
       trigger_type:  item.category,
       agent_name:    item.agent_name,
       agent_role:    item.division,
       division:      item.division,
-      task_brief:    `${platformLabel} — On-Demand: ${item.agent_name} | ${today}`,
+      task_brief:    `${(item.task as string).replace(/_/g, ' ')} — On-Demand: ${item.agent_name} | ${today}`,
       output:        content,
       status:        "pending",
       notify_deanna: true,
       priority:      "high",
-      category:      "social",
-      platform:      platformLabel,
+      category:      "content_review",
+      platform:      null,
     });
   }
 
