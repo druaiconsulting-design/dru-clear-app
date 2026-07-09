@@ -166,6 +166,26 @@ export default function Twin() {
   const hasMessages = messages.length > 0;
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isStreaming && !isProcessingFile;
 
+  // Starts a fresh conversation. Nothing is lost: the outgoing thread is archived
+  // and distilled into persistent memory (twin_memory) BEFORE the local thread
+  // clears, so Twin still remembers durable facts even though the visible chat
+  // starts clean — same idea as Claude's own memory system.
+  const startNewChat = () => {
+    if (hasMessages) {
+      const apiMessages = messages.map(msg => ({ role: msg.role, content: msg.apiContent ?? msg.content }));
+      // Plain browser fetch, not awaited — this runs client-side, not on a
+      // serverless function, so there's no risk of execution being torn down
+      // mid-request the way a backend "fire and forget" call would be.
+      fetch("/api/twin-new-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages }),
+      }).catch((err) => console.error("[twin] Failed to archive conversation:", err));
+    }
+    setMessages([]);
+    localStorage.removeItem('twin_conversation');
+  };
+
   return (
     <AdminLayout currentPath={window.location.pathname}>
       <style>{`
@@ -205,9 +225,18 @@ export default function Twin() {
               <p style={{ fontFamily: "'Montserrat',sans-serif", color: "#D4AF37", fontSize: ".6rem", fontWeight: 700, letterSpacing: ".12em", margin: "3px 0 2px", textTransform: "uppercase" as const }}>Command Interface · DRU AI Consulting</p>
               <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.4)", fontSize: ".6rem", margin: 0, letterSpacing: ".04em" }}>54 agents · 9 divisions · All at your command</p>
             </div>
-            <div style={{ textAlign: "right" as const, flexShrink: 0 }}>
-              <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.35)", fontSize: ".55rem", margin: "0 0 2px", letterSpacing: ".04em" }}>Powered by</p>
-              <p style={{ fontFamily: "'Cinzel',serif", color: "#D4AF37", fontSize: ".72rem", fontWeight: 700, margin: 0, letterSpacing: ".06em" }}>DRU CLEAR™</p>
+            <div style={{ textAlign: "right" as const, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              {hasMessages && (
+                <button onClick={startNewChat}
+                  style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(10,35,66,0.04)", border: "1px solid rgba(10,35,66,0.12)", borderRadius: 7, padding: "5px 10px", cursor: "pointer", fontFamily: "'Montserrat',sans-serif", fontSize: ".62rem", fontWeight: 700, color: "#0A2342", letterSpacing: ".03em" }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#0A2342" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                  New Chat
+                </button>
+              )}
+              <div>
+                <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.35)", fontSize: ".55rem", margin: "0 0 2px", letterSpacing: ".04em" }}>Powered by</p>
+                <p style={{ fontFamily: "'Cinzel',serif", color: "#D4AF37", fontSize: ".72rem", fontWeight: 700, margin: 0, letterSpacing: ".06em" }}>DRU CLEAR™</p>
+              </div>
             </div>
           </div>
 
@@ -305,7 +334,7 @@ export default function Twin() {
               Attach PDF · Word · Image · Text — up to 3 files · 15MB each
             </p>
             {hasMessages && (
-              <button onClick={() => { setMessages([]); localStorage.removeItem('twin_conversation'); }}
+              <button onClick={startNewChat}
                 style={{ background: "none", border: "none", fontFamily: "'Montserrat',sans-serif", fontSize: ".58rem", color: "rgba(10,35,66,.25)", cursor: "pointer", letterSpacing: ".04em", padding: 0 }}>
                 Clear conversation
               </button>
