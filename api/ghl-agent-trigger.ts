@@ -28,6 +28,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Revenue, Growth & Sales', task: 'product_launch_readiness',      pipeline: 'p1_zara' },
   cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
+  cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
   cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
   cron_ravi_design_brief:         { agent_id: 'ravi',     agent_name: 'Ravi Gupta',        division: 'Content & Brand',  task: 'generate_design_brief',         pipeline: 'p2_ravi' },
@@ -133,6 +134,82 @@ async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> 
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json(); return data.content?.[0]?.text ?? '';
 }
+// Web-search-enabled Anthropic call — used only by Adaeze's weekly grant scout.
+// max_uses hard-caps search calls per run (cost control after the July on-demand
+// cascade incident); Anthropic bills web search at $10/1,000 searches, so a cap
+// of 6 keeps a weekly run to a few cents regardless of what Claude tries to do.
+async function callAnthropicWithWebSearch(prompt: string, maxTokens = 3000, maxSearches = 6): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search',max_uses:maxSearches}]})});
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
+  const data = await res.json();
+  const blocks = (data.content ?? []) as Array<{type:string;text?:string}>;
+  return blocks.filter(b=>b.type==='text').map(b=>b.text ?? '').join('\n').trim();
+}
+
+// Finds the first complete top-level JSON object in a text blob, ignoring any
+// commentary Claude wraps around it. Mirrors the extractor pattern already used
+// in api/process-on-demand.ts.
+function extractJSONObject(text: string): Record<string, unknown> | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(start, i + 1)); }
+        catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+async function writeGrantOpportunities(items: Record<string,unknown>[]): Promise<number> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key||items.length===0) return 0;
+  const res = await fetch(`${url}/rest/v1/grant_opportunities`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(items)});
+  if (!res.ok){console.error(`[adaeze] grant_opportunities write failed: ${await res.text()}`);return 0;}
+  const data = await res.json(); return Array.isArray(data)?data.length:0;
+}
+
+async function getKnownGrantKeys(): Promise<Set<string>> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return new Set();
+  const res = await fetch(`${url}/rest/v1/grant_opportunities?select=opportunity_name,funder`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return new Set();
+  const rows = await res.json() as {opportunity_name:string;funder:string}[];
+  return new Set(rows.map(r => `${(r.opportunity_name||'').trim().toLowerCase()}|${(r.funder||'').trim().toLowerCase()}`));
+}
+
+async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
+  try {
+    const prompt = `${GENIUS_MODE}\n\nYou are Adaeze Nwosu, Grant Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, Founder/CEO of Dimensional Solns, LLC (a FOR-PROFIT AI leadership & culture consulting business, not a nonprofit). Brand fit: AI adoption/leadership training, women-owned business, 5C Cultural DNA™, 5D Leadership™, DRU CLEAR™ AI Readiness frameworks.\n\nSearch the web broadly (no certification status assumed — search as if broadly eligible) for CURRENTLY OPEN small-business grants, grant contests, or funding programs a for-profit consulting/leadership-training business could realistically apply to. Do NOT include federal grants.gov-style research/nonprofit grants — those don't fit a for-profit LLC. Focus on: corporate small-business grant programs, women-owned/minority-owned business grant contests, and small-business funding competitions with open or upcoming application windows.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"opportunity_name\": string,\n      \"funder\": string,\n      \"amount_range\": string,\n      \"eligibility\": string,\n      \"deadline\": string (YYYY-MM-DD if known, else best available description),\n      \"source_url\": string,\n      \"fit_score\": number (1-10, how well this fits DeAnna's brand/business),\n      \"fit_reasoning\": string (1-2 sentences)\n    }\n  ]\n}\nOnly include opportunities you found real, current information on. If you find none, return {\"opportunities\": []}.`;
+    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownGrantKeys()]);
+    const parsed = extractJSONObject(raw);
+    const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
+    // Dedup — only keep opportunities not already logged (case-insensitive name+funder match)
+    const newOnes = allFound.filter(o => {
+      const nameKey = `${String(o.opportunity_name||'').trim().toLowerCase()}|${String(o.funder||'').trim().toLowerCase()}`;
+      return !knownKeys.has(nameKey);
+    });
+    if (newOnes.length === 0) return { count: 0, csqId: null }; // nothing new — no card, no noise
+    const rows = newOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
+    const written = await writeGrantOpportunities(rows);
+    const top = newOnes.slice(0,5).map((o:any)=>`- ${o.opportunity_name} (${o.funder}) — fit ${o.fit_score}/10, deadline ${o.deadline}`).join('\n');
+    const csqId = await writeToCSQ({
+      agent_id:'adaeze', agent_name:'Adaeze Nwosu', division:'Revenue, Growth & Sales',
+      task:'daily_grant_scout', category:'grants',
+      raw_output: `Found ${written} new grant opportunity/opportunities today:\n\n${top}\n\nFull list in grant_opportunities table.`,
+      priority:'normal', status:'pending',
+    });
+    return { count: written, csqId };
+  } catch(error){ console.error('[adaeze] Scout error:',error); return { count:0, csqId:null }; }
+}
+
 async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return null;
@@ -596,6 +673,7 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_zara'){const id=await runAgentToCSQ('zara','Zara Ahmed','Revenue, Growth & Sales','product_launch_readiness','product_launch',`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course, Community Connection Navigator $47/mo / Accelerator $147/mo. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing insight, next week priority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
