@@ -11,6 +11,25 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY!;
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
 
+// Categories where the agent's raw output IS the deliverable — design briefs, social
+// posts, copy, press releases, etc. These must pass through to the Intelligence Hub
+// verbatim, not get rewritten into an executive-summary voice. This mirrors the exact
+// same list and logic already used by the daily chain (cmd-twin.ts line 13) — the
+// on-demand chain was missing this branch entirely, which is why on-demand design
+// briefs were coming back as vague commentary instead of Ravi's actual spec.
+const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
+
+function getPlatformLabel(category: string): string {
+  const map: Record<string, string> = {
+    linkedin_post: 'LinkedIn', instagram_post: 'Instagram', facebook_post: 'Facebook',
+    twitter_post: 'X', tiktok_post: 'TikTok', youtube_post: 'YouTube', social_post: 'Social',
+    content_creation: 'Content', press_release: 'Press', design_brief: 'Design',
+    localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
+    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
+  };
+  return map[category] ?? 'Social';
+}
+
 // ─── JSON extractor — finds first complete JSON object, ignores surrounding content ──
 
 function extractJSON(text: string): Record<string, unknown> | null {
@@ -307,6 +326,37 @@ async function runTwinSynthesisOnItem(
   complianceFlags: string[]
 ): Promise<string | null> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+
+  // ── Client-facing deliverables pass through verbatim ──────────────────────
+  // Design briefs, social posts, copy, press releases, etc. ARE the deliverable —
+  // DeAnna takes Ravi's brief straight to Claude Design, Chloe's copy straight to
+  // publishing. Running these through the Twin synthesis rewrite below destroys
+  // the exact specs (hex codes, image-gen prompts, grid coordinates) the agent
+  // was asked to produce. Same branch the daily chain already has (cmd-twin.ts).
+  if (CLIENT_FACING_CATEGORIES.includes(item.category as string)) {
+    console.log(`[on-demand] Client-facing category (${item.category}) — passing raw output through verbatim for ${item.agent_name}`);
+    // Same cleanup as the daily chain (cmd-twin.ts): strip any trailing compliance-audit
+    // sections and markdown bold/italic markers, but do NOT rewrite the actual content.
+    let content = item.raw_output as string;
+    const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
+    for (const cutoff of complianceCutoffs) { const idx = content.indexOf(cutoff); if (idx !== -1) content = content.slice(0, idx).trim(); }
+    content = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+    const platformLabel = getPlatformLabel(item.category as string);
+    return await dbInsert("approvals", {
+      source:        "twin_on_demand",
+      trigger_type:  item.category,
+      agent_name:    item.agent_name,
+      agent_role:    item.division,
+      division:      item.division,
+      task_brief:    `${platformLabel} — On-Demand: ${item.agent_name} | ${today}`,
+      output:        content,
+      status:        "pending",
+      notify_deanna: true,
+      priority:      "high",
+      category:      "social",
+      platform:      platformLabel,
+    });
+  }
 
   const flagsSection = complianceFlags.length > 0
     ? `\n\nCOMPLIANCE FLAGS — include at end of card as "## Compliance Flags" section:\n${complianceFlags.map(f => `- ${f}`).join("\n")}`
