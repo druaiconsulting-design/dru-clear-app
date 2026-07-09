@@ -17,15 +17,14 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // same list and logic already used by the daily chain (cmd-twin.ts line 13) — the
 // on-demand chain was missing this branch entirely, which is why on-demand design
 // briefs were coming back as vague commentary instead of Ravi's actual spec.
-const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_post','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
-
-// Second, independent passthrough mechanism from the daily chain (cmd-twin.ts line 17) —
-// these specific agents ALWAYS surface their raw output regardless of category. This is
-// how Theo (presentation_design), Kwame (proposals), and Amelia (video_production) get
-// their real deliverables through daily, even though their categories aren't in the list
-// above. Missing this the first time meant 3 of DeAnna's 6 quick-command shortcuts would
-// have hit the exact same bug Ravi's design brief did.
-const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos'];
+// On-demand requests pass through raw by default — the agent's actual output IS
+// the deliverable DeAnna wants. Only these agents' entire job is advising/reviewing
+// DeAnna herself rather than producing something client-facing, so only they get
+// the executive-synthesis rewrite. This list intentionally short and by name, not
+// category — everyone else (Marketing, RGS, HR, Content & Brand, Client Delivery,
+// Customer Support, Community Connection, etc.) passes through raw. Daily chain
+// (cmd-twin.ts) is untouched — DeAnna is auditing that queue separately.
+const INTERNAL_ADVISORY_AGENTS = ['Raymond Holloway', 'Travis Weston', 'Priya Sharma', 'Isabella Moreno', 'Diego Reyes', 'Yuki Tanaka', 'Marcus Chen', 'Omar Patel', 'Ryan Nakamura', 'Hyun-Ji Kim'];
 
 function getPlatformLabel(category: string): string {
   const map: Record<string, string> = {
@@ -233,8 +232,13 @@ ${item.raw_output}`,
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
 
 async function runGovernanceOnItem(item: Record<string, unknown>): Promise<{ cleared: boolean; notes: string; flags: string }> {
-  const clientFacingCategories = ["social_post","linkedin_post","email_marketing","outreach","content_creation","digital_marketing","press_release","copywriting"];
-  const isClientFacing = clientFacingCategories.includes(item.category as string);
+  // Same rule as Twin synthesis: client-facing by default, except the short named
+  // internal-advisory list. Keeps Governance's block conditions consistent with
+  // which agents actually produce client-facing deliverables vs internal advice.
+  const isInternalAdvisory = INTERNAL_ADVISORY_AGENTS.some(name =>
+    (item.agent_name as string).toLowerCase().includes(name.toLowerCase())
+  );
+  const isClientFacing = !isInternalAdvisory;
 
   const raw = await callAnthropic(
     `${GENIUS_MODE}
@@ -242,6 +246,9 @@ async function runGovernanceOnItem(item: Record<string, unknown>): Promise<{ cle
 You are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella Moreno has cleared this content for trademark and class compliance. Your role is to review for legal risk, privacy concerns, financial accuracy, and brand consistency.
 
 PANEL MEMBERS: Khalid Hassan (Disclaimers) · Sofia Petrov (Privacy) · James Osei (Contracts) · Mei Lin (Brand Protection)
+
+TRADEMARK RULE — NEVER BLOCK ON THIS, NO EXCEPTIONS:
+DeAnna's marks (DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™) all correctly use the ™ symbol, not ®. ™ denotes a claimed trademark and requires ZERO federal registration — pending, common-law, or unregistered marks all use ™ correctly and permanently, regardless of any USPTO filing's status. This is true no matter what stage any trademark application is in. Do NOT flag, question, request confirmation of, or block on trademark registration status, USPTO/EUIPO filing status, or "portfolio validation" — Isabella already cleared correct ™ usage, and that is the only thing that matters. This would only be a real concern if ® were used, which never happens here.
 
 CONTENT TYPE: ${isClientFacing ? "CLIENT-FACING MARKETING" : "INTERNAL OPERATIONAL"}
 
@@ -335,28 +342,28 @@ async function runTwinSynthesisOnItem(
 ): Promise<string | null> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
-  // ── Client-facing deliverables pass through verbatim ──────────────────────
-  // Design briefs, social posts, copy, press releases, etc. ARE the deliverable —
-  // DeAnna takes Ravi's brief straight to Claude Design, Chloe's copy straight to
-  // publishing. Running these through the Twin synthesis rewrite below destroys
-  // the exact specs (hex codes, image-gen prompts, grid coordinates) the agent
-  // was asked to produce. Same branch the daily chain already has (cmd-twin.ts).
-  const isClientFacingCategory = CLIENT_FACING_CATEGORIES.includes(item.category as string);
-  const isAlwaysSurfaceAgent = CONTENT_ALWAYS_SURFACE.some(name =>
+  // ── Passthrough by default — only internal-advisory agents get synthesized ──
+  // Everyone else's raw output IS the deliverable DeAnna wants — she takes Ravi's
+  // brief straight to Claude Design, Amelia's script straight to production, etc.
+  // Only the short named list below is exempted, since their entire job is
+  // advising/reviewing DeAnna rather than producing client-facing output.
+  const isInternalAdvisory = INTERNAL_ADVISORY_AGENTS.some(name =>
     (item.agent_name as string).toLowerCase().includes(name.toLowerCase())
   );
 
-  if (isClientFacingCategory || isAlwaysSurfaceAgent) {
-    console.log(`[on-demand] Client-facing (category=${item.category}, always_surface=${isAlwaysSurfaceAgent}) — passing raw output through verbatim for ${item.agent_name}`);
-    // Same cleanup as the daily chain (cmd-twin.ts): strip any trailing compliance-audit
-    // sections and markdown bold/italic markers, but do NOT rewrite the actual content.
+  if (!isInternalAdvisory) {
+    console.log(`[on-demand] Passthrough by default — raw output for ${item.agent_name} (category=${item.category})`);
+    // Strip any trailing compliance-audit sections and markdown bold/italic markers,
+    // but do NOT rewrite the actual content.
     let content = item.raw_output as string;
     const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
     for (const cutoff of complianceCutoffs) { const idx = content.indexOf(cutoff); if (idx !== -1) content = content.slice(0, idx).trim(); }
     content = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
 
-    if (isClientFacingCategory) {
-      // Mechanism 1: category-based → "social" card format (Design, LinkedIn, Copy, etc.)
+    // Categories with a known social/platform label get tagged as such; everything
+    // else gets a generic content_review card. Either way, the content is verbatim.
+    const knownPlatformCategories = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','press_release','design_brief','localization','copywriting','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
+    if (knownPlatformCategories.includes(item.category as string)) {
       const platformLabel = getPlatformLabel(item.category as string);
       return await dbInsert("approvals", {
         source:        "twin_on_demand",
@@ -374,8 +381,6 @@ async function runTwinSynthesisOnItem(
       });
     }
 
-    // Mechanism 2: agent-name-based (Theo, Kwame, Amelia, Jordan, Simone, Chloe) →
-    // "content_review" card format, matching cmd-twin.ts's CONTENT_ALWAYS_SURFACE branch
     return await dbInsert("approvals", {
       source:        "twin_on_demand",
       trigger_type:  item.category,
