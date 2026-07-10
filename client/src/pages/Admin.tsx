@@ -227,6 +227,227 @@ function ClientIntelligenceDashboard() {
   );
 }
 
+type JourneyStage = "90_day_active" | "gate_completed" | "app_subscriber" | "mastermind";
+
+interface JourneyRow {
+  id: string;
+  client_name: string | null;
+  email: string | null;
+  stage: JourneyStage;
+  amount_paid: number | null;
+  stage_updated_at: string;
+  notes: string | null;
+}
+
+const STAGE_META: Record<JourneyStage, { label: string; color: string; icon: string }> = {
+  "90_day_active":  { label: "90-Day Active",   color: "#D4AF37", icon: "🌱" },
+  "gate_completed": { label: "Gate Completed",  color: "#1E88E5", icon: "🚪" },
+  "app_subscriber": { label: "App Subscriber",  color: "#C2185B", icon: "📱" },
+  "mastermind":     { label: "Mastermind",      color: "#43A047", icon: "👑" },
+};
+
+const STAGE_OPTIONS: JourneyStage[] = ["90_day_active", "gate_completed", "app_subscriber", "mastermind"];
+
+const EMPTY_FORM = { id: "", client_name: "", email: "", stage: "90_day_active" as JourneyStage, amount_paid: "", notes: "" };
+
+function FunnelTrackerDashboard() {
+  const [rows, setRows]         = useState<JourneyRow[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState("");
+  const [stageFilter, setStageFilter] = useState("ALL");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm]         = useState(EMPTY_FORM);
+  const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const fetchRows = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("client_journey_stages")
+        .select("id, client_name, email, stage, amount_paid, stage_updated_at, notes")
+        .order("stage_updated_at", { ascending: false });
+      if (!error && data) setRows(data as JourneyRow[]);
+    } catch (err) { console.error("Failed to fetch client_journey_stages:", err); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchRows(); }, []);
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<JourneyStage, number> = { "90_day_active": 0, "gate_completed": 0, "app_subscriber": 0, "mastermind": 0 };
+    rows.forEach((r) => { if (counts[r.stage] !== undefined) counts[r.stage]++; });
+    return counts;
+  }, [rows]);
+
+  const filtered = useMemo(() => rows.filter((r) => {
+    const matchesStage = stageFilter === "ALL" || r.stage === stageFilter;
+    const q = search.toLowerCase();
+    const matchesSearch = !q || (r.client_name || "").toLowerCase().includes(q) || (r.email || "").toLowerCase().includes(q);
+    return matchesStage && matchesSearch;
+  }), [rows, search, stageFilter]);
+
+  const openAdd = () => { setForm(EMPTY_FORM); setSaveError(""); setShowForm(true); };
+  const openEdit = (row: JourneyRow) => {
+    setForm({
+      id: row.id,
+      client_name: row.client_name || "",
+      email: row.email || "",
+      stage: row.stage,
+      amount_paid: row.amount_paid != null ? String(row.amount_paid) : "",
+      notes: row.notes || "",
+    });
+    setSaveError("");
+    setShowForm(true);
+  };
+  const closeForm = () => { setShowForm(false); setForm(EMPTY_FORM); setSaveError(""); };
+
+  const handleSave = async () => {
+    if (!form.email.trim()) { setSaveError("Email is required."); return; }
+    setSaving(true); setSaveError("");
+    const payload = {
+      client_name: form.client_name.trim() || null,
+      email: form.email.trim().toLowerCase(),
+      stage: form.stage,
+      amount_paid: form.amount_paid.trim() === "" ? null : Number(form.amount_paid),
+      notes: form.notes.trim() || null,
+      stage_updated_at: new Date().toISOString(),
+    };
+    try {
+      const { error } = form.id
+        ? await supabase.from("client_journey_stages").update(payload).eq("id", form.id)
+        : await supabase.from("client_journey_stages").insert(payload);
+      if (error) { setSaveError(error.message); }
+      else { closeForm(); fetchRows(); }
+    } catch (err: any) { setSaveError(err?.message || "Something went wrong."); }
+    finally { setSaving(false); }
+  };
+
+  const SUMMARY_CARDS = STAGE_OPTIONS.map((stage) => ({
+    label: STAGE_META[stage].label,
+    value: stageCounts[stage],
+    color: STAGE_META[stage].color,
+    icon: STAGE_META[stage].icon,
+  }));
+
+  return (
+    <div style={{ marginBottom: "2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.25)" }} />
+        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "#D4AF37", whiteSpace: "nowrap" as const }}>Funnel Tracker</p>
+        <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.25)" }} />
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
+        {SUMMARY_CARDS.map((card) => (
+          <div key={card.label} style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 10, padding: "0.875rem 1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
+              <span style={{ fontSize: "0.9rem" }}>{card.icon}</span>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: card.color, fontWeight: 700, fontSize: "1.3rem", margin: 0 }}>{loading ? "..." : card.value}</p>
+            </div>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.6rem", letterSpacing: "0.05em", textTransform: "uppercase" as const, margin: 0 }}>{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
+        <input type="text" placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: 1, minWidth: 200, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", outline: "none" }} />
+        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}
+          style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.55rem 0.875rem", color: "#0A2342", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", outline: "none" }}>
+          <option value="ALL">All Stages</option>
+          {STAGE_OPTIONS.map((s) => <option key={s} value={s}>{STAGE_META[s].label}</option>)}
+        </select>
+        <button onClick={openAdd}
+          style={{ background: "#D4AF37", color: "#0A2342", border: "none", borderRadius: 6, padding: "0.55rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: "pointer", whiteSpace: "nowrap" as const }}>
+          + Add / Override
+        </button>
+      </div>
+
+      {/* Manual add/edit form */}
+      {showForm && (
+        <div style={{ background: "rgba(30,136,229,0.05)", border: "1px solid rgba(30,136,229,0.25)", borderRadius: 10, padding: "1.1rem 1.25rem", marginBottom: "1.25rem" }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1E88E5", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.9rem" }}>{form.id ? "Edit Entry" : "Manual Entry"}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.6rem" }}>
+            <input type="text" placeholder="Client name" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+              style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", outline: "none" }} />
+            <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+              style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", outline: "none" }} />
+            <select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as JourneyStage })}
+              style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 0.75rem", fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 600, outline: "none" }}>
+              {STAGE_OPTIONS.map((s) => <option key={s} value={s}>{STAGE_META[s].label}</option>)}
+            </select>
+            <input type="number" placeholder="Amount paid" value={form.amount_paid} onChange={(e) => setForm({ ...form, amount_paid: e.target.value })}
+              style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", outline: "none" }} />
+          </div>
+          <input type="text" placeholder="Notes (e.g. refund, comped seat, manual correction)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            style={{ width: "100%", boxSizing: "border-box" as const, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", outline: "none", marginBottom: "0.75rem" }} />
+          {saveError && <p style={{ color: "#E53935", fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", marginBottom: "0.6rem" }}>{saveError}</p>}
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button onClick={handleSave} disabled={saving}
+              style={{ background: "#1E88E5", color: "#FFFFFF", border: "none", borderRadius: 6, padding: "0.5rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.06em", cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saving..." : form.id ? "Save Changes" : "Add Entry"}
+            </button>
+            <button onClick={closeForm}
+              style={{ background: "transparent", color: "rgba(10,35,66,0.5)", border: "1px solid rgba(10,35,66,0.2)", borderRadius: 6, padding: "0.5rem 1.1rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.06em", cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.68rem", marginBottom: "0.75rem" }}>
+        {loading ? "Loading..." : `${filtered.length} client${filtered.length !== 1 ? "s" : ""}${stageFilter !== "ALL" || search ? " (filtered)" : ""}`}
+      </p>
+
+      {loading ? (
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
+          <p style={{ color: "rgba(10,35,66,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>Loading funnel data...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 8, padding: "2rem", textAlign: "center" as const }}>
+          <p style={{ color: "rgba(10,35,66,0.4)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem" }}>
+            {rows.length === 0 ? "No funnel activity yet - clients will appear here as payments come in." : "No results match your filter."}
+          </p>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" as const, borderRadius: 8, border: "1px solid rgba(10,35,66,0.12)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 700 }}>
+            <thead>
+              <tr style={{ background: "rgba(212,175,55,0.08)", borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
+                {["Client","Email","Stage","Amount","Updated","Notes",""].map((h) => (
+                  <th key={h} style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, padding: "0.6rem 0.75rem", textAlign: "left" as const, whiteSpace: "nowrap" as const }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r, i) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid rgba(10,35,66,0.06)", background: i % 2 === 0 ? "#FFFFFF" : "rgba(10,35,66,0.02)" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" as const }}>{r.client_name || "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.65)", fontSize: "0.68rem" }}>{r.email || "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem" }}>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", color: STAGE_META[r.stage]?.color || "#0A2342", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.06em", background: `${STAGE_META[r.stage]?.color}18`, border: `1px solid ${STAGE_META[r.stage]?.color}50`, borderRadius: 4, padding: "2px 7px", whiteSpace: "nowrap" as const }}>{STAGE_META[r.stage]?.label || r.stage}</span>
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Playfair Display', serif", color: "#43A047", fontSize: "0.8rem", fontWeight: 700, whiteSpace: "nowrap" as const }}>{r.amount_paid != null ? `$${Number(r.amount_paid).toLocaleString()}` : "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.65rem", whiteSpace: "nowrap" as const }}>{new Date(r.stage_updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.65rem", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{r.notes || "-"}</td>
+                  <td style={{ padding: "0.6rem 0.75rem" }}>
+                    <button onClick={() => openEdit(r)}
+                      style={{ background: "transparent", color: "#1E88E5", border: "1px solid rgba(30,136,229,0.3)", borderRadius: 5, padding: "0.3rem 0.6rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", whiteSpace: "nowrap" as const }}>
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const { user } = useAuth();
   const [copied, setCopied]                     = useState(false);
@@ -324,6 +545,8 @@ export default function Admin() {
         </div>
 
         <ClientIntelligenceDashboard />
+
+        <FunnelTrackerDashboard />
 
         {/* Private Client Links */}
         <div style={{ background: "rgba(194,24,91,0.04)", border: "1px solid rgba(194,24,91,0.25)", borderRadius: 12, padding: "1.25rem 1.5rem", marginBottom: "2rem" }}>
