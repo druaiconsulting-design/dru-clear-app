@@ -14,6 +14,8 @@ const QUICK_LINKS = [
   { label: "GitHub - Website",     href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
   { label: "GitHub - Frameworks",  href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
   { label: "GitHub - Courses",     href: "https://github.com/druaiconsulting-design/druaiconsulting-courses", icon: "💻" },
+  { label: "GitHub - Members",     href: "https://github.com/druaiconsulting-design/druaiconsulting-members", icon: "💻" },
+  { label: "GitHub - Assets",      href: "https://github.com/druaiconsulting-design/druaiconsulting-assets", icon: "💻" },
   { label: "Terms of Engagement",  href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
