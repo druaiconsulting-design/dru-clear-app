@@ -31,6 +31,7 @@ const PAYMENT_LINKS = [
   { label: "From Confusion to Confident - Self-Paced",       price: "$1,497",  href: "https://link.druaiconsulting.com/payment-link/69f55d0cb615f70a8a33b5fd", color: "#D4AF37" },
   { label: "From Confusion to Confident - Live Cohort",      price: "$7,997",  href: "https://link.druaiconsulting.com/payment-link/69f55e7bb18c99dd72d3c0e5", color: "#C2185B" },
   { label: "From Confusion to Confident - Mastermind",       price: "$12,997", href: "https://link.druaiconsulting.com/payment-link/69f55bf3b615f70a8a33b5fb", color: "#43A047" },
+  { label: "IP App Subscription",                            price: "$297/mo", href: "https://link.druaiconsulting.com/payment-link/6a504751c981f3feae6e85f8", color: "#1E88E5" },
 ];
 
 const TIER_COLORS: Record<string, string> = {
