@@ -10,13 +10,13 @@ const QUICK_LINKS = [
   { label: "Main Website",         href: "https://druaiconsulting.com", icon: "🌐" },
   { label: "Frameworks Page",      href: "https://frameworks.druaiconsulting.com", icon: "📐" },
   { label: "Course Page",          href: "https://courses.druaiconsulting.com", icon: "🎓" },
+  { label: "Terms of Engagement",  href: "https://app.druaiconsulting.com/terms", icon: "📄" },
   { label: "GitHub - App",         href: "https://github.com/druaiconsulting-design/dru-clear-app", icon: "💻" },
   { label: "GitHub - Website",     href: "https://github.com/druaiconsulting-design/druaiconsulting-website", icon: "💻" },
   { label: "GitHub - Frameworks",  href: "https://github.com/druaiconsulting-design/druaiconsulting-frameworks", icon: "💻" },
   { label: "GitHub - Courses",     href: "https://github.com/druaiconsulting-design/druaiconsulting-courses", icon: "💻" },
   { label: "GitHub - Members",     href: "https://github.com/druaiconsulting-design/druaiconsulting-members", icon: "💻" },
   { label: "GitHub - Assets",      href: "https://github.com/druaiconsulting-design/druaiconsulting-assets", icon: "💻" },
-  { label: "Terms of Engagement",  href: "https://app.druaiconsulting.com/terms", icon: "📄" },
 ];
 
 const PAYMENT_LINKS = [
