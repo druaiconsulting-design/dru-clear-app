@@ -1,6 +1,10 @@
 // api/cmd-command-layer.ts
 // Executive Leadership / Command Layer — runs daily at 18:20 UTC via dru-command-layer-daily
-// Picks up governance_cleared items, Raymond + Travis + Priya review
+// Picks up governance_cleared items — Raymond Holloway, sole Chief of Staff, reviews each in ONE call
+// RESTRUCTURE (July 2026): Raymond consolidated the command layer solo. His single JSON absorbs
+//   Travis's packaging note (package_notes) and Priya's "needs DeAnna today" flag (deanna_action).
+//   3 API calls per item → 1. The travis_notes / priya_notes CSQ columns are retained for
+//   downstream compatibility but are now authored by Raymond.
 // FIX: extractJSON replaces greedy regex that was causing SyntaxError on complex content
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -67,36 +71,26 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
 
 async function runCommandLayer(): Promise<{ reviewed: number }> {
   const items = await getCSQItems('governance_cleared');
-  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (sequential to avoid rate limits)...`);
+  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (Raymond solo — one call per item)...`);
   if (items.length === 0) return { reviewed: 0 };
 
   for (const item of items) {
     try {
-      const [rawRaymond, rawTravis, rawPriya] = await Promise.all([
-        callAnthropic(
-          `${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Content cleared by Isabella and Governance. Assess strategic priority.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the Twin"}`,
-          400
-        ),
-        callAnthropic(
-          `${GENIUS_MODE}\nYou are Travis Weston, Assistant Chief of Staff for DRU AI Consulting. Package this for the AI Twin.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON: {"organized":true,"package_notes":"one sentence on how this fits today's briefing"}`,
-          400
-        ),
-        callAnthropic(
-          `${GENIUS_MODE}\nYou are Priya Sharma, Executive Assistant to DeAnna R. Upshaw. Flag anything time-sensitive or requiring DeAnna's personal action today.\nAGENT: ${item.agent_name} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nIn 1-2 sentences, add your executive perspective.`,
-          200
-        ),
-      ]);
+      const rawRaymond = await callAnthropic(
+        `${GENIUS_MODE}\nYou are Raymond Holloway, sole Chief of Staff for DRU AI Consulting. You run the entire command layer in a single consolidated review. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
+        600
+      );
 
       const raymond = JSON.parse(extractJSON(rawRaymond));
-      const travis = JSON.parse(extractJSON(rawTravis));
 
       await updateCSQ(item.id, {
         raymond_reviewed: true,
         raymond_notes: raymond?.notes ?? '',
         raymond_priority: raymond?.priority ?? 'normal',
         raymond_action: raymond?.action ?? 'route_to_twin',
-        travis_notes: travis?.package_notes ?? '',
-        priya_notes: rawPriya.trim(),
+        // Columns retained for downstream compatibility — both authored by Raymond post-restructure:
+        travis_notes: raymond?.package_notes ?? '',
+        priya_notes: raymond?.deanna_action ?? '',
         command_approved_at: new Date().toISOString(),
         status: 'command_approved',
         priority: raymond?.priority ?? 'normal',
@@ -123,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) {
     res.status(401).json({ error: 'Unauthorized' }); return;
   }
-  console.log('[cmd-command-layer] Executive Leadership triggered');
+  console.log('[cmd-command-layer] Executive Leadership triggered — Raymond Holloway, sole Chief of Staff');
   const result = await runCommandLayer();
   res.status(202).json({ success: true, ...result });
 }
