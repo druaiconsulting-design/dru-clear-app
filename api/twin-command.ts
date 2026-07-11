@@ -1,7 +1,10 @@
 // api/twin-command.ts
 // On-demand agent routing — full governance chain
 // DeAnna → Twin chat → twin.ts detects command → twin-command.ts runs chain
-// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Intelligence Hub
+// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Raymond, sole Chief of Staff) → Twin → Intelligence Hub
+// RESTRUCTURE (July 2026): Raymond runs the command layer solo. Travis Wealthy (name corrected
+//   from Weston) promoted to Executive Producer, Video Production. Priya Sharma moved to
+//   Executive Assistant, Inbox Command (Gmail super agent build in progress).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
@@ -12,9 +15,9 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Always include ™ on every mention: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
-  raymond:     `You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You provide executive-level strategic oversight, priority assessment, and operations command.`,
-  travis:      `You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You organize, package, and route outputs for the AI Twin.`,
-  priya:       `You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle executive context, scheduling, and time-sensitive flags.`,
+  raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
+  travis:      `You are Travis Wealthy, Executive Producer, Video Production for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You run the video production pipeline — scripting through render, hosting, and publishing — and package the AI Twin's on-camera content.`,
+  priya:       `You are Priya Sharma, Executive Assistant, Inbox Command for DeAnna R. Upshaw — AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle executive context, scheduling, and time-sensitive flags. Your Gmail-based inbox command pipeline is in progress — your seat goes live when it does.`,
   isabella:    `You are Isabella Moreno, Director of Compliance for DRU AI Consulting. ${GENIUS_MODE} ${TRADEMARK_RULES} You ensure all DRU™ marks are properly used and content stays within Classes 35, 41, 42.`,
   omar:        `You are Omar Patel, Lead Scoring Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You score, analyze, and route leads to assessment.druaiconsulting.com.`,
   ryan:        `You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage GHL CRM, lead intelligence briefings, and contact updates.`,
@@ -70,7 +73,7 @@ const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
 };
 
 const AGENT_NAMES: Record<string, string> = {
-  raymond:"Raymond Holloway", travis:"Travis Weston", priya:"Priya Sharma", isabella:"Isabella Moreno",
+  raymond:"Raymond Holloway", travis:"Travis Wealthy", priya:"Priya Sharma", isabella:"Isabella Moreno",
   omar:"Omar Patel", ryan:"Ryan Nakamura", serena:"Serena Jackson", mateo:"Mateo Gonzalez",
   aaliyah:"Aaliyah Foster", jaylen:"Jaylen Brooks", chloe:"Chloe Dubois", zara:"Zara Ahmed",
   elena:"Elena Vasquez", kwame:"Kwame Asante", camila:"Camila Flores", darius:"Darius King",
@@ -87,7 +90,7 @@ const AGENT_NAMES: Record<string, string> = {
 };
 
 const AGENT_DIVISIONS: Record<string, string> = {
-  raymond:"Command Layer", travis:"Command Layer", priya:"Command Layer", isabella:"AI Governance",
+  raymond:"Command Layer", travis:"Video Production", priya:"Executive Support", isabella:"AI Governance",
   omar:"Revenue, Growth & Sales", ryan:"Revenue, Growth & Sales", serena:"Revenue, Growth & Sales", mateo:"Revenue, Growth & Sales",
   aaliyah:"Revenue, Growth & Sales", jaylen:"Revenue, Growth & Sales", chloe:"Revenue, Growth & Sales", zara:"Revenue, Growth & Sales",
   elena:"Revenue, Growth & Sales", kwame:"Revenue, Growth & Sales", camila:"Content & Brand", darius:"Content & Brand",
@@ -105,7 +108,7 @@ const AGENT_DIVISIONS: Record<string, string> = {
 };
 
 const AGENT_CATEGORIES: Record<string, string> = {
-  raymond:"coaching", travis:"coaching", priya:"coaching", isabella:"disclaimer_review",
+  raymond:"coaching", travis:"video_production", priya:"coaching", isabella:"disclaimer_review",
   omar:"lead_intelligence", ryan:"lead_intelligence", serena:"coaching", mateo:"sales_support",
   aaliyah:"outreach", jaylen:"email_marketing", chloe:"copywriting", zara:"product_launch",
   elena:"product_knowledge", kwame:"proposals", camila:"social_post", darius:"linkedin_post",
