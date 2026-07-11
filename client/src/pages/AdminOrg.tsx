@@ -113,7 +113,7 @@ export default function AdminOrg() {
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
-            <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>{agentCount || 54} agents · {divisions.length || 11} divisions · DeAnna → AI Twin → Raymond → Travis → Priya → {agentCount || 54} Agents · All agents operate in Genius Mode</p>
+            <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>{agentCount || 55} agents · {divisions.length || 11} divisions · DeAnna → AI Twin → Raymond → {agentCount || 55} Agents · All agents operate in Genius Mode</p>
           </div>
           <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Profit Pulse</div>
         </div>
@@ -135,9 +135,9 @@ export default function AdminOrg() {
             <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice · Face of the Company</p>
               <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
-                {["DeAnna's Voice", "Persistent Memory", "Routes All Agents"].map(b => (
+                {["DeAnna's Voice", "Face of All Video Content", "Persistent Memory", "Routes All Agents"].map(b => (
                   <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#FFFFFF" }}>{b}</span>
                 ))}
               </div>
@@ -149,11 +149,11 @@ export default function AdminOrg() {
           <div style={{ background: "#0A2342", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             {!raymondErr ? <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : <div style={fallback("RH", 54)}>RH</div>}
             <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Vice President</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff · Sole Command Layer</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length || 11} Divisions · {agentCount || 54} Agents</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length || 11} Divisions · {agentCount || 55} Agents · Daily briefing carries his name</p>
               <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
-                {["Strategic Oversight", "Final Authority", "Operations Command"].map(b => (
+                {["Strategic Oversight", "Single Consolidated Review", "Operations Command"].map(b => (
                   <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.5rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#D4AF37" }}>{b}</span>
                 ))}
               </div>
@@ -162,24 +162,27 @@ export default function AdminOrg() {
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
-          <div style={{ background: "#1B4D8E", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            {!travisErr ? <img src={TRAVIS_PHOTO} alt="Travis Wealthy" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : <div style={fallback("TW", 48)}>TW</div>}
-            <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Assistant Vice President</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Wealthy</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Supports Raymond · Organizes & packages for the Twin</p>
-            </div>
-          </div>
+          {/* Executive team — promoted out of the command layer, July 2026 restructure */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" as const, justifyContent: "center" }}>
 
-          <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
-
-          <div style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-            {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
-            <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Supports Raymond & Travis · Executive context & time-sensitive flags</p>
+            <div style={{ background: "#1B4D8E", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+              {!travisErr ? <img src={TRAVIS_PHOTO} alt="Travis Wealthy" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : <div style={fallback("TW", 48)}>TW</div>}
+              <div>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Producer · Video Production</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Wealthy</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>Runs the video pipeline · Script → render → publish</p>
+              </div>
             </div>
+
+            <div style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+              {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
+              <div>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant · Inbox Command</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Gmail super agent · Build in progress</p>
+              </div>
+            </div>
+
           </div>
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
