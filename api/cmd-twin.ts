@@ -1,8 +1,12 @@
 // api/cmd-twin.ts
-// AI Twin Synthesis — runs daily at 18:40 UTC via dru-twin-synthesis-daily
+// Daily Synthesis — runs daily at 18:40 UTC via dru-twin-synthesis-daily
 // Picks up command_approved items, synthesizes division cards + daily briefing
 // Fires ONE GHL notification to DeAnna when complete
 // PHASE 2: Detects Darius multi-platform JSON → populates linkedin_content, facebook_content, instagram_caption
+// RESTRUCTURE (July 2026): Daily synthesis cards now carry Raymond Holloway's name (sole Chief of Staff).
+//   Travis/Priya note slots removed — travis_notes/priya_notes columns are Raymond-authored
+//   (packaging note + DeAnna flag from his single consolidated command-layer call).
+//   The AI Twin is now the face of all video content and retains on-demand chat (twin.ts — untouched).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
@@ -132,13 +136,13 @@ function getDivisionPrompt(division: string, today: string, content: string): st
     'Community Connection': `Synthesize the Community Connection division's work. Cover: DRU CLEAR™ insights (Dominique/Elijah), 5D Leadership™ content (Solange/Isaiah Webb), 5C Cultural DNA™ posts (Nadia/Victor), AI Sales Mastery™ (Sasha/Tariq), community facilitation and upsell signals (Zoe/Micah). 200-300 words. First person.`,
   };
   const instruction = instructions[division] ?? `Synthesize this division's work. 200-300 words. First person.`;
-  return `You are DeAnna R. Upshaw's AI Twin synthesizing the ${division} division's work. Today: ${today}.
+  return `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting, synthesizing the ${division} division's work into DeAnna R. Upshaw's daily briefing. Today: ${today}.
 BRAND: "AI Mastery. Leadership Clarity. Measurable Results."
 FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
 ${division.toUpperCase()} DIVISION OUTPUTS:
 ${content}
 ${instruction}
-Write as DeAnna speaking to herself. Start with ## ${division}.`;
+Write as Raymond Holloway briefing DeAnna directly. Start with ## ${division}.`;
 }
 
 // Returns the YYYY-MM-DD calendar date string in America/Chicago for a given Date.
@@ -173,7 +177,8 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
 
   const triggeredAt = new Date().toISOString();
   const approvalMap: Record<string, string> = {};
-  const allSummary = items.map(i => `${i.agent_name} (${i.division}): ${i.raw_output.slice(0, 150)}... Raymond: ${i.raymond_notes ?? ''} | Priya: ${i.priya_notes ?? ''}`).join('\n');
+  // Raymond-authored fields post-restructure: raymond_notes = strategic note, priya_notes column = his DeAnna flag
+  const allSummary = items.map(i => `${i.agent_name} (${i.division}): ${i.raw_output.slice(0, 150)}... Raymond: ${i.raymond_notes ?? ''}${i.priya_notes ? ` | Needs DeAnna: ${i.priya_notes}` : ''}`).join('\n');
 
   const sbUrl = process.env.VITE_SUPABASE_URL;
   const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -198,18 +203,18 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
       }
     }
     await callTwin(
-      `You are DeAnna R. Upshaw's AI Twin. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("My team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today. If none: "No decisions required today — team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,
+      `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting, delivering DeAnna R. Upshaw's daily briefing. Today: ${today}.\nWrite the Daily Briefing card with ONLY these three sections:\n\n## Daily Briefing — ${today}\n\n**Executive Summary**\n3-4 sentences ("Your team has...") — what was accomplished today across all divisions.\n\n**Decisions Needed**\nBullet list of anything requiring DeAnna's personal action today — lead with any "Needs DeAnna" flags below. If none: "No decisions required today — the team is executing."\n\n**Tomorrow's Priorities**\n3-5 specific bullets of what the team is positioned to execute tomorrow.\n\nTODAY'S TEAM WORK:\n${allSummary}`,
       1200
     ).then(async synthesis => {
       const id = await writeApproval({
         source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
-        agent_name: "DeAnna's AI Twin", agent_role: 'Master Orchestrator', division: 'Command',
+        agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division: 'Command',
         task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
         notify_deanna: true, priority: items.some(i => i.priority === 'high') ? 'high' : 'normal',
         category: 'daily_briefing', platform: null,
       });
       if (id) { approvalMap['Command'] = id; }
-      console.log(`[twin] Daily Briefing card written`);
+      console.log(`[twin] Daily Briefing card written — Raymond Holloway`);
     }).catch(err => { console.error('[twin] Daily Briefing synthesis failed:', err); });
   })();
 
@@ -217,14 +222,15 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
   const divisionSynthesisPromises = Object.entries(byDivision)
     .filter(([division]) => division !== 'Community Connection')
     .map(async ([division, divItems]) => {
-      const content = divItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes ?? ''} | Travis: ${i.travis_notes ?? ''} | Priya: ${i.priya_notes ?? ''}`).join('\n\n---\n\n');
+      // Raymond-authored fields post-restructure: notes + packaging + DeAnna flag all from his single call
+      const content = divItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}\nRaymond: ${i.raymond_notes ?? ''}${i.travis_notes ? ` | Packaging: ${i.travis_notes}` : ''}${i.priya_notes ? ` | Needs DeAnna: ${i.priya_notes}` : ''}`).join('\n\n---\n\n');
       try {
         const divFlags = flagsByDivision[division] ?? [];
         const flagsSection = divFlags.length > 0 ? `\n\nCOMPLIANCE FLAGS — include at end of card as "## Compliance Flags" section:\n${divFlags.map(f => `- ${f}`).join('\n')}` : '';
         const synthesis = await callTwin(getDivisionPrompt(division, today, content) + flagsSection, 1500);
         const id = await writeApproval({
           source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
-          agent_name: "DeAnna's AI Twin", agent_role: 'Master Orchestrator', division,
+          agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division,
           task_brief: `${division} — ${divItems.length} agent${divItems.length > 1 ? 's' : ''} | ${today}`,
           output: synthesis, status: 'pending', notify_deanna: true,
           priority: divItems.some(i => i.priority === 'high') ? 'high' : 'normal',
@@ -253,7 +259,7 @@ async function runTwinSynthesis(): Promise<{ cards_created: number; items_synthe
           body: JSON.stringify({
             email: 'druaiconsulting@gmail.com', phone: '+19796186671',
             first_name: 'DeAnna', last_name: 'Upshaw',
-            agent_name: "DeAnna's AI Twin", division: 'Command', task: 'Daily Briefing',
+            agent_name: 'Raymond Holloway', division: 'Command', task: 'Daily Briefing',
             approval_id: commandApprovalId, summary: label, triggered_at: triggeredAt,
             review_url: 'https://app.druaiconsulting.com/admin-approvals',
             sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
@@ -395,7 +401,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) {
     res.status(401).json({ error: 'Unauthorized' }); return;
   }
-  console.log('[cmd-twin] Twin synthesis triggered');
+  console.log('[cmd-twin] Daily synthesis triggered — cards by Raymond Holloway, Chief of Staff');
   const result = await runTwinSynthesis();
   res.status(202).json({ success: true, ...result });
 }
