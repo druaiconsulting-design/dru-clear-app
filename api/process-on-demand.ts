@@ -1,6 +1,11 @@
 // api/process-on-demand.ts
 // Standalone on-demand chain processor — called by twin-command.ts after CSQ write
-// Flow: Isabella retry loop → Governance → Command Layer → Twin synthesis → Intelligence Hub
+// Flow: Isabella retry loop → Governance → Command Layer (Raymond, sole Chief of Staff) → Twin synthesis → Intelligence Hub
+// RESTRUCTURE (July 2026): Raymond runs the command layer solo — one consolidated call absorbs
+//   Travis's packaging note (package_notes) and Priya's "needs DeAnna today" flag (deanna_action).
+//   travis_notes/priya_notes CSQ columns retained for compatibility, now Raymond-authored.
+//   Travis Wealthy (name corrected from Weston) → Executive Producer, Video Production.
+//   On-demand synthesis cards remain the Twin's — on-demand chat is her retained role.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
@@ -24,7 +29,7 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // category — everyone else (Marketing, RGS, HR, Content & Brand, Client Delivery,
 // Customer Support, Community Connection, etc.) passes through raw. Daily chain
 // (cmd-twin.ts) is untouched — DeAnna is auditing that queue separately.
-const INTERNAL_ADVISORY_AGENTS = ['Raymond Holloway', 'Travis Weston', 'Priya Sharma', 'Isabella Moreno', 'Diego Reyes', 'Yuki Tanaka', 'Marcus Chen', 'Omar Patel', 'Ryan Nakamura', 'Hyun-Ji Kim'];
+const INTERNAL_ADVISORY_AGENTS = ['Raymond Holloway', 'Travis Wealthy', 'Priya Sharma', 'Isabella Moreno', 'Diego Reyes', 'Yuki Tanaka', 'Marcus Chen', 'Omar Patel', 'Ryan Nakamura', 'Hyun-Ji Kim'];
 
 function getPlatformLabel(category: string): string {
   const map: Record<string, string> = {
@@ -104,7 +109,7 @@ async function callTwin(prompt: string, maxTokens = 1000): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Anthropic Sonnet error ${res.status}`);
   const data = await res.json();
@@ -291,45 +296,33 @@ OR:
   return { cleared: result.cleared === true, notes: String(result.notes ?? ""), flags: String(result.flags ?? "none") };
 }
 
-// ─── Step 3: Command Layer — Priya, Travis, Raymond (Haiku) ──────────────────
+// ─── Step 3: Command Layer — Raymond Holloway, sole Chief of Staff (Haiku) ───
+// One consolidated call replaces the former Priya → Travis → Raymond sequence.
+// Return shape unchanged: priyaNotes carries his deanna_action, travisNotes his
+// package_notes — same CSQ columns downstream, all Raymond-authored.
 
 async function runCommandLayerOnItem(item: Record<string, unknown>): Promise<{ approved: boolean; priyaNotes: string; travisNotes: string; raymondNotes: string; action: string }> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
-  const priyaRaw = await callAnthropic(
-    `${GENIUS_MODE}
-You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority.
-Review this on-demand agent output. Flag any executive-level concerns or confirm clear to proceed.
-DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT: ${item.raw_output}
-Respond with ONLY this JSON — no preamble: {"notes":"your assessment","flag":false}`, 300);
-  const priya = extractJSON(priyaRaw) ?? { notes: "Reviewed. No executive flags.", flag: false };
-
-  const travisRaw = await callAnthropic(
-    `${GENIUS_MODE}
-You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
-Review this on-demand output. Determine routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
-DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT: ${item.raw_output}
-Respond with ONLY this JSON — no preamble: {"notes":"your assessment","action":"route_to_twin"}`, 300);
-  const travis = extractJSON(travisRaw) ?? { notes: "Output reviewed and packaged.", action: "route_to_twin" };
-
   const raymondRaw = await callAnthropic(
     `${GENIUS_MODE}
-You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
+You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. You run the entire command layer in a single consolidated review.
 This is an on-demand request from DeAnna. Review and approve for the Intelligence Hub.
+Your single review covers three responsibilities:
+1. FINAL ASSESSMENT — approve and assess, with routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
+2. PACKAGING — one sentence on how this output should be framed for DeAnna.
+3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
-PRIYA: ${priya.notes} | TRAVIS: ${travis.notes}
 CONTENT: ${item.raw_output}
-Respond with ONLY this JSON — no preamble: {"approved":true,"notes":"your final assessment"}`, 300);
-  const raymond = extractJSON(raymondRaw) ?? { approved: true, notes: "Approved for Intelligence Hub." };
+Respond with ONLY this JSON — no preamble: {"approved":true,"action":"route_to_twin","notes":"your final assessment","package_notes":"one sentence framing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`, 500);
+  const raymond = extractJSON(raymondRaw) ?? { approved: true, action: "route_to_twin", notes: "Approved for Intelligence Hub.", package_notes: "Output reviewed and packaged.", deanna_action: "" };
 
   return {
     approved:     raymond.approved !== false,
-    priyaNotes:   String(priya.notes ?? ""),
-    travisNotes:  String(travis.notes ?? ""),
+    priyaNotes:   String(raymond.deanna_action ?? ""),
+    travisNotes:  String(raymond.package_notes ?? ""),
     raymondNotes: String(raymond.notes ?? ""),
-    action:       String(travis.action ?? "route_to_twin"),
+    action:       String(raymond.action ?? "route_to_twin"),
   };
 }
 
@@ -402,9 +395,9 @@ async function runTwinSynthesisOnItem(
     : "";
 
   const notes = [
-    cmd.raymond ? `Raymond: ${cmd.raymond}` : "",
-    cmd.travis  ? `Travis: ${cmd.travis}`   : "",
-    cmd.priya   ? `Priya: ${cmd.priya}`     : "",
+    cmd.raymond ? `Raymond: ${cmd.raymond}`     : "",
+    cmd.travis  ? `Packaging: ${cmd.travis}`    : "",
+    cmd.priya   ? `Needs DeAnna: ${cmd.priya}`  : "",
   ].filter(Boolean).join("\n");
 
   const synthesis = await callTwin(
