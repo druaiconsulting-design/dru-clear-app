@@ -937,7 +937,7 @@ export default function AdminApprovals() {
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
                       {isBriefing && divAgents.length > 0 && (() => {
-                        const contentText = origCol.content || '';
+                        const contentText = approval.edited_output || approval.output || '';
                         const eligible = divAgents.filter(a => a.agent_name !== "DeAnna's AI Twin");
                         const mentioned = eligible.filter(a => contentText.includes(a.agent_name));
                         const agentsToShow = mentioned.length > 0 ? mentioned : eligible;
