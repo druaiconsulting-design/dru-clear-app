@@ -7,7 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use";
+type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use" | "read";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
 type PlatformTab    = "LinkedIn" | "Facebook" | "Instagram";
 
@@ -74,6 +74,13 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 // Cards that go to the Ready to Use folder — internal review, no external publish
 const READY_TO_USE_PLATFORMS = new Set(['Copy', 'Proposal', 'Design', 'Course', 'Video']);
+
+// Pure reports — consumed once, filed to Archived via the "Read" button. Never reusable content.
+const READ_CATEGORIES = new Set(['daily_briefing', 'revenue_growth', 'legal_finance', 'ai_governance', 'hr']);
+
+// Reusable deliverables — filed to Archived via "Ready to Use", browsable by folder.
+// (Ravi/Chloe/Kwame reach Ready to Use via the isSocial + READY_TO_USE_PLATFORMS check below instead.)
+const READY_TO_USE_CATEGORIES = new Set(['client_delivery', 'customer_support', 'marketing', 'content_brand', 'content_review', 'grants']);
 
 const DIVISION_COLORS: Record<string, string> = {
   "Revenue, Growth & Sales":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
@@ -244,6 +251,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     return { text: `${platform} Response`, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
+  if (approval.category === "grants")                       return { text: "Grants",             color: "#8A6E1A" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
   if (approval.division && DIVISION_COLORS[approval.division])
@@ -581,7 +589,8 @@ export default function AdminApprovals() {
     setSaving(null);
   };
   const handleArchive = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true }).eq("id", id); setSaving(null); };
-  const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"approved" }).eq("id", id); setSaving(null); };
+  // Read = pure report, consumed once. Never "approved" — approved means an action was actually taken.
+  const handleRead    = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ archived:true, status:"read" }).eq("id", id); setSaving(null); };
   const handleClearFlag     = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_flagged: false }).eq("id", id); setSavingComment(null); };
   const handleRemoveComment = async (id: string) => { setSavingComment(id); await supabase.from("community_comments").update({ is_active: false }).eq("id", id); setSavingComment(null); };
 
@@ -847,10 +856,10 @@ export default function AdminApprovals() {
               const isCCReply     = approval.category === "community_comment_reply";
               const isCCPost      = approval.category === "community_post";
               const isUpsell      = approval.category === "cc_upsell_outreach";
-              const isKnowledge   = !isApprovalCard(approval);
+              const isKnowledge   = READ_CATEGORIES.has(approval.category);
               const isSocial      = approval.category === "social";
               const isMulti       = isMultiPlatformCard(approval);
-              const isReadyToUse  = isSocial && READY_TO_USE_PLATFORMS.has(approval.platform ?? '');
+              const isReadyToUse  = READY_TO_USE_CATEGORIES.has(approval.category) || (isSocial && READY_TO_USE_PLATFORMS.has(approval.platform ?? ''));
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
               const hasConversation = !!approval.context && approval.context !== "null";
               const currentMedia  = getMediaUrls(approval.id, approval);
@@ -1136,7 +1145,8 @@ export default function AdminApprovals() {
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
                           </button>
-                          {/* Ready to Use — internal review cards (Chloe, Kwame, Theo, Jordan, Simone, Amelia) */}
+                          {/* Ready to Use — reusable deliverables (Client Delivery, Customer Support, Marketing, Content & Brand,
+                              Grants, plus individual folders: Ravi/Chloe/Kwame via platform tag, Theo/Jordan/Simone/Amelia/Nia via content_review) */}
                           {isReadyToUse ? (
                             <button
                               onClick={() => handleReadyToUse(approval.id)}
