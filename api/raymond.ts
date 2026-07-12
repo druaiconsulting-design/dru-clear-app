@@ -354,6 +354,8 @@ ${allSummary}`,
 
   // CONTENT_ALWAYS_SURFACE: Force standalone cards for key content agents
   // Skips agents already handled by social card flow to avoid duplicates
+  // Chloe and Kwame get their own Copy/Proposal folders — same platform-tag mechanism
+  // as Ravi's Designs folder — since their work is reusable deliverable content, not a report.
   for (const item of items) {
     const isAlreadySocial = SOCIAL_DIVISIONS.includes(item.division) && CLIENT_FACING_CATEGORIES.includes(item.category);
     if (isAlreadySocial) continue;
@@ -362,6 +364,8 @@ ${allSummary}`,
     );
     if (shouldSurface) {
       try {
+        const isChloe = item.agent_name.toLowerCase().includes('chloe');
+        const isKwame = item.agent_name.toLowerCase().includes('kwame');
         await writeApproval({
           source: `${item.agent_id}_content`,
           trigger_type: item.category,
@@ -373,10 +377,10 @@ ${allSummary}`,
           status: 'pending',
           notify_deanna: false,
           priority: item.priority === 'high' ? 'high' : 'normal',
-          category: 'content_review',
-          platform: null,
+          category: (isChloe || isKwame) ? 'social' : 'content_review',
+          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : null,
         });
-        console.log(`[raymond] CONTENT_ALWAYS_SURFACE standalone card: ${item.agent_name}`);
+        console.log(`[raymond] ${(isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
       } catch (err) {
         console.error(`[raymond] Standalone card failed for ${item.agent_name}:`, err);
       }
