@@ -7,7 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use";
+type ApprovalStatus = "pending" | "approved" | "rejected" | "edited" | "ready_to_use" | "read";
 type Priority       = "URGENT" | "HIGH" | "NORMAL";
 
 interface Approval {
@@ -25,7 +25,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 };
 
 const DIVISION_COLORS: Record<string, string> = {
-  "Revenue & Growth":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
+  "Revenue, Growth & Sales":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
   "Legal & Finance":"#8A6E1A", "AI Governance":"#7A0F38", "HR":"#2E6DAB",
   "Client Delivery":"#A68920", "Customer Support":"#C2185B", "Command":"#0A2342",
 };
@@ -72,6 +72,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
+  if (approval.category === "grants") return { text: "Grants", color: "#8A6E1A" };
   if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   if (approval.category === "daily_briefing") return { text: "Daily Briefing", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
@@ -113,6 +114,14 @@ export default function AdminArchived() {
     if (activeFilter === "course")       return approvals.filter(a => a.platform === "Course");
     if (activeFilter === "video")        return approvals.filter(a => a.platform === "Video");
     if (activeFilter === "proposal")     return approvals.filter(a => a.platform === "Proposal");
+    if (activeFilter === "grants")       return approvals.filter(a => a.category === "grants");
+    // Division folders — combine the division's roll-up report with any individually-surfaced
+    // deliverable work from that same division (e.g. Client Delivery = the division report +
+    // Theo/Jordan/Simone/Amelia's course/presentation/video work; Marketing = report + Nia's content).
+    if (activeFilter === "client_delivery")  return approvals.filter(a => a.category === "client_delivery" || (a.category === "content_review" && a.division === "Client Delivery"));
+    if (activeFilter === "customer_support") return approvals.filter(a => a.category === "customer_support");
+    if (activeFilter === "marketing")        return approvals.filter(a => a.category === "marketing" || (a.category === "content_review" && a.division === "Marketing"));
+    if (activeFilter === "content_brand")    return approvals.filter(a => a.category === "content_brand");
     return approvals;
   };
   const filtered = getFiltered();
@@ -145,11 +154,12 @@ export default function AdminArchived() {
         </div>
 
         {/* Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:"0.75rem", marginBottom:"1.5rem" }}>
           {[
             { label:"Total Archived", value:approvals.length,                                                 color:"rgba(10,35,66,0.6)" },
-            { label:"Approved",       value:approvals.filter(a => a.status === "approved").length,            color:"#4CAF50" },
+            { label:"Read",           value:approvals.filter(a => a.status === "read").length,                color:"#1E88E5" },
             { label:"Ready to Use",   value:approvals.filter(a => a.status === "ready_to_use").length,        color:"#D4AF37" },
+            { label:"Approved",       value:approvals.filter(a => a.status === "approved").length,            color:"#4CAF50" },
             { label:"Rejected",       value:approvals.filter(a => a.status === "rejected").length,            color:"#C2185B" },
           ].map(s => (
             <div key={s.label} style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"0.875rem 1rem" }}>
@@ -165,6 +175,11 @@ export default function AdminArchived() {
             All ({approvals.length})
           </button>
           {[
+            { key:"client_delivery",  label:"Client Delivery",  count: approvals.filter(a => a.category === "client_delivery" || (a.category === "content_review" && a.division === "Client Delivery")).length },
+            { key:"customer_support", label:"Customer Support", count: approvals.filter(a => a.category === "customer_support").length },
+            { key:"marketing",        label:"Marketing",        count: approvals.filter(a => a.category === "marketing" || (a.category === "content_review" && a.division === "Marketing")).length },
+            { key:"content_brand",    label:"Content & Brand",  count: approvals.filter(a => a.category === "content_brand").length },
+            { key:"grants",           label:"Grants",           count: approvals.filter(a => a.category === "grants").length },
             { key:"social_media", label:"Social Media", count: approvals.filter(a => a.category === "social" && new Set(['LinkedIn','Facebook','Instagram','X','TikTok','YouTube','Social','Email','Press','Localization','Outreach']).has(a.platform ?? '')).length },
             { key:"design",       label:"Design",       count: approvals.filter(a => a.platform === "Design").length },
             { key:"copy",         label:"Copy",         count: approvals.filter(a => a.platform === "Copy").length },
@@ -199,7 +214,7 @@ export default function AdminArchived() {
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.75rem" }}>
-                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "ready_to_use" ? "#D4AF37" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status === "ready_to_use" ? "READY TO USE" : approval.status}</span>
+                      <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "ready_to_use" ? "#D4AF37" : approval.status === "read" ? "#1E88E5" : approval.status === "rejected" ? "#C2185B" : "rgba(255,255,255,0.4)" }}>{approval.status === "ready_to_use" ? "READY TO USE" : approval.status === "read" ? "READ" : approval.status}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.3)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
