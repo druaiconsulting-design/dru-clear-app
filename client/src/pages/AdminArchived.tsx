@@ -83,6 +83,11 @@ export default function AdminArchived() {
   const [loading, setLoading]           = useState(true);
   const [restoring, setRestoring]       = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [expandedIds, setExpandedIds]   = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId]         = useState<string | null>(null);
+  const [editingId, setEditingId]       = useState<string | null>(null);
+  const [editText, setEditText]         = useState("");
+  const [saving, setSaving]             = useState<string | null>(null);
 
   const fetchArchived = async () => {
     const { data, error } = await supabase.from("approvals").select("*").eq("archived", true).order("created_at", { ascending: false });
@@ -98,6 +103,49 @@ export default function AdminArchived() {
     await supabase.from("approvals").update({ archived: false, status: "pending" }).eq("id", id);
     setApprovals(prev => prev.filter(a => a.id !== id));
     setRestoring(null);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCopy = async (approval: Approval) => {
+    const text = approval.edited_output || approval.output;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(approval.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  const handleEditStart = (approval: Approval) => {
+    setEditingId(approval.id);
+    setEditText(approval.edited_output || approval.output);
+    setExpandedIds(prev => new Set(prev).add(approval.id));
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const handleEditSave = async (id: string) => {
+    setSaving(id);
+    const { error } = await supabase.from("approvals").update({ edited_output: editText }).eq("id", id);
+    if (!error) {
+      setApprovals(prev => prev.map(a => a.id === id ? { ...a, edited_output: editText } : a));
+      setEditingId(null);
+      setEditText("");
+    } else {
+      console.error("Save failed:", error);
+    }
+    setSaving(null);
   };
 
   const presentCategories   = [...new Set(approvals.map(a => a.category))];
@@ -206,7 +254,7 @@ export default function AdminArchived() {
               const badge      = getBadgeInfo(approval);
               const isBriefing = approval.category !== "social";
               return (
-                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:"1px solid rgba(10,35,66,0.1)", borderLeft: approval.status === "ready_to_use" ? "3px solid #D4AF37" : "1px solid rgba(10,35,66,0.1)", background:"rgba(10,35,66,0.02)", opacity:0.85 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:"1px solid rgba(10,35,66,0.1)", borderLeft: approval.status === "ready_to_use" ? "3px solid #D4AF37" : "1px solid rgba(10,35,66,0.1)", background:"rgba(10,35,66,0.02)" }}>
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" as const }}>
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:badge.color, color:"#FFFFFF" }}>{badge.text}</span>
@@ -222,13 +270,56 @@ export default function AdminArchived() {
                     {isBriefing && approval.task_brief && (
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.7)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{approval.task_brief}</p>
                     )}
-                    <div>{renderDraft((approval.edited_output || approval.output).slice(0, 500) + ((approval.edited_output || approval.output).length > 500 ? '...' : ''))}</div>
+                    {editingId === approval.id ? (
+                      <textarea value={editText} onChange={e => setEditText(e.target.value)}
+                        style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
+                    ) : (() => {
+                      const fullText = approval.edited_output || approval.output;
+                      const isExpanded = expandedIds.has(approval.id);
+                      const needsTruncation = fullText.length > 500;
+                      const shown = isExpanded || !needsTruncation ? fullText : fullText.slice(0, 500) + '...';
+                      return (
+                        <>
+                          <div>{renderDraft(shown)}</div>
+                          {needsTruncation && (
+                            <button onClick={() => toggleExpand(approval.id)}
+                              style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", background:"none", border:"none", cursor:"pointer", padding:0, marginTop:"0.25rem", letterSpacing:"0.06em" }}>
+                              {isExpanded ? "Show Less ↑" : "View Full ↓"}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
-                  <div style={{ padding:"0 1rem 0.875rem", display:"flex", justifyContent:"flex-end" }}>
-                    <button onClick={() => handleRestore(approval.id)} disabled={restoring === approval.id}
-                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.3)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em", opacity:restoring === approval.id ? 0.5 : 1 }}>
-                      {restoring === approval.id ? "Restoring..." : "Restore to Queue"}
-                    </button>
+                  <div style={{ padding:"0 1rem 0.875rem", display:"flex", justifyContent:"flex-end", gap:"0.5rem" }}>
+                    {editingId === approval.id ? (
+                      <>
+                        <button onClick={handleEditCancel}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>
+                          Cancel
+                        </button>
+                        <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                          {saving === approval.id ? "Saving..." : "Save"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => handleEditStart(approval)}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
+                          Edit
+                        </button>
+                        <button onClick={() => handleCopy(approval)}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:copiedId === approval.id ? "rgba(76,175,80,0.1)" : "transparent", color:copiedId === approval.id ? "#4CAF50" : "rgba(10,35,66,0.6)", letterSpacing:"0.06em" }}>
+                          {copiedId === approval.id ? "✓ Copied" : "Copy"}
+                        </button>
+                        <button onClick={() => handleRestore(approval.id)} disabled={restoring === approval.id}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em", opacity:restoring === approval.id ? 0.5 : 1 }}
+                          title="Send this back through approval again — most content doesn't need this">
+                          {restoring === approval.id ? "Restoring..." : "Restore to Queue"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
