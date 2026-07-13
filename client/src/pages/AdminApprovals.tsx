@@ -198,12 +198,111 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
+  if (approval.category === "social") return { heading: "Contributors", content: approval.task_brief || null };
+  if (approval.category === "community_post") {
+    const raw = approval.task_brief || '';
+    const parts = raw.split('|').map((s: string) => s.trim()).filter(Boolean);
+    const contributors = parts.length > 1 ? parts.slice(1).join(' · ') : raw.replace(/post_id:[a-zA-Z0-9-]+\s*\|?\s*/g, '').trim() || raw;
+    const dateStr = new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return { heading: "Contributors", content: contributors ? `${contributors} | ${dateStr}` : dateStr };
+  }
+  if (approval.category === "daily_briefing")          return { heading: "Today's Date",    content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
+  if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
+  if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
+  if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
+  return { heading: "Contributors", content: approval.task_brief || null };
+}
+
+function getDraftHeading(approval: Approval): string {
+  if (approval.category === "social")                  return `${approval.agent_name}'s Draft`;
+  if (approval.category === "community_post")          return `${approval.agent_name}'s Post`;
+  if (approval.category === "daily_briefing")          return "Daily Briefing";
+  if (approval.category === "community_comment_reply") return "Agent Reply";
+  if (approval.category === "CC Post Triggers")        return "Violation Report";
+  if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
+  if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
+  if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
+  if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
+  return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
+}
+
+function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
+  if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"       : status === "posting" ? "Routing..."         : "⚠ Route Failed";
+  if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"      : status === "posting" ? "Generating PDF..."   : "⚠ PDF Failed";
+  if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
+  if (approval.category === "community_post")          return status === "posted" ? "✓ Posted to Community" : status === "posting" ? "Posting..."          : "⚠ Post Failed";
+  if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"       : status === "posting" ? "Sending..."          : "⚠ Send Failed";
+  if (approval.category === "ac_upsell_outreach")      return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
+  return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
+}
+
+// Renders **bold** inline markdown within a line of text
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i} style={{ fontWeight: 700, fontFamily: "'Montserrat', sans-serif" }}>{part.slice(2, -2)}</strong>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+}
+
+// Renders agent output with full markdown support:
+// ## headings, **bold**, - bullet points, blank line spacing, --- dividers
 function renderDraft(text: string) {
-  return text.split('\n\n').map((para, i) => (
-    <p key={i} style={{ margin:'0 0 0.75rem 0', fontFamily:"'Inter', sans-serif", color:'#0A2342', fontSize:'0.75rem', lineHeight:1.6 }}>
-      {para.replace(/\n/g, ' ')}
-    </p>
-  ));
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let key = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Blank line or horizontal rule — breathing room
+    if (line.trim() === '' || line.trim() === '---') {
+      elements.push(<div key={key++} style={{ height: '0.5rem' }} />);
+      continue;
+    }
+
+    // Section heading (## or ###)
+    if (/^#{1,3}\s/.test(line)) {
+      const headText = line.replace(/^#{1,3}\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1');
+      elements.push(
+        <p key={key++} style={{ fontFamily: "'Montserrat', sans-serif", color: '#0A2342', fontSize: '0.78rem', fontWeight: 700, margin: '0.75rem 0 0.3rem', letterSpacing: '0.02em' }}>
+          {headText}
+        </p>
+      );
+      continue;
+    }
+
+    // Bullet point
+    if (/^[\-\*•]\s/.test(line)) {
+      const bulletText = line.replace(/^[\-\*•]\s*/, '');
+      elements.push(
+        <div key={key++} style={{ display: 'flex', gap: '0.5rem', margin: '0.15rem 0', paddingLeft: '0.25rem' }}>
+          <span style={{ color: '#D4AF37', fontWeight: 700, flexShrink: 0, fontFamily: "'Inter', sans-serif", fontSize: '0.75rem' }}>•</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", color: '#0A2342', fontSize: '0.75rem', lineHeight: 1.6 }}>{renderInlineMarkdown(bulletText)}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Regular line
+    elements.push(
+      <p key={key++} style={{ fontFamily: "'Inter', sans-serif", color: '#0A2342', fontSize: '0.75rem', lineHeight: 1.6, margin: '0 0 0.35rem' }}>
+        {renderInlineMarkdown(line)}
+      </p>
+    );
+  }
+
+  return <>{elements}</>;
 }
 
 function parseYaraBilingual(output: string): { english: string; spanish: string } {
@@ -257,48 +356,6 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.division && DIVISION_COLORS[approval.division])
     return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   return { text: CATEGORY_LABELS[approval.category] ?? approval.category, color: "#0A2342" };
-}
-
-function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
-  if (approval.category === "social") return { heading: "Contributors", content: approval.task_brief || null };
-  if (approval.category === "community_post") {
-    const raw = approval.task_brief || '';
-    const parts = raw.split('|').map((s: string) => s.trim()).filter(Boolean);
-    const contributors = parts.length > 1 ? parts.slice(1).join(' · ') : raw.replace(/post_id:[a-zA-Z0-9-]+\s*\|?\s*/g, '').trim() || raw;
-    const dateStr = new Date(approval.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    return { heading: "Contributors", content: contributors ? `${contributors} | ${dateStr}` : dateStr };
-  }
-  if (approval.category === "daily_briefing")          return { heading: "Today's Date",    content: new Date(approval.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) };
-  if (approval.category === "community_comment_reply") return { heading: "Post Reference",  content: approval.task_brief || null };
-  if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
-  if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
-  if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
-  if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
-  if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
-  return { heading: "Contributors", content: approval.task_brief || null };
-}
-
-function getDraftHeading(approval: Approval): string {
-  if (approval.category === "social")                  return `${approval.agent_name}'s Draft`;
-  if (approval.category === "community_post")          return `${approval.agent_name}'s Post`;
-  if (approval.category === "daily_briefing")          return "Daily Briefing";
-  if (approval.category === "community_comment_reply") return "Agent Reply";
-  if (approval.category === "CC Post Triggers")        return "Violation Report";
-  if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
-  if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
-  if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
-  if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
-  return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
-}
-
-function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
-  if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"       : status === "posting" ? "Routing..."         : "⚠ Route Failed";
-  if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"      : status === "posting" ? "Generating PDF..."   : "⚠ PDF Failed";
-  if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
-  if (approval.category === "community_post")          return status === "posted" ? "✓ Posted to Community" : status === "posting" ? "Posting..."          : "⚠ Post Failed";
-  if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"       : status === "posting" ? "Sending..."          : "⚠ Send Failed";
-  if (approval.category === "ac_upsell_outreach")      return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
-  return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
 export default function AdminApprovals() {
