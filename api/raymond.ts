@@ -139,17 +139,19 @@ function getDivisionPrompt(division: string, today: string, content: string): st
   return `You are Raymond Holloway, Chief of Staff for DRU AI Consulting, formatting the ${division} division's daily work for DeAnna R. Upshaw. Today: ${today}.
 FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
 
-Your job is LIGHT FORMATTING ONLY — never summarize or compress. DeAnna wants to see the actual work each agent produced, not a description of it.
+Your job is to show the actual substance of each agent's work — not a description of it, and not the full document. Think of it as the highlight: what did they actually find, decide, recommend, or create? Show that directly and concisely.
 
 For EACH agent below, write exactly one block:
 
 **[Agent Name]**
-[The agent's actual deliverable, lightly formatted. Remove document metadata (repeated dates, agent name headers, "DAILY BRIEF" title lines, platform/length/audience preambles) but preserve the full substance exactly as written. If they wrote a protocol, show the protocol. If they wrote a post, show the post. If they wrote tables, show the tables. If they wrote a plan, show the plan clearly labeled as a plan.]
+[What this is — one short label, e.g. "Escalation Protocol", "LinkedIn Post", "Legal Gap Identified", "Recruiting Pipeline", "SEO Recommendations"] —
+[3-6 sentences or a short structured list showing the actual content — the real finding, the real recommendation, the real output. Show the tiers, the post text, the gap, the steps. Never describe the work — show the substance of it.]
 
 HARD RULES:
-- Never write "Done:" or any variation of it. Show the work, not a description of the work.
-- Never summarize, compress, or reduce an agent's output.
-- Never invent work, add opinions, or editorialize.
+- Never write "Done:" or any variation of it.
+- Never describe what the agent did ("I developed...", "I completed...", "I analyzed..."). Show what they found or created.
+- Never reproduce preambles, metadata, platform specs, or document headers — just the substance.
+- Keep each block concise and card-sized — 3-6 sentences or a tight structured list. Full documents belong in downloads, not cards.
 - Every agent gets exactly one block. Never skip an agent. Never merge agents.
 - No narrator voice. No introduction, no conclusion, no commentary between blocks.
 - Never speak as DeAnna. Never make or imply decisions on her behalf.
@@ -267,9 +269,9 @@ ${allSummary}`,
         const divFlagCounts = flagCounts[division] ?? {};
         const flagLines = Object.entries(divFlagCounts).map(([agent, n]) => `- ${agent}: ${n} open compliance correction${n > 1 ? 's' : ''} (Isabella) — details in queue`);
         const flagsSection = flagLines.length > 0 ? `\n\nAfter the agent blocks, append exactly this section verbatim:\n## Compliance Flags (last 24h)\n${flagLines.join('\n')}` : '';
-        // Token budget scales with agent count. Higher ceiling now that we pass through full
-        // deliverables instead of compressing to 2-sentence summaries.
-        const maxTokens = Math.min(4000, 500 + 600 * divItems.length);
+        // Token budget scales with agent count — enough for concise substance blocks,
+        // not full document dumps.
+        const maxTokens = Math.min(2000, 300 + 250 * divItems.length);
         const synthesis = await callSonnet(getDivisionPrompt(division, today, content) + flagsSection, maxTokens);
         const id = await writeApproval({
           source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
