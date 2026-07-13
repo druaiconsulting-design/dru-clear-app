@@ -7,8 +7,9 @@
 // VOICE RULES (July 2026 rewiring):
 //   - Daily Briefing = Raymond's voice, reporting to DeAnna. Decisions are QUESTIONS, never conclusions.
 //     Raymond NEVER invents decisions, preferences, or commitments on DeAnna's behalf.
-//   - Division cards = the agents' own voices. Each agent gets their own first-person block:
-//     what they did + their suggested action plan. No narrator. No editorializing.
+//   - Division cards = the agents' own actual work, lightly formatted by Raymond.
+//     Raymond removes metadata preambles but NEVER summarizes, compresses, or rewrites deliverables.
+//     No "Done:" prefix. The work speaks for itself.
 //   - Compliance flags: last 24 hours ONLY (date-filtered), compressed to one line per agent.
 //     (Previously unfiltered — six weeks of stale flags were re-injected daily.)
 //
@@ -131,21 +132,26 @@ function tryParseMultiPlatform(rawOutput: string): MultiPlatformPost | null {
   }
 }
 
-// ─── Division card prompt: the agents speak for themselves ──────────────────
+// ─── Division card prompt: light formatting only, never summarize ───────────
+// Raymond's job here is to make the work readable, not to describe it.
+// The actual deliverable must survive intact — protocols, posts, tables, plans, all of it.
 function getDivisionPrompt(division: string, today: string, content: string): string {
-  return `You are formatting the ${division} division's daily report for DeAnna R. Upshaw of DRU AI Consulting. Today: ${today}.
+  return `You are Raymond Holloway, Chief of Staff for DRU AI Consulting, formatting the ${division} division's daily work for DeAnna R. Upshaw. Today: ${today}.
 FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
 
-Each agent speaks for themselves. For EACH agent in the outputs below, write exactly one block in this format:
+Your job is LIGHT FORMATTING ONLY — never summarize or compress. DeAnna wants to see the actual work each agent produced, not a description of it.
 
-**[Agent Name] — [what they worked on, 2-5 words]**
-Done: 1-2 sentences in the agent's own first-person voice ("I completed...", "I analyzed...") summarizing what they delivered. Preserve their key specifics, numbers, and names.
-Action plan: 1-2 short bullets of THEIR suggested next actions, in their voice ("Recommend...", "Next I will...").
+For EACH agent below, write exactly one block:
+
+**[Agent Name]**
+[The agent's actual deliverable, lightly formatted. Remove document metadata (repeated dates, agent name headers, "DAILY BRIEF" title lines, platform/length/audience preambles) but preserve the full substance exactly as written. If they wrote a protocol, show the protocol. If they wrote a post, show the post. If they wrote tables, show the tables. If they wrote a plan, show the plan clearly labeled as a plan.]
 
 HARD RULES:
-- Every agent in the outputs gets exactly one block. Never skip an agent. Never merge agents.
-- Use ONLY what each agent actually produced. Never invent work, opinions, or recommendations.
-- No narrator voice. No introduction, no conclusion, no commentary between blocks, no synthesis.
+- Never write "Done:" or any variation of it. Show the work, not a description of the work.
+- Never summarize, compress, or reduce an agent's output.
+- Never invent work, add opinions, or editorialize.
+- Every agent gets exactly one block. Never skip an agent. Never merge agents.
+- No narrator voice. No introduction, no conclusion, no commentary between blocks.
 - Never speak as DeAnna. Never make or imply decisions on her behalf.
 
 ${division.toUpperCase()} AGENT OUTPUTS:
@@ -243,7 +249,7 @@ ${allSummary}`,
         source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
         agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division: 'Command',
         task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
-        notify_deanna: true, priority: items.some(i => i.priority === 'high') ? 'high' : 'normal',
+        notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
         category: 'daily_briefing', platform: null,
       });
       if (id) { approvalMap['Command'] = id; }
@@ -251,7 +257,7 @@ ${allSummary}`,
     }).catch(err => { console.error('[raymond] Daily Briefing synthesis failed:', err); });
   })();
 
-  // Division cards — every agent's own voice
+  // Division cards — each agent's actual work, lightly formatted
   const divisionSynthesisPromises = Object.entries(byDivision)
     .filter(([division]) => division !== 'Community Connection')
     .map(async ([division, divItems]) => {
@@ -261,25 +267,29 @@ ${allSummary}`,
         const divFlagCounts = flagCounts[division] ?? {};
         const flagLines = Object.entries(divFlagCounts).map(([agent, n]) => `- ${agent}: ${n} open compliance correction${n > 1 ? 's' : ''} (Isabella) — details in queue`);
         const flagsSection = flagLines.length > 0 ? `\n\nAfter the agent blocks, append exactly this section verbatim:\n## Compliance Flags (last 24h)\n${flagLines.join('\n')}` : '';
-        // Mechanical brevity: token budget scales with agent count instead of a flat ceiling
-        const maxTokens = Math.min(1400, 200 + 180 * divItems.length);
+        // Token budget scales with agent count. Higher ceiling now that we pass through full
+        // deliverables instead of compressing to 2-sentence summaries.
+        const maxTokens = Math.min(4000, 500 + 600 * divItems.length);
         const synthesis = await callSonnet(getDivisionPrompt(division, today, content) + flagsSection, maxTokens);
         const id = await writeApproval({
           source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
           agent_name: division, agent_role: 'Division Report', division,
           task_brief: `${division} — ${divItems.length} agent${divItems.length > 1 ? 's' : ''} | ${today}`,
           output: synthesis, status: 'pending', notify_deanna: true,
-          priority: divItems.some(i => i.priority === 'high') ? 'high' : 'normal',
+          priority: divItems.some(i => i.priority === 'critical') ? 'high' : 'normal',
           category: getDivisionCategory(division), platform: null,
         });
-        if (id) { approvalMap[division] = id; console.log(`[raymond] ${division} card written (agent voices)`); }
+        if (id) { approvalMap[division] = id; console.log(`[raymond] ${division} card written (agent work, light formatting)`); }
       } catch (err) { console.error(`[raymond] ${division} synthesis failed:`, err); }
     });
 
   await Promise.all([dailyBriefingPromise, ...divisionSynthesisPromises]);
 
   // GHL notification — one per day
-  const hasHighPriority = items.some(i => i.priority === 'high');
+  // Only HIGH ALERT for genuinely critical items — not routine high-priority work.
+  // Agents self-flag most work as 'high' daily, which previously triggered HIGH ALERT every run
+  // and blocked DeAnna's standard SMS notification. 'critical' is reserved for true blockers.
+  const hasHighPriority = items.some(i => i.priority === 'critical');
   const commandApprovalId = approvalMap['Command'] ?? null;
   if (commandApprovalId) {
     const divisionCount = Object.keys(approvalMap).length;
