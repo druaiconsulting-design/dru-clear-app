@@ -62,6 +62,7 @@ const PDF_CATEGORIES = new Set([
 const APPROVAL_CATEGORIES = new Set([
   "social", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
+  "travis_video_production",
 ]);
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -104,12 +105,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   cc_upsell_outreach:"CC Upsell Signal",
   community_opportunity:"CC Opportunity",
   ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants",
+  travis_video_production:"Travis Video Production",
 };
 
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
-  "community_connection","community_post","social","email","proposal","grants","content","other",
+  "community_connection","community_post","social","travis_video_production","email","proposal","grants","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
 
@@ -214,6 +216,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
+  if (approval.category === "travis_video_production")  return { heading: "Script Brief",     content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
 }
 
@@ -227,6 +230,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
   if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
   if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
+  if (approval.category === "travis_video_production")  return "Caption & Copy";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
 }
 
@@ -236,7 +240,8 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
   if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
   if (approval.category === "community_post")          return status === "posted" ? "✓ Posted to Community" : status === "posting" ? "Posting..."          : "⚠ Post Failed";
   if (approval.category === "cc_upsell_outreach")      return status === "posted" ? "✓ Outreach Sent"       : status === "posting" ? "Sending..."          : "⚠ Send Failed";
-  if (approval.category === "ac_upsell_outreach")      return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
+  if (approval.category === "ac_upsell_outreach")         return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
+  if (approval.category === "travis_video_production")    return status === "posted" ? "✓ Queued for Upload"  : status === "posting" ? "Approving..."        : "⚠ Approval Failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
@@ -349,6 +354,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     const platform = approval.platform ?? "Social";
     return { text: `${platform} Response`, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
+  if (approval.category === "travis_video_production")     return { text: "🎬 Travis Video",    color: "#1A5276" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
   if (approval.category === "grants")                       return { text: "Grants",             color: "#8A6E1A" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
@@ -634,6 +640,11 @@ export default function AdminApprovals() {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await fireSocialReply(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "travis_video_production") {
+      // Travis picks this up on his next cron run: banks to Bunny, then fires Make.com.
+      // Nothing else needed here — the status:approved in the DB is the signal he watches for.
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      setPublishStatus(prev => ({ ...prev, [id]: "posted" }));
     }
     setSaving(null);
   };
@@ -914,8 +925,9 @@ export default function AdminApprovals() {
               const isCCPost      = approval.category === "community_post";
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = READ_CATEGORIES.has(approval.category);
-              const isSocial      = approval.category === "social";
-              const isMulti       = isMultiPlatformCard(approval);
+              const isSocial        = approval.category === "social";
+              const isTravisVideo   = approval.category === "travis_video_production";
+              const isMulti         = isMultiPlatformCard(approval);
               const isReadyToUse  = READY_TO_USE_CATEGORIES.has(approval.category) || (isSocial && READY_TO_USE_PLATFORMS.has(approval.platform ?? ''));
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
               const hasConversation = !!approval.context && approval.context !== "null";
@@ -942,7 +954,7 @@ export default function AdminApprovals() {
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
-                      {isSocial && !isMulti && (currentMedia.video_url || currentMedia.image_url) && (
+                      {(isSocial || isTravisVideo) && !isMulti && (currentMedia.video_url || currentMedia.image_url) && (
                         <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(76,175,80,0.15)", border:"1px solid rgba(76,175,80,0.4)", color:"#4CAF50" }}>
                           {currentMedia.video_url ? "📹 Video" : "🖼 Image"} Ready
                         </span>
@@ -1126,6 +1138,23 @@ export default function AdminApprovals() {
                     </div>
                   )}
 
+                  {/* Travis Video Preview — shows the HeyGen render for review before Bunny upload */}
+                  {isTravisVideo && approval.status === "pending" && currentMedia.video_url && (
+                    <div style={{ padding:"0 1rem 0.875rem" }}>
+                      <div style={{ background:"rgba(26,82,118,0.04)", border:"1px solid rgba(26,82,118,0.2)", borderRadius:8, padding:"0.75rem 1rem" }}>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(26,82,118,0.9)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, margin:"0 0 0.625rem" }}>Preview · Watch before approving</p>
+                        <video
+                          src={currentMedia.video_url}
+                          controls
+                          style={{ width:"100%", maxHeight:320, borderRadius:6, background:"#000", display:"block" }}
+                        />
+                        <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.4)", fontSize:"0.62rem", margin:"0.5rem 0 0", lineHeight:1.5 }}>
+                          This is the raw HeyGen render. Approving queues it for Bunny upload — Travis handles the upload and post on his next run.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Lead Direction */}
                   {isLead && approval.status === "pending" && editingId !== approval.id && (
                     <div style={{ margin:"0 1rem 0.75rem", padding:"0.75rem", background:"rgba(212,175,55,0.04)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8 }}>
@@ -1227,7 +1256,7 @@ export default function AdminApprovals() {
                               onClick={() => handleApprove(approval.id)}
                               disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
                               style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
                             </button>
                           )}
                           {/* Ready to Use bank — available on ALL social cards for content banking */}
