@@ -59,6 +59,14 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
   cron_isaiah_support_daily:      { agent_id: 'isaiah',   agent_name: 'Isaiah Carter',     division: 'Customer Support', task: 'daily_issue_resolution',        pipeline: 'p8_isaiah' },
   cron_priscilla_comms_daily:     { agent_id: 'priscilla',agent_name: 'Priscilla Okonkwo', division: 'Customer Support', task: 'daily_multichannel_comms',      pipeline: 'p8_priscilla' },
+  // ── Video Script Pipeline (Travis) — Mon/Wed/Thu/Sat/Sun @ 10am CDT ─────
+  // Each agent does double duty: their daily CSQ run stays unchanged.
+  // These triggers write directly to approvals (video_script) via Isabella gate.
+  cron_darius_video_script:  { agent_id: 'darius',  agent_name: 'Darius King',    division: 'Content & Brand',         task: 'video_script_daily', pipeline: 'p2_darius_video' },
+  cron_nia_video_script:     { agent_id: 'nia',     agent_name: 'Nia Robinson',   division: 'Marketing',               task: 'video_script_daily', pipeline: 'p3_nia_video' },
+  cron_chloe_video_script:   { agent_id: 'chloe',   agent_name: 'Chloe Dubois',   division: 'Revenue, Growth & Sales', task: 'video_script_daily', pipeline: 'p1_chloe_video' },
+  cron_zara_video_script:    { agent_id: 'zara',    agent_name: 'Zara Ahmed',     division: 'Revenue, Growth & Sales', task: 'video_script_daily', pipeline: 'p1_zara_video' },
+  cron_amelia_video_script:  { agent_id: 'amelia',  agent_name: 'Amelia Santos',  division: 'Client Delivery',         task: 'video_script_daily', pipeline: 'p7_amelia_video' },
   lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'score_new_lead' },
   contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura',  division: 'Revenue, Growth & Sales', task: 'process_contact_update' },
   assessment_completed: { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'route_assessment_lead' },
@@ -393,7 +401,7 @@ async function runDarius(): Promise<string|null> {
   const brandMarks=await fetchBrandMarks();
   const topicContext=topicBrief||`Generate a thought leadership topic on Leadership with AI using one of these frameworks: ${brandMarks}`;
   const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — memorize these exact definitions before writing. Never paraphrase or invent framework content:\n${FRAMEWORK_KNOWLEDGE}\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
   const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
@@ -642,6 +650,208 @@ async function runAaliyahCCOutreach(signalType: string, contactEmail: string, co
   } catch (error) { console.error(`[aaliyah_cc] Webhook failed for ${signalType}:`, error); }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// VIDEO SCRIPT PIPELINE — Travis Video Production
+// Each agent does double duty: daily CSQ run unchanged + video script for Travis.
+// Flow: Agent writes script → Isabella reviews (2 tries, hard reject on 2nd fail)
+//       → PASS: written to approvals as video_script + SMS to DeAnna
+//       → HARD FAIL: rejection logged to CSQ with both Isabella notes for agent training
+// ════════════════════════════════════════════════════════════════════════════
+
+// Write a passed script directly to approvals — bypasses CSQ entirely
+async function writeVideoScriptApproval({
+  agentId, agentName, division, title, scriptText, treatment, taskBrief,
+}: { agentId: string; agentName: string; division: string; title: string; scriptText: string; treatment: string; taskBrief: string; }): Promise<string | null> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/approvals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
+    body: JSON.stringify({
+      agent_name: agentName, agent_role: division, division,
+      source: `${agentId}_video_script`, trigger_type: 'video_script_daily',
+      task_brief: taskBrief,
+      output: scriptText,
+      edited_output: null,
+      category: 'video_script',
+      platform: 'Video',
+      title,
+      status: 'pending',
+      priority: 'high',
+      notify_deanna: false,
+      archived: false,
+      context: JSON.stringify({ treatment, agent_id: agentId }),
+    }),
+  });
+  if (!res.ok) { console.error(`[video_script] approvals write failed: ${res.status} ${await res.text()}`); return null; }
+  const rows: any[] = await res.json();
+  return rows?.[0]?.id ?? null;
+}
+
+// Isabella compliance gate for video scripts
+// Returns pass/fail + reason. On pass, corrected version is optional.
+async function runIsabellaVideoReview(script: string, agentName: string, attemptNumber: number, priorReason?: string): Promise<{ pass: boolean; reason: string }> {
+  const brandMarks = await fetchBrandMarks();
+  const priorContext = priorReason ? `\n\nPRIOR REJECTION (attempt ${attemptNumber - 1}): ${priorReason}\nThe agent has rewritten based on this. Review with that in mind.` : '';
+  const verdict = await callAnthropic(
+    `${GENIUS_MODE}\n\nYou are Isabella Moreno, Director of Compliance for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nReview the video script below for compliance before it reaches DeAnna's approval queue.\n\nFRAMEWORK REFERENCE — exact definitions, check all claims against these:\n${FRAMEWORK_KNOWLEDGE}\n\nCOMPLIANCE CHECKLIST:\n1. TRADEMARK ACCURACY — All framework references must use ™ and match exact definitions above. Any invented or paraphrased framework content = FAIL.\n2. SERVICE CLASS RULES — Content must stay within Classes 35, 41, 42. No medical, financial, legal advice = FAIL.\n3. FACTUAL ACCURACY — No false claims about DeAnna's credentials, frameworks, or results.\n4. BRAND VOICE — Authority tone. Never desperate, never vague.\n5. NO INVENTED CONTENT — Agent must not fabricate client results, testimonials, or statistics.\n\nAPPROVED TRADEMARK MARKS: ${brandMarks}\n${priorContext}\n\nSCRIPT TO REVIEW:\n${script}\n\nRespond ONLY with a JSON object — no preamble, no markdown fences:\n{"pass": true|false, "reason": "If pass: brief confirmation of what was checked and passed. If fail: specific violation(s) found with exact quote from script and what the correct version should be. Be precise so the agent can fix it."}`,
+    800
+  );
+  try {
+    const parsed = JSON.parse(verdict.replace(/```json|```/g, '').trim());
+    return { pass: !!parsed.pass, reason: parsed.reason ?? 'No reason provided' };
+  } catch { return { pass: false, reason: 'Isabella review failed to parse — treating as rejection for safety' }; }
+}
+
+// SMS to DeAnna when a script passes Isabella and lands in approvals
+async function fireVideoScriptSMS(agentName: string, approvalId: string): Promise<void> {
+  const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'druaiconsulting@gmail.com', phone: '+19796186671',
+        first_name: 'DeAnna', last_name: 'Upshaw',
+        agent_name: agentName, division: 'Video Production', task: 'video_script_daily',
+        approval_id: approvalId,
+        summary: `🎬 ${agentName} video script is ready for your review.`,
+        triggered_at: new Date().toISOString(),
+        review_url: 'https://app.druaiconsulting.com/admin-approvals',
+        sms_body: `DRU AI Consulting | 🎬 ${agentName} has a new video script ready.\n\nReview: app.druaiconsulting.com/admin-approvals`,
+        email_subject: `DRU AI Consulting — ${agentName} Video Script Ready`,
+        email_body: `${agentName} has submitted a video script for Travis's pipeline.\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+      }),
+    });
+  } catch (err) { console.warn('[video_script] SMS failed (non-fatal):', err); }
+}
+
+// Log hard rejection to CSQ so the agent can learn over time
+async function logVideoScriptRejection(agentId: string, agentName: string, division: string, script: string, reason1: string, reason2: string): Promise<void> {
+  await writeToCSQ({
+    agent_id: agentId, agent_name: agentName, division,
+    task: 'video_script_daily', category: 'video_script',
+    raw_output: script,
+    priority: 'normal', status: 'rejected', retry_count: 2,
+    correction_notes: `ATTEMPT 1 REJECTION: ${reason1}\n\nATTEMPT 2 REJECTION: ${reason2}\n\nHard rejection — script did not pass Isabella compliance gate after 2 attempts. Study both rejection notes to improve future scripts.`,
+  });
+}
+
+// Shared orchestrator: runs agent script function, gates through Isabella (2 tries),
+// fires SMS on pass, logs rejection on hard fail.
+async function runVideoScriptWithReview(
+  agentId: string, agentName: string, division: string, title: string, taskBrief: string,
+  scriptFn: () => Promise<string>,           // generates the script (called once per attempt)
+  scriptFnWithContext: (reason: string) => Promise<string>, // retry with rejection reason
+): Promise<{ approvalId: string | null; result: 'passed' | 'rejected' | 'error' }> {
+  try {
+    // Attempt 1
+    const script1 = await scriptFn();
+    const review1 = await runIsabellaVideoReview(script1, agentName, 1);
+    if (review1.pass) {
+      const parsed = parseVideoScriptOutput(script1);
+      const approvalId = await writeVideoScriptApproval({ agentId, agentName, division, title, scriptText: parsed.script, treatment: parsed.treatment, taskBrief });
+      if (approvalId) await fireVideoScriptSMS(agentName, approvalId);
+      return { approvalId, result: 'passed' };
+    }
+    console.log(`[video_script] ${agentName} attempt 1 rejected: ${review1.reason}`);
+
+    // Attempt 2 — agent gets Isabella's reason
+    const script2 = await scriptFnWithContext(review1.reason);
+    const review2 = await runIsabellaVideoReview(script2, agentName, 2, review1.reason);
+    if (review2.pass) {
+      const parsed = parseVideoScriptOutput(script2);
+      const approvalId = await writeVideoScriptApproval({ agentId, agentName, division, title, scriptText: parsed.script, treatment: parsed.treatment, taskBrief });
+      if (approvalId) await fireVideoScriptSMS(agentName, approvalId);
+      return { approvalId, result: 'passed' };
+    }
+
+    // Hard rejection — log both reasons for training
+    console.log(`[video_script] ${agentName} hard rejected after 2 attempts. Reason 2: ${review2.reason}`);
+    await logVideoScriptRejection(agentId, agentName, division, script2, review1.reason, review2.reason);
+    return { approvalId: null, result: 'rejected' };
+  } catch (err: any) {
+    console.error(`[video_script] ${agentName} error:`, err);
+    return { approvalId: null, result: 'error' };
+  }
+}
+
+// Parse the agent's JSON output into script text + treatment
+function parseVideoScriptOutput(raw: string): { script: string; treatment: string } {
+  try {
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return { script: parsed.script ?? raw, treatment: parsed.treatment ?? '' };
+  } catch { return { script: raw, treatment: '' }; }
+}
+
+// ── VIDEO SCRIPT AGENT FUNCTIONS ─────────────────────────────────────────────
+
+async function runDariusVideoScript(): Promise<{ approvalId: string | null; result: string }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const brandMarks = await fetchBrandMarks();
+  const basePrompt = (correctionContext = '') => `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nPositioning: "Leadership with AI." Every script must stop the scroll in the first 3 seconds.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase:\n${FRAMEWORK_KNOWLEDGE}\n${correctionContext ? `\nISABELLA COMPLIANCE FEEDBACK FROM PRIOR ATTEMPT — fix these issues:\n${correctionContext}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw. Format: scroll-stopping hook (first 3 seconds — make them feel something), body (one sharp insight from one DRU framework), close (clear CTA to assessment.druaiconsulting.com). Punchy, energetic, never stiff.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Darius direction: energy level, pacing, any visual/wardrobe note that fits the vibe"}`;
+  return runVideoScriptWithReview(
+    'darius', 'Darius King', 'Content & Brand',
+    `🎬 Darius — Viral Script ${today}`,
+    `Viral hook script — Darius King | ${today}`,
+    () => callAnthropic(basePrompt(), 1200),
+    (reason) => callAnthropic(basePrompt(reason), 1200),
+  );
+}
+
+async function runNiaVideoScript(): Promise<{ approvalId: string | null; result: string }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const brandMarks = await fetchBrandMarks();
+  const basePrompt = (correctionContext = '') => `${GENIUS_MODE}\n\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase:\n${FRAMEWORK_KNOWLEDGE}\n${correctionContext ? `\nISABELLA COMPLIANCE FEEDBACK FROM PRIOR ATTEMPT — fix these issues:\n${correctionContext}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw. Nia's angle is authority thought leadership — position DeAnna as the expert executives trust when navigating AI. One insight, one framework, one moment where the viewer thinks "she gets exactly where I am."\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Nia direction: tone, pace, authority level, any visual note"}`;
+  return runVideoScriptWithReview(
+    'nia', 'Nia Robinson', 'Marketing',
+    `🎬 Nia — Authority Script ${today}`,
+    `Authority thought leadership script — Nia Robinson | ${today}`,
+    () => callAnthropic(basePrompt(), 1200),
+    (reason) => callAnthropic(basePrompt(reason), 1200),
+  );
+}
+
+async function runChloeVideoScript(): Promise<{ approvalId: string | null; result: string }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const brandMarks = await fetchBrandMarks();
+  const basePrompt = (correctionContext = '') => `${GENIUS_MODE}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase:\n${FRAMEWORK_KNOWLEDGE}\n${correctionContext ? `\nISABELLA COMPLIANCE FEEDBACK FROM PRIOR ATTEMPT — fix these issues:\n${correctionContext}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw. Chloe's angle is conversion copy — every word earns its place, the hook creates urgency, the body removes the last objection, the close makes assessment.druaiconsulting.com feel like the obvious next step. RGS energy: this script should move people to act.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Chloe direction: CTA emphasis, pacing, energy level, any visual note"}`;
+  return runVideoScriptWithReview(
+    'chloe', 'Chloe Dubois', 'Revenue, Growth & Sales',
+    `🎬 Chloe — Conversion Script ${today}`,
+    `CTA conversion script — Chloe Dubois | ${today}`,
+    () => callAnthropic(basePrompt(), 1200),
+    (reason) => callAnthropic(basePrompt(reason), 1200),
+  );
+}
+
+async function runZaraVideoScript(): Promise<{ approvalId: string | null; result: string }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const brandMarks = await fetchBrandMarks();
+  const basePrompt = (correctionContext = '') => `${GENIUS_MODE}\n\nYou are Zara Ahmed, Product Launch Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase:\n${FRAMEWORK_KNOWLEDGE}\n${correctionContext ? `\nISABELLA COMPLIANCE FEEDBACK FROM PRIOR ATTEMPT — fix these issues:\n${correctionContext}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw. Zara's angle is launch and momentum energy — announcements, milestones, new offers, upcoming events. The script should create excitement and a sense that something important is happening in DeAnna's world right now. Tie to a specific offer or upcoming moment. CTA to assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Zara direction: launch energy, excitement level, any visual note"}`;
+  return runVideoScriptWithReview(
+    'zara', 'Zara Ahmed', 'Revenue, Growth & Sales',
+    `🎬 Zara — Launch Script ${today}`,
+    `Launch and momentum script — Zara Ahmed | ${today}`,
+    () => callAnthropic(basePrompt(), 1200),
+    (reason) => callAnthropic(basePrompt(reason), 1200),
+  );
+}
+
+async function runAmeliaVideoScript(): Promise<{ approvalId: string | null; result: string }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const brandMarks = await fetchBrandMarks();
+  const basePrompt = (correctionContext = '') => `${GENIUS_MODE}\n\nYou are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase:\n${FRAMEWORK_KNOWLEDGE}\n${correctionContext ? `\nISABELLA COMPLIANCE FEEDBACK FROM PRIOR ATTEMPT — fix these issues:\n${correctionContext}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw. Amelia's angle is structured transformation storytelling — a before state, a turning point (the DRU framework or methodology), and an after state that the viewer can see themselves in. Educational, warm, credible. CTA to assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Amelia direction: storytelling pace, emotional arc, any visual note"}`;
+  return runVideoScriptWithReview(
+    'amelia', 'Amelia Santos', 'Client Delivery',
+    `🎬 Amelia — Transformation Script ${today}`,
+    `Transformation storytelling script — Amelia Santos | ${today}`,
+    () => callAnthropic(basePrompt(), 1200),
+    (reason) => callAnthropic(basePrompt(reason), 1200),
+  );
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req:any,res:any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin','*');
@@ -713,6 +923,12 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p8_isaiah'){const id=await runIsaiah();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p8_priscilla'){const id=await runPriscilla();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  // ── Video Script Pipeline — Travis Video Production ──────────────────────
+  else if (route.pipeline==='p2_darius_video'){const r=await runDariusVideoScript();res.status(202).json({success:true,agent:route.agent_name,result:r.result,approval_id:r.approvalId});}
+  else if (route.pipeline==='p3_nia_video'){const r=await runNiaVideoScript();res.status(202).json({success:true,agent:route.agent_name,result:r.result,approval_id:r.approvalId});}
+  else if (route.pipeline==='p1_chloe_video'){const r=await runChloeVideoScript();res.status(202).json({success:true,agent:route.agent_name,result:r.result,approval_id:r.approvalId});}
+  else if (route.pipeline==='p1_zara_video'){const r=await runZaraVideoScript();res.status(202).json({success:true,agent:route.agent_name,result:r.result,approval_id:r.approvalId});}
+  else if (route.pipeline==='p7_amelia_video'){const r=await runAmeliaVideoScript();res.status(202).json({success:true,agent:route.agent_name,result:r.result,approval_id:r.approvalId});}
   else if (payload.trigger_type==='cc_upsell_signal'){
     const {signal_type,email,first_name,phone}=payload as any;
     await runAaliyahCCOutreach(signal_type,email,first_name,phone);
