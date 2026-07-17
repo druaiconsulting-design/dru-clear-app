@@ -11,8 +11,9 @@
 //   - Division cards = the agents' own actual work, lightly formatted by Raymond.
 //     Raymond removes metadata preambles but NEVER summarizes, compresses, or rewrites deliverables.
 //     No "Done:" prefix. The work speaks for itself.
-//   - Compliance flags: last 24 hours ONLY (date-filtered), compressed to one line per agent.
-//     (Previously unfiltered — six weeks of stale flags were re-injected daily.)
+//   - "Needs Attention" section: last 24 hours ONLY (date-filtered). One brief line per agent
+//     showing the actual reason — so DeAnna can see who needs support without opening the queue.
+//     Flagged agents also get a ⚠️ inline on their card block. (Previously: verbose counts, stale flags.)
 //
 // PHASE 2: Detects Darius multi-platform JSON → populates linkedin_content, facebook_content, instagram_caption
 // The AI Twin no longer runs daily synthesis — she is the face of all video content and retains on-demand chat (twin.ts).
@@ -190,11 +191,19 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
     getCSQItems('needs_correction', flagsSince),
   ]);
 
-  // Compressed: one line per agent per division — counts, not essays. Details live in the queue.
-  const flagCounts: Record<string, Record<string, number>> = {};
+  // One entry per agent per division — store a brief reason (first sentence of correction_notes)
+  // so DeAnna can see what happened at a glance without opening the queue.
+  const flagData: Record<string, Record<string, { count: number; reason: string }>> = {};
   for (const f of [...rejectedItems, ...correctionItems]) {
-    if (!flagCounts[f.division]) flagCounts[f.division] = {};
-    flagCounts[f.division][f.agent_name] = (flagCounts[f.division][f.agent_name] ?? 0) + 1;
+    if (!flagData[f.division]) flagData[f.division] = {};
+    if (!flagData[f.division][f.agent_name]) {
+      // Take the first sentence of correction_notes as the brief reason
+      const full = (f.correction_notes ?? f.isabella_flags ?? '').trim();
+      const brief = full.split(/\.\s+/)[0].replace(/\n/g, ' ').slice(0, 120);
+      flagData[f.division][f.agent_name] = { count: 1, reason: brief || 'flagged by Isabella' };
+    } else {
+      flagData[f.division][f.agent_name].count++;
+    }
   }
 
   const triggeredAt = new Date().toISOString();
@@ -269,13 +278,27 @@ ${allSummary}`,
       if (cardItems.length === 0) return; // whole division was grants-only — no card needed
       const content = cardItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}`).join('\n\n---\n\n');
       try {
-        const divFlagCounts = flagCounts[division] ?? {};
-        const flagLines = Object.entries(divFlagCounts).map(([agent, n]) => `- ${agent}: ${n} open compliance correction${n > 1 ? 's' : ''} (Isabella) — details in queue`);
-        const flagsSection = flagLines.length > 0 ? `\n\nAfter the agent blocks, append exactly this section verbatim:\n## Compliance Flags (last 24h)\n${flagLines.join('\n')}` : '';
+        const divFlagData = flagData[division] ?? {};
+        const flaggedAgentNames = new Set(Object.keys(divFlagData));
+        // One brief line per flagged agent — reason only, no counts, no essays.
+        // Purpose: DeAnna sees who needs support at a glance, not a compliance report.
+        const flagLines = Object.entries(divFlagData).map(([agent, { reason }]) => `- ${agent} — ${reason}`);
+        const flagsSection = flagLines.length > 0
+          ? `\n\nAfter the agent blocks, append exactly this section verbatim:\n## Needs Attention\n${flagLines.join('\n')}`
+          : '';
+        // Inline gate: mark flagged agents' blocks so the flag is visible in context, not only at the bottom.
+        // Replace the agent header in content with a ⚠️ version so DeAnna sees it while reading the card.
+        let gatedContent = content;
+        for (const name of flaggedAgentNames) {
+          gatedContent = gatedContent.replace(
+            new RegExp(`(\\*\\*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*)`, 'g'),
+            `$1 ⚠️`
+          );
+        }
         // Token budget scales with agent count — enough for concise substance blocks,
         // not full document dumps.
         const maxTokens = Math.min(2000, 300 + 250 * divItems.length);
-        const synthesis = await callSonnet(getDivisionPrompt(division, today, content) + flagsSection, maxTokens);
+        const synthesis = await callSonnet(getDivisionPrompt(division, today, gatedContent) + flagsSection, maxTokens);
         const id = await writeApproval({
           source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
           agent_name: division, agent_role: 'Division Report', division,
