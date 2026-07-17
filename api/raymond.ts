@@ -262,7 +262,12 @@ ${allSummary}`,
     .filter(([division]) => division !== 'Community Connection')
     .map(async ([division, divItems]) => {
       // Agent outputs only — Raymond's command-layer notes feed the Daily Briefing, not these cards
-      const content = divItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}`).join('\n\n---\n\n');
+      // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
+      // also appear inside the RGS division roll-up. Same principle as Community Connection
+      // being excluded from division synthesis entirely.
+      const cardItems = divItems.filter(i => i.category !== 'grants');
+      if (cardItems.length === 0) return; // whole division was grants-only — no card needed
+      const content = cardItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}`).join('\n\n---\n\n');
       try {
         const divFlagCounts = flagCounts[division] ?? {};
         const flagLines = Object.entries(divFlagCounts).map(([agent, n]) => `- ${agent}: ${n} open compliance correction${n > 1 ? 's' : ''} (Isabella) — details in queue`);
