@@ -200,11 +200,21 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
     if (newOnes.length === 0) return { count: 0, csqId: null }; // nothing new — no card, no noise
     const rows = newOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
     const written = await writeGrantOpportunities(rows);
-    const top = newOnes.slice(0,5).map((o:any)=>`- ${o.opportunity_name} (${o.funder}) — fit ${o.fit_score}/10, deadline ${o.deadline}`).join('\n');
+    // Surface the top 5 with everything needed to actually apply — not just a list.
+    // DeAnna needs: where to apply, what it pays, why it fits, and the deadline.
+    const top = newOnes.slice(0,5).map((o:any) => {
+      const lines = [
+        `**${o.opportunity_name}** — ${o.funder}`,
+        `Fit: ${o.fit_score}/10 | Amount: ${o.amount_range ?? 'See link'} | Deadline: ${o.deadline}`,
+        `Why it fits: ${o.fit_reasoning ?? 'Strong brand alignment'}`,
+        `Apply here: ${o.source_url ?? 'URL not found — search funder name'}`,
+      ];
+      return lines.join('\n');
+    }).join('\n\n---\n\n');
     const csqId = await writeToCSQ({
       agent_id:'adaeze', agent_name:'Adaeze Nwosu', division:'Revenue, Growth & Sales',
       task:'daily_grant_scout', category:'grants',
-      raw_output: `Found ${written} new grant opportunity/opportunities today:\n\n${top}\n\nFull list in grant_opportunities table.`,
+      raw_output: `Found ${written} new grant opportunity/opportunities today. Top picks ready to apply:\n\n${top}\n\nFull list with all details stored in the grant_opportunities table.`,
       priority:'normal', status:'pending',
     });
     return { count: written, csqId };
