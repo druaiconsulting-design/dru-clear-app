@@ -5,7 +5,8 @@
 // Fires ONE GHL notification to DeAnna when complete
 //
 // VOICE RULES (July 2026 rewiring):
-//   - Daily Briefing = Raymond's voice, reporting to DeAnna. Decisions are QUESTIONS, never conclusions.
+//   - Daily Briefing = Raymond's voice, reporting to DeAnna. Informational only — Executive Summary +
+//     Tomorrow's Priorities. No decisions, no questions, no asks of any kind.
 //     Raymond NEVER invents decisions, preferences, or commitments on DeAnna's behalf.
 //   - Division cards = the agents' own actual work, lightly formatted by Raymond.
 //     Raymond removes metadata preambles but NEVER summarizes, compresses, or rewrites deliverables.
@@ -227,18 +228,15 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
       `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting, delivering DeAnna R. Upshaw's daily briefing. Today: ${today}.
 HARD RULES:
 - You report to DeAnna — you never speak as her, and you NEVER invent decisions, preferences, or commitments on her behalf.
-- Anything requiring her call is presented as a QUESTION, never a conclusion.
+- This is an informational overview ONLY. Do NOT ask DeAnna for decisions, approvals, or actions of any kind. Do NOT include a "Decisions Needed" section. Do NOT phrase anything as a question directed at her.
 - Be tight. Every sentence earns its place.
 
-Write the Daily Briefing card with ONLY these three sections:
+Write the Daily Briefing card with ONLY these two sections:
 
 ## Daily Briefing — ${today}
 
 **Executive Summary**
 3-4 sentences ("Your team has...") — what was accomplished today across all divisions.
-
-**Decisions Needed**
-Bullet list of questions requiring DeAnna's personal call today — lead with any "Needs DeAnna" flags below. If none: "No decisions required today — the team is executing."
 
 **Tomorrow's Priorities**
 3-5 specific bullets of what the team is positioned to execute tomorrow.
