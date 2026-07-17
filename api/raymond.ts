@@ -26,7 +26,7 @@ const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_pos
 
 // Agents that always get their own standalone Intelligence Hub card
 // regardless of division — never buried in division synthesis
-const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos'];
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Camila Flores'];
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
@@ -268,7 +268,7 @@ ${allSummary}`,
 
   // Division cards — each agent's actual work, lightly formatted
   const divisionSynthesisPromises = Object.entries(byDivision)
-    .filter(([division]) => division !== 'Community Connection')
+    .filter(([division]) => division !== 'Community Connection' && division !== 'Content & Brand')
     .map(async ([division, divItems]) => {
       // Agent outputs only — Raymond's command-layer notes feed the Daily Briefing, not these cards
       // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
@@ -402,21 +402,24 @@ ${allSummary}`,
     );
     if (shouldSurface) {
       try {
-        const isChloe = item.agent_name.toLowerCase().includes('chloe');
-        const isKwame = item.agent_name.toLowerCase().includes('kwame');
+        const isChloe  = item.agent_name.toLowerCase().includes('chloe');
+        const isKwame  = item.agent_name.toLowerCase().includes('kwame');
+        const isCamila = item.agent_name.toLowerCase().includes('camila');
         await writeApproval({
           source: `${item.agent_id}_content`,
           trigger_type: item.category,
           agent_name: item.agent_name,
           agent_role: item.division,
           division: item.division,
-          task_brief: `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
+          task_brief: isCamila
+            ? `Weekly LinkedIn Queue — ${item.agent_name} | ${today}`
+            : `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
           output: item.raw_output,
           status: 'pending',
           notify_deanna: false,
           priority: item.priority === 'high' ? 'high' : 'normal',
           category: (isChloe || isKwame) ? 'social' : 'content_review',
-          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : null,
+          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : null,
         });
         console.log(`[raymond] ${(isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
       } catch (err) {
