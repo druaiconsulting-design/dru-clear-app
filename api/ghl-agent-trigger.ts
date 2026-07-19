@@ -559,23 +559,78 @@ async function runNia(): Promise<string|null> {
 
   return null; // Monday, Tuesday — Darius days
 }
+// ─── Marketing Data Fetch ────────────────────────────────────────────────────
+// Pulls real platform data from Supabase for Andre, Hyun-Ji, and Luca.
+// All three agents receive this snapshot so they report actual numbers —
+// never invented traffic, campaign spend, or conversion rates.
+async function fetchMarketingData(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return 'Platform data unavailable.';
+  try {
+    const [subRes, statsRes, socialRes] = await Promise.all([
+      fetch(`${url}/rest/v1/submissions?select=id,total_score,tier,score_category,top_gaps,utm_source,utm_medium,utm_campaign,role,company,created_at&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/stats?select=id,value`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/social_assets?select=title,platform,used_count,last_used_at,is_active&is_active=eq.true&order=used_count.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+    ]);
+    const [subs, stats, social]: [any[], any[], any[]] = await Promise.all([subRes.json(), statsRes.json(), socialRes.json()]);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const recentSubs = subs.filter((s: any) => s.created_at >= sevenDaysAgo);
+    const tiers: Record<string, number> = {};
+    const utmSources: Record<string, number> = {};
+    const topGaps: string[] = [];
+    for (const s of subs) {
+      if (s.tier) tiers[s.tier] = (tiers[s.tier] || 0) + 1;
+      if (s.utm_source) utmSources[s.utm_source] = (utmSources[s.utm_source] || 0) + 1;
+      if (s.top_gaps) topGaps.push(s.top_gaps);
+    }
+    const statsMap: Record<string, number> = {};
+    for (const s of stats) statsMap[s.id] = s.value;
+    const lines = [
+      `REAL PLATFORM DATA — use only these numbers, never invent or estimate:`,
+      `Assessments completed (all time): ${subs.length}`,
+      `Assessments completed (last 7 days): ${recentSubs.length}`,
+      `Tier breakdown: ${Object.entries(tiers).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none yet'}`,
+      `Traffic sources (UTM): ${Object.entries(utmSources).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none tracked yet'}`,
+      `Diagnostics sold: ${statsMap['diagnostics_sold'] ?? 0}`,
+      `Sessions booked: ${statsMap['sessions_booked'] ?? 0}`,
+      `Leads captured: ${statsMap['leads_captured'] ?? 0}`,
+      `Top gaps reported by assessees: ${topGaps.length > 0 ? topGaps.slice(0,3).join(' | ') : 'none yet'}`,
+      `Active social assets in library: ${Array.isArray(social) ? social.length : 0}`,
+      Array.isArray(social) && social.length > 0 ? `Most used: ${social.slice(0,3).map((a: any) => `${a.title} (${a.platform}, used ${a.used_count}x)`).join('; ')}` : '',
+    ].filter(Boolean);
+    return lines.join('\n');
+  } catch {
+    return 'Platform data unavailable.';
+  }
+}
+
 async function runLuca(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('luca','Luca Romano','Marketing','digital_marketing_briefing','digital_marketing',`You are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. All objectives point to assessment.druaiconsulting.com.\n**Campaign Status** — LinkedIn Ads: campaign type, targeting, budget, one ad copy variation. Meta Ads: retargeting strategy. Google Ads: one keyword cluster.\n**Funnel Optimization** — One landing page improvement. One A/B test hypothesis.\n**This Week's Priority Action** — One highest-impact move with rationale.`,'normal',0,null,2000);
+  const marketingData = await fetchMarketingData();
+  return await runAgentToCSQ('luca','Luca Romano','Marketing','digital_marketing_briefing','digital_marketing',`You are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. All objectives point to assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use only these numbers — do not invent campaign spend, audience sizes, or performance metrics. If numbers are small, report that honestly as early-stage launch data.\n\n${marketingData}\n\n**Campaign Strategy** — Based on the real data above: which platforms to prioritize and why. One specific targeting recommendation for LinkedIn or Meta grounded in actual funnel stage.\n**Funnel Optimization** — One landing page or funnel improvement tied to what the data actually shows.\n**This Week's Priority Action** — One highest-impact move with rationale grounded in the real numbers.\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Luca.`,'normal',0,null,2000);
 }
 async function runHyunJi(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const reportType=dayOfWeek==='Monday'?'weekly_recap':'daily_operational';
-  const reportInstructions=reportType==='weekly_recap'?`Weekly analytics recap AND week-ahead priorities. Assessment funnel benchmarks, LinkedIn engagement benchmarks, email open rate targets (34%). 3 KPIs with targets for the week.`:`Daily analytics briefing. Funnel health at assessment.druaiconsulting.com. One metric that if moved 10% would most impact revenue. One assessment-to-diagnostic conversion insight.`;
-  return await runAgentToCSQ('hyunji','Hyun-Ji Kim','Marketing','analytics_roi_briefing','analytics_report',`You are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nREPORT TYPE: ${reportType}\n${reportInstructions}`,'normal',0,null,2000);
+  const marketingData = await fetchMarketingData();
+  const reportInstructions=reportType==='weekly_recap'
+    ?`Weekly analytics recap using ONLY the real data provided above. What does the data actually show? What is the week-ahead priority based on real numbers? Set 3 KPI targets that make sense for this launch stage.`
+    :`Daily analytics update using ONLY the real data provided above. What does the funnel actually show right now? Which single metric, if moved, would have the most impact on revenue? One insight about the assessment-to-diagnostic path grounded in real numbers.`;
+  return await runAgentToCSQ('hyunji','Hyun-Ji Kim','Marketing','analytics_roi_briefing','analytics_report',`You are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Report ONLY what the numbers show — do not fabricate traffic volumes, conversion rates, or revenue figures. If data is sparse, say so directly. Early-stage honesty is more valuable than invented metrics.\n\n${marketingData}\n\nREPORT TYPE: ${reportType}\n${reportInstructions}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Hyun-Ji.`,'normal',0,null,2000);
 }
 async function runAndre(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const focusType=dayOfWeek==='Tuesday'?'technical_seo':dayOfWeek==='Friday'?'weekly_search_recap':'daily_operational';
-  const focusInstructions:Record<string,string>={daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR". One competitor threat. **Organic Search** — Top 3 keyword clusters. One content gap for Nia. **Today's SEO Action** — One immediately actionable move.`,technical_seo:`**Site Health** — Core Web Vitals targets for assessment + app subdomains. One crawlability recommendation. **Schema** — Recommended schema for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,weekly_search_recap:`**Organic Search Performance** — Benchmark targets. One keyword to monitor. **Paid Search** — Brand campaign health. **Next Week's Priorities** — 3 actions ranked by impact.`};
-  return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,2000);
+  const marketingData = await fetchMarketingData();
+  const focusInstructions:Record<string,string>={
+    daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR™". Recommend organic defense strategy grounded in platform launch stage. Do not fabricate competitor threats — note if none are confirmed. **Organic Search** — Top 3 keyword clusters to target given the real UTM data above. One content gap for Nia grounded in actual traffic sources or assessment top gaps. **Today's SEO Action** — One immediately actionable move tied to real data.`,
+    technical_seo:`**Site Health** — Core Web Vitals targets for assessment.druaiconsulting.com and app.druaiconsulting.com. One crawlability recommendation. **Schema** — Recommended schema markup for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,
+    weekly_search_recap:`**Organic Search** — Benchmark targets appropriate for this launch stage. One keyword to prioritize based on real UTM sources above. **Paid Search** — Brand campaign recommendations. **Next Week's Priorities** — 3 actions ranked by impact for an early-stage platform.`
+  };
+  return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
 }
 
 // P4
