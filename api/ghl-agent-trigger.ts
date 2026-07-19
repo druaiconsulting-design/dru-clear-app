@@ -228,14 +228,37 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
       ];
       return lines.join('\n');
     }).join('\n\n---\n\n');
-    const csqId = await writeToCSQ({
-      agent_id:'adaeze', agent_name:'Adaeze Nwosu', division:'Revenue, Growth & Sales',
-      task:'daily_grant_scout', category:'grants',
-      raw_output: `Found ${written} new grant opportunity/opportunities today. Top picks ready to apply:\n\n${top}\n\nFull list with all details stored in the grant_opportunities table.`,
-      priority:'normal', status:'pending',
+    // Write directly to approvals — bypasses CSQ → command layer → Raymond chain
+    // which was adding a full day of delay for no benefit (Raymond passes grants through untouched).
+    const approvalId = await writeApprovalDirect({
+      source: 'adaeze_grants',
+      trigger_type: 'grants',
+      agent_name: 'Adaeze Nwosu',
+      agent_role: 'Revenue, Growth & Sales',
+      division: 'Revenue, Growth & Sales',
+      task_brief: `Daily Grant Scout — Adaeze Nwosu | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
+      output: `Found ${written} new grant opportunity/opportunities today. Top picks ready to apply:\n\n${top}\n\nFull list with all details stored in the grant_opportunities table.`,
+      status: 'pending',
+      notify_deanna: false,
+      priority: 'normal',
+      category: 'grants',
+      platform: null,
     });
-    return { count: written, csqId };
+    return { count: written, csqId: approvalId };
   } catch(error){ console.error('[adaeze] Scout error:',error); return { count:0, csqId:null }; }
+}
+
+async function writeApprovalDirect(record: Record<string, unknown>): Promise<string | null> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/approvals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) { console.error(`[adaeze] Direct approvals write failed: ${await res.text()}`); return null; }
+  const data = await res.json();
+  return data?.[0]?.id ?? null;
 }
 
 async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> {
