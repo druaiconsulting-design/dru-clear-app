@@ -274,7 +274,10 @@ ${allSummary}`,
       // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
       // also appear inside the RGS division roll-up. Same principle as Community Connection
       // being excluded from division synthesis entirely.
-      const cardItems = divItems.filter(i => i.category !== 'grants');
+      const cardItems = divItems.filter(i =>
+        i.category !== 'grants' &&
+        !(SOCIAL_DIVISIONS.includes(division) && CLIENT_FACING_CATEGORIES.includes(i.category))
+      );
       if (cardItems.length === 0) return; // whole division was grants-only — no card needed
       const content = cardItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}`).join('\n\n---\n\n');
       try {
