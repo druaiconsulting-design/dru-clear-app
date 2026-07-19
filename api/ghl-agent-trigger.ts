@@ -198,13 +198,30 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
       return !knownKeys.has(nameKey);
     });
     if (newOnes.length === 0) return { count: 0, csqId: null }; // nothing new — no card, no noise
-    const rows = newOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
+
+    // Filter out expired grants — if the deadline is a past YYYY-MM-DD date, skip it.
+    // Rolling/quarterly/descriptive deadlines are kept (no parseable date = still open).
+    const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+    const activeOnes = newOnes.filter(o => {
+      const dl = String(o.deadline ?? '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dl)) {
+        return new Date(dl) >= todayDate;
+      }
+      return true; // "Rolling", "Quarterly", etc. — keep
+    });
+    if (activeOnes.length === 0) return { count: 0, csqId: null };
+
+    const rows = activeOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
     const written = await writeGrantOpportunities(rows);
     // Surface the top 5 with everything needed to actually apply — not just a list.
     // DeAnna needs: where to apply, what it pays, why it fits, and the deadline.
-    const top = newOnes.slice(0,5).map((o:any) => {
+    const top = activeOnes.slice(0,5).map((o:any) => {
+      // Clean up opportunity_name if it already embeds the funder name in parens — prevents double display
+      const cleanName = String(o.opportunity_name ?? '').replace(
+        new RegExp(`\\s*\\(${String(o.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
+      ).trim();
       const lines = [
-        `**${o.opportunity_name}** — ${o.funder}`,
+        `**${cleanName}** — ${o.funder}`,
         `Fit: ${o.fit_score}/10 | Amount: ${o.amount_range ?? 'See link'} | Deadline: ${o.deadline}`,
         `Why it fits: ${o.fit_reasoning ?? 'Strong brand alignment'}`,
         `Apply here: ${o.source_url ?? 'URL not found — search funder name'}`,
