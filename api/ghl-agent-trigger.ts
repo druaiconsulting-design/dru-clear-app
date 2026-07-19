@@ -633,22 +633,69 @@ async function runAndre(): Promise<string|null> {
   return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
 }
 
+// Pulls real pipeline and revenue data from Supabase for Amara, Yuki, and Marcus.
+// All three agents receive this snapshot so they report actual business state,
+// never invented revenue figures, fabricated client counts, or assumed contract needs.
+async function fetchLegalFinanceData(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return 'Pipeline data unavailable.';
+  try {
+    const [clientRes, statsRes, subRes] = await Promise.all([
+      fetch(`${url}/rest/v1/client_journey_stages?select=client_name,stage,amount_paid,stage_updated_at,notes&order=stage_updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/stats?select=id,value`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/submissions?select=id,total_score,tier,role,company,created_at&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+    ]);
+    const [clients, stats, subs]: [any[], any[], any[]] = await Promise.all([clientRes.json(), statsRes.json(), subRes.json()]);
+    const statsMap: Record<string, number> = {};
+    for (const s of stats) statsMap[s.id] = s.value;
+    const totalRevenue = Array.isArray(clients) ? clients.reduce((sum: number, c: any) => sum + (parseFloat(c.amount_paid) || 0), 0) : 0;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const recentSubs = Array.isArray(subs) ? subs.filter((s: any) => s.created_at >= sevenDaysAgo) : [];
+    const clientList = Array.isArray(clients) && clients.length > 0
+      ? clients.map((c: any) => `  - ${c.client_name} | Stage: ${c.stage} | Paid: $${c.amount_paid ?? 0} | Updated: ${c.stage_updated_at?.slice(0,10) ?? 'unknown'}${c.notes ? ` | Note: ${c.notes}` : ''}`).join('\n')
+      : '  (none)';
+    const lines = [
+      'REAL PIPELINE DATA ' + em + ' use only these numbers, never invent or estimate:',
+      `Clients in journey: ${Array.isArray(clients) ? clients.length : 0}`,
+      `Client list:\n${clientList}`,
+      `Total revenue collected: $${totalRevenue.toFixed(2)}`,
+      `Diagnostics sold: ${statsMap['diagnostics_sold'] ?? 0}`,
+      `Sessions booked: ${statsMap['sessions_booked'] ?? 0}`,
+      `Leads captured: ${statsMap['leads_captured'] ?? 0}`,
+      `Assessment completions (all time): ${Array.isArray(subs) ? subs.length : 0}`,
+      `Assessment completions (last 7 days): ${recentSubs.length}`,
+    ];
+    return lines.join('\n');
+  } catch {
+    return 'Pipeline data unavailable.';
+  }
+}
+
 // P4
 async function runAmara(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('amara','Amara Okafor','Legal & Finance','weekly_legal_briefing','legal_briefing',`You are Amara Okafor, Legal Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRespond in 200 words or fewer: (1) Top contract readiness item before first client. (2) One IP protection action this week. (3) One AI consulting liability risk and protection. (4) One pre-launch legal checklist item. Flag anything requiring immediate action.`,'normal',0,null,600);
+  const pipelineData = await fetchLegalFinanceData();
+  return await runAgentToCSQ('amara','Amara Okafor','Legal & Finance','weekly_legal_briefing','legal_briefing',`You are Amara Okafor, Legal Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\n\nREAL PIPELINE DATA (use only this — do not invent client counts, contract needs, or revenue figures):\n${pipelineData}\n\nHARD RULES:\n1. Every client-facing statement must be grounded in the pipeline data above. If clients in journey = 0 and diagnostics sold = 0, open with: \"No clients in pipeline. No contract actions required this week.\"\n2. Do not repeat the same MSA/trademark checklist if nothing in the pipeline has changed. Acknowledge what stage we are at based on real data.\n3. If there ARE clients in the pipeline, identify each one by name and stage, and state exactly what legal action their stage requires.\n4. One standing legal readiness item is acceptable — but only if it is stage-appropriate and not already covered last week.\n5. Flag anything genuinely time-sensitive. If nothing is time-sensitive, say so.\n\nFormat: 150 words or fewer. Write in first person as Amara.`,'normal',0,null,600);
+}
 }
 async function runDiego(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('diego','Diego Reyes','Legal & Finance','weekly_expense_report','expense_report',`You are Diego Reyes, Expense Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nKNOWN EXPENSES: Vercel Pro ~$20/mo | Anthropic API usage-based | GHL monthly | HeyGen Creator ~$31/mo | Bunny Stream ~$1-5/mo.\nRespond in 200 words or fewer: (1) Estimated monthly operating cost. (2) One cost optimization opportunity. (3) Break-even at Strategic Diagnostic™ $3,497 and Executive Diagnostic™ $4,997. (4) One financial action for this week.`,'normal',0,null,600);
+  const pipelineData = await fetchLegalFinanceData();
+  return await runAgentToCSQ('diego','Diego Reyes','Legal & Finance','weekly_expense_report','expense_report',`You are Diego Reyes, Expense Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n\nKNOWN FIXED EXPENSES (these are real — report them as-is):\nVercel Pro: $20/mo | Anthropic API: usage-based (variable) | GHL: ~$40—$60/mo | HeyGen Creator: $31/mo | Bunny Stream: $1—$5/mo\n\nREAL PIPELINE DATA (use only these numbers for revenue-side reporting):\n${pipelineData}\n\nHARD RULES:\n1. Known fixed expenses above are real — report them accurately. Do not invent additional costs.\n2. For the revenue side, use ONLY the total revenue collected figure from the pipeline data above.\n3. If total revenue collected = $0.00, state that clearly: \"Revenue collected: $0. Operating at a loss of [known expenses] this month.\" Do not calculate break-even as if revenue exists.\n4. If revenue exists, show actual P&L: revenue collected minus known monthly expenses = net position. Name the clients and amounts.\n5. One cost optimization item is acceptable — but only if it is actionable this week, not a repeat from last week.\n\nFormat: 200 words or fewer. Write in first person as Diego.`,'normal',0,null,600);
+}
 }
 async function runYuki(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`You are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nEXACT PRICING: Strategic Diagnostic™ $3,497 | Executive Diagnostic™ $4,997 | From Confusion to Confident with AI™ Course $1,497-$12,997 | Daily Connections Navigator $47/mo | Accelerator $147/mo.\nRespond in 150 words or fewer: (1) Month 1 revenue projection conservative. (2) MRR target at 10 Daily Connections subscribers. (3) Highest revenue-per-hour offer. (4) One financial risk in first 90 days. Label all figures as projections.`,'normal',0,null,600);
+  const pipelineData = await fetchLegalFinanceData();
+  return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`You are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must come directly from the data above. If it is not in the data, do not write it.\n2. No revenue projections, no estimated earnings, no conversion math. Real reported figures only.\n3. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"Zero revenue to report this week. No financial figures to present.\" Then name the single financial tracking item to set up before the first sale lands.\n4. If there IS real revenue, report it exactly — by client name, amount paid, and stage.\n5. Writing any number not in the data above is a fabrication. DeAnna checks your output against the raw table.\n\nFormat: 150 words or fewer. Write in first person as Yuki.`,'normal',0,null,600);
+}
 }
 async function runMarcus(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. DISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\nRespond in 150 words or fewer: (1) Top tax deduction to prioritize NOW. (2) Recommended quarterly estimated tax set-aside percentage. (3) One S-Corp election consideration. (4) One record-keeping action to start immediately. Flag any time-sensitive tax action.`,'normal',0,null,600);
+  const pipelineData = await fetchLegalFinanceData();
+  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. DISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES:\n1. Calibrate every recommendation to the actual revenue stage shown in the data. Do not advise on quarterly estimated tax payments if total revenue = $0.\n2. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"No revenue collected yet. Tax planning is in setup stage.\" Then give one specific structural action to complete before the first dollar arrives.\n3. If there IS real revenue, report it by client and advise on tax obligations tied to those exact amounts.\n4. Do not repeat the same S-Corp election or home office advice every week unless something in the data has changed that makes it newly relevant.\n5. One time-sensitive flag only if something is genuinely urgent based on real data or the calendar.\n\nFormat: 150 words or fewer. Write in first person as Marcus.`,'normal',0,null,600);
+}
 }
 
 // P5
