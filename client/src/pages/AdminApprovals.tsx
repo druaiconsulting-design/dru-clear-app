@@ -800,7 +800,7 @@ export default function AdminApprovals() {
 
   const pending       = approvals.filter(a => a.status === "pending" && isApprovalCard(a)).length;
   const knowledge     = approvals.filter(a => !isApprovalCard(a)).length;
-  const approvedToday = approvals.filter(a => a.status === "approved" && new Date(a.created_at).toDateString() === new Date().toDateString()).length;
+  const approvedToday = approvals.filter(a => a.status === "approved").length;
 
   const sectionTabStyle = (active: boolean, color: string) => ({
     fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", fontWeight:700,
@@ -842,7 +842,7 @@ export default function AdminApprovals() {
           {[
             { label:"Pending Approval", value:pending,       color:"#D4AF37" },
             { label:"Knowledge Vault",  value:knowledge,     color:"#1E88E5" },
-            { label:"Approved Today",   value:approvedToday, color:"#4CAF50" },
+            { label:"Approved",   value:approvedToday, color:"#4CAF50" },
           ].map(s => (
             <div key={s.label} style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"0.875rem 1rem" }}>
               <p style={{ fontFamily:"'Playfair Display', serif", color:s.color, fontSize:"1.75rem", fontWeight:700, margin:0 }}>{s.value}</p>
