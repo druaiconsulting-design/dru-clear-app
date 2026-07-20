@@ -161,7 +161,7 @@ HARD RULES:
 ${division.toUpperCase()} AGENT OUTPUTS:
 ${content}
 
-Start with ## ${division}, then the agent blocks, nothing else.`;
+Start with ## ${division === 'Client Delivery' ? 'Client Delivery — Daily Update' : division}, then the agent blocks, nothing else.`;
 }
 
 // Returns the YYYY-MM-DD calendar date string in America/Chicago for a given Date.
@@ -305,7 +305,7 @@ ${allSummary}`,
         const id = await writeApproval({
           source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
           agent_name: division, agent_role: 'Division Report', division,
-          task_brief: `${division} — ${divItems.length} agent${divItems.length > 1 ? 's' : ''} | ${today}`,
+          task_brief: division === 'Client Delivery' ? `Client Delivery — Daily Update | ${today}` : `${division} — ${divItems.length} agent${divItems.length > 1 ? 's' : ''} | ${today}`,
           output: synthesis, status: 'pending', notify_deanna: true,
           priority: divItems.some(i => i.priority === 'critical') ? 'high' : 'normal',
           category: getDivisionCategory(division), platform: null,
