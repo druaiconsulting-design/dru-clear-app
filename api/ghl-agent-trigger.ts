@@ -741,18 +741,60 @@ async function runRafael(): Promise<string|null> {
 }
 }
 
+// Pulls real system health data from Supabase for Fatima.
+// Queries CSQ for needs_correction and rejected items in last 24 hours
+// so Fatima reports actual agent issues, not invented operational status.
+async function fetchSystemHealthData(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return 'System health data unavailable.';
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [correctionRes, rejectedRes, pendingRes] = await Promise.all([
+      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.needs_correction&created_at=gte.${since}&select=agent_name,division,correction_notes,isabella_flags&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.rejected&created_at=gte.${since}&select=agent_name,division,correction_notes&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.pending&created_at=gte.${since}&select=agent_name,division&order=created_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+    ]);
+    const [corrections, rejected, pending]: [any[], any[], any[]] = await Promise.all([correctionRes.json(), rejectedRes.json(), pendingRes.json()]);
+    const correctionList = Array.isArray(corrections) && corrections.length > 0
+      ? corrections.map((c: any) => `  - ${c.agent_name} (${c.division}): ${(c.correction_notes || c.isabella_flags || 'flagged').slice(0, 120)}`).join('\n')
+      : '  (none)';
+    const rejectedList = Array.isArray(rejected) && rejected.length > 0
+      ? rejected.map((r: any) => `  - ${r.agent_name} (${r.division}): ${(r.correction_notes || 'rejected').slice(0, 120)}`).join('\n')
+      : '  (none)';
+    const lines = [
+      'REAL SYSTEM HEALTH DATA (last 24 hours) ' + '—' + ' use only these, never invent agent issues:',
+      `Agents needing correction: ${Array.isArray(corrections) ? corrections.length : 0}`,
+      `Correction details:\n${correctionList}`,
+      `Agents rejected: ${Array.isArray(rejected) ? rejected.length : 0}`,
+      `Rejection details:\n${rejectedList}`,
+      `Agents still pending (stuck): ${Array.isArray(pending) ? pending.length : 0}`,
+    ];
+    return lines.join('\n');
+  } catch {
+    return 'System health data unavailable.';
+  }
+}
+
 // P6
 async function runNaomi(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('naomi','Naomi Williams','HR','daily_recruiting_status','recruiting',`You are Naomi Williams, Recruiting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n**Priority Roles Pipeline** — Top 3 human roles needed post-launch.\n**Talent Sourcing Strategy** — One specific LinkedIn search strategy or talent community to tap this week.\n**Pre-Launch HR Readiness** — One HR infrastructure item to complete before first client engagement.\n**Culture Brief** — One culture document based on DeAnna's 5C Cultural DNA™.\n**Today's Recruiting Priority** — Single most important talent action for today.`,'normal',0,null,1500);
+  const pipelineData = await fetchLegalFinanceData();
+  return await runAgentToCSQ('naomi','Naomi Williams','HR','daily_recruiting_status','recruiting',`You are Naomi Williams, Recruiting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n\nREAL PIPELINE DATA (use only this — do not invent candidates, interviews, or offers):\n${pipelineData}\n\nHARD RULES:\n1. There are no real candidates in the system until GHL or Supabase shows them. Do not invent phone screens, offers, or pipeline stages.\n2. If clients in journey = 0 and diagnostics sold = 0, open with: \"No clients yet, no active candidates. Recruiting is in preparation mode.\" Then give ONE structural action to take today to prepare for hiring (write a JD, define a role scorecard, set up a GHL recruiting pipeline stage).\n3. If clients ARE in the pipeline, hiring urgency is real — name the client volume and which role becomes critical first.\n4. Do not repeat the same role priority list every day. If the priority list has not changed, acknowledge that and focus only on today's one action.\n\nFormat: 200 words or fewer. Write in first person as Naomi.`,'normal',0,null,1500);
+}
 }
 async function runAiden(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment → GHL automation → welcome sequence → diagnostic scheduling.\n**Client First 24 Hours** — Ideal touchpoints for a new diagnostic client. One experience upgrade.\n**Internal Team Onboarding** — One onboarding document to create now.\n**Today's Onboarding Priority** — Single most impactful onboarding improvement for the day.`,'normal',0,null,1500);
+  const previousRecs = await getCrossRead(['aiden'], 1);
+  const prevSection = previousRecs ? `WHAT YOU RECOMMENDED YESTERDAY (do not repeat):\n${previousRecs}` : 'No previous recommendations on record.';
+  return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment — GHL automation — welcome sequence — diagnostic scheduling.\n\n${prevSection}\n\nHARD RULE: If you are about to recommend something already in the list above, skip it. Only surface what is genuinely new.\n\n**Client First 24 Hours** — One NEW experience upgrade not recommended yesterday.\n**Internal Team Onboarding** — One NEW onboarding document or process item to create.\n**Today's Priority** — Single most impactful NEW onboarding action. If nothing new: \"No new onboarding recommendations today.\"\n\nDo not describe fictional client scenarios. If no real clients exist yet, focus on infrastructure preparation only.\n\nFormat: 200 words or fewer. Write in first person as Aiden.`,'normal',0,null,1500);
+}
 }
 async function runFatima(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('fatima','Fatima Al-Rashid','HR','daily_internal_helpdesk','helpdesk',`You are Fatima Al-Rashid, Internal Helpdesk and Operations Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n**Ecosystem Health Check** — DRU AI Leadership Ecosystem™ operational status: 54 agents across 9 divisions. Any known issues? One operational improvement suggestion.\n**DeAnna's Workload Protection** — One workflow optimization that would reduce DeAnna's manual review time.\n**Vendor Status** — Quick status on: Vercel Pro, Supabase, GHL, Anthropic, HeyGen, Bunny Stream. Any renewals or issues this week?\n**Today's Operations Priority** — Single most important internal operations action for the day.`,'normal',0,null,1500);
+  const healthData = await fetchSystemHealthData();
+  return await runAgentToCSQ('fatima','Fatima Al-Rashid','HR','daily_internal_helpdesk','helpdesk',`You are Fatima Al-Rashid, Internal Helpdesk and Operations Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n\nREAL SYSTEM HEALTH DATA (use only this — do not invent agent issues, error rates, or operational status):\n${healthData}\n\nHARD RULES:\n1. Your ecosystem health report must be based entirely on the data above. Do not invent issues, percentages, or agent-specific problems.\n2. If agents needing correction = 0 and agents rejected = 0, open with: \"All agents cleared in the last 24 hours. No corrections or rejections on record.\"\n3. If there ARE real issues, name the agent, the division, and what the correction note says. One action to resolve each.\n4. Do not assert vendor status (Vercel, Supabase, GHL, etc.) unless you have real data showing an issue. If no vendor data available, skip that section.\n5. One genuine workflow optimization to reduce DeAnna's manual review time — based on what the health data actually shows.\n\nFormat: 200 words or fewer. Write in first person as Fatima.`,'normal',0,null,1500);
+}
 }
 
 // P7
