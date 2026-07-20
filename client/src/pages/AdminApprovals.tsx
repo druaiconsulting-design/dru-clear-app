@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
+import { Document, Packer, Paragraph as DocxParagraph, TextRun, Table as DocxTable, TableRow, TableCell, WidthType, ShadingType, BorderStyle, AlignmentType, convertInchesToTwip } from "docx";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
 
@@ -608,6 +609,78 @@ export default function AdminApprovals() {
       console.error("[pdf]", err);
     }
   };
+
+
+  const downloadDOCX = async (approval: Approval): Promise<void> => {
+    try {
+      const NAVY = "0A2342"; const GOLD = "D4AF37"; const MAGENTA = "C2185B";
+      const DARK = "1A1A1A"; const MID = "555555";
+      const CONTENT_W = 10440;
+
+      const makeLabel = (text: string) => new DocxParagraph({ spacing:{ before:200, after:60 }, children:[new TextRun({ text:text.toUpperCase(), bold:true, color:MAGENTA, size:18, font:"Calibri" })] });
+      const makeH2 = (text: string) => new DocxParagraph({ spacing:{ before:240, after:80 }, children:[new TextRun({ text, bold:true, color:NAVY, size:28, font:"Times New Roman" })] });
+      const makeBody = (text: string) => new DocxParagraph({ spacing:{ before:0, after:140 }, children:[new TextRun({ text, size:22, font:"Calibri", color:DARK })] });
+      const makeBullet = (bold: string, rest: string) => new DocxParagraph({ spacing:{ before:40, after:80 }, indent:{ left:convertInchesToTwip(0.25) }, children:[ new TextRun({ text:"• ", size:22, font:"Calibri", color:GOLD }), ...(bold ? [new TextRun({ text:bold+" ", bold:true, size:22, font:"Calibri", color:DARK })] : []), new TextRun({ text:rest, size:22, font:"Calibri", color:MID }) ] });
+      const makeRefl = (text: string) => new DocxParagraph({ spacing:{ before:60, after:80 }, indent:{ left:convertInchesToTwip(0.3) }, children:[ new TextRun({ text:"— ", bold:true, size:22, font:"Calibri", color:GOLD }), new TextRun({ text, italics:true, size:22, font:"Calibri", color:MID }) ] });
+
+      const makeBox = (labelText: string, fill: string, borderColor: string, items: string[]) => new DocxTable({ width:{ size:CONTENT_W, type:WidthType.DXA }, columnWidths:[CONTENT_W], rows:[new TableRow({ children:[ new TableCell({ width:{ size:CONTENT_W, type:WidthType.DXA }, shading:{ type:ShadingType.CLEAR, color:"auto", fill }, margins:{ top:120, bottom:120, left:180, right:180 }, borders:{ top:{ style:BorderStyle.SINGLE, size:12, color:borderColor }, bottom:{ style:BorderStyle.SINGLE, size:12, color:borderColor }, left:{ style:BorderStyle.SINGLE, size:12, color:borderColor }, right:{ style:BorderStyle.SINGLE, size:12, color:borderColor } }, children:[ new DocxParagraph({ spacing:{ before:0, after:80 }, children:[new TextRun({ text:labelText.toUpperCase(), bold:true, color:borderColor, size:18, font:"Calibri" })] }), ...items.map(t => new DocxParagraph({ spacing:{ before:40, after:60 }, children:[ new TextRun({ text:"• ", bold:true, color:borderColor, size:22, font:"Calibri" }), new TextRun({ text:t, size:22, font:"Calibri", color:DARK }) ] })) ] }) ] })] });
+
+      const content = (approval.edited_output || approval.output || "").trim();
+      const lines = content.split("\n");
+      const children: any[] = [
+        new DocxTable({ width:{ size:CONTENT_W, type:WidthType.DXA }, columnWidths:[CONTENT_W], rows:[new TableRow({ children:[ new TableCell({ width:{ size:CONTENT_W, type:WidthType.DXA }, shading:{ type:ShadingType.CLEAR, color:"auto", fill:NAVY }, margins:{ top:80, bottom:80, left:120, right:120 }, children:[ new DocxParagraph({ children:[new TextRun({ text:"DRU AI Consulting", bold:true, color:GOLD, size:36, font:"Times New Roman" })] }), new DocxParagraph({ children:[new TextRun({ text:"ACCELERATOR CIRCLE  ·  WEEKLY MEMBER BRIEF", color:"CCCCCC", size:16, font:"Calibri", bold:true })] }), new DocxParagraph({ children:[] }) ] }) ] })] }),
+        new DocxParagraph({ spacing:{ before:120, after:120 }, border:{ bottom:{ style:BorderStyle.SINGLE, size:12, color:GOLD, space:1 } }, children:[] }),
+        new DocxParagraph({ spacing:{ before:0, after:40 }, children:[new TextRun({ text:approval.agent_name ?? "Zara Ahmed", bold:true, color:NAVY, size:42, font:"Times New Roman" })] }),
+        new DocxParagraph({ spacing:{ before:0, after:8 }, children:[new TextRun({ text:approval.task_brief ?? "", italics:true, color:MAGENTA, size:22, font:"Calibri" })] }),
+        new DocxParagraph({ spacing:{ before:60, after:60 }, border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:GOLD, space:1 } }, children:[] }),
+      ];
+
+      let i = 0;
+      while (i < lines.length) {
+        const line = lines[i].trim();
+        if (!line) { i++; continue; }
+        if (/^##\s/.test(line)) { children.push(makeH2(line.replace(/^##\s*/, "").replace(/\*\*/g, ""))); i++; continue; }
+        if (/^#\s/.test(line)) { children.push(makeLabel(line.replace(/^#\s*/, "").replace(/\*\*/g, ""))); i++; continue; }
+        if (/^[*\-•]\s/.test(line)) {
+          const text = line.replace(/^[*\-•]\s*/, "");
+          const m = text.match(/^\*\*(.*?)\*\*\s*(.*)/s);
+          children.push(m ? makeBullet(m[1], m[2]) : makeBullet("", text.replace(/\*\*(.*?)\*\*/g,"$1"))); i++; continue;
+        }
+        if (/^\d+\.\s/.test(line)) {
+          const text = line.replace(/^\d+\.\s*/, "");
+          const m = text.match(/^\*\*(.*?)\*\*\s*(.*)/s);
+          children.push(m ? makeBullet(m[1], m[2]) : makeBullet("", text.replace(/\*\*/g,""))); i++; continue;
+        }
+        if (/^—\s/.test(line)) { children.push(makeRefl(line.replace(/^—\s*/, ""))); i++; continue; }
+        if (/REAL COST/i.test(line)) {
+          const costItems: string[] = [];
+          i++;
+          while (i < lines.length && lines[i].trim() && /^[•\-*]/.test(lines[i].trim())) {
+            costItems.push(lines[i].trim().replace(/^[•\-*]\s*/,"").replace(/\*\*/g,"")); i++;
+          }
+          children.push(makeBox("Real Cost — If You Skip This", "FDF0F4", MAGENTA, costItems)); continue;
+        }
+        if (/BRING IT TO THE CIRCLE/i.test(line)) {
+          const circleLines: string[] = [];
+          i++;
+          while (i < lines.length && lines[i].trim()) { circleLines.push(lines[i].trim()); i++; }
+          children.push(makeBox("Bring It to the Circle", "FDF8EC", GOLD, [circleLines.join(" ")])); continue;
+        }
+        children.push(makeBody(line.replace(/\*\*(.*?)\*\*/g,"$1").replace(/\*(.*?)\*/g,"$1"))); i++;
+      }
+
+      children.push(new DocxParagraph({ spacing:{ before:200, after:0 }, children:[] }));
+      children.push(new DocxTable({ width:{ size:CONTENT_W, type:WidthType.DXA }, columnWidths:[CONTENT_W], rows:[new TableRow({ children:[ new TableCell({ width:{ size:CONTENT_W, type:WidthType.DXA }, shading:{ type:ShadingType.CLEAR, color:"auto", fill:NAVY }, margins:{ top:80, bottom:80, left:120, right:120 }, children:[ new DocxParagraph({ alignment:AlignmentType.CENTER, children:[new TextRun({ text:"assessment.druaiconsulting.com", bold:true, color:GOLD, size:18, font:"Calibri" })] }), new DocxParagraph({ alignment:AlignmentType.CENTER, children:[new TextRun({ text:"© 2026 DRU AI Consulting  ·  DRU CLEAR™  ·  Accelerator Circle Member Content", color:"AAAAAA", size:14, font:"Calibri" })] }) ] }) ] })] }));
+
+      const doc = new Document({ sections:[{ properties:{ page:{ size:{ width:12240, height:15840 }, margin:{ top:convertInchesToTwip(0.8), bottom:convertInchesToTwip(0.8), left:convertInchesToTwip(0.9), right:convertInchesToTwip(0.9) } } }, children }] });
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url;
+      a.download = `ACC-Weekly-${(approval.task_brief || "brief").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${Date.now()}.docx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (err) { console.error("[docx]", err); }
+  };
+
 
   const routeLead = async (approval: Approval, direction: string): Promise<boolean> => {
     try {
@@ -1437,6 +1510,9 @@ export default function AdminApprovals() {
                       )}
                       {(approval.output || approval.edited_output) && editingId !== approval.id && (
                         <button onClick={() => downloadPDF(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>↓ PDF</button>
+                      )}
+                      {(approval.output || approval.edited_output) && editingId !== approval.id && approval.category === "acc_weekly_pdf" && (
+                        <button onClick={() => downloadDOCX(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.4)", background:"transparent", color:"#0A2342", letterSpacing:"0.06em" }}>↓ DOCX</button>
                       )}
                     </div>
                   </div>
