@@ -61,7 +61,6 @@ export default function Community() {
               {([
                 { key: 'feed',        label: 'Community Feed' },
                 { key: 'accelerator', label: 'Accelerator Circle' },
-                { key: 'leaderboard', label: 'Leaderboard' },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
