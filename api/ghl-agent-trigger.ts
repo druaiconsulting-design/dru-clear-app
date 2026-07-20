@@ -25,7 +25,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_aaliyah_outreach:          { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'personalized_outreach_messages',pipeline: 'p1_aaliyah' },
   cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue, Growth & Sales', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
   cron_chloe_copy:                { agent_id: 'chloe',    agent_name: 'Chloe Dubois',      division: 'Revenue, Growth & Sales', task: 'daily_copy_asset',              pipeline: 'p1_chloe' },
-  cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Revenue, Growth & Sales', task: 'product_launch_readiness',      pipeline: 'p1_zara' },
+  cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
   cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
   cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
@@ -1095,7 +1095,45 @@ export default async function handler(req:any,res:any): Promise<void> {
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_jaylen'){const id=await runAgentToCSQ('jaylen','Jaylen Brooks','Revenue, Growth & Sales','email_campaign_content','email_marketing',`You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course ($1,497-$12,997).\nRotate: nurture email, re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max). CTA: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_chloe'){const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`You are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_zara'){const id=await runAgentToCSQ('zara','Zara Ahmed','Revenue, Growth & Sales','product_launch_readiness','product_launch',`You are Zara Ahmed, Product Launch Agent for DRU AI Consulting. Generate weekly product launch readiness report. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course, Community Connection Navigator $47/mo / Accelerator $147/mo. Assess: launch readiness, marketing gaps, one improvement recommendation, pricing insight, next week priority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_zara'){
+    const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
+    const weekNum=Math.floor((Date.now()-new Date('2026-07-07').getTime())/(7*24*60*60*1000));
+    const frameworks=['DRU CLEAR™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™'];
+    const framework=frameworks[weekNum%4];
+    const id=await runAgentToCSQ('zara','Zara Ahmed','Client Delivery','acc_weekly_pdf_content','acc_weekly_pdf',
+    `You are Zara Ahmed, Content Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+
+You are writing this week's Accelerator Circle (ACC) member PDF. These are executive leaders ($197/mo) in active AI transformation — the most committed members of the ecosystem. They expect depth, directness, and real frameworks applied to real executive challenges. No fluff. No surface content. Every sentence earns its place.
+
+THIS WEEK'S FRAMEWORK FOCUS: ${framework}
+
+CONTENT FORMAT — write each section fully, not as an outline:
+
+## [Compelling Title — framework-specific, executive-level, no jargon]
+
+### The Real Problem
+One sharp paragraph (100-150 words) naming the specific leadership challenge this framework addresses. Write to the executive who is already implementing AI but hitting a wall they can't name yet. Make them feel seen.
+
+### What ${framework} Actually Does
+150-200 words. Not a definition — an application. Explain what shifts when a leader truly applies this framework. What decisions look different? What conversations change? What becomes possible that wasn't before?
+
+### The Real Cost of Ignoring This
+One "Real Cost" callout box — 2-3 specific, measurable consequences of leaders who skip this framework. Make it tangible. Dollar figures or market position language preferred.
+
+### Three Actions This Week
+Three specific, executive-level actions they can take THIS week — not "consider X" or "think about Y." Concrete moves. Each 2-3 sentences.
+
+### Reflection Questions
+Three questions designed to surface blind spots. These should be uncomfortable in the best way — the kind that make an executive pause and think "I've never been asked that before."
+
+### Bring It to the Circle
+2-3 sentences inviting them to share what surfaced for them in the community. Warm, collegial — never salesy. No pitch, no CTA to buy anything. Just "bring your insights to the conversation."
+
+Write the complete article. This is the full PDF content — not a summary or outline.`,
+    'normal',0,null,2500);
+    res.status(202).json({success:true,agent:route.agent_name,csq_id:id});
+  }
   else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
