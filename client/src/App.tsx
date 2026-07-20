@@ -319,9 +319,8 @@ function Router() {
     return <Frameworks />;
   }
   if (path === "/community/accelerator" || path === "/community/accelerator/") {
-    setTitle("Accelerator Circle · DRU CLEAR™");
-    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
-    return <AcceleratorCircle />;
+    window.location.replace("/community");
+    return null;
   }
   if (path === "/community" || path === "/community/") {
     setTitle("Community · DRU CLEAR™");
