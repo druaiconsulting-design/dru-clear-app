@@ -294,22 +294,9 @@ export default function AdminArchived() {
           </div>
         )}
 
-        {/* Ready to Use items */}
-        {!loading && (
-          <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginBottom:"2rem" }}>
-            {filtered.length === 0 ? (
-              <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>
-                {activeFilter === "all" ? "No items ready to use" : `No items in ${CATEGORY_LABELS[activeFilter] ?? activeFilter}`}
-              </div>
-            ) : (
-              filtered.map(approval => renderCard(approval))
-            )}
-          </div>
-        )}
-
         {/* Archived section — read items, collapsible */}
         {!loading && readItems.length > 0 && (
-          <div style={{ marginBottom:"2rem" }}>
+          <div style={{ marginBottom:"1.25rem" }}>
             <button
               onClick={() => setArchivedOpen(prev => !prev)}
               style={{ width:"100%", background:"rgba(10,35,66,0.04)", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
@@ -322,6 +309,19 @@ export default function AdminArchived() {
               <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
                 {readItems.map(approval => renderCard(approval))}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Ready to Use items */}
+        {!loading && (
+          <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginBottom:"2rem" }}>
+            {filtered.length === 0 ? (
+              <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>
+                {activeFilter === "all" ? "No items ready to use" : `No items in ${CATEGORY_LABELS[activeFilter] ?? activeFilter}`}
+              </div>
+            ) : (
+              filtered.map(approval => renderCard(approval))
             )}
           </div>
         )}
