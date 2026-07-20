@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
 
@@ -463,16 +464,149 @@ export default function AdminApprovals() {
     return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); };
   }, []);
 
-  const downloadPDF = async (approval: Approval): Promise<boolean> => {
+  const downloadPDF = (approval: Approval): void => {
     try {
-      const res = await fetch("/api/pdf-generator", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ output: approval.edited_output || approval.output, agent_name: approval.agent_name, task_brief: approval.task_brief, division: approval.division, category: approval.category, approval_id: approval.id }) });
-      if (!res.ok) return false;
-      const blob = await res.blob(); const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url;
-      a.download = `dru-ai-${(approval.category || "briefing").replace(/_/g, "-")}-${Date.now()}.pdf`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      return true;
-    } catch (err) { console.error("[pdf]", err); return false; }
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const PAGE_W = 612, PAGE_H = 792, MARGIN = 50, CONTENT_W = PAGE_W - MARGIN * 2;
+
+      // ── Header bar ──
+      doc.setFillColor(10, 35, 66);
+      doc.rect(0, 0, PAGE_W, 80, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(212, 175, 55);
+      doc.text("DRU AI Consulting", MARGIN, 36);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text("AI Mastery. Leadership Clarity. Measurable Results.", MARGIN, 54);
+
+      // Gold accent bar
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(2.5);
+      doc.line(0, 80, PAGE_W, 80);
+
+      // ── Agent info ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(10, 35, 66);
+      doc.text(approval.agent_name ?? "DRU AI Agent", MARGIN, 108);
+
+      if (approval.division) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(194, 24, 91);
+        doc.text(approval.division.toUpperCase(), MARGIN, 124);
+      }
+
+      if (approval.task_brief) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(68, 68, 68);
+        const briefLines = doc.splitTextToSize(approval.task_brief, 370);
+        doc.text(briefLines, MARGIN, 140);
+      }
+
+      // Date — right aligned
+      const dateStr = new Date().toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(136, 136, 136);
+      doc.text(dateStr, PAGE_W - MARGIN, 108, { align: "right" });
+
+      // Divider
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.75);
+      doc.line(MARGIN, 162, PAGE_W - MARGIN, 162);
+
+      // ── Content ──
+      let curY = 178;
+      const FOOTER_H = 55;
+      const BOTTOM = PAGE_H - FOOTER_H;
+      const LINE_H = 14;
+
+      const rawContent = (approval.edited_output || approval.output || "").trim();
+      const paragraphs = rawContent.split(/\n\n+/).map((p: string) => p.trim()).filter(Boolean);
+
+      const addPageIfNeeded = (needed: number) => {
+        if (curY + needed > BOTTOM) { doc.addPage(); curY = 50; }
+      };
+
+      for (const para of paragraphs) {
+        // Section heading (## Heading)
+        if (/^#{1,3}\s/.test(para)) {
+          const headText = para.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.setTextColor(10, 35, 66);
+          const lines = doc.splitTextToSize(headText, CONTENT_W);
+          addPageIfNeeded(lines.length * LINE_H + 14);
+          doc.text(lines, MARGIN, curY);
+          curY += lines.length * LINE_H + 4;
+          doc.setDrawColor(212, 175, 55);
+          doc.setLineWidth(0.3);
+          doc.line(MARGIN, curY, PAGE_W - MARGIN, curY);
+          curY += 10;
+          continue;
+        }
+
+        // Bullet list
+        if (/^[*\-•]\s/.test(para)) {
+          for (const line of para.split("\n").filter(Boolean)) {
+            const text = "•  " + line.replace(/^[*\-•]\s*/, "").replace(/\*\*(.*?)\*\*/g, "$1");
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(26, 26, 26);
+            const wrapped = doc.splitTextToSize(text, CONTENT_W - 12);
+            addPageIfNeeded(wrapped.length * LINE_H + 6);
+            doc.text(wrapped, MARGIN + 8, curY);
+            curY += wrapped.length * LINE_H + 5;
+          }
+          curY += 4;
+          continue;
+        }
+
+        // Regular paragraph — strip markdown
+        const clean = para
+          .replace(/\*\*(.*?)\*\*/g, "$1")
+          .replace(/\*(.*?)\*/g, "$1")
+          .replace(/\n/g, " ")
+          .trim();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(26, 26, 26);
+        const wrapped = doc.splitTextToSize(clean, CONTENT_W);
+        addPageIfNeeded(wrapped.length * LINE_H + 12);
+        doc.text(wrapped, MARGIN, curY);
+        curY += wrapped.length * LINE_H + 12;
+      }
+
+      // ── Footer on every page ──
+      const total = doc.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        doc.setPage(i);
+        doc.setFillColor(10, 35, 66);
+        doc.rect(0, PAGE_H - 48, PAGE_W, 48, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(212, 175, 55);
+        doc.text("assessment.druaiconsulting.com", PAGE_W / 2, PAGE_H - 30, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(
+          `© 2026 DRU AI Consulting · DRU CLEAR™ · All Rights Reserved · Page ${i} of ${total}`,
+          PAGE_W / 2, PAGE_H - 16, { align: "center" }
+        );
+      }
+
+      const safeCat = (approval.category ?? "briefing").replace(/_/g, "-");
+      doc.save(`dru-ai-${safeCat}-${Date.now()}.pdf`);
+    } catch (err) {
+      console.error("[pdf]", err);
+    }
   };
 
   const routeLead = async (approval: Approval, direction: string): Promise<boolean> => {
@@ -638,9 +772,7 @@ export default function AdminApprovals() {
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
-      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = await downloadPDF(approval);
-      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+      setPublishStatus(prev => ({ ...prev, [id]: "posted" }));
     } else if (approval.category === "social_response") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await fireSocialReply(approval);
@@ -741,9 +873,7 @@ export default function AdminApprovals() {
         setPublishStatus(prev => ({ ...prev, [id]: res.ok ? "posted" : "failed" }));
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
-      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = await downloadPDF({ ...approval, edited_output: editText });
-      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+      setPublishStatus(prev => ({ ...prev, [id]: "posted" }));
     }
     setSaving(null);
   };
@@ -961,7 +1091,6 @@ export default function AdminApprovals() {
                       {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge Vault</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
-                      {isPDF && !isPostTrigger && !isCCReply && !isKnowledge && !isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(166,137,32,0.2)", border:"1px solid rgba(166,137,32,0.5)", color:"#A68920" }}>PDF on Approve</span>}
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
@@ -1267,7 +1396,7 @@ export default function AdminApprovals() {
                               onClick={() => handleApprove(approval.id)}
                               disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
                               style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isPDF ? "Approve + PDF ↓" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
                             </button>
                           )}
                           {/* Ready to Use bank — available on ALL social cards for content banking */}
@@ -1305,6 +1434,9 @@ export default function AdminApprovals() {
                       )}
                       {approval.status !== "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em" }}>Archive</button>
+                      )}
+                      {(approval.output || approval.edited_output) && editingId !== approval.id && (
+                        <button onClick={() => downloadPDF(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>↓ PDF</button>
                       )}
                     </div>
                   </div>
