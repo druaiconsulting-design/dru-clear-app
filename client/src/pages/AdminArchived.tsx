@@ -68,12 +68,8 @@ function renderDraft(text: string) {
 }
 
 function getBadgeInfo(approval: Approval): { text: string; color: string } {
-  if (approval.category === "social") {
-    const platform = approval.platform ?? "Social";
-    return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
-  }
-  if (approval.category === "grants") return { text: "Grants", color: "#8A6E1A" };
   if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
+  if (approval.category === "grants") return { text: "Grants", color: "#8A6E1A" };
   if (approval.category === "daily_briefing") return { text: "Daily Briefing", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
 }
@@ -219,9 +215,6 @@ export default function AdminArchived() {
 
         {/* Filter Pills — content type only, status is shown on each card */}
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
-          <button onClick={() => setActiveFilter("all")} style={tabStyle(activeFilter === "all")}>
-            All ({approvals.length})
-          </button>
           {[
             { key:"client_delivery",  label:"Client Delivery",  count: approvals.filter(a => a.category === "client_delivery" || (a.category === "content_review" && a.division === "Client Delivery")).length },
             { key:"customer_support", label:"Customer Support", count: approvals.filter(a => a.category === "customer_support").length },
@@ -235,7 +228,7 @@ export default function AdminArchived() {
             { key:"video",        label:"Video",        count: approvals.filter(a => a.platform === "Video").length },
             { key:"proposal",     label:"Proposal",     count: approvals.filter(a => a.platform === "Proposal").length },
           ].filter(pill => pill.count > 0).map(pill => (
-            <button key={pill.key} onClick={() => setActiveFilter(pill.key)} style={tabStyle(activeFilter === pill.key)}>
+            <button key={pill.key} onClick={() => setActiveFilter(prev => prev === pill.key ? "all" : pill.key)} style={tabStyle(activeFilter === pill.key)}>
               {pill.label} ({pill.count})
             </button>
           ))}
