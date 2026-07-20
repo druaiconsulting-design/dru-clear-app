@@ -72,14 +72,15 @@ export default function AdminArchived() {
   const [editingId, setEditingId]       = useState<string | null>(null);
   const [editText, setEditText]         = useState("");
   const [saving, setSaving]             = useState<string | null>(null);
-  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen]   = useState(false);
+  const [rejectedOpen, setRejectedOpen]   = useState(false);
 
   const fetchArchived = async () => {
     const { data, error } = await supabase
       .from("approvals")
       .select("*")
       .eq("archived", true)
-      .in("status", ["ready_to_use", "read"])
+      .in("status", ["ready_to_use", "read", "rejected"])
       .order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch archived:", error);
     else setApprovals((data as Approval[]) || []);
@@ -88,8 +89,9 @@ export default function AdminArchived() {
 
   useEffect(() => { fetchArchived(); }, []);
 
-  const readyToUse = approvals.filter(a => a.status === "ready_to_use");
-  const readItems  = approvals.filter(a => a.status === "read");
+  const readyToUse    = approvals.filter(a => a.status === "ready_to_use");
+  const readItems     = approvals.filter(a => a.status === "read");
+  const rejectedItems = approvals.filter(a => a.status === "rejected");
 
   const handleRestore = async (id: string) => {
     setRestoring(id);
@@ -319,6 +321,25 @@ export default function AdminArchived() {
             {archivedOpen && (
               <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
                 {readItems.map(approval => renderCard(approval))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Rejected section — collapsible */}
+        {!loading && rejectedItems.length > 0 && (
+          <div style={{ marginBottom:"2rem" }}>
+            <button
+              onClick={() => setRejectedOpen(prev => !prev)}
+              style={{ width:"100%", background:"rgba(194,24,91,0.04)", border:"1px solid rgba(194,24,91,0.15)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"rgba(194,24,91,0.6)" }}>
+                Rejected ({rejectedItems.length})
+              </span>
+              <span style={{ color:"rgba(194,24,91,0.4)", fontSize:"0.75rem" }}>{rejectedOpen ? "▲" : "▼"}</span>
+            </button>
+            {rejectedOpen && (
+              <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
+                {rejectedItems.map(approval => renderCard(approval))}
               </div>
             )}
           </div>
