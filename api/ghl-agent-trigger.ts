@@ -840,13 +840,53 @@ async function runAmelia(): Promise<string|null> {
 }
 
 // P8
+// Pulls real support ticket data from Supabase for Isaiah and Priscilla.
+// Both agents report actual ticket volume and open issues — never invented metrics.
+async function fetchSupportData(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return 'Support data unavailable.';
+  try {
+    const [allRes, openRes, recentRes] = await Promise.all([
+      fetch(`${url}/rest/v1/support_requests?select=id,category,status,member_tier,created_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/support_requests?status=eq.open&select=id,category,member_name,member_tier,question,created_at&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/support_requests?select=id,category,status,member_name,member_tier,question,created_at&order=created_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+    ]);
+    const [all, open, recent]: [any[], any[], any[]] = await Promise.all([allRes.json(), openRes.json(), recentRes.json()]);
+    const openList = Array.isArray(open) && open.length > 0
+      ? open.map((t: any) => `  - [${t.member_tier ?? 'unknown tier'}] ${t.member_name ?? 'Unknown'}: ${(t.question || '').slice(0, 100)} (category: ${t.category ?? 'general'})`).join('\n')
+      : '  (none)';
+    const recentList = Array.isArray(recent) && recent.length > 0
+      ? recent.map((t: any) => `  - ${t.status?.toUpperCase()} | ${t.category ?? 'general'} | ${t.member_tier ?? 'unknown tier'} | ${t.created_at?.slice(0,10)}`).join('\n')
+      : '  (none)';
+    const lines = [
+      'REAL SUPPORT DATA — use only these numbers, never invent ticket counts, metrics, or response rates:',
+      `Total support requests (all time): ${Array.isArray(all) ? all.length : 0}`,
+      `Open tickets: ${Array.isArray(open) ? open.length : 0}`,
+      `Open ticket details:\n${openList}`,
+      `5 most recent tickets:\n${recentList}`,
+    ];
+    return lines.join('\n');
+  } catch {
+    return 'Support data unavailable.';
+  }
+}
+
 async function runIsaiah(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('isaiah','Isaiah Carter','Customer Support','daily_issue_resolution','issue_resolution',`You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n**Support Protocol** — Standard resolution flow for: (1) Assessment access issues at assessment.druaiconsulting.com, (2) Course access issues, (3) Diagnostic scheduling issues, (4) Billing/payment issues. One improvement per flow.\n**FAQ Development** — Top 3 anticipated support questions for launch week with complete answers.\n**Escalation Framework** — What Isaiah handles autonomously vs. what escalates to DeAnna.\n**Today's Support Priority** — Single most important support infrastructure item before first paying client.`,'normal',0,null,1500);
+  const supportData = await fetchSupportData();
+  const previousWork = await getCrossRead(['isaiah'], 1);
+  const prevSection = previousWork ? `WHAT YOU COVERED YESTERDAY (do not repeat):\n${previousWork}` : 'No previous output on record.';
+  return await runAgentToCSQ('isaiah','Isaiah Carter','Customer Support','daily_issue_resolution','issue_resolution',`You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\n\nREAL SUPPORT DATA (use only this — do not invent tickets, issues, or resolution counts):\n${supportData}\n\n${prevSection}\n\nHARD RULES:\n1. Base every statement on the real support data above. Do not invent ticket categories, volumes, or resolution flows that don't correspond to actual open tickets.\n2. If open tickets = 0 and total requests = 0, open with: \"No support tickets on record. Queue is clear.\" Then give ONE new infrastructure prep item not covered yesterday.\n3. If there ARE open tickets, address each one by name, category, and member tier. State the resolution action.\n4. Do not rewrite the same four resolution flows every day. If the protocols haven't changed and there are no real tickets, say so.\n5. Only surface genuinely new infrastructure improvements — check the previous output above before writing.\n\nFormat: 200 words or fewer. Write in first person as Isaiah.`,'normal',0,null,1500);
+}
 }
 async function runPriscilla(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  return await runAgentToCSQ('priscilla','Priscilla Okonkwo','Customer Support','daily_multichannel_comms','multichannel_comms',`You are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ on EVERY mention: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™. CRITICAL: 'AI Sales Mastery' must ALWAYS be written as 'AI Sales Mastery™' — every single instance.\nCHANNELS: Email (druaiconsulting@gmail.com), SMS (GHL A2P 10DLC registered), Portal notifications (app.druaiconsulting.com), LinkedIn DM.\n**Channel Health** — Status and one improvement action per channel.\n**Communication Templates** — One ready-to-use template (150 words or fewer) for each: (1) Missed appointment follow-up, (2) Post-assessment welcome, (3) Diagnostic reminder.\n**Response Time Standards** — Recommended SLA per channel for a solo-founder AI consulting business.\n**Today's Communications Priority** — Single most important communication system improvement for today.`,'normal',0,null,1500);
+  const supportData = await fetchSupportData();
+  const previousWork = await getCrossRead(['priscilla'], 1);
+  const prevSection = previousWork ? `WHAT YOU COVERED YESTERDAY (do not repeat):\n${previousWork}` : 'No previous output on record.';
+  return await runAgentToCSQ('priscilla','Priscilla Okonkwo','Customer Support','daily_multichannel_comms','multichannel_comms',`You are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nCHANNELS: Email (druaiconsulting@gmail.com), SMS (GHL A2P 10DLC), Portal notifications (app.druaiconsulting.com), LinkedIn DM.\n\nREAL SUPPORT DATA (use only this — do not invent response rates, open rates, or communication metrics):\n${supportData}\n\n${prevSection}\n\nHARD RULES:\n1. Do not invent channel metrics. If no real data exists for a channel, do not report a percentage or rate for it.\n2. If total support requests = 0, open with: \"No client communications on record yet.\" Then give ONE new comms infrastructure item not covered yesterday.\n3. If there ARE tickets, use their category and tier to inform which channel needs attention and what template would help.\n4. Do not rewrite the same channel health table or template set every day. Check the previous output above — only surface what is genuinely new.\n\nFormat: 200 words or fewer. Write in first person as Priscilla.`,'normal',0,null,1500);
+}
 }
 
 async function runAaliyahCCOutreach(signalType: string, contactEmail: string, contactFirstName: string, contactPhone: string): Promise<void> {
