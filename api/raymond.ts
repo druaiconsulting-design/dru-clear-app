@@ -256,12 +256,12 @@ ${allSummary}`,
     ).then(async synthesis => {
       const id = await writeApproval({
         source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
-        agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division: 'Command',
+        agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division: 'Executive Leadership',
         task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
         notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
         category: 'daily_briefing', platform: null,
       });
-      if (id) { approvalMap['Command'] = id; }
+      if (id) { approvalMap['Executive Leadership'] = id; }
       console.log(`[raymond] Daily Briefing card written — Raymond Holloway`);
     }).catch(err => { console.error('[raymond] Daily Briefing synthesis failed:', err); });
   })();
@@ -321,7 +321,7 @@ ${allSummary}`,
   // Agents self-flag most work as 'high' daily, which previously triggered HIGH ALERT every run
   // and blocked DeAnna's standard SMS notification. 'critical' is reserved for true blockers.
   const hasHighPriority = items.some(i => i.priority === 'critical');
-  const commandApprovalId = approvalMap['Command'] ?? null;
+  const commandApprovalId = approvalMap['Executive Leadership'] ?? null;
   if (commandApprovalId) {
     const divisionCount = Object.keys(approvalMap).length;
     const label = hasHighPriority
@@ -336,7 +336,7 @@ ${allSummary}`,
           body: JSON.stringify({
             email: 'druaiconsulting@gmail.com', phone: '+19796186671',
             first_name: 'DeAnna', last_name: 'Upshaw',
-            agent_name: 'Raymond Holloway', division: 'Command', task: 'Daily Briefing',
+            agent_name: 'Raymond Holloway', division: 'Executive Leadership', task: 'Daily Briefing',
             approval_id: commandApprovalId, summary: label, triggered_at: triggeredAt,
             review_url: 'https://app.druaiconsulting.com/admin-approvals',
             sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
