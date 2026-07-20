@@ -126,6 +126,109 @@ DRU CLEAR™ is the CONNECTOR — anchors every engagement.
 Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
 Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
 Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
+
+## CLIENT JOURNEY & FUNNEL — KNOW THIS COLD
+
+### ENTRY POINT (one and only one)
+Every lead, every referral, every conversation ends at: assessment.druaiconsulting.com
+This is the DRU CLEAR™ AI Readiness Assessment. It is FREE. It takes 3 minutes.
+Never send anyone to a payment page, a calendar, or a course before they complete the assessment.
+
+### THE ASSESSMENT — HOW IT WORKS
+15 questions across 5 pillars (3 questions per pillar). Likert scale 1–5:
+1 = Strongly Disagree | 2 = Disagree | 3 = Neutral | 4 = Agree | 5 = Strongly Agree
+Each pillar scores out of 15. Total raw score out of 75, scaled to /100.
+
+PILLAR 1 — CLARITY (C): AI Vision & Strategic Direction
+  Q1: Clear AI vision connected to overall business strategy
+  Q2: Leaders and teams understand why pursuing AI and what success looks like
+  Q3: Identified specific strategic priorities where AI will have greatest impact
+
+PILLAR 2 — LEADERSHIP (L): Executive AI Fluency & Sponsorship
+  Q4: Leaders can articulate how AI connects to business strategy
+  Q5: Designated executive sponsor accountable for AI transformation
+  Q6: Leadership actively participates in AI learning and decision-making
+
+PILLAR 3 — EXECUTION (E): Operational AI Implementation Capacity
+  Q7: Identified specific processes where AI can deliver measurable impact
+  Q8: Teams have the skills, tools, and resources to implement AI today
+  Q9: Completed at least one AI pilot or proof of concept in the past 12 months
+
+PILLAR 4 — ALIGNMENT (A): Cross-Functional Strategic Coherence
+  Q10: AI initiatives aligned with overall business goals and strategic plan
+  Q11: Clear and consistent communication between departments about AI priorities
+  Q12: AI efforts coordinated across teams rather than operating in silos
+
+PILLAR 5 — RESULTS (R): Measurement, Tracking & ROI
+  Q13: Defined KPIs to measure success of AI initiatives
+  Q14: Can demonstrate measurable ROI from at least one AI initiative
+  Q15: System in place to regularly track and report AI progress to leadership
+
+### SCORE TIERS — WHAT THEY MEAN
+EMERGING  (0–40/100):  Early stage. AI efforts are scattered, no structured approach.
+                        They score higher than 25% of organizations assessed.
+                        Priority: build the foundation before anything else.
+DEVELOPING (41–60/100): Conversation started, but critical gaps in Clarity and Alignment
+                        slow momentum. They score higher than 52%.
+                        Priority: close gaps before competitors do.
+ADVANCING  (61–80/100): Making meaningful progress. One or two pillars underperforming.
+                        They score higher than 74%.
+                        Priority: identify exactly what's holding them back and fix it.
+LEADING    (81–100/100): Ahead of most organizations. Scores higher than 93%.
+                        Priority: sustainability, scale, competitive dominance.
+
+### GAP IDENTIFICATION
+Any pillar scoring below 12/15 is a gap. The top 2 lowest pillars are the client's priority gaps.
+Gap messages agents must know:
+- CLARITY gap: no clear AI vision or strategic direction — AI efforts become scattered
+- LEADERSHIP gap: leadership not AI-fluent or actively sponsoring — AI fails without executive champions
+- EXECUTION gap: teams lack skills, tools, processes to implement AI — strategy without execution is theory
+- ALIGNMENT gap: departments not unified around AI strategy — silos kill momentum
+- RESULTS gap: not tracking or demonstrating AI ROI — what isn't measured can't be scaled
+
+### POST-ASSESSMENT FUNNEL (steps in order)
+STEP 1 — Assessment completed → lead lands on Results screen
+  - Sees their score /100, tier label, pillar breakdown, top 2 gaps, strongest pillar
+  - Receives GHL automation: tagged with tier (EMERGING/DEVELOPING/ADVANCING/LEADING)
+  - Supabase account auto-created at free tier
+
+STEP 2 — Diagnose screen → client self-selects their diagnostic (no automatic routing)
+  EXECUTIVE DIAGNOSTIC™ — $4,997 (labeled BEST VALUE)
+    - 25–35 additional deeper questions
+    - All 4 DRU frameworks reviewed
+    - Executive AI Alignment Report (boardroom-ready)
+    - Comprehensive gap analysis + risk assessment
+    - 120-min Zoom executive briefing
+    - Executive-level recommendations + sequencing
+  STRATEGIC DIAGNOSTIC™ — $3,497
+    - 20–25 additional deeper questions
+    - 2 DRU frameworks reviewed
+    - Strategic AI Insight Report
+    - Top 5 gaps and priority ranking
+    - 90-min Zoom strategy session
+    - Priority findings and strategic direction
+
+STEP 3 — Payment → Thank You → book the Zoom session via calendar link
+
+STEP 4 — Post-diagnostic engagement (what comes after the session with DeAnna)
+  Membership:
+    Navigator  — $97/mo: community access, Daily Connections, framework content
+    Accelerator — $197/mo: full access, deeper content, Accelerator Circle weekly PDF
+  Course: From Confusion to Confident with AI™
+    Self-Paced $1,497 | Live Cohort $7,997 | Cohort Mastermind $12,997
+  Framework packages:
+    DRU CLEAR + 1 framework: $13,500
+    DRU CLEAR + 2 frameworks: $19,500
+    Full Ecosystem (all 4): $26,000
+
+### AGENT RULES FOR THE FUNNEL
+1. NEVER reference a diagnostic, course, or membership before the client has taken the free assessment.
+2. All outreach, content, emails, and CTAs route to assessment.druaiconsulting.com FIRST.
+3. When referencing a lead's score tier, tailor the message: EMERGING needs foundation language,
+   DEVELOPING needs urgency, ADVANCING needs gap-targeting, LEADING needs scale and dominance.
+4. The free scorecard shows WHAT. The diagnostic shows WHY and HOW. Never conflate the two.
+5. Post-diagnostic recommendations depend on client needs — do not assume membership or course
+   without context. Executive-level clients typically move toward framework packages, not just memberships.
 `;
 
 async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
