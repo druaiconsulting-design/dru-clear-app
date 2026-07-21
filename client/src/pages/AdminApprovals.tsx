@@ -765,7 +765,7 @@ export default function AdminApprovals() {
             borders:{ top:{ style:BorderStyle.SINGLE, size:0, color:"FFFFFF" }, bottom:{ style:BorderStyle.SINGLE, size:0, color:"FFFFFF" },
               left:{ style:BorderStyle.SINGLE, size:16, color:GOLD }, right:{ style:BorderStyle.SINGLE, size:0, color:"FFFFFF" } },
             children:[new DocxParagraph({ children:[new TextRun({ text, italics:true, size:22, font:"Playfair Display", color:DARK })] })]
-          })]})]}});
+          })]})]});
 
       // ── Parse content ──
       const rawContent = (approval.edited_output || approval.output || "").trim();
