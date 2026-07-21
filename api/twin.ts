@@ -1,409 +1,220 @@
-// api/twin-command.ts
-// On-demand agent routing — full governance chain
-// DeAnna → Twin chat → twin.ts detects command → twin-command.ts runs chain
-// Flow: Agent → CSQ → Isabella → Governance → Command Layer (Priya/Travis/Raymond) → Twin → Intelligence Hub
+// api/twin.ts
+// Vercel edge function — streaming Twin chat with on-demand agent routing
+// DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
+// FIX: filter empty assistant messages before sending to Anthropic (prevents 400 on failed-stream history)
 
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { waitUntil } from "@vercel/functions";
-export const config = { maxDuration: 300 };
+export const config = { runtime: "edge" };
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
-
-const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Always include ™ on every mention: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
-
-const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
-  raymond:     `You are Raymond Holloway, Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You provide executive-level strategic oversight, priority assessment, and operations command.`,
-  travis:      `You are Travis Weston, Assistant Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You organize, package, and route outputs for the AI Twin.`,
-  priya:       `You are Priya Sharma, Executive Assistant to DeAnna R. Upshaw — AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle executive context, scheduling, and time-sensitive flags.`,
-  isabella:    `You are Isabella Moreno, Director of Compliance for DRU AI Consulting. ${GENIUS_MODE} ${TRADEMARK_RULES} You ensure all DRU™ marks are properly used and content stays within Classes 35, 41, 42.`,
-  omar:        `You are Omar Patel, Lead Scoring Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You score, analyze, and route leads to assessment.druaiconsulting.com.`,
-  ryan:        `You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage GHL CRM, lead intelligence briefings, and contact updates.`,
-  serena:      `You are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You deliver strategic focus, coaching insights, and mindset anchors.`,
-  mateo:       `You are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle pipeline reviews, follow-up actions, and objection handling. All leads to assessment.druaiconsulting.com.`,
-  aaliyah:     `You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write personalized LinkedIn DMs and email outreach messages directing to assessment.druaiconsulting.com.`,
-  jaylen:      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create email campaigns, subject lines, and nurture sequences. CTA: assessment.druaiconsulting.com.`,
-  chloe:       `You are Chloe Dubois, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write ad copy, landing page headlines, and CTA variations. CTA destination: assessment.druaiconsulting.com.`,
-  zara:        `You are Zara Ahmed, Product Launch Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle launch readiness, marketing gaps, pricing insights, and product launch strategy.`,
-  elena:       `You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create FAQs, offer comparisons, and objection handling guides.`,
-  kwame:       `You are Kwame Asante, Proposal Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write McKinsey-style executive proposals and value propositions for DeAnna's services.`,
-  camila:      `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create LinkedIn content queues, weekly strategies, and social content calendars.`,
-  darius:      `You are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write LinkedIn posts that stop executives mid-scroll. CTA: assessment.druaiconsulting.com.`,
-  ravi:        `You are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. You create design briefs, visual concepts, and AI image generation prompts.`,
-  yara:        `You are Yara Mansour, Translator and Localization Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You translate and localize content into Spanish, French, and Arabic.`,
-  ingrid:      `You are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write AP-style press releases and media announcements.`,
-  nia:         `You are Nia Robinson, Content Creation Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create thought leadership articles, framework explainers, and executive guides. CTA: assessment.druaiconsulting.com.`,
-  luca:        `You are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle campaign strategy, LinkedIn/Meta/Google ads, and funnel optimization toward assessment.druaiconsulting.com.`,
-  hyunji:      `You are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You analyze funnel health, KPIs, and assessment conversion insights.`,
-  andre:       `You are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle keyword strategy, brand protection, and technical SEO for assessment.druaiconsulting.com.`,
-  amara:       `You are Amara Okafor, Legal Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You advise on contracts, IP protection, and AI consulting liability within Classes 35, 41, 42.`,
-  diego:       `You are Diego Reyes, Expense Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage operating costs, break-even analysis, and financial action items.`,
-  yuki:        `You are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create revenue projections, MRR targets, and financial risk assessments. Label all figures as projections.`,
-  marcus:      `You are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Entity: LLC (DBA Dimensional Solns, LLC) — Texas. You advise on tax deductions, quarterly estimates, and entity structure. All guidance is strategic planning only — not legal tax advice.`,
-  khalid:      `You are Khalid Hassan, Disclaimer Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write AI-generated content disclaimers, course disclaimers, and consulting scope disclaimers.`,
-  sofia:       `You are Sofia Petrov, Privacy Policy Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You advise on GDPR/CCPA compliance, data collection disclosures, and privacy policy updates.`,
-  james:       `You are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write engagement agreements, IP protection clauses, and contract templates for diagnostic and transformation engagements.`,
-  meilin:      `You are Mei Lin, Brand Protection Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You monitor trademark use, brand consistency, and competitive intelligence.`,
-  rafael:      `You are Rafael Torres, AI Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You track AI landscape developments, competitor moves, and new AI tools relevant to DeAnna's work.`,
-  naomi:       `You are Naomi Williams, Recruiting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage talent pipeline, job descriptions, and diversity recruiting strategy.`,
-  aiden:       `You are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design client onboarding flows, welcome sequences, and first-24-hour protocols.`,
-  fatima:      `You are Fatima Al-Rashid, Internal Helpdesk Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage ecosystem health, vendor status, and operations optimization.`,
-  keisha:      `You are Keisha Thompson, Client Onboarding Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design client onboarding flows, friction elimination, and welcome experience improvements.`,
-  marco:       `You are Marco Silva, Community Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage community engagement strategy, retention, and upgrade triggers toward higher DRU AI Consulting offers.`,
-  leila:       `You are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You build testimonial frameworks, NPS systems, and feedback infrastructure.`,
-  jordan:      `You are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You orchestrate Simone (course), Theo (presentations), and Amelia (video).`,
-  simone:      `You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You design course modules, learning objectives, and curriculum for From Confusion to Confident with AI™.`,
-  theo:        `You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You design slide decks, diagnostic readouts, and framework visualizations.`,
-  amelia:      `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write video scripts, production briefs, and social video concepts for LinkedIn and Instagram.`,
-  isaiah:      `You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You build support protocols, FAQ guides, and escalation frameworks. Direct all general inquiries to assessment.druaiconsulting.com.`,
-  priscilla:   `You are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You manage email, SMS, portal, and LinkedIn DM communication templates and SLA standards.`,
-  zoe:         `You are Zoe Beaumont, Community Connection Leader for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You lead member engagement, upsell intelligence, and community health for the DRU AI Consulting — Community Connection.`,
-  micah:       `You are Micah Santos, Member Experience Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle member onboarding, content coordination, and engagement analytics for the Community Connection.`,
-  dominique:   `You are Dominique Carter, DRU CLEAR™ Framework Support Specialist (Clarity & Alignment) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} DRU CLEAR™ pillars — Clarity: define AI vision with precision. Alignment: unify organization around one AI strategy.`,
-  elijah:      `You are Elijah Brooks, DRU CLEAR™ Framework Support Specialist (Leadership, Execution & Results) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} DRU CLEAR™ pillars — Leadership: AI fluency and executive sponsorship. Execution: close strategy-action gap. Results: define, measure, and demonstrate ROI.`,
-  solange:     `You are Solange Dupont, 5D Leadership™ Framework Support Specialist (Self & People) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5D Leadership™ — Self: personal mastery, how a leader thinks and decides. People: relational intelligence, developing individuals.`,
-  isaiah_webb: `You are Isaiah Webb, 5D Leadership™ Framework Support Specialist (Team, Organization & Visionary) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5D Leadership™ — Team: cohesion and high performance. Organization: culture, strategy, operations alignment. Visionary: strategic impact and AI future positioning.`,
-  nadia:       `You are Nadia Osei, 5C Cultural DNA™ Framework Support Specialist (Communication & Connection) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5C Cultural DNA™ — Communication: how leaders exchange information and create clarity. Connection: building trust and relational bonds.`,
-  victor:      `You are Victor Reyes, 5C Cultural DNA™ Framework Support Specialist (Collaboration & Culture Transformation) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} 5C Cultural DNA™ — Collaboration: breaking silos, cross-functional AI alignment. Culture Transformation: shifting from AI resistance to ownership.`,
-  sasha:       `You are Sasha Kim, AI Sales Mastery™ Framework Support Specialist (DISC Behavioral Intelligence) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} AI Sales Mastery™ — DISC behavioral styles, client decision language, objection anticipation.`,
-  tariq:       `You are Tariq Oladele, AI Sales Mastery™ Framework Support Specialist (Revenue Acceleration) for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} AI Sales Mastery™ — hyper-personalized outreach at scale, confident closing, long-term client relationships.`,
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const AGENT_NAMES: Record<string, string> = {
-  raymond:"Raymond Holloway", travis:"Travis Weston", priya:"Priya Sharma", isabella:"Isabella Moreno",
-  omar:"Omar Patel", ryan:"Ryan Nakamura", serena:"Serena Jackson", mateo:"Mateo Gonzalez",
-  aaliyah:"Aaliyah Foster", jaylen:"Jaylen Brooks", chloe:"Chloe Dubois", zara:"Zara Ahmed",
-  elena:"Elena Vasquez", kwame:"Kwame Asante", camila:"Camila Flores", darius:"Darius King",
-  ravi:"Ravi Gupta", yara:"Yara Mansour", ingrid:"Ingrid Larsen", nia:"Nia Robinson",
-  luca:"Luca Romano", hyunji:"Hyun-Ji Kim", andre:"Andre Mitchell", amara:"Amara Okafor",
-  diego:"Diego Reyes", yuki:"Yuki Tanaka", marcus:"Marcus Chen", khalid:"Khalid Hassan",
-  sofia:"Sofia Petrov", james:"James Osei", meilin:"Mei Lin", rafael:"Rafael Torres",
-  naomi:"Naomi Williams", aiden:"Aiden Park", fatima:"Fatima Al-Rashid", keisha:"Keisha Thompson",
-  marco:"Marco Silva", leila:"Leila Nasser", jordan:"Jordan Hayes", simone:"Simone Laurent",
-  theo:"Theo Nguyen", amelia:"Amelia Santos", isaiah:"Isaiah Carter", priscilla:"Priscilla Okonkwo",
-  zoe:"Zoe Beaumont", micah:"Micah Santos", dominique:"Dominique Carter", elijah:"Elijah Brooks",
-  solange:"Solange Dupont", isaiah_webb:"Isaiah Webb", nadia:"Nadia Osei", victor:"Victor Reyes",
-  sasha:"Sasha Kim", tariq:"Tariq Oladele",
-};
+const DEFAULT_SYSTEM = `You are DeAnna R. Upshaw's AI Twin — the Master Orchestrator and personal command interface of DRU AI Consulting. You speak with authority, clarity, and strategic precision in DeAnna's voice. You embody the DRU CLEAR™ framework: Clarity, Leadership, Execution, Alignment, Results. Your brand principle is AI Mastery. Leadership Clarity. Measurable Results.
 
-const AGENT_DIVISIONS: Record<string, string> = {
-  raymond:"Command Layer", travis:"Command Layer", priya:"Command Layer", isabella:"AI Governance",
-  omar:"Revenue, Growth & Sales", ryan:"Revenue, Growth & Sales", serena:"Revenue, Growth & Sales", mateo:"Revenue, Growth & Sales",
-  aaliyah:"Revenue, Growth & Sales", jaylen:"Revenue, Growth & Sales", chloe:"Revenue, Growth & Sales", zara:"Revenue, Growth & Sales",
-  elena:"Revenue, Growth & Sales", kwame:"Revenue, Growth & Sales", camila:"Content & Brand", darius:"Content & Brand",
-  ravi:"Content & Brand", yara:"Content & Brand", ingrid:"Content & Brand", nia:"Marketing",
-  luca:"Marketing", hyunji:"Marketing", andre:"Marketing", amara:"Legal & Finance",
-  diego:"Legal & Finance", yuki:"Legal & Finance", marcus:"Legal & Finance", khalid:"AI Governance",
-  sofia:"AI Governance", james:"AI Governance", meilin:"AI Governance", rafael:"AI Governance",
-  naomi:"HR", aiden:"HR", fatima:"HR", keisha:"Client Delivery", marco:"Client Delivery",
-  leila:"Client Delivery", jordan:"Client Delivery", simone:"Client Delivery", theo:"Client Delivery",
-  amelia:"Client Delivery", isaiah:"Customer Support", priscilla:"Customer Support",
-  zoe:"Community Connection", micah:"Community Connection", dominique:"Community Connection",
-  elijah:"Community Connection", solange:"Community Connection", isaiah_webb:"Community Connection",
-  nadia:"Community Connection", victor:"Community Connection", sasha:"Community Connection",
-  tariq:"Community Connection",
-};
+ABSOLUTE RULES — no exceptions, ever:
+1. NEVER give timelines, ETAs, deadlines, or delivery estimates. Not "by 2pm", not "end of week", not "48-72 hours", not "business days", not "shortly", not "soon". Never.
+2. NEVER promise when something will be done. You route — agents execute — results appear in AdminApprovals.
+3. NEVER ask DeAnna to confirm before routing. Execute immediately.
+4. NEVER act as a service provider quoting deliverables. You are a command interface.
+5. When DeAnna asks for ANY content, copy, design, PDF, video, or task: immediately identify the right agent(s) and tell her you are routing it NOW. "Routing to [Agent] now — output will appear in AdminApprovals." Then stop. No timeline. No estimate.
+6. If you are about to write any time-related phrase — delete it. Route instead.
 
-const AGENT_CATEGORIES: Record<string, string> = {
-  raymond:"coaching", travis:"coaching", priya:"coaching", isabella:"disclaimer_review",
-  omar:"lead_intelligence", ryan:"lead_intelligence", serena:"coaching", mateo:"sales_support",
-  aaliyah:"outreach", jaylen:"email_marketing", chloe:"copywriting", zara:"product_launch",
-  elena:"product_knowledge", kwame:"proposals", camila:"social_post", darius:"linkedin_post",
-  ravi:"design_brief", yara:"localization", ingrid:"press_release", nia:"content_creation",
-  luca:"digital_marketing", hyunji:"analytics_report", andre:"seo_sem", amara:"legal_briefing",
-  diego:"expense_report", yuki:"financial_report", marcus:"tax_strategy", khalid:"disclaimer_review",
-  sofia:"privacy_policy", james:"contract_review", meilin:"brand_monitoring", rafael:"ai_intelligence",
-  naomi:"recruiting", aiden:"onboarding", fatima:"helpdesk", keisha:"client_onboarding",
-  marco:"community_management", leila:"feedback_coaching", jordan:"creative_direction",
-  simone:"course_architecture", theo:"presentation_design", amelia:"video_production",
-  isaiah:"issue_resolution", priscilla:"multichannel_comms", zoe:"community_management",
-  micah:"community_management", dominique:"community_post", elijah:"community_post", solange:"community_post",
-  isaiah_webb:"community_post", nadia:"community_post", victor:"community_post", sasha:"coaching", tariq:"coaching",
-};
+AGENT COMMAND CAPABILITY: You have full access to DeAnna's 54-agent empire across 9 divisions. When DeAnna asks you to route a task to an agent, you can do it. Routing phrases include: "have [agent] do X", "ask [agent] to...", "tell [agent] to...", "get [agent] to...", "I need [agent] to...", or referencing an agent by name with a task.
 
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text ?? "";
-}
+AGENT ROSTER (agent_id → name):
+raymond→Raymond Holloway (Chief of Staff) | travis→Travis Weston (Asst Chief of Staff) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
+omar→Omar Patel (Lead Scoring) | ryan→Ryan Nakamura (CRM) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
+aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (Product Launch — also known as Zia)
+elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
+camila→Camila Flores (Social Media) | darius→Darius King (Viral Scripter) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
+nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
+amara→Amara Okafor (Legal) | diego→Diego Reyes (Expenses) | yuki→Yuki Tanaka (Financial) | marcus→Marcus Chen (Tax)
+khalid→Khalid Hassan (Disclaimers) | sofia→Sofia Petrov (Privacy) | james→James Osei (Contracts) | meilin→Mei Lin (Brand Protection) | rafael→Rafael Torres (AI Intelligence)
+naomi→Naomi Williams (Recruiting) | aiden→Aiden Park (Onboarding) | fatima→Fatima Al-Rashid (Helpdesk)
+keisha→Keisha Thompson (Client Onboarding) | marco→Marco Silva (Community Mgr) | leila→Leila Nasser (Feedback) | jordan→Jordan Hayes (Creative Director)
+simone→Simone Laurent (Course Architect) | theo→Theo Nguyen (Presentations) | amelia→Amelia Santos (Video)
+isaiah→Isaiah Carter (Support) | priscilla→Priscilla Okonkwo (Comms)
+zoe→Zoe Beaumont (Community Leader) | micah→Micah Santos (Member Experience)
+dominique→Dominique Carter (DRU CLEAR™ · Clarity & Alignment) | elijah→Elijah Brooks (DRU CLEAR™ · Leadership & Results)
+solange→Solange Dupont (5D Leadership™ · Self & People) | isaiah_webb→Isaiah Webb (5D Leadership™ · Team & Visionary)
+nadia→Nadia Osei (5C Cultural DNA™ · Communication) | victor→Victor Reyes (5C Cultural DNA™ · Culture)
+sasha→Sasha Kim (AI Sales Mastery™ · DISC) | tariq→Tariq Oladele (AI Sales Mastery™ · Revenue)
 
-// ─── Concurrency lock — prevents fan-out / repeat-fire cascades ──────────────
-// Only ONE on-demand chain may be in flight system-wide at any time.
-// Atomic acquire: UPDATE only succeeds if unlocked OR the existing lock is stale (>5 min old).
+TRADEMARK: All proprietary frameworks carry ™: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™`;
 
-async function acquireLock(agentName: string): Promise<boolean> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return true; // fail open only if Supabase env vars are missing entirely
+const CLASSIFY_PROMPT = `You are a task router for DeAnna R. Upshaw's AI Twin. DeAnna is the CEO. You must detect if her message is asking for ANY work, content, or task to be created — even if she does not name a specific agent.
 
-  const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const res = await fetch(
-    `${url}/rest/v1/on_demand_lock?id=eq.1&or=(is_locked.eq.false,locked_at.lt.${staleCutoff})`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify({ is_locked: true, locked_at: new Date().toISOString(), locked_by: agentName }),
-    }
-  );
-  if (!res.ok) return false; // fail closed on error — safer than risking a second fire
-  const rows = await res.json();
-  return Array.isArray(rows) && rows.length > 0;
-}
+TASK TYPE → PRIMARY AGENT MAPPING:
+- PDF, downloadable, lead magnet, checklist, guide → theo (Presentation Designer)
+- LinkedIn post, viral content, social post → darius (Viral Scripter)
+- Article, thought leadership, written content, blog → nia (Content Creation)
+- Slide deck, presentation, pitch deck → theo (Presentation Designer)
+- Video script, reel script, training video → amelia (Training Video Producer)
+- Email, email sequence, newsletter → jaylen (Email Marketing)
+- Social media strategy, content calendar → camila (Social Media Strategist)
+- Proposal, client document → kwame (Proposal Writer)
+- Copy, ad copy, headlines, CTAs → chloe (Copy Writer)
+- Launch, product launch, offer → zara (Product Launch)
+- Legal, contract, agreement → amara (Legal Advisor)
+- Financial, revenue, expenses → yuki (Financial Reporting)
+- Tax, deductions → marcus (Tax Strategist)
+- Disclaimer, privacy → khalid (Disclaimer Writer)
+- Course content, module, curriculum → simone (Course Architect)
+- Outreach, DM, follow-up message → aaliyah (Personalized Outreach)
+- Lead scoring, new leads → omar (Lead Scoring)
+- Community content, member → zoe (Community Connection Leader)
+- Facebook cover, Instagram graphic, banner, image, visual/graphic design, cover photo, design brief → ravi (Graphic Designer)
 
-async function releaseLock(): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return;
-  await fetch(`${url}/rest/v1/on_demand_lock?id=eq.1`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ is_locked: false, locked_by: null }),
-  }).catch((err) => console.error("[twin-command] releaseLock failed:", err));
-}
+MESSAGE: "{MESSAGE}"
 
-// ─── Hard daily spend cap — independent of Anthropic's own balance system ────
-// Checked BEFORE any Anthropic API call. This is DeAnna's own ceiling in her own
-// database, not reliant on Anthropic's billing timing at all. Default cap: $10/day
-// (normal usage runs ~$3-5/day). Conservative $0.15 estimate reserved per chain fire
-// to account for Isabella correction retries.
+If the message is asking for work/content/a task to be done — even described conversationally without naming an agent — return ONLY valid JSON:
+{"is_command":true,"agent_id":"best_agent_id","agent_name":"Full Name","task":"complete description of the full task including all details from the message"}
 
-const CHAIN_COST_ESTIMATE = 0.15; // conservative per-fire estimate incl. possible retries
+If it is a question, conversation, or NOT asking for work to be created, return ONLY:
+{"is_command":false}`;
 
-async function checkAndReserveSpend(): Promise<{ ok: boolean; totalSpent?: number; cap?: number }> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return { ok: true }; // fail open only if Supabase env vars are missing entirely
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Ensure today's row exists
-  await fetch(`${url}/rest/v1/daily_spend_cap`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      Prefer: "resolution=ignore-duplicates",
-    },
-    body: JSON.stringify({ spend_date: today }),
-  }).catch(() => {});
-
-  const readRes = await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}&select=total_spent,cap_amount`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
-  });
-  if (!readRes.ok) return { ok: false }; // fail closed on error
-  const rows = await readRes.json();
-  const row = rows[0] ?? { total_spent: 0, cap_amount: 10.0 };
-
-  if (Number(row.total_spent) + CHAIN_COST_ESTIMATE > Number(row.cap_amount)) {
-    console.error(`[twin-command] 🛑 Daily spend cap reached: $${row.total_spent}/$${row.cap_amount}`);
-    return { ok: false, totalSpent: Number(row.total_spent), cap: Number(row.cap_amount) };
-  }
-
-  // Reserve the estimated cost now, before the Anthropic call fires
-  await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ total_spent: Number(row.total_spent) + CHAIN_COST_ESTIMATE, updated_at: new Date().toISOString() }),
-  });
-
-  return { ok: true, totalSpent: Number(row.total_spent) + CHAIN_COST_ESTIMATE, cap: Number(row.cap_amount) };
-}
-
-async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=representation" },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) {
-    console.error(`[twin-command] CSQ write failed: ${res.status} — ${await res.text()}`);
-    return null;
-  }
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
-}
-
-// Direct-to-approvals write, matching cc-agent-trigger.ts's runSasha/runTariq exactly.
-// Used only for Sasha and Tariq's on-demand bypass path — see handler below.
-async function writeToApprovals(record: Record<string, unknown>): Promise<string | null> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const res = await fetch(`${url}/rest/v1/approvals`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=representation" },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) {
-    console.error(`[twin-command] Approvals write failed: ${res.status} — ${await res.text()}`);
-    return null;
-  }
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") { res.status(200).end(); return; }
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-
-  const { agent_id, task } = req.body ?? {};
-  if (!agent_id || !task) { res.status(400).json({ error: "agent_id and task are required" }); return; }
-
-  const agentName = AGENT_NAMES[agent_id];
-  const division  = AGENT_DIVISIONS[agent_id];
-  const category  = AGENT_CATEGORIES[agent_id] ?? "on_demand";
-  const systemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
-
-  if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
-
-  const cronSecret = process.env.CRON_SECRET ?? "";
-  const baseUrl    = "https://app.druaiconsulting.com";
-
-  console.log(`[twin-command] Starting — agent: ${agentName} | division: ${division} | category: ${category}`);
-
-  // ── Hard daily spend cap — the FIRST gate, before anything else spends money ──
-  const spendCheck = await checkAndReserveSpend();
-  if (!spendCheck.ok) {
-    console.warn(`[twin-command] 🛑 Rejected — daily spend cap reached ($${spendCheck.totalSpent ?? "?"}/$${spendCheck.cap ?? "?"})`);
-    res.status(429).json({
-      success: false,
-      reason: "daily_spend_cap_reached",
-      total_spent: spendCheck.totalSpent,
-      cap: spendCheck.cap,
+async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_command: false } | { is_command: true; agent_id: string; agent_name: string; task: string }> {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 150,
+        messages: [{ role: "user", content: CLASSIFY_PROMPT.replace("{MESSAGE}", lastMessage.replace(/"/g, '\\"')) }],
+      }),
     });
-    return;
+    if (!res.ok) return { is_command: false };
+    const data = await res.json();
+    const text: string = data.content?.[0]?.text ?? '{"is_command":false}';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return { is_command: false };
+    return JSON.parse(match[0]);
+  } catch {
+    return { is_command: false };
   }
+}
 
-  // ── Sasha & Tariq bypass — matches their daily behavior exactly ───────────
-  // Daily, these two are DeAnna's private revenue-intelligence agents and skip
-  // the Isabella/Governance/Command Layer/Twin chain entirely, writing straight
-  // to approvals (see cc-agent-trigger.ts runSasha/runTariq). On-demand now
-  // mirrors that: one Anthropic call, one direct write, no chain, no lock —
-  // there's no multi-step process here for a lock to protect against.
-  if (agent_id === "sasha" || agent_id === "tariq") {
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+// ─── Fetch persistent memory — durable facts that survive across chat resets ──
+async function fetchTwinMemory(): Promise<string> {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) return "";
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/twin_memory?id=eq.1&select=content`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+    });
+    if (!res.ok) return "";
+    const rows = await res.json();
+    return rows[0]?.content ?? "";
+  } catch {
+    return "";
+  }
+}
 
-    // Same fast-response fix as the main chain below — respond immediately,
-    // do the Anthropic call + write in the background, so a longer response
-    // from Sasha/Tariq can't hit the Edge Runtime's 25-second limit either.
-    res.status(200).json({ success: true, accepted: true, agent_name: agentName });
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
-    waitUntil((async () => {
+  try {
+    const { messages, systemPrompt } = await req.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+
+    // ── FIX: strip any empty-content messages left behind by failed streams ──
+    const cleanMessages = (messages as { role: string; content: string }[])
+      .filter(m => m.content && m.content.trim() !== '');
+
+    const lastUserMessage: string = [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const detection = await detectCommand(lastUserMessage, apiKey);
+
+    // ── Persistent memory — injected into every conversation regardless of  ──
+    // ── whether this is an old thread or a fresh one after "New Chat"       ──
+    const memory = await fetchTwinMemory();
+    const baseSystemPrompt = systemPrompt || DEFAULT_SYSTEM;
+    const memorySystemPrompt = memory
+      ? `${baseSystemPrompt}\n\nPERSISTENT MEMORY (durable facts from past conversations — DeAnna started a fresh conversation, but you still know this):\n${memory}`
+      : baseSystemPrompt;
+
+    if (detection?.is_command) {
+      const { agent_id, agent_name, task } = detection;
+
+      const baseUrl = "https://app.druaiconsulting.com";
+      let routingSucceeded = true;
       try {
-        const raw = await callAnthropic(
-          `${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
-          1200
-        );
-        const cleaned = raw.replace(/```json\s*|```/g, "").trim();
-        const firstBrace = cleaned.indexOf("{");
-        const lastBrace = cleaned.lastIndexOf("}");
-        const parsed = firstBrace !== -1 && lastBrace !== -1 ? JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)) : null;
-        const title = parsed?.title ?? `${agentName} — On-Demand`;
-        const content = parsed?.content ?? raw;
-
-        const approvalId = await writeToApprovals({
-          source: agent_id === "sasha" ? "sasha_sales_intel" : "tariq_revenue_intel",
-          trigger_type: "sales_intelligence",
-          agent_name: agentName,
-          agent_role: agent_id === "sasha" ? "AI Sales Mastery™ Intelligence" : "Revenue Acceleration Intelligence",
-          division,
-          task_brief: `${title} | On-Demand | ${today}`,
-          output: `${title}\n\n${content}`,
-          status: "pending",
-          notify_deanna: false,
-          priority: "NORMAL",
-          category: "revenue_growth",
-          platform: null,
-        });
-
-        console.log(`[twin-command] ✅ ${agentName} on-demand card (direct write, no chain) → approvals: ${approvalId ?? "failed"}`);
-      } catch (err) {
-        console.error(`[twin-command] ${agentName} bypass background error:`, err);
-      }
-    })());
-    return;
-  }
-
-  // ── Concurrency lock — reject immediately if a chain is already in flight ──
-  // This must happen BEFORE the first Anthropic call, since that's where credits
-  // actually get spent. A rejected request costs one cheap DB check, nothing else.
-  const lockAcquired = await acquireLock(agentName);
-  if (!lockAcquired) {
-    console.warn(`[twin-command] 🔒 Rejected — on-demand chain already in flight (requested by: ${agentName})`);
-    res.status(429).json({ success: false, reason: "chain_already_in_flight", agent_name: agentName });
-    return;
-  }
-
-  // ── Respond immediately, do the slow work in the background ──────────────
-  // twin.ts (Edge Runtime) awaits this call directly so it can never again claim
-  // work is happening that isn't — but Edge has a hard 25-second response limit,
-  // and generating longer content (e.g. a full article) plus the full compliance
-  // chain can exceed that. Confirmed via Vercel logs: Nia's article took ~26s
-  // total and got killed by Vercel's Edge timeout, even though the actual work
-  // completed successfully seconds later. Fix: respond fast the moment the lock
-  // is acquired (confirming the request was genuinely accepted), then do content
-  // generation + CSQ write + chain-fire in a SINGLE waitUntil-wrapped background
-  // task. This is the Node.js runtime, which has proven reliable for background
-  // work in every successful test today — unlike Edge, which has not.
-  res.status(200).json({ success: true, accepted: true, agent_name: agentName });
-
-  waitUntil((async () => {
-    try {
-      // Step 1 — Run agent
-      const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`, 2000);
-      console.log(`[twin-command] ${agentName} output generated (${output.length} chars)`);
-
-      // Step 2 — Write to CSQ
-      const csqId = await writeToCSQ({
-        agent_id,
-        agent_name: agentName,
-        division,
-        task: "on_demand_request",
-        category,
-        raw_output: output,
-        priority: "high",
-        status: "pending",
-        retry_count: 0,
-        raymond_notes: `On-demand request from DeAnna via AI Twin: ${task}`,
-      });
-      console.log(`[twin-command] ${agentName} output written to CSQ: ${csqId}`);
-
-      // Step 3 — Fire on-demand chain
-      // Lock ownership transfers to process-on-demand.ts, which releases it when
-      // the chain finishes (success, rejection, or error). If the fetch itself
-      // fails to even fire, we release here so the lock never gets stuck.
-      if (csqId) {
-        const r = await fetch(`${baseUrl}/api/process-on-demand`, {
+        const routeRes = await fetch(`${baseUrl}/api/twin-command`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
-          body: JSON.stringify({ csq_id: csqId }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agent_id, task }),
         });
-        console.log(`[twin-command] on-demand chain response: ${r.status}`);
-      } else {
-        // CSQ write failed — nothing downstream will ever release the lock
-        await releaseLock();
+        if (!routeRes.ok) {
+          routingSucceeded = false;
+          console.error(`[twin] twin-command returned ${routeRes.status}`);
+        }
+      } catch (err) {
+        routingSucceeded = false;
+        console.error("[twin] twin-command call failed:", err);
       }
-    } catch (err: unknown) {
-      console.error("[twin-command] Background error:", err);
-      await releaseLock();
+
+      if (!routingSucceeded) {
+        return new Response(
+          JSON.stringify({ error: `Routing to ${agent_name} failed — the request did not actually fire. Please try again.` }),
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
+      const commandSystemPrompt = `${memorySystemPrompt}
+
+COMMAND ROUTING ACTIVE: DeAnna just issued a command. It has been routed to ${agent_name} and is already executing through the full governance chain — Agent → Isabella → Governance Panel → Priya, Travis & Raymond → Twin synthesis → AdminApprovals + GHL notification. Raymond has been notified and is expecting the result.
+
+YOUR VOICE FOR THIS RESPONSE:
+- You are DeAnna's AI Twin — speak with her authority, warmth, and strategic command
+- Acknowledge what she set in motion and who is carrying it
+- Let her feel the ecosystem executing on her behalf — alive, coordinated, moving
+- NEVER give timelines or delivery estimates of any kind
+- NEVER say "I will" or "I'll" — it is already done and in motion
+
+FORMATTING RULES — strictly enforced:
+- Write in short, punchy paragraphs with a blank line between each
+- Each distinct thought gets its own paragraph — never run everything into one block
+- 3 to 4 paragraphs maximum
+- No bullet points, no headers, no numbered lists — flowing paragraphs only
+- Each paragraph should be 1 to 3 sentences`;
+
+      const routingMessages = [
+        ...cleanMessages.slice(0, -1),
+        { role: "user", content: `DeAnna just commanded: "${task}" — routed to ${agent_name}, moving through the full governance chain now. Respond in your full Twin voice across 3-4 short paragraphs with a blank line between each. First paragraph: what she just activated and who is on it. Second paragraph: what the agent is doing / what she's getting. Third paragraph: governance chain status and where it lands. Optional fourth: closing commanding line. No timelines. No "I will". Already executing.` },
+      ];
+
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 600, stream: true, system: commandSystemPrompt, messages: routingMessages }),
+      });
+
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text();
+        return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
+      }
+
+      return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
     }
-  })());
+
+    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, stream: true, system: memorySystemPrompt, messages: cleanMessages }),
+    });
+
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text();
+      return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+
+    return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+
+  } catch (error: unknown) {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+  }
 }
