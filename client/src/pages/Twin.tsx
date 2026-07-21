@@ -330,12 +330,12 @@ export default function Twin() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: ".5rem", padding: "0 2px" }}>
-            <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.25)", fontSize: ".58rem", letterSpacing: ".04em", margin: 0 }}>
+            <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.55)", fontSize: ".58rem", letterSpacing: ".04em", margin: 0 }}>
               Attach PDF · Word · Image · Text — up to 3 files · 15MB each
             </p>
             {hasMessages && (
               <button onClick={startNewChat}
-                style={{ background: "none", border: "none", fontFamily: "'Montserrat',sans-serif", fontSize: ".58rem", color: "rgba(10,35,66,.25)", cursor: "pointer", letterSpacing: ".04em", padding: 0 }}>
+                style={{ background: "none", border: "none", fontFamily: "'Montserrat',sans-serif", fontSize: ".58rem", color: "rgba(10,35,66,.55)", cursor: "pointer", letterSpacing: ".04em", padding: 0 }}>
                 Clear conversation
               </button>
             )}
