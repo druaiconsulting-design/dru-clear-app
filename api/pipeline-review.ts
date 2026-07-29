@@ -75,7 +75,7 @@ async function runPipelineReview(): Promise<{ reviewed: number }> {
   for (const item of items) {
     try {
       const rawRaymond = await callAnthropic(
-        `${GENIUS_MODE}\nYou are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting. You run the pipeline review step — a single consolidated review of all governance-cleared agent output. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
+        `${GENIUS_MODE}\nYou are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting. You run the pipeline review step — a single consolidated review of all governance-cleared agent output. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_daily_briefing","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
         600
       );
 
@@ -85,7 +85,7 @@ async function runPipelineReview(): Promise<{ reviewed: number }> {
         raymond_reviewed: true,
         raymond_notes: raymond?.notes ?? '',
         raymond_priority: raymond?.priority ?? 'normal',
-        raymond_action: raymond?.action ?? 'route_to_twin',
+        raymond_action: raymond?.action ?? 'route_to_daily_briefing',
         // Columns retained for downstream compatibility — both authored by Raymond post-restructure:
         travis_notes: raymond?.package_notes ?? '',
         priya_notes: raymond?.deanna_action ?? '',
