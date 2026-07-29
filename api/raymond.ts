@@ -256,7 +256,7 @@ ${allSummary}`,
       1000
     ).then(async synthesis => {
       const id = await writeApproval({
-        source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
+        source: 'raymond_synthesis', trigger_type: 'cron_raymond_synthesis',
         agent_name: 'Raymond Holloway', agent_role: 'Master Orchestrator and Chief of Staff',
         task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
         notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
@@ -304,7 +304,7 @@ ${allSummary}`,
         const maxTokens = Math.min(2000, 300 + 250 * divItems.length);
         const synthesis = await callSonnet(getDivisionPrompt(division, today, gatedContent) + flagsSection, maxTokens);
         const id = await writeApproval({
-          source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
+          source: 'raymond_synthesis', trigger_type: 'cron_raymond_synthesis',
           agent_name: division, agent_role: 'Division Report', division,
           task_brief: division === 'Client Delivery' ? `Client Delivery — Daily Update | ${today}` : `${division} — ${divItems.length} agent${divItems.length > 1 ? 's' : ''} | ${today}`,
           output: synthesis, status: 'pending', notify_deanna: true,
@@ -457,15 +457,15 @@ ${allSummary}`,
     }
   }
 
-  // Mark all items twin_processed (status/column names unchanged — schema untouched)
+  // Mark all items raymond_processed
   for (const item of items) {
     const divisionApprovalId = approvalMap[item.division] ?? null;
     await updateCSQ(item.id, {
-      twin_processed: true,
-      twin_synthesis: `Division card: ${item.division}`,
+      raymond_processed: true,
+      raymond_synthesis: `Division card: ${item.division}`,
       approval_id: divisionApprovalId,
-      twin_processed_at: new Date().toISOString(),
-      status: 'twin_processed',
+      raymond_processed_at: new Date().toISOString(),
+      status: 'raymond_processed',
     });
   }
 
