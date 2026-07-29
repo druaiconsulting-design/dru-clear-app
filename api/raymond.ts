@@ -26,7 +26,7 @@ const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_pos
 
 // Agents that always get their own standalone Intelligence Hub card
 // regardless of division — never buried in division synthesis
-const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Camila Flores'];
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Camila Flores', 'Zara Ahmed'];
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
