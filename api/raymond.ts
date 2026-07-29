@@ -1,7 +1,7 @@
 // api/raymond.ts
-// Daily Synthesis — Raymond Holloway, sole Chief of Staff
+// Daily Synthesis — Raymond Holloway, Master Orchestrator and Chief of Staff
 // Runs daily at 19:00 UTC via pg_cron job dru-raymond-synthesis-daily (formerly dru-twin-synthesis-daily → cmd-twin.ts)
-// Picks up command_approved items, produces division cards + the Daily Briefing
+// Picks up pipeline_approved items, produces division cards + the Daily Briefing
 // Fires ONE GHL notification to DeAnna when complete
 //
 // VOICE RULES (July 2026 rewiring):
@@ -175,8 +175,8 @@ function chicagoDateString(d: Date): string {
 }
 
 async function runRaymondSynthesis(): Promise<{ cards_created: number; items_synthesized: number }> {
-  const items = await getCSQItems('command_approved');
-  console.log(`[raymond] Synthesizing ${items.length} command-approved items...`);
+  const items = await getCSQItems('pipeline_approved');
+  console.log(`[raymond] Synthesizing ${items.length} pipeline-approved items...`);
   if (items.length === 0) { console.log('[raymond] No items to synthesize today.'); return { cards_created: 0, items_synthesized: 0 }; }
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -208,7 +208,8 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
 
   const triggeredAt = new Date().toISOString();
   const approvalMap: Record<string, string> = {};
-  // Raymond-authored command-layer fields: raymond_notes = strategic note, priya_notes column = his DeAnna flag
+  let dailyBriefingApprovalId: string | null = null;
+  // Raymond-authored pipeline-review fields: raymond_notes = strategic note, priya_notes column = his DeAnna flag
   const allSummary = items.map(i => `${i.agent_name} (${i.division}): ${i.raw_output.slice(0, 150)}... Raymond: ${i.raymond_notes ?? ''}${i.priya_notes ? ` | Needs DeAnna: ${i.priya_notes}` : ''}`).join('\n');
 
   const sbUrl = process.env.VITE_SUPABASE_URL;
@@ -234,7 +235,7 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
       }
     }
     await callSonnet(
-      `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting, delivering DeAnna R. Upshaw's daily briefing. Today: ${today}.
+      `You are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting, delivering DeAnna R. Upshaw's daily briefing. Today: ${today}.
 HARD RULES:
 - You report to DeAnna — you never speak as her, and you NEVER invent decisions, preferences, or commitments on her behalf.
 - This is an informational overview ONLY. Do NOT ask DeAnna for decisions, approvals, or actions of any kind. Do NOT include a "Decisions Needed" section. Do NOT phrase anything as a question directed at her.
@@ -256,12 +257,12 @@ ${allSummary}`,
     ).then(async synthesis => {
       const id = await writeApproval({
         source: 'twin_synthesis', trigger_type: 'cron_twin_synthesis',
-        agent_name: 'Raymond Holloway', agent_role: 'Chief of Staff', division: 'Executive Leadership',
+        agent_name: 'Raymond Holloway', agent_role: 'Master Orchestrator and Chief of Staff',
         task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
         notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
         category: 'daily_briefing', platform: null,
       });
-      if (id) { approvalMap['Executive Leadership'] = id; }
+      if (id) { dailyBriefingApprovalId = id; }
       console.log(`[raymond] Daily Briefing card written — Raymond Holloway`);
     }).catch(err => { console.error('[raymond] Daily Briefing synthesis failed:', err); });
   })();
@@ -270,7 +271,7 @@ ${allSummary}`,
   const divisionSynthesisPromises = Object.entries(byDivision)
     .filter(([division]) => division !== 'Community Connection' && division !== 'Content & Brand')
     .map(async ([division, divItems]) => {
-      // Agent outputs only — Raymond's command-layer notes feed the Daily Briefing, not these cards
+      // Agent outputs only — Raymond's pipeline-review notes feed the Daily Briefing, not these cards
       // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
       // also appear inside the RGS division roll-up. Same principle as Community Connection
       // being excluded from division synthesis entirely.
@@ -321,8 +322,7 @@ ${allSummary}`,
   // Agents self-flag most work as 'high' daily, which previously triggered HIGH ALERT every run
   // and blocked DeAnna's standard SMS notification. 'critical' is reserved for true blockers.
   const hasHighPriority = items.some(i => i.priority === 'critical');
-  const commandApprovalId = approvalMap['Executive Leadership'] ?? null;
-  if (commandApprovalId) {
+  if (dailyBriefingApprovalId) {
     const divisionCount = Object.keys(approvalMap).length;
     const label = hasHighPriority
       ? `🚨 HIGH ALERT — Intelligence Hub ready. ${divisionCount} division cards + 1 Daily Briefing. Action required.`
@@ -336,8 +336,8 @@ ${allSummary}`,
           body: JSON.stringify({
             email: 'druaiconsulting@gmail.com', phone: '+19796186671',
             first_name: 'DeAnna', last_name: 'Upshaw',
-            agent_name: 'Raymond Holloway', division: 'Executive Leadership', task: 'Daily Briefing',
-            approval_id: commandApprovalId, summary: label, triggered_at: triggeredAt,
+            agent_name: 'Raymond Holloway', task: 'Daily Briefing',
+            approval_id: dailyBriefingApprovalId, summary: label, triggered_at: triggeredAt,
             review_url: 'https://app.druaiconsulting.com/admin-approvals',
             sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
             email_subject: `DRU AI Consulting — ${hasHighPriority ? '🚨 High Alert — ' : ''}Intelligence Hub Ready`,
