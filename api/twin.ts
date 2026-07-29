@@ -9,7 +9,8 @@
 
 export const config = { runtime: "edge" };
 
-type MessageContent = string | { type: string; text?: string; [key: string]: unknown }[];
+type ContentBlockItem = { type: string; text?: string; [key: string]: unknown };
+type MessageContent = string | ContentBlockItem[];
 
 // Extracts a plain-text representation of a message's content, whether it's a
 // plain string or an array of content blocks (attachments). Used only for
@@ -56,7 +57,7 @@ AGENT COMMAND CAPABILITY: You have full access to DeAnna's 54-agent empire acros
 AGENT ROSTER (agent_id → name):
 raymond→Raymond Holloway (Chief of Staff) | travis→Travis Weston (Asst Chief of Staff) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
 omar→Omar Patel (Lead Scoring) | ryan→Ryan Nakamura (CRM) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
-aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (Product Launch — also known as Zia)
+aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (ACC Weekly PDF Content Architect)
 elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
 camila→Camila Flores (Social Media) | darius→Darius King (Viral Scripter) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
 nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
@@ -86,7 +87,7 @@ TASK TYPE → PRIMARY AGENT MAPPING:
 - Social media strategy, content calendar → camila (Social Media Strategist)
 - Proposal, client document → kwame (Proposal Writer)
 - Copy, ad copy, headlines, CTAs → chloe (Copy Writer)
-- Launch, product launch, offer → zara (Product Launch)
+- ACC weekly PDF, Accelerator Circle content, leadership development/training content → zara (ACC Weekly PDF Content Architect)
 - Legal, contract, agreement → amara (Legal Advisor)
 - Financial, revenue, expenses → yuki (Financial Reporting)
 - Tax, deductions → marcus (Tax Strategist)
@@ -127,6 +128,91 @@ async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_
   }
 }
 
+// ─── Attachment links (July 29 2026) ──────────────────────────────────────────
+// DeAnna uploads a file to the private 'twin-attachments' Supabase Storage bucket
+// herself and pastes a signed URL into her message instead of using an in-chat
+// file picker (removed — it produced base64 payloads that blew past Vercel's
+// 4.5MB function body limit). This detects that link, fetches the file
+// server-side, and turns it into the exact same content-block shape the old
+// attachment flow used, so nothing downstream (detectCommand, Anthropic calls)
+// needs to know the difference.
+const ATTACHMENT_URL_PATTERN = /https:\/\/[a-zA-Z0-9.-]+\.supabase\.co\/storage\/v1\/object\/sign\/twin-attachments\/[^\s"')]+/;
+
+// Edge runtime has no Node `Buffer` global — base64-encode using Web-standard
+// btoa, in chunks to avoid call-stack limits on large files.
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK_SIZE = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function extFromUrl(url: string): string {
+  const path = url.split("?")[0];
+  const name = path.split("/").pop() ?? "";
+  return (name.split(".").pop() ?? "").toLowerCase();
+}
+
+async function buildAttachmentBlock(url: string): Promise<ContentBlockItem | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") ?? "";
+    const ext = extFromUrl(url);
+    const buf = await res.arrayBuffer();
+
+    if (ext === "pdf" || contentType.includes("application/pdf")) {
+      const data = arrayBufferToBase64(buf);
+      return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
+    }
+    if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext) || contentType.startsWith("image/")) {
+      const data = arrayBufferToBase64(buf);
+      const mediaType = contentType.startsWith("image/") ? contentType : `image/${ext === "jpg" ? "jpeg" : ext}`;
+      return { type: "image", source: { type: "base64", media_type: mediaType, data } };
+    }
+    if (ext === "txt" || contentType.includes("text/plain")) {
+      const text = new TextDecoder("utf-8").decode(buf);
+      return { type: "text", text: `[Attached file from link]\n\n${text}` };
+    }
+    if (ext === "docx" || contentType.includes("wordprocessingml")) {
+      const data = arrayBufferToBase64(buf);
+      const baseUrl = "https://app.druaiconsulting.com";
+      const extractRes = await fetch(`${baseUrl}/api/extract-docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data, filename: "attachment.docx" }),
+      });
+      if (!extractRes.ok) return null;
+      const { text } = await extractRes.json();
+      return { type: "text", text: `[Attached Word document from link]\n\n${text}` };
+    }
+    return null;
+  } catch (err) {
+    console.error("[twin] Failed to fetch/convert attachment link:", err);
+    return null;
+  }
+}
+
+// Replaces a message's plain-string content with a content-block array
+// (file block + remaining text) if it contains a twin-attachments link.
+// Leaves the message untouched if no link is found or the fetch fails.
+async function hydrateAttachmentLink(content: MessageContent): Promise<MessageContent> {
+  if (typeof content !== "string") return content;
+  const match = content.match(ATTACHMENT_URL_PATTERN);
+  if (!match) return content;
+
+  const url = match[0];
+  const block = await buildAttachmentBlock(url);
+  if (!block) return content;
+
+  const remainingText = content.replace(url, "").trim();
+  return remainingText ? [block, { type: "text", text: remainingText }] : [block];
+}
+
 // ─── Fetch persistent memory — durable facts that survive across chat resets ──
 async function fetchTwinMemory(): Promise<string> {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -152,9 +238,17 @@ export default async function handler(req: Request): Promise<Response> {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
 
+    // ── Hydrate any twin-attachments links into real content blocks first ──
+    const hydratedMessages = await Promise.all(
+      (messages as { role: string; content: MessageContent }[]).map(async m => ({
+        role: m.role,
+        content: await hydrateAttachmentLink(m.content),
+      }))
+    );
+
     // ── FIX: strip any empty-content messages left behind by failed streams ──
     // Handles both plain-string content and array content (PDF/image/doc attachments)
-    const cleanMessages = (messages as { role: string; content: MessageContent }[])
+    const cleanMessages = hydratedMessages
       .filter(m => hasContent(m.content));
 
     const lastUserMessage: string = getMessageText(
