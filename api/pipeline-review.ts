@@ -1,8 +1,8 @@
 // api/pipeline-review.ts
 // Pipeline Review — runs daily at 18:20 UTC via dru-pipeline-review-daily
-// Picks up governance_cleared items from CSQ — Raymond reviews each and marks command_approved for synthesis
+// Picks up governance_cleared items from CSQ — Raymond reviews each and marks pipeline_approved for synthesis
 // Raymond reviews each governance_cleared item in a single API call, adds strategic notes,
-// and marks items command_approved for Raymond's synthesis run at 19:00 UTC.
+// and marks items pipeline_approved for Raymond's synthesis run at 19:00 UTC.
 // FIX: extractJSON replaces greedy regex that was causing SyntaxError on complex content
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -67,15 +67,15 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
   });
 }
 
-async function runCommandLayer(): Promise<{ reviewed: number }> {
+async function runPipelineReview(): Promise<{ reviewed: number }> {
   const items = await getCSQItems('governance_cleared');
-  console.log(`[executive_leadership] Reviewing ${items.length} governance-cleared items (Raymond solo — one call per item)...`);
+  console.log(`[pipeline-review] Reviewing ${items.length} governance-cleared items (Raymond solo — one call per item)...`);
   if (items.length === 0) return { reviewed: 0 };
 
   for (const item of items) {
     try {
       const rawRaymond = await callAnthropic(
-        `${GENIUS_MODE}\nYou are Raymond Holloway, sole Chief of Staff for DRU AI Consulting. You run the pipeline review step — a single consolidated review of all governance-cleared agent output. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
+        `${GENIUS_MODE}\nYou are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting. You run the pipeline review step — a single consolidated review of all governance-cleared agent output. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_twin","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
         600
       );
 
@@ -89,18 +89,18 @@ async function runCommandLayer(): Promise<{ reviewed: number }> {
         // Columns retained for downstream compatibility — both authored by Raymond post-restructure:
         travis_notes: raymond?.package_notes ?? '',
         priya_notes: raymond?.deanna_action ?? '',
-        command_approved_at: new Date().toISOString(),
-        status: 'command_approved',
+        pipeline_approved_at: new Date().toISOString(),
+        status: 'pipeline_approved',
         priority: raymond?.priority ?? 'normal',
       });
 
-      console.log(`[executive_leadership] Approved: ${item.agent_name}`);
+      console.log(`[pipeline-review] Approved: ${item.agent_name}`);
     } catch (error) {
       console.error(`[executive_leadership] Failed item ${item.id}:`, error);
     }
   }
 
-  console.log(`[executive_leadership] ${items.length} items command-approved`);
+  console.log(`[pipeline-review] ${items.length} items pipeline-approved`);
   return { reviewed: items.length };
 }
 
@@ -116,6 +116,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(401).json({ error: 'Unauthorized' }); return;
   }
   console.log('[pipeline-review] Raymond Holloway running pipeline review');
-  const result = await runCommandLayer();
+  const result = await runPipelineReview();
   res.status(202).json({ success: true, ...result });
 }
