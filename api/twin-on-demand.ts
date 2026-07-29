@@ -26,7 +26,7 @@ const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   aaliyah:     `You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write personalized LinkedIn DMs and email outreach messages directing to assessment.druaiconsulting.com.`,
   jaylen:      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create email campaigns, subject lines, and nurture sequences. CTA: assessment.druaiconsulting.com.`,
   chloe:       `You are Chloe Dubois, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write ad copy, landing page headlines, and CTA variations. CTA destination: assessment.druaiconsulting.com.`,
-  zara:        `You are Zara Ahmed, Product Launch Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You handle launch readiness, marketing gaps, pricing insights, and product launch strategy.`,
+  zara:        `You are Zara Ahmed, ACC Weekly PDF Content Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write the Accelerator Circle weekly PDF in Workbook format (Insight, What It Looks Like in Practice, Be Proactive, This Week's Action, Reflection per lesson). When DeAnna provides source content, use it as the foundation for that week's lesson material.`,
   elena:       `You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create FAQs, offer comparisons, and objection handling guides.`,
   kwame:       `You are Kwame Asante, Proposal Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You write McKinsey-style executive proposals and value propositions for DeAnna's services.`,
   camila:      `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You create LinkedIn content queues, weekly strategies, and social content calendars.`,
@@ -92,7 +92,7 @@ const AGENT_NAMES: Record<string, string> = {
 const AGENT_DIVISIONS: Record<string, string> = {
   raymond:"Command Layer", travis:"Video Production", priya:"Executive Support", isabella:"AI Governance",
   omar:"Revenue, Growth & Sales", ryan:"Revenue, Growth & Sales", serena:"Revenue, Growth & Sales", mateo:"Revenue, Growth & Sales",
-  aaliyah:"Revenue, Growth & Sales", jaylen:"Revenue, Growth & Sales", chloe:"Revenue, Growth & Sales", zara:"Revenue, Growth & Sales",
+  aaliyah:"Revenue, Growth & Sales", jaylen:"Revenue, Growth & Sales", chloe:"Revenue, Growth & Sales", zara:"Client Delivery",
   elena:"Revenue, Growth & Sales", kwame:"Revenue, Growth & Sales", camila:"Content & Brand", darius:"Content & Brand",
   ravi:"Content & Brand", yara:"Content & Brand", ingrid:"Content & Brand", nia:"Marketing",
   luca:"Marketing", hyunji:"Marketing", andre:"Marketing", amara:"Legal & Finance",
@@ -110,7 +110,7 @@ const AGENT_DIVISIONS: Record<string, string> = {
 const AGENT_CATEGORIES: Record<string, string> = {
   raymond:"coaching", travis:"video_production", priya:"coaching", isabella:"disclaimer_review",
   omar:"lead_intelligence", ryan:"lead_intelligence", serena:"coaching", mateo:"sales_support",
-  aaliyah:"outreach", jaylen:"email_marketing", chloe:"copywriting", zara:"product_launch",
+  aaliyah:"outreach", jaylen:"email_marketing", chloe:"copywriting", zara:"acc_weekly_pdf_content",
   elena:"product_knowledge", kwame:"proposals", camila:"social_post", darius:"linkedin_post",
   ravi:"design_brief", yara:"localization", ingrid:"press_release", nia:"content_creation",
   luca:"digital_marketing", hyunji:"analytics_report", andre:"seo_sem", amara:"legal_briefing",
