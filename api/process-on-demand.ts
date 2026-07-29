@@ -1,5 +1,5 @@
 // api/process-on-demand.ts
-// Standalone on-demand chain processor — called by twin-command.ts after CSQ write
+// Standalone on-demand chain processor — called by twin-on-demand.ts after CSQ write
 // Flow: Isabella retry loop → Governance → Command Layer (Raymond, sole Chief of Staff) → Twin synthesis → Intelligence Hub
 // RESTRUCTURE (July 2026): Raymond runs the command layer solo — one consolidated call absorbs
 //   Travis's packaging note (package_notes) and Priya's "needs DeAnna today" flag (deanna_action).
@@ -437,7 +437,7 @@ Synthesize into a focused, actionable briefing card. Lead with what matters most
 }
 
 // ─── Concurrency lock release ─────────────────────────────────────────────────
-// Lock is acquired by twin-command.ts before this endpoint is called. This
+// Lock is acquired by twin-on-demand.ts before this endpoint is called. This
 // endpoint owns releasing it — on every exit path — since it's the long-running
 // half of the chain where most of the credit cost actually happens.
 
@@ -466,7 +466,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let currentId = csq_id as string;
   const complianceFlags: string[] = [];
 
-  // NOTE: lock is acquired by twin-command.ts before this endpoint fires.
+  // NOTE: lock is acquired by twin-on-demand.ts before this endpoint fires.
   // This handler owns releasing it on every exit path below (finally block).
   try {
     // ── STEP 1: Isabella retry loop ──────────────────────────
