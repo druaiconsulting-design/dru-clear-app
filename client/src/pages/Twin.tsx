@@ -11,7 +11,7 @@ const PROMPT_SUGGESTIONS = [
   "Have Nia write a thought leadership article",
   "Ask Kwame to draft a client proposal outline",
   "Have Amelia write a video script for the course",
-  "Ask Zara to review our launch readiness",
+  "Ask Zara to write this week's ACC PDF",
 ];
 
 export default function Twin() {
