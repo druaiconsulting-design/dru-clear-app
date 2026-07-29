@@ -1,20 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 
-interface ContentBlock {
-  type: "document" | "image" | "text";
-  source?: { type: "base64"; media_type: string; data: string };
-  text?: string;
-}
 interface Message {
   role: "user" | "assistant"; content: string;
-  apiContent?: (ContentBlock | { type: "text"; text: string })[];
-  attachmentNames?: string[];
-}
-interface Attachment {
-  name: string; displaySize: string;
-  fileType: "pdf" | "image" | "text" | "docx";
-  contentBlock: ContentBlock;
 }
 
 const PROMPT_SUGGESTIONS = [
@@ -26,23 +14,11 @@ const PROMPT_SUGGESTIONS = [
   "Ask Zara to review our launch readiness",
 ];
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
-function fileTypeLabel(type: Attachment["fileType"]): string {
-  return { pdf: "PDF", image: "Image", text: "Text", docx: "Word" }[type];
-}
-
 export default function Twin() {
   const [messages, setMessages]                 = useState<Message[]>([]);
   const [input, setInput]                       = useState("");
   const [isStreaming, setIsStreaming]            = useState(false);
-  const [attachments, setAttachments]           = useState<Attachment[]>([]);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef   = useRef<HTMLInputElement>(null);
   const textareaRef    = useRef<HTMLTextAreaElement>(null);
 
   // Load persisted conversation on mount
@@ -56,9 +32,7 @@ export default function Twin() {
   // Save conversation to localStorage on every message change
   useEffect(() => {
     try {
-      // Strip apiContent (base64 data) before saving — display only needs content + role
-      const saveable = messages.map(({ role, content, attachmentNames }) => ({ role, content, attachmentNames }));
-      localStorage.setItem('twin_conversation', JSON.stringify(saveable));
+      localStorage.setItem('twin_conversation', JSON.stringify(messages));
     } catch {}
   }, [messages]);
 
@@ -74,64 +48,15 @@ export default function Twin() {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => { setInput(e.target.value); autoResize(e.target); };
   const resetTextarea = () => { if (textareaRef.current) { textareaRef.current.style.height = "auto"; textareaRef.current.style.overflowY = "hidden"; } };
 
-  const processFile = async (file: File): Promise<Attachment | null> => {
-    const MAX_SIZE = 15 * 1024 * 1024;
-    if (file.size > MAX_SIZE) { alert(`${file.name} is too large. Maximum size is 15MB.`); return null; }
-    const displaySize = formatFileSize(file.size);
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (ext === "pdf" || file.type === "application/pdf") {
-      const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve((r.result as string).split(",")[1]); r.onerror = reject; r.readAsDataURL(file); });
-      return { name: file.name, displaySize, fileType: "pdf", contentBlock: { type: "document", source: { type: "base64", media_type: "application/pdf", data } } };
-    }
-    if (["png","jpg","jpeg","gif","webp"].includes(ext) || file.type.startsWith("image/")) {
-      const data = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve((r.result as string).split(",")[1]); r.onerror = reject; r.readAsDataURL(file); });
-      return { name: file.name, displaySize, fileType: "image", contentBlock: { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data } } };
-    }
-    if (ext === "txt" || file.type === "text/plain") {
-      const text = await file.text();
-      return { name: file.name, displaySize, fileType: "text", contentBlock: { type: "text", text: `[Attached file: ${file.name}]\n\n${text}` } };
-    }
-    if (ext === "docx" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      const b64 = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve((r.result as string).split(",")[1]); r.onerror = reject; r.readAsDataURL(file); });
-      try {
-        const res = await fetch("/api/extract-docx", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: b64, filename: file.name }) });
-        if (!res.ok) throw new Error("Extraction failed");
-        const { text } = await res.json();
-        return { name: file.name, displaySize, fileType: "docx", contentBlock: { type: "text", text: `[Attached Word document: ${file.name}]\n\n${text}` } };
-      } catch { alert(`Could not extract text from ${file.name}. Please convert to PDF or TXT.`); return null; }
-    }
-    alert(`Unsupported file type: .${ext}. Please use PDF, Word, image, or text files.`);
-    return null;
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    if (attachments.length + files.length > 3) { alert("Maximum 3 attachments per message."); return; }
-    setIsProcessingFile(true);
-    const results = await Promise.all(files.map(processFile));
-    setAttachments(prev => [...prev, ...results.filter((r): r is Attachment => r !== null)]);
-    setIsProcessingFile(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removeAttachment = (index: number) => setAttachments(prev => prev.filter((_, i) => i !== index));
-
   const sendMessage = async (text?: string) => {
     const userText = (text ?? input).trim();
-    if ((!userText && attachments.length === 0) || isStreaming) return;
-    const displayText = userText || (attachments.length > 0 ? `[${attachments.map(a => a.name).join(", ")}]` : "");
-    const hasAttachments = attachments.length > 0;
-    let apiContent: (ContentBlock | { type: "text"; text: string })[] | undefined;
-    if (hasAttachments) {
-      apiContent = [...attachments.map(a => a.contentBlock), ...(userText ? [{ type: "text" as const, text: userText }] : [])];
-    }
-    const userMessage: Message = { role: "user", content: displayText, apiContent, attachmentNames: hasAttachments ? attachments.map(a => a.name) : undefined };
+    if (!userText || isStreaming) return;
+    const userMessage: Message = { role: "user", content: userText };
     const newMessages: Message[] = [...messages, userMessage];
-    setMessages(newMessages); setInput(""); resetTextarea(); setAttachments([]);
+    setMessages(newMessages); setInput(""); resetTextarea();
     setIsStreaming(true);
     setMessages(prev => [...prev, { role: "assistant", content: "" }]);
-    const apiMessages = newMessages.map(msg => ({ role: msg.role, content: msg.apiContent ?? msg.content }));
+    const apiMessages = newMessages.map(msg => ({ role: msg.role, content: msg.content }));
     try {
       const response = await fetch("/api/twin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages }) });
       if (!response.ok) throw new Error(`Request failed: ${response.status}`);
@@ -164,7 +89,7 @@ export default function Twin() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
   const hasMessages = messages.length > 0;
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isStreaming && !isProcessingFile;
+  const canSend = input.trim().length > 0 && !isStreaming;
 
   // Starts a fresh conversation. Nothing is lost: the outgoing thread is archived
   // and distilled into persistent memory (twin_memory) BEFORE the local thread
@@ -172,7 +97,7 @@ export default function Twin() {
   // starts clean — same idea as Claude's own memory system.
   const startNewChat = () => {
     if (hasMessages) {
-      const apiMessages = messages.map(msg => ({ role: msg.role, content: msg.apiContent ?? msg.content }));
+      const apiMessages = messages.map(msg => ({ role: msg.role, content: msg.content }));
       // Plain browser fetch, not awaited — this runs client-side, not on a
       // serverless function, so there's no risk of execution being torn down
       // mid-request the way a backend "fire and forget" call would be.
@@ -199,17 +124,12 @@ export default function Twin() {
         .send-btn { width:42px;height:42px;border-radius:50%;background:#D4AF37;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,transform .15s; }
         .send-btn:hover:not(:disabled){background:#e8c44a;transform:scale(1.05)}
         .send-btn:disabled{background:rgba(212,175,55,.3);cursor:not-allowed}
-        .attach-btn { width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(212,175,55,.25);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s,background .2s; }
-        .attach-btn:hover{border-color:rgba(212,175,55,.6);background:rgba(212,175,55,.07)}
-        .attach-btn:disabled{opacity:.4;cursor:not-allowed}
         .chat-input { flex:1;background:transparent;border:none;outline:none;color:#0A2342;font-family:\'Inter\',sans-serif;font-size:.875rem;line-height:1.6;padding:0;resize:none;overflow-y:hidden;min-height:22px;max-height:150px;display:block; }
         .chat-input::placeholder{color:rgba(10,35,66,.35)}
         .messages-scroll::-webkit-scrollbar{width:4px}
         .messages-scroll::-webkit-scrollbar-track{background:transparent}
         .messages-scroll::-webkit-scrollbar-thumb{background:rgba(10,35,66,.15);border-radius:4px}
       `}</style>
-
-      <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,image/*" style={{ display: "none" }} onChange={handleFileSelect} />
 
       <div style={{ padding: "1.5rem 1rem 1.5rem", display: "flex", flexDirection: "column", alignItems: "center", width: "100%", boxSizing: "border-box" as const, fontFamily: "'Inter', sans-serif" }}>
         <div style={{ width: "100%", maxWidth: 660 }}>
@@ -245,7 +165,7 @@ export default function Twin() {
             <div style={{ textAlign: "center" as const, marginBottom: "2rem" }}>
               <h1 style={{ fontFamily: "'Cinzel',serif", color: "#0A2342", fontSize: "clamp(1.6rem,5vw,2rem)", fontWeight: 700, margin: "0 0 .75rem", letterSpacing: ".02em" }}>Your empire awaits. 👑</h1>
               <p style={{ fontFamily: "'Inter',sans-serif", color: "rgba(10,35,66,.55)", fontSize: ".9rem", lineHeight: 1.7, margin: "0 auto 2rem", maxWidth: 480 }}>
-                Command any of your 54 agents, attach your content and let AI infuse it, or ask me anything. This is your personal interface — built for you alone.
+                Command any of your 54 agents, share a link to your content and let AI infuse it, or ask me anything. This is your personal interface — built for you alone.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
                 {PROMPT_SUGGESTIONS.map((prompt, i) => (
@@ -266,16 +186,6 @@ export default function Twin() {
                     <img src="/deanna-professional.png" alt="Twin" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #5DADE2", flexShrink: 0 }} />
                   )}
                   <div style={{ maxWidth: "75%" }}>
-                    {msg.attachmentNames && msg.attachmentNames.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, marginBottom: 6, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-                        {msg.attachmentNames.map((name, ni) => (
-                          <span key={ni} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(212,175,55,.15)", border: "1px solid rgba(212,175,55,.3)", borderRadius: 6, padding: "2px 8px", fontFamily: "'Montserrat',sans-serif", fontSize: ".6rem", fontWeight: 700, color: "#D4AF37" }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            {name.length > 20 ? name.slice(0, 18) + "…" : name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                     <div style={{ padding: ".7rem 1rem", borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: msg.role === "user" ? "#C2185B" : "#FFFFFF", border: msg.role === "assistant" ? "1px solid rgba(10,35,66,.1)" : "none", color: msg.role === "user" ? "#fff" : "#0A2342", fontFamily: "'Inter',sans-serif", fontSize: ".85rem", lineHeight: 1.7, whiteSpace: "pre-wrap" as const }}>
                       {msg.role === "assistant" && msg.content === "" && isStreaming ? (
                         <span style={{ display: "inline-flex", alignItems: "center", padding: ".1rem 0" }}>
@@ -290,31 +200,10 @@ export default function Twin() {
             </div>
           )}
 
-          {/* Attachment previews */}
-          {attachments.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 8, padding: "0 2px" }}>
-              {attachments.map((att, i) => (
-                <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#FFFFFF", border: "1px solid rgba(212,175,55,.35)", borderRadius: 8, padding: "5px 10px" }}>
-                  <span style={{ fontFamily: "'Montserrat',sans-serif", fontSize: ".55rem", fontWeight: 700, color: "#D4AF37", background: "rgba(212,175,55,.12)", borderRadius: 4, padding: "1px 5px", letterSpacing: ".06em" }}>{fileTypeLabel(att.fileType)}</span>
-                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: ".7rem", color: "rgba(10,35,66,.8)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{att.name}</span>
-                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: ".6rem", color: "rgba(10,35,66,.35)" }}>{att.displaySize}</span>
-                  <button onClick={() => removeAttachment(i)} style={{ background: "none", border: "none", color: "rgba(10,35,66,.4)", cursor: "pointer", fontSize: ".75rem", lineHeight: 1, padding: "0 0 0 2px" }}>✕</button>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Input bar */}
           <div style={{ background: "#FFFFFF", border: "1px solid rgba(10,35,66,.15)", borderRadius: 14, padding: ".75rem .75rem .75rem 1.25rem", display: "flex", alignItems: "flex-end", gap: ".6rem" }}>
-            <button className="attach-btn" onClick={() => fileInputRef.current?.click()} disabled={isStreaming || isProcessingFile || attachments.length >= 3} title="Attach file" style={{ marginBottom: "2px" }}>
-              {isProcessingFile ? (
-                <span style={{ display: "inline-flex" }}><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /><span className="thinking-dot" style={{ width: 4, height: 4, margin: "0 1px" }} /></span>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              )}
-            </button>
             <textarea ref={textareaRef} className="chat-input" value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
-              placeholder={attachments.length > 0 ? "Add instructions for your agent..." : "Command your empire..."}
+              placeholder="Command your empire..."
               disabled={isStreaming} rows={1} />
             <button className="send-btn" onClick={() => sendMessage()} disabled={!canSend} aria-label="Send" style={{ marginBottom: "2px" }}>
               {isStreaming ? (
@@ -329,10 +218,7 @@ export default function Twin() {
             </button>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: ".5rem", padding: "0 2px" }}>
-            <p style={{ fontFamily: "'Montserrat',sans-serif", color: "rgba(10,35,66,.55)", fontSize: ".58rem", letterSpacing: ".04em", margin: 0 }}>
-              Attach PDF · Word · Image · Text — up to 3 files · 15MB each
-            </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginTop: ".5rem", padding: "0 2px" }}>
             {hasMessages && (
               <button onClick={startNewChat}
                 style={{ background: "none", border: "none", fontFamily: "'Montserrat',sans-serif", fontSize: ".58rem", color: "rgba(10,35,66,.55)", cursor: "pointer", letterSpacing: ".04em", padding: 0 }}>
