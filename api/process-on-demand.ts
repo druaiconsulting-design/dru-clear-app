@@ -309,20 +309,20 @@ async function runPipelineReviewOnItem(item: Record<string, unknown>): Promise<{
 You are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. You run this pipeline review in a single consolidated pass.
 This is an on-demand request from DeAnna. Review and approve for the Intelligence Hub.
 Your single review covers three responsibilities:
-1. FINAL ASSESSMENT — approve and assess, with routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
+1. FINAL ASSESSMENT — approve and assess, with routing action: route_to_daily_briefing, route_to_aaliyah_foster, or acknowledge_completion.
 2. PACKAGING — one sentence on how this output should be framed for DeAnna.
 3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.
 DATE: ${today} | AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
-Respond with ONLY this JSON — no preamble: {"approved":true,"action":"route_to_twin","notes":"your final assessment","package_notes":"one sentence framing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`, 500);
-  const raymond = extractJSON(raymondRaw) ?? { approved: true, action: "route_to_twin", notes: "Approved for Intelligence Hub.", package_notes: "Output reviewed and packaged.", deanna_action: "" };
+Respond with ONLY this JSON — no preamble: {"approved":true,"action":"route_to_daily_briefing","notes":"your final assessment","package_notes":"one sentence framing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`, 500);
+  const raymond = extractJSON(raymondRaw) ?? { approved: true, action: "route_to_daily_briefing", notes: "Approved for Intelligence Hub.", package_notes: "Output reviewed and packaged.", deanna_action: "" };
 
   return {
     approved:     raymond.approved !== false,
     priyaNotes:   String(raymond.deanna_action ?? ""),
     travisNotes:  String(raymond.package_notes ?? ""),
     raymondNotes: String(raymond.notes ?? ""),
-    action:       String(raymond.action ?? "route_to_twin"),
+    action:       String(raymond.action ?? "route_to_daily_briefing"),
   };
 }
 
@@ -571,10 +571,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     );
 
     await dbUpdate("chief_of_staff_queue", currentId, {
-      twin_processed:    true,
-      twin_processed_at: new Date().toISOString(),
-      approval_id:       approvalId,
-      status:            "twin_processed",
+      raymond_processed:    true,
+      raymond_processed_at: new Date().toISOString(),
+      approval_id:          approvalId,
+      status:               "raymond_processed",
     });
 
     await releaseLock();
