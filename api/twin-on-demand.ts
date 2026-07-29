@@ -124,13 +124,15 @@ const AGENT_CATEGORIES: Record<string, string> = {
   isaiah_webb:"community_post", nadia:"community_post", victor:"community_post", sasha:"coaching", tariq:"coaching",
 };
 
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
+type ContentBlockItem = { type: string; text?: string; [key: string]: unknown };
+
+async function callAnthropic(content: string | ContentBlockItem[], maxTokens = 2000): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content }] }),
   });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
@@ -268,8 +270,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
 
-  const { agent_id, task } = req.body ?? {};
+  const { agent_id, task, attachments } = req.body ?? {};
   if (!agent_id || !task) { res.status(400).json({ error: "agent_id and task are required" }); return; }
+  const attachmentBlocks: ContentBlockItem[] = Array.isArray(attachments) ? attachments : [];
 
   const agentName = AGENT_NAMES[agent_id];
   const division  = AGENT_DIVISIONS[agent_id];
@@ -352,7 +355,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     // Step 1 — Run agent
-    const output = await callAnthropic(`${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`, 2000);
+    const taskText = `${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`;
+    const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
+      ? [...attachmentBlocks, { type: "text", text: taskText }]
+      : taskText;
+    const output = await callAnthropic(agentContent, 2000);
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ
