@@ -1,7 +1,7 @@
 // api/process-on-demand.ts
 // Standalone on-demand chain processor — called by twin-on-demand.ts after CSQ write
-// Flow: Isabella retry loop → Governance → Command Layer (Raymond, sole Chief of Staff) → Twin synthesis → Intelligence Hub
-// RESTRUCTURE (July 2026): Raymond runs the command layer solo — one consolidated call absorbs
+// Flow: Isabella retry loop → Governance → Pipeline Review (Raymond, Master Orchestrator and Chief of Staff) → Twin synthesis → Intelligence Hub
+// RESTRUCTURE (July 2026): Raymond runs pipeline review solo — one consolidated call absorbs
 //   Travis's packaging note (package_notes) and Priya's "needs DeAnna today" flag (deanna_action).
 //   travis_notes/priya_notes CSQ columns retained for compatibility, now Raymond-authored.
 //   Travis Wealthy (name corrected from Weston) → Executive Producer, Video Production.
@@ -19,7 +19,7 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // Categories where the agent's raw output IS the deliverable — design briefs, social
 // posts, copy, press releases, etc. These must pass through to the Intelligence Hub
 // verbatim, not get rewritten into an executive-summary voice. This mirrors the exact
-// same list and logic already used by the daily chain (cmd-twin.ts line 13) — the
+// same list and logic already used by the daily chain (raymond.ts) — the
 // on-demand chain was missing this branch entirely, which is why on-demand design
 // briefs were coming back as vague commentary instead of Ravi's actual spec.
 // On-demand requests pass through raw by default — the agent's actual output IS
@@ -28,7 +28,7 @@ const GENIUS_MODE = `You operate in Genius Mode — think and respond at the lev
 // the executive-synthesis rewrite. This list intentionally short and by name, not
 // category — everyone else (Marketing, RGS, HR, Content & Brand, Client Delivery,
 // Customer Support, Community Connection, etc.) passes through raw. Daily chain
-// (cmd-twin.ts) is untouched — DeAnna is auditing that queue separately.
+// (raymond.ts) is untouched — DeAnna is auditing that queue separately.
 const INTERNAL_ADVISORY_AGENTS = ['Raymond Holloway', 'Travis Wealthy', 'Priya Sharma', 'Isabella Moreno', 'Diego Reyes', 'Yuki Tanaka', 'Marcus Chen', 'Omar Patel', 'Ryan Nakamura', 'Hyun-Ji Kim'];
 
 function getPlatformLabel(category: string): string {
@@ -129,7 +129,7 @@ function getDivisionCategory(division: string): string {
     "Client Delivery":         "presentation_design",
     "Customer Support":        "issue_resolution",
     "Community Connection":    "community_management",
-    "Command Layer":           "coaching",
+    "Pipeline Review":         "coaching",
   };
   return map[division] ?? "on_demand";
 }
@@ -296,17 +296,17 @@ OR:
   return { cleared: result.cleared === true, notes: String(result.notes ?? ""), flags: String(result.flags ?? "none") };
 }
 
-// ─── Step 3: Command Layer — Raymond Holloway, sole Chief of Staff (Haiku) ───
+// ─── Step 3: Pipeline Review — Raymond Holloway, Master Orchestrator and Chief of Staff (Haiku) ───
 // One consolidated call replaces the former Priya → Travis → Raymond sequence.
 // Return shape unchanged: priyaNotes carries his deanna_action, travisNotes his
 // package_notes — same CSQ columns downstream, all Raymond-authored.
 
-async function runCommandLayerOnItem(item: Record<string, unknown>): Promise<{ approved: boolean; priyaNotes: string; travisNotes: string; raymondNotes: string; action: string }> {
+async function runPipelineReviewOnItem(item: Record<string, unknown>): Promise<{ approved: boolean; priyaNotes: string; travisNotes: string; raymondNotes: string; action: string }> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
   const raymondRaw = await callAnthropic(
     `${GENIUS_MODE}
-You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. You run the entire command layer in a single consolidated review.
+You are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. You run this pipeline review in a single consolidated pass.
 This is an on-demand request from DeAnna. Review and approve for the Intelligence Hub.
 Your single review covers three responsibilities:
 1. FINAL ASSESSMENT — approve and assess, with routing action: route_to_twin, route_to_aaliyah_foster, or acknowledge_completion.
@@ -330,7 +330,7 @@ Respond with ONLY this JSON — no preamble: {"approved":true,"action":"route_to
 
 async function runTwinSynthesisOnItem(
   item: Record<string, unknown>,
-  cmd: { priya: string; travis: string; raymond: string; action: string },
+  pipelineNotes: { priya: string; travis: string; raymond: string; action: string },
   complianceFlags: string[]
 ): Promise<string | null> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
@@ -395,9 +395,9 @@ async function runTwinSynthesisOnItem(
     : "";
 
   const notes = [
-    cmd.raymond ? `Raymond: ${cmd.raymond}`     : "",
-    cmd.travis  ? `Packaging: ${cmd.travis}`    : "",
-    cmd.priya   ? `Needs DeAnna: ${cmd.priya}`  : "",
+    pipelineNotes.raymond ? `Raymond: ${pipelineNotes.raymond}`     : "",
+    pipelineNotes.travis  ? `Packaging: ${pipelineNotes.travis}`    : "",
+    pipelineNotes.priya   ? `Needs DeAnna: ${pipelineNotes.priya}`  : "",
   ].filter(Boolean).join("\n");
 
   const synthesis = await callTwin(
@@ -409,12 +409,12 @@ Synthesize this on-demand agent output into an Intelligence Hub briefing card fo
 
 AGENT: ${item.agent_name} | DIVISION: ${item.division} | TASK: ${item.task}
 DATE: ${today} | TYPE: On-Demand Request
-CHAIN STATUS: ✅ Isabella Cleared | ✅ Governance Cleared | ✅ Command Layer Approved
+CHAIN STATUS: ✅ Isabella Cleared | ✅ Governance Cleared | ✅ Pipeline Review Approved
 
 AGENT OUTPUT:
 ${item.raw_output}
 
-${notes ? `COMMAND LAYER NOTES:\n${notes}` : ""}
+${notes ? `PIPELINE REVIEW NOTES:\n${notes}` : ""}
 
 Synthesize into a focused, actionable briefing card. Lead with what matters most. End with clear next steps for DeAnna. Write in your commanding Twin voice — strategic, direct, no fluff.${flagsSection}`,
     1500
@@ -547,26 +547,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     console.log(`[on-demand] ✅ Governance cleared: ${clearedItem.agent_name}`);
 
-    // ── STEP 3: Command Layer ────────────────────────────────
-    console.log(`[on-demand] Running Command Layer for: ${clearedItem.agent_name}`);
-    const cmd = await runCommandLayerOnItem(clearedItem);
+    // ── STEP 3: Pipeline Review ──────────────────────────────
+    console.log(`[on-demand] Running Pipeline Review for: ${clearedItem.agent_name}`);
+    const pipelineResult = await runPipelineReviewOnItem(clearedItem);
 
     await dbUpdate("chief_of_staff_queue", currentId, {
       raymond_reviewed:    true,
-      raymond_action:      cmd.action,
-      priya_notes:         cmd.priyaNotes,
-      travis_notes:        cmd.travisNotes,
-      raymond_notes:       cmd.raymondNotes,
-      command_approved_at: new Date().toISOString(),
-      status:              "command_approved",
+      raymond_action:      pipelineResult.action,
+      priya_notes:         pipelineResult.priyaNotes,
+      travis_notes:        pipelineResult.travisNotes,
+      raymond_notes:       pipelineResult.raymondNotes,
+      pipeline_approved_at: new Date().toISOString(),
+      status:                "pipeline_approved",
     });
-    console.log(`[on-demand] ✅ Command Layer approved: ${clearedItem.agent_name}`);
+    console.log(`[on-demand] ✅ Pipeline Review approved: ${clearedItem.agent_name}`);
 
     // ── STEP 4: Twin synthesis → Intelligence Hub ────────────
     console.log(`[on-demand] Running Twin synthesis for: ${clearedItem.agent_name}`);
     const approvalId = await runTwinSynthesisOnItem(
       clearedItem,
-      { priya: cmd.priyaNotes, travis: cmd.travisNotes, raymond: cmd.raymondNotes, action: cmd.action },
+      { priya: pipelineResult.priyaNotes, travis: pipelineResult.travisNotes, raymond: pipelineResult.raymondNotes, action: pipelineResult.action },
       complianceFlags
     );
 
