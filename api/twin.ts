@@ -251,10 +251,17 @@ export default async function handler(req: Request): Promise<Response> {
     const cleanMessages = hydratedMessages
       .filter(m => hasContent(m.content));
 
-    const lastUserMessage: string = getMessageText(
-      [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? ""
-    );
+    const lastUserContent: MessageContent =
+      [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const lastUserMessage: string = getMessageText(lastUserContent);
     const detection = await detectCommand(lastUserMessage, apiKey);
+
+    // Any non-text blocks (document/image) attached to the last user message —
+    // these need to travel with the task to twin-on-demand, not just its text
+    // description, or the agent generating the actual content never sees the file.
+    const attachmentBlocks: ContentBlockItem[] = Array.isArray(lastUserContent)
+      ? lastUserContent.filter(b => b?.type !== "text")
+      : [];
 
     // ── Persistent memory — injected into every conversation regardless of  ──
     // ── whether this is an old thread or a fresh one after "New Chat"       ──
@@ -273,7 +280,7 @@ export default async function handler(req: Request): Promise<Response> {
         const routeRes = await fetch(`${baseUrl}/api/twin-on-demand`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_id, task }),
+          body: JSON.stringify({ agent_id, task, attachments: attachmentBlocks }),
         });
         if (!routeRes.ok) {
           routingSucceeded = false;
