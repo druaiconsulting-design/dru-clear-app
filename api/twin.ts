@@ -143,18 +143,18 @@ export default async function handler(req: Request): Promise<Response> {
       const baseUrl = "https://app.druaiconsulting.com";
       let routingSucceeded = true;
       try {
-        const routeRes = await fetch(`${baseUrl}/api/twin-command`, {
+        const routeRes = await fetch(`${baseUrl}/api/twin-on-demand`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ agent_id, task }),
         });
         if (!routeRes.ok) {
           routingSucceeded = false;
-          console.error(`[twin] twin-command returned ${routeRes.status}`);
+          console.error(`[twin] twin-on-demand returned ${routeRes.status}`);
         }
       } catch (err) {
         routingSucceeded = false;
-        console.error("[twin] twin-command call failed:", err);
+        console.error("[twin] twin-on-demand call failed:", err);
       }
 
       if (!routingSucceeded) {
