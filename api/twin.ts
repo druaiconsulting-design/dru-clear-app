@@ -2,8 +2,38 @@
 // Vercel edge function — streaming Twin chat with on-demand agent routing
 // DeAnna can say "have [agent] do X" and the Twin detects, previews, and routes through full chain
 // FIX: filter empty assistant messages before sending to Anthropic (prevents 400 on failed-stream history)
+// FIX (July 29 2026): messages with attachments (PDF/image/doc) arrive with `content` as an ARRAY of
+//   content blocks, not a plain string — the old code called .trim() directly on content and crashed
+//   with a 500 on every attachment message, before any Anthropic call was ever made. getMessageText()
+//   and hasContent() below handle both shapes safely.
 
 export const config = { runtime: "edge" };
+
+type MessageContent = string | { type: string; text?: string; [key: string]: unknown }[];
+
+// Extracts a plain-text representation of a message's content, whether it's a
+// plain string or an array of content blocks (attachments). Used only for
+// command detection — the full original content (string or array) still gets
+// passed to Anthropic untouched.
+function getMessageText(content: MessageContent): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter(block => block?.type === "text" && typeof block.text === "string")
+      .map(block => block.text)
+      .join("\n");
+  }
+  return "";
+}
+
+// True if the message has any real content — non-empty string, or a non-empty
+// array of content blocks (even if none of them are plain text, e.g. an
+// image/document-only attachment message still counts as having content).
+function hasContent(content: MessageContent): boolean {
+  if (typeof content === "string") return content.trim() !== "";
+  if (Array.isArray(content)) return content.length > 0;
+  return false;
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -123,10 +153,13 @@ export default async function handler(req: Request): Promise<Response> {
     if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
 
     // ── FIX: strip any empty-content messages left behind by failed streams ──
-    const cleanMessages = (messages as { role: string; content: string }[])
-      .filter(m => m.content && m.content.trim() !== '');
+    // Handles both plain-string content and array content (PDF/image/doc attachments)
+    const cleanMessages = (messages as { role: string; content: MessageContent }[])
+      .filter(m => hasContent(m.content));
 
-    const lastUserMessage: string = [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const lastUserMessage: string = getMessageText(
+      [...cleanMessages].reverse().find((m) => m.role === "user")?.content ?? ""
+    );
     const detection = await detectCommand(lastUserMessage, apiKey);
 
     // ── Persistent memory — injected into every conversation regardless of  ──
@@ -215,6 +248,7 @@ FORMATTING RULES — strictly enforced:
     return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
 
   } catch (error: unknown) {
+    console.error("[twin] Unhandled error:", error instanceof Error ? error.stack ?? error.message : String(error));
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
   }
 }
