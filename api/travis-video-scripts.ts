@@ -144,6 +144,23 @@ async function fetchBrandMarks(): Promise<string> {
   return FALLBACK_TM_MARKS.join(', ');
 }
 
+// ── Brand copy (positioning, hooks, tagline) ────────────────────────────────
+const BRAND_COPY_FALLBACK: Record<string,string> = {
+  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
+};
+async function fetchBrandCopy(key: string): Promise<string> {
+  const fallback = BRAND_COPY_FALLBACK[key] || '';
+  try {
+    const { url, headers } = sbHeaders();
+    const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`, { headers });
+    if (res.ok) {
+      const data: { value: string }[] = await res.json();
+      if (data[0]?.value) return data[0].value;
+    }
+  } catch { /* fall through */ }
+  return fallback;
+}
+
 // ── Write approved script to approvals table ──────────────────────────────────
 // output field format: script text + JSON treatment block at end
 // parseCreative in travis-render.ts extracts the treatment from this format.
@@ -321,8 +338,9 @@ async function runWithIsabellaGate(
 async function runDariusVideoScript(): Promise<{ approvalId: string | null; result: string }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const brandMarks = await fetchBrandMarks();
+  const positioning = await fetchBrandCopy('positioning');
 
-  const buildPrompt = (feedback = '') => `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nPositioning: "Leadership with AI." Every script stops the scroll in the first 3 seconds.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase or invent:\n${FRAMEWORK_KNOWLEDGE}\n${feedback ? `\nISABELLA COMPLIANCE FEEDBACK — fix these issues before rewriting:\n${feedback}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw.\nFormat: scroll-stopping hook (first 3 seconds — create a feeling), sharp insight from one DRU framework, clear CTA to assessment.druaiconsulting.com.\nEnergy: punchy, high-energy, never stiff. This is Darius — make it hit.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Darius direction: energy level, pacing, wardrobe vibe, any visual note","linkedin_caption":"60-90 word LinkedIn caption for when this video posts","facebook_caption":"60-90 word Facebook caption","instagram_caption":"50-70 word Instagram caption with 5-7 hashtags"}`;
+  const buildPrompt = (feedback = '') => `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nPositioning: "${positioning}." Every script stops the scroll in the first 3 seconds.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase or invent:\n${FRAMEWORK_KNOWLEDGE}\n${feedback ? `\nISABELLA COMPLIANCE FEEDBACK — fix these issues before rewriting:\n${feedback}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw.\nFormat: scroll-stopping hook (first 3 seconds — create a feeling), sharp insight from one DRU framework, clear CTA to assessment.druaiconsulting.com.\nEnergy: punchy, high-energy, never stiff. This is Darius — make it hit.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Darius direction: energy level, pacing, wardrobe vibe, any visual note","linkedin_caption":"60-90 word LinkedIn caption for when this video posts","facebook_caption":"60-90 word Facebook caption","instagram_caption":"50-70 word Instagram caption with 5-7 hashtags"}`;
 
   return runWithIsabellaGate(
     'darius', 'Darius King', 'Content & Brand',
