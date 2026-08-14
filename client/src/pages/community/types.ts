@@ -10,7 +10,7 @@ export const ACCELERATOR_PAYMENT_LINK = 'https://link.druaiconsulting.com/paymen
 
 export const NAVIGATOR_FEATURES = [
   'Access to DRU AI Consulting — Community Connection',
-  'Daily Leadership with AI Insights',
+  'Daily {POSITIONING} Insights',
   'Framework Micro-Lessons',
   'Executive Founder Pricing — Locked In Forever',
 ];
