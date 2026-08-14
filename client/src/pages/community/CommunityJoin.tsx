@@ -1,10 +1,12 @@
 import NavBar from '../../components/NavBar';
 import { NAVIGATOR_PAYMENT_LINK, ACCELERATOR_PAYMENT_LINK, NAVIGATOR_FEATURES, ACCELERATOR_FEATURES } from './types';
+import { useBrandCopy } from '../../lib/brandCopy';
 
 // =============================================================================
 // JOIN PAGE — shown to free-tier users
 // =============================================================================
 export default function CommunityJoin() {
+  const positioning = useBrandCopy('positioning');
   return (
     <div style={{ minHeight: '100dvh', background: '#0A2342', display: 'flex', flexDirection: 'column' }}>
       <NavBar active="/community" />
@@ -51,7 +53,7 @@ export default function CommunityJoin() {
                   {NAVIGATOR_FEATURES.map(f => (
                     <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
                       <span style={{ color: '#D4AF37', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>✓</span>
-                      <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.8)', fontSize: '0.78rem', lineHeight: 1.5 }}>{f}</p>
+                      <p style={{ fontFamily: "'Inter', sans-serif", color: 'rgba(230,230,230,0.8)', fontSize: '0.78rem', lineHeight: 1.5 }}>{f.replace('{POSITIONING}', positioning)}</p>
                     </div>
                   ))}
                 </div>
@@ -88,7 +90,7 @@ export default function CommunityJoin() {
                   {ACCELERATOR_FEATURES.map((f, i) => (
                     <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
                       <span style={{ color: i === 0 ? 'rgba(230,230,230,0.4)' : '#C2185B', fontSize: '0.7rem', marginTop: 3, flexShrink: 0 }}>{i === 0 ? '—' : '✓'}</span>
-                      <p style={{ fontFamily: "'Inter', sans-serif", color: i === 0 ? 'rgba(230,230,230,0.5)' : 'rgba(230,230,230,0.85)', fontSize: '0.78rem', lineHeight: 1.5, fontStyle: i === 0 ? 'italic' : 'normal' }}>{f}</p>
+                      <p style={{ fontFamily: "'Inter', sans-serif", color: i === 0 ? 'rgba(230,230,230,0.5)' : 'rgba(230,230,230,0.85)', fontSize: '0.78rem', lineHeight: 1.5, fontStyle: i === 0 ? 'italic' : 'normal' }}>{f.replace('{POSITIONING}', positioning)}</p>
                     </div>
                   ))}
                 </div>
