@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase";
+import { useBrandCopy } from "../../lib/brandCopy";
 import { SplashScreen, WelcomeScreen, CalculatingScreen, ExpiredScreen, NudgeBanner } from "./screens/Utility";
 import LeadCapture from "./screens/LeadCapture";
 import Pillar from "./screens/Pillar";
@@ -20,6 +21,7 @@ import {
 import type { Screen, LeadData, Scores } from "./types";
 
 export default function DruClearAssessment() {
+  const positioning = useBrandCopy("positioning");
   const saved = loadProgress();
   const [screen, setScreen]       = useState<Screen>(saved?.screen ?? "splash");
   const [lead, setLead]           = useState<LeadData>(saved?.lead ?? { firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
@@ -217,7 +219,7 @@ export default function DruClearAssessment() {
           <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Add to Home Screen</div>
-            <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em" }}>Save this app for instant access to your Leadership with AI transformation</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em" }}>Save this app for instant access to your {positioning} transformation</div>
           </div>
           <button onClick={handleInstall} style={{ background: "#D4AF37", color: "#0A1628", border: "none", borderRadius: 4, padding: "0.45rem 0.9rem", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em", cursor: "pointer", flexShrink: 0 }}>INSTALL</button>
           <button onClick={dismissInstallBanner} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1 }}>×</button>
@@ -230,7 +232,7 @@ export default function DruClearAssessment() {
           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
             <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Save this app for instant access to your Leadership with AI Transformation</div>
+              <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Save this app for instant access to your {positioning} Transformation</div>
               <div style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.65rem", letterSpacing: "0.02em" }}>{browserInstallInfo.label}</div>
             </div>
             <button onClick={dismissManualBanner} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "0.25rem", flexShrink: 0, fontSize: "1.1rem", lineHeight: 1, marginTop: "-2px" }}>×</button>
