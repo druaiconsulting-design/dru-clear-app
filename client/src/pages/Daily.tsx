@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { useBrandCopy } from "../lib/brandCopy";
 
 function getTodayCST(): string {
   const now = new Date();
@@ -83,6 +84,7 @@ function StreakBadge({ streak }: { streak: StreakData }) {
 }
 
 export default function Daily() {
+  const positioning = useBrandCopy("positioning");
   const { user, isPaid, isNavigator, isAccelerator, hasStrategicEdge, pathwayStage } = useAuth();
   const isNavigatorPlus = hasStrategicEdge;
 
@@ -195,11 +197,11 @@ export default function Daily() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-            {/* Card 1 — Leadership with AI Insight */}
+            {/* Card 1 — Positioning Insight */}
             <div style={{ background: "#FFFFFF", border: "1px solid rgba(212,175,55,0.25)", borderLeft: "3px solid #D4AF37", borderRadius: 10, padding: "1.25rem 1.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
                 <span style={{ fontSize: "1.1rem" }}>⚡</span>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Leadership with AI Insight</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>{positioning} Insight</p>
               </div>
               <p style={{ color: "rgba(10,35,66,0.8)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", lineHeight: 1.75 }}>{displayContent.insight}</p>
             </div>
