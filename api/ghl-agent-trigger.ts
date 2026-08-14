@@ -378,6 +378,17 @@ async function fetchBrandMarks(): Promise<string> {
   if (!res.ok) return '';
   const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
 }
+const BRAND_COPY_FALLBACK: Record<string,string> = {
+  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
+};
+async function fetchBrandCopy(key: string): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const fallback = BRAND_COPY_FALLBACK[key] || '';
+  if (!url||!svcKey) return fallback;
+  const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`,{headers:{apikey:svcKey,Authorization:`Bearer ${svcKey}`}});
+  if (!res.ok) return fallback;
+  const data = await res.json(); return (data as {value:string}[])[0]?.value || fallback;
+}
 async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return [];
@@ -491,9 +502,10 @@ async function runCamila(): Promise<string|null> {
   const ecosystemIntel = await getCrossRead(['ryan','serena','keisha','leila','hyunji']);
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const brandMarks=await fetchBrandMarks();
+  const positioning=await fetchBrandCopy('positioning');
   return await runAgentToCSQ(
     'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
-    `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI." Today: ${today}.
+    `You are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}." Today: ${today}.
 TRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}
 SERVICE CLASS RULES: Classes 35, 41, 42 only.
 
@@ -545,9 +557,10 @@ async function runDarius(): Promise<string|null> {
     if (res.ok){const queue=await res.json();if(queue.length>0){queueId=queue[0].id;topicBrief=`Framework: ${queue[0].framework_covered} | Type: ${queue[0].post_type} | Hook direction: ${queue[0].hook} | Content direction: ${queue[0].content}`;}}
   }
   const brandMarks=await fetchBrandMarks();
-  const topicContext=topicBrief||`Generate a thought leadership topic on Leadership with AI using one of these frameworks: ${brandMarks}`;
+  const positioning=await fetchBrandCopy('positioning');
+  const topicContext=topicBrief||`Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}`;
   const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "Leadership with AI."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — memorize these exact definitions before writing. Never paraphrase or invent framework content:\n${FRAMEWORK_KNOWLEDGE}\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — memorize these exact definitions before writing. Never paraphrase or invent framework content:\n${FRAMEWORK_KNOWLEDGE}\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
   const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
@@ -1100,11 +1113,12 @@ export default async function handler(req:any,res:any): Promise<void> {
     const weekNum=Math.floor((Date.now()-new Date('2026-07-07').getTime())/(7*24*60*60*1000));
     const frameworks=['DRU CLEAR™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™'];
     const framework=frameworks[weekNum%4];
+    const positioning=await fetchBrandCopy('positioning');
     const id=await runAgentToCSQ('zara','Zara Ahmed','Client Delivery','acc_weekly_pdf_content','acc_weekly_pdf',
     `You are Zara Ahmed, Content Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 
-You are writing this week's Accelerator Circle (ACC) member PDF, in the Workbook format. These are Accelerator-tier members ($147/mo) — serious, high-level leaders in active Leadership with AI transformation. Write UP to them. They expect depth, directness, and real frameworks applied to real challenges — strategic substance, not motivational scaffolding. No fluff. No surface content. Every sentence earns its place.
+You are writing this week's Accelerator Circle (ACC) member PDF, in the Workbook format. These are Accelerator-tier members ($147/mo) — serious, high-level leaders in active ${positioning} transformation. Write UP to them. They expect depth, directness, and real frameworks applied to real challenges — strategic substance, not motivational scaffolding. No fluff. No surface content. Every sentence earns its place.
 
 SPECIFIC-INSIGHT BAR: if a paragraph you write could describe any company's generic AI rollout, it is too generic — rewrite it until it could only apply inside ${framework}'s own logic and dimensions.
 
