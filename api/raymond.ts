@@ -152,12 +152,18 @@ function cleanForCard(rawText: string): string {
   out = out.replace(/^#{1,6}\s*/gm, '').trim();
 
   if (/\n\s*\n/.test(out)) {
-    // Already has real paragraph breaks — keep that structure, just tidy each paragraph.
-    return out.split(/\n{2,}/).map(p => p.replace(/\n/g, ' ').trim()).filter(p => p.length > 0).join('\n\n');
+    // Already has real paragraph breaks — keep that structure. Don't flatten lines that
+    // look like a bullet or numbered list — only run-on prose gets its internal breaks joined.
+    return out.split(/\n{2,}/).map(p => {
+      const looksLikeList = /^\s*([-•*]|\d+[.)])\s+/m.test(p);
+      return looksLikeList ? p.trim() : p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    }).filter(p => p.length > 0).join('\n\n');
   }
 
   // One dense block, no breaks at all — force it into 2-3 sentence paragraphs.
-  const sentences = out.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+(?=\s|$)/g) || [out];
+  // The boundary allows an optional closing quote/paren after the period, so a sentence
+  // that ends inside quotes (e.g. "...here.") isn't skipped or merged into the next one.
+  const sentences = (out.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+[)"'\u201d\u2019]*(?=\s|$)/g) || [out]).map(s => s.trim());
   const paragraphs: string[] = [];
   for (let i = 0; i < sentences.length; i += 3) {
     paragraphs.push(sentences.slice(i, i + 3).join(' ').trim());
