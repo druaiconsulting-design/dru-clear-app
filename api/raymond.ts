@@ -137,31 +137,32 @@ function tryParseMultiPlatform(rawOutput: string): MultiPlatformPost | null {
 // ─── Division card prompt: light formatting only, never summarize ───────────
 // Raymond's job here is to make the work readable, not to describe it.
 // The actual deliverable must survive intact — protocols, posts, tables, plans, all of it.
-function getDivisionPrompt(division: string, today: string, content: string): string {
-  return `You are Raymond Holloway, Chief of Staff for DRU AI Consulting, formatting the ${division} division's daily work for DeAnna R. Upshaw. Today: ${today}.
-FRAMEWORKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
+// Cleans one agent's raw output for direct display on a card — NO LLM rewrite, so the
+// real content is never paraphrased or compressed away. Only two jobs:
+//   1. Strip markdown formatting artifacts (**, *, # headers) so it reads as plain English,
+//      not "code."
+//   2. Guarantee paragraph spacing. If the agent already wrote real paragraph breaks, that
+//      structure is kept as-is. If they wrote one dense block with no breaks at all, force it
+//      into 2-3 sentence paragraphs so it's never a wall of text.
+function cleanForCard(rawText: string): string {
+  let out = rawText;
+  const cutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
+  for (const cutoff of cutoffs) { const idx = out.indexOf(cutoff); if (idx !== -1) out = out.slice(0, idx).trim(); }
+  out = out.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+  out = out.replace(/^#{1,6}\s*/gm, '').trim();
 
-Your job is to show the actual substance of each agent's work — not a description of it, and not the full document. Think of it as the highlight: what did they actually find, decide, recommend, or create? Show that directly and concisely.
+  if (/\n\s*\n/.test(out)) {
+    // Already has real paragraph breaks — keep that structure, just tidy each paragraph.
+    return out.split(/\n{2,}/).map(p => p.replace(/\n/g, ' ').trim()).filter(p => p.length > 0).join('\n\n');
+  }
 
-For EACH agent below, write exactly one block:
-
-**[Agent Name]**
-[What this is — one short label, e.g. "Escalation Protocol", "LinkedIn Post", "Legal Gap Identified", "Recruiting Pipeline", "SEO Recommendations"] —
-[3-6 sentences or a short structured list showing the actual content — the real finding, the real recommendation, the real output. Show the tiers, the post text, the gap, the steps. Never describe the work — show the substance of it.]
-
-HARD RULES:
-- Never write "Done:" or any variation of it.
-- Never describe what the agent did ("I developed...", "I completed...", "I analyzed..."). Show what they found or created.
-- Never reproduce preambles, metadata, platform specs, or document headers — just the substance.
-- Keep each block concise and card-sized — 3-6 sentences or a tight structured list. Full documents belong in downloads, not cards.
-- Every agent gets exactly one block. Never skip an agent. Never merge agents.
-- No narrator voice. No introduction, no conclusion, no commentary between blocks.
-- Never speak as DeAnna. Never make or imply decisions on her behalf.
-
-${division.toUpperCase()} AGENT OUTPUTS:
-${content}
-
-Start with ## ${division === 'Client Delivery' ? 'Client Delivery — Daily Update' : division}, then the agent blocks, nothing else.`;
+  // One dense block, no breaks at all — force it into 2-3 sentence paragraphs.
+  const sentences = out.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+(?=\s|$)/g) || [out];
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += 3) {
+    paragraphs.push(sentences.slice(i, i + 3).join(' ').trim());
+  }
+  return paragraphs.filter(p => p.length > 0).join('\n\n');
 }
 
 // Returns the YYYY-MM-DD calendar date string in America/Chicago for a given Date.
@@ -280,29 +281,26 @@ ${allSummary}`,
         !(SOCIAL_DIVISIONS.includes(division) && CLIENT_FACING_CATEGORIES.includes(i.category))
       );
       if (cardItems.length === 0) return; // whole division was grants-only — no card needed
-      const content = cardItems.map(i => `**${i.agent_name}** (${i.task.replace(/_/g, ' ')}):\n${i.raw_output}`).join('\n\n---\n\n');
       try {
         const divFlagData = flagData[division] ?? {};
         const flaggedAgentNames = new Set(Object.keys(divFlagData));
         // One brief line per flagged agent — reason only, no counts, no essays.
         // Purpose: DeAnna sees who needs support at a glance, not a compliance report.
         const flagLines = Object.entries(divFlagData).map(([agent, { reason }]) => `- ${agent} — ${reason}`);
-        const flagsSection = flagLines.length > 0
-          ? `\n\nAfter the agent blocks, append exactly this section verbatim:\n## Needs Attention\n${flagLines.join('\n')}`
+
+        // No LLM rewrite — each agent's real output, cleaned, under their own plain-text name.
+        // Flagged agents get a ⚠️ right on their name so it's visible in context, not just at the bottom.
+        const agentBlocks = cardItems.map(i => {
+          const nameLine = flaggedAgentNames.has(i.agent_name) ? `${i.agent_name} ⚠️` : i.agent_name;
+          return `${nameLine}\n\n${cleanForCard(i.raw_output)}`;
+        }).join('\n\n---\n\n');
+
+        const needsAttentionSection = flagLines.length > 0
+          ? `\n\n---\n\nNeeds Attention\n${flagLines.join('\n')}`
           : '';
-        // Inline gate: mark flagged agents' blocks so the flag is visible in context, not only at the bottom.
-        // Replace the agent header in content with a ⚠️ version so DeAnna sees it while reading the card.
-        let gatedContent = content;
-        for (const name of flaggedAgentNames) {
-          gatedContent = gatedContent.replace(
-            new RegExp(`(\\*\\*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*)`, 'g'),
-            `$1 ⚠️`
-          );
-        }
-        // Token budget scales with agent count — enough for concise substance blocks,
-        // not full document dumps.
-        const maxTokens = Math.min(2000, 300 + 250 * divItems.length);
-        const synthesis = await callSonnet(getDivisionPrompt(division, today, gatedContent) + flagsSection, maxTokens);
+
+        const divisionHeader = division === 'Client Delivery' ? 'Client Delivery — Daily Update' : division;
+        const synthesis = `${divisionHeader}\n\n${agentBlocks}${needsAttentionSection}`;
         const id = await writeApproval({
           source: 'raymond_synthesis', trigger_type: 'cron_raymond_synthesis',
           agent_name: division, agent_role: 'Division Report', division,
