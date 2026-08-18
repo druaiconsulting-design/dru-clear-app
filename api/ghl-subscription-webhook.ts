@@ -6,6 +6,72 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
+const GHL_VERSION = '2021-07-28';
+
+// Which tag gets added per tier, and which tags must come off so a contact only ever
+// carries one tier tag at a time (Aug 2026 — keeps the newsletter dispatch from double-sending).
+const TAG_TO_ADD: Record<string, string> = { navigator: 'navigator', accelerator: 'accelerator' };
+const TAGS_TO_REMOVE: Record<string, string[]> = {
+  navigator:   ['non-member', 'free-tier'],
+  accelerator: ['non-member', 'free-tier', 'navigator'],
+};
+
+async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  });
+  if (!res.ok) {
+    console.error(`[ghl-subscription-webhook] GHL contact search failed: ${res.status} ${await res.text()}`);
+    return null;
+  }
+  const data = await res.json();
+  return data.contacts?.[0]?.id ?? null;
+}
+
+async function addTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[ghl-subscription-webhook] Add tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+async function removeTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[ghl-subscription-webhook] Remove tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+// Syncs GHL tags to match the tier just set in Supabase. Runs AFTER the Supabase update
+// succeeds and never blocks or fails the response — the member's paid access already went
+// through; a GHL tag hiccup shouldn't be allowed to look like a failed payment. Logs clearly
+// so a silent tagging failure is still visible in Vercel logs.
+async function syncGHLTag(email: string, tier: string): Promise<void> {
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
+  if (!apiKey) { console.error('[ghl-subscription-webhook] GHL_PRIVATE_INTEGRATION_KEY not set — skipping tag sync'); return; }
+  try {
+    const contactId = await findContactIdByEmail(email, apiKey);
+    if (!contactId) { console.error(`[ghl-subscription-webhook] No GHL contact found for ${email} — tag sync skipped`); return; }
+    const tagToAdd = TAG_TO_ADD[tier];
+    const tagsToRemove = TAGS_TO_REMOVE[tier] ?? [];
+    const [addOk, removeOk] = await Promise.all([
+      addTags(contactId, [tagToAdd], apiKey),
+      removeTags(contactId, tagsToRemove, apiKey),
+    ]);
+    console.log(`[ghl-subscription-webhook] Tag sync for ${email}: added ${tagToAdd} (${addOk}), removed ${tagsToRemove.join(',')} (${removeOk})`);
+  } catch (err) {
+    console.error(`[ghl-subscription-webhook] Tag sync error for ${email}:`, err);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -58,6 +124,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log(`[ghl-subscription-webhook] ✅ Success — ${email} upgraded to ${tier}`);
+
+    // Sync GHL tags to match (Aug 2026 addition). Fire without awaiting the response body's
+    // success on this — the Supabase update already succeeded, which is what matters for
+    // the member's access. Vercel keeps the function alive until this promise settles since
+    // it's awaited here, but its outcome never changes the HTTP response below.
+    await syncGHLTag(email, tier);
+
     return res.status(200).json({ success: true, email, tier });
 
   } catch (err) {
