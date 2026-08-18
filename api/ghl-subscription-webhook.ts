@@ -12,10 +12,10 @@ const GHL_VERSION = '2021-07-28';
 
 // Which tag gets added per tier, and which tags must come off so a contact only ever
 // carries one tier tag at a time (Aug 2026 — keeps the newsletter dispatch from double-sending).
-const TAG_TO_ADD: Record<string, string> = { navigator: 'navigator', accelerator: 'accelerator' };
+const TAG_TO_ADD: Record<string, string> = { navigator: 'navigator-tier', accelerator: 'accelerator-tier' };
 const TAGS_TO_REMOVE: Record<string, string[]> = {
   navigator:   ['non-member', 'free-tier'],
-  accelerator: ['non-member', 'free-tier', 'navigator'],
+  accelerator: ['non-member', 'free-tier', 'navigator-tier'],
 };
 
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
