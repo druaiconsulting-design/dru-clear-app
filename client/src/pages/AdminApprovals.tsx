@@ -207,6 +207,11 @@ function timeAgo(timestamp: string): string {
 }
 
 function getOriginalColumn(approval: Approval): { heading: string; content: string | null } {
+  // Nia's cards (Aug 2026 fix) — internal reasoning split off in raymond.ts lands in
+  // original_content. Shown here, clearly labeled, never part of what's sent/posted.
+  if (approval.agent_name === "Nia Robinson" && approval.original_content) {
+    return { heading: "Internal Notes — Not Sent", content: approval.original_content };
+  }
   if (approval.category === "social") return { heading: "Contributors", content: approval.task_brief || null };
   if (approval.category === "community_post") {
     const raw = approval.task_brief || '';
@@ -1001,6 +1006,23 @@ export default function AdminApprovals() {
     } catch { return false; }
   };
 
+  // Fires an approved newsletter (Email-platform) card to the real GHL send mechanism —
+  // separate from fireSocialPublisher, which only handles LinkedIn/Facebook/Instagram.
+  const fireEmailDispatch = async (approval: Approval): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/ghl-newsletter-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: approval.edited_output || approval.output,
+          trigger_type: approval.trigger_type,
+          approval_id: approval.id,
+        }),
+      });
+      return res.ok;
+    } catch { return false; }
+  };
+
   // Fires approved social response reply back to Make.com → posts to platform
   const fireSocialReply = async (approval: Approval): Promise<boolean> => {
     try {
@@ -1044,7 +1066,9 @@ export default function AdminApprovals() {
     const content = approval.edited_output || approval.output;
     if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = await fireSocialPublisher(approval);
+      const ok = approval.platform === "Email"
+        ? await fireEmailDispatch(approval)
+        : await fireSocialPublisher(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
@@ -1154,7 +1178,9 @@ export default function AdminApprovals() {
         facebook: editingPlatform === 'Facebook' ? editText : (approval.facebook_content ?? ''),
         instagram: editingPlatform === 'Instagram' ? editText : (approval.instagram_caption ?? ''),
       } : undefined;
-      const ok = await fireSocialPublisher({ ...approval, edited_output: editText }, overrideContent);
+      const ok = approval.platform === "Email"
+        ? await fireEmailDispatch({ ...approval, edited_output: editText })
+        : await fireSocialPublisher({ ...approval, edited_output: editText }, overrideContent);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
