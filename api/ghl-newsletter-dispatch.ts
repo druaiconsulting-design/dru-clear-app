@@ -35,8 +35,8 @@ const GHL_VERSION = '2021-07-28';
 const TIER_TAG_MAP: Record<string, string> = {
   newsletter_nonmember:   'non-member',
   newsletter_freetier:    'free-tier',
-  newsletter_navigator:   'navigator',
-  newsletter_accelerator: 'accelerator',
+  newsletter_navigator:   'navigator-tier',
+  newsletter_accelerator: 'accelerator-tier',
 };
 
 const FALLBACK_SUBJECT = "Lead, Clarity, Win! — This Week's Insight";
