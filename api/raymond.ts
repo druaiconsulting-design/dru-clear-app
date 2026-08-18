@@ -22,7 +22,13 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
 
 const SOCIAL_DIVISIONS = ['Content & Brand', 'Marketing'];
-const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
+const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement','linkedin_article','newsletter_nonmember','newsletter_freetier','newsletter_navigator','newsletter_accelerator'];
+
+// Internal-reasoning marker — must match the exact instruction given to Nia in
+// ghl-agent-trigger.ts (INTERNAL_NOTES_INSTRUCTION). Everything before this marker is
+// sendable content; everything after is split off into original_content and shown on the
+// card as "Internal Notes — Not Sent" (see AdminApprovals.tsx getOriginalColumn). Never sent.
+const INTERNAL_NOTES_MARKER = '===INTERNAL NOTES===';
 
 // Agents that always get their own standalone Intelligence Hub card
 // regardless of division — never buried in division synthesis
@@ -112,7 +118,7 @@ function getPlatformLabel(category: string): string {
     twitter_post: 'X', tiktok_post: 'TikTok', youtube_post: 'YouTube', social_post: 'Social',
     content_creation: 'Content', press_release: 'Press', design_brief: 'Design',
     localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
-    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
+    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_freetier: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
   };
   return map[category] ?? 'Social';
 }
@@ -378,7 +384,19 @@ ${allSummary}`,
           console.log(`[raymond] Multi-platform social card: ${item.agent_name} (LinkedIn + Facebook + Instagram${multiPlatform.spanish_content ? ' + Spanish' : ''})`);
         } else {
           // Single-platform card — existing behavior for all other agents
-          let postContent = item.raw_output;
+          let rawContent = item.raw_output;
+
+          // Split off internal reasoning (Nia's cards specifically, Aug 2026 fix) before any
+          // other cleanup runs — it must never be visible to the cleanup logic that produces
+          // sendable `output`, and never leak into what actually gets sent/posted.
+          let internalNotes = '';
+          const notesIdx = rawContent.indexOf(INTERNAL_NOTES_MARKER);
+          if (notesIdx !== -1) {
+            internalNotes = rawContent.slice(notesIdx + INTERNAL_NOTES_MARKER.length).trim();
+            rawContent = rawContent.slice(0, notesIdx).trim();
+          }
+
+          let postContent = rawContent;
           const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
           for (const cutoff of complianceCutoffs) { const idx = postContent.indexOf(cutoff); if (idx !== -1) postContent = postContent.slice(0, idx).trim(); }
           postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
@@ -388,10 +406,11 @@ ${allSummary}`,
             source: `${item.agent_id}_social`, trigger_type: item.category,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
             task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
-            output: postContent, status: 'pending', notify_deanna: false,
+            output: postContent, original_content: internalNotes || null,
+            status: 'pending', notify_deanna: false,
             priority: 'normal', category: 'social', platform: platformLabel,
           });
-          console.log(`[raymond] Social card: ${item.agent_name} → ${platformLabel}`);
+          console.log(`[raymond] Social card: ${item.agent_name} → ${platformLabel}${internalNotes ? ' (internal notes split off)' : ''}`);
         }
       } catch (err) { console.error(`[raymond] Social card failed for ${item.agent_name}:`, err); }
     }
