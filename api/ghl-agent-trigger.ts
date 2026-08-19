@@ -716,8 +716,10 @@ const JAYLEN_SIGNATURE = `\n\nEvery email closes with this exact signature, verb
 const JAYLEN_PERSONALIZATION = `\nPERSONALIZATION: Open with GHL's merge tag exactly as written — Hi {{contact.first_name}}, — do not substitute a placeholder name or write it any other way; GHL fills in the real first name at send time using this exact tag.`;
 
 async function jaylenFindContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/search?locationId=${JAYLEN_GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
-    headers: { Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
+  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
+    body: JSON.stringify({ locationId: JAYLEN_GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
   });
   if (!res.ok) { console.error(`[runJaylen] Contact search failed: ${res.status} ${await res.text()}`); return null; }
   const data = await res.json();
