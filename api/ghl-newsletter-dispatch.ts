@@ -139,10 +139,18 @@ function extractSubjectAndBody(content: string): { subject: string; body: string
   return { subject, body };
 }
 
+// {{unsubscribe}} is GHL's own merge tag — auto-converted to a real, working, tracked
+// unsubscribe link at send time (confirmed via GHL's official support docs). Added to every
+// email that passes through this function — which is all of them, Nia's and Jaylen's alike —
+// so there's exactly one place this could ever go missing, not one per prompt/agent.
+// Legally required (CAN-SPAM/GDPR), and per her explicit instruction Aug 19 2026: every email
+// must have this, no exceptions.
+const UNSUBSCRIBE_FOOTER = '<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #888;">DRU AI Consulting — Galveston County, TX<br>If you\'d rather not receive these emails, <a href="{{unsubscribe}}" style="color: #888;">unsubscribe here</a>.</p>';
+
 function toHtml(body: string): string {
   const paragraphs = body.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
   const htmlParas = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('\n');
-  return `<div style="font-family: Georgia, serif; font-size: 15px; line-height: 1.6; color: #0A2342;">${htmlParas}</div>`;
+  return `<div style="font-family: Georgia, serif; font-size: 15px; line-height: 1.6; color: #0A2342;">${htmlParas}\n${UNSUBSCRIBE_FOOTER}</div>`;
 }
 
 // Substitutes the {{contact.first_name}} merge tag ourselves rather than relying on GHL to
