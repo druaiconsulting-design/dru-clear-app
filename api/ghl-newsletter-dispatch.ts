@@ -25,19 +25,35 @@
 // in GHL before trusting a real send.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from '@supabase/supabase-js';
 export const config = { maxDuration: 60 };
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 
 // Maps each newsletter edition's trigger_type to the GHL tag identifying its recipients.
+// Jaylen's weekly tier emails (Aug 2026 addition) reuse the exact same tier tags Nia's
+// newsletter uses — same recipients, different content, different day (Tuesday vs Thursday).
 const TIER_TAG_MAP: Record<string, string> = {
   newsletter_nonmember:   'non-member',
   newsletter_freetier:    'free-tier',
   newsletter_navigator:   'navigator-tier',
   newsletter_accelerator: 'accelerator-tier',
+  jaylen_weekly_freetier:    'free-tier',
+  jaylen_weekly_navigator:   'navigator-tier',
+  jaylen_weekly_accelerator: 'accelerator-tier',
 };
+
+// Jaylen's non-member 5-email sequence (Aug 2026) doesn't use tags at all — recipients are
+// whoever's currently due in jaylen_sequence_progress, not a stable GHL tag. Stage number is
+// the last character of the trigger_type (jaylen_sequence_1 .. jaylen_sequence_5).
+const SEQUENCE_DAY_OFFSETS: Record<number, number> = { 1: 0, 2: 3, 3: 7, 4: 10, 5: 14 };
 
 const FALLBACK_SUBJECT = "Lead, Clarity, Win! — This Week's Insight";
 
@@ -142,6 +158,47 @@ async function sendEmailToContact(contactId: string, subject: string, html: stri
   }
 }
 
+// Re-computes who's currently due for this stage at dispatch/approval time (not a frozen
+// list from when the content was generated) — simpler than threading a recipient list
+// through the CSQ->approval pipeline, and correct as long as approval happens same-day,
+// which is the norm. If approval happens later than the generation day, this naturally
+// picks up anyone newly due since then too, rather than silently missing them.
+async function getDueSequenceContacts(stage: number): Promise<Array<{ email: string; ghl_contact_id: string | null }>> {
+  const { data, error } = await supabase
+    .from('jaylen_sequence_progress')
+    .select('email, ghl_contact_id, current_email_number, signup_date')
+    .eq('sequence_complete', false)
+    .eq('current_email_number', stage - 1);
+  if (error) { console.error('[ghl-newsletter-dispatch] Sequence lookup failed:', error); return []; }
+
+  const offset = SEQUENCE_DAY_OFFSETS[stage] ?? 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return (data ?? [])
+    .filter(row => {
+      const signup = new Date(row.signup_date + 'T00:00:00');
+      const daysSince = Math.floor((today.getTime() - signup.getTime()) / 86400000);
+      return daysSince >= offset;
+    })
+    .map(row => ({ email: row.email, ghl_contact_id: row.ghl_contact_id }));
+}
+
+async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  });
+  if (!res.ok) { console.error(`[ghl-newsletter-dispatch] Contact search failed: ${res.status} ${await res.text()}`); return null; }
+  const data = await res.json();
+  return data.contacts?.[0]?.id ?? null;
+}
+
+async function markSequenceSent(email: string, stage: number): Promise<void> {
+  const { error } = await supabase
+    .from('jaylen_sequence_progress')
+    .update({ current_email_number: stage, last_sent_at: new Date().toISOString(), sequence_complete: stage >= 5 })
+    .eq('email', email);
+  if (error) console.error(`[ghl-newsletter-dispatch] Failed to update sequence progress for ${email}:`, error);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
@@ -150,6 +207,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
   if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATION_KEY not set' }); return; }
+
+  // Non-member sequence — recipients come from Supabase, not a GHL tag.
+  const sequenceMatch = /^jaylen_sequence_(\d)$/.exec(trigger_type);
+  if (sequenceMatch) {
+    const stage = parseInt(sequenceMatch[1], 10);
+    try {
+      const dueContacts = await getDueSequenceContacts(stage);
+      if (dueContacts.length === 0) {
+        console.log(`[ghl-newsletter-dispatch] No contacts due for sequence stage ${stage} (approval ${approval_id})`);
+        res.status(200).json({ success: true, sent: 0, failed: 0, note: `No contacts due for stage ${stage}` });
+        return;
+      }
+
+      const { subject, body } = extractSubjectAndBody(content);
+      const html = toHtml(body);
+
+      let sent = 0, failed = 0;
+      for (const contact of dueContacts) {
+        const contactId = contact.ghl_contact_id ?? await findContactIdByEmail(contact.email, apiKey);
+        if (!contactId) { failed++; console.error(`[ghl-newsletter-dispatch] No GHL contact for ${contact.email} — skipped`); continue; }
+        const ok = await sendEmailToContact(contactId, subject, html, apiKey);
+        if (ok) { sent++; await markSequenceSent(contact.email, stage); } else { failed++; }
+      }
+
+      console.log(`[ghl-newsletter-dispatch] jaylen_sequence_${stage}: ${sent} sent, ${failed} failed (approval ${approval_id})`);
+      res.status(200).json({ success: failed === 0, sent, failed });
+    } catch (err) {
+      console.error('[ghl-newsletter-dispatch] Fatal error (sequence):', err);
+      res.status(500).json({ error: String(err) });
+    }
+    return;
+  }
 
   const tag = TIER_TAG_MAP[trigger_type];
   if (!tag) { res.status(400).json({ error: `No recipient tag mapped for trigger_type: ${trigger_type}` }); return; }
