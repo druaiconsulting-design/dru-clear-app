@@ -71,6 +71,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const tagOk = await addTags(contactId, ['non-member'], apiKey);
 
+    // Record in non_members — this is what dispatch actually reads from now, not a GHL
+    // tag search. Upsert since a re-signup shouldn't create a duplicate.
+    const { error: nonMemberError } = await supabase
+      .from('non_members')
+      .upsert(
+        { email: normalizedEmail, first_name: first_name ?? null, ghl_contact_id: contactId, tagged_at: new Date().toISOString() },
+        { onConflict: 'email' }
+      );
+    if (nonMemberError) console.error(`[jaylen-nonmember-signup] non_members upsert failed for ${normalizedEmail}:`, nonMemberError);
+
     // Start (or restart, if they somehow re-signed-up) the sequence tracking row.
     const { error: upsertError } = await supabase
       .from('jaylen_sequence_progress')
