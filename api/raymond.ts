@@ -402,13 +402,17 @@ ${allSummary}`,
           postContent = postContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
           postContent = postContent.split(/\n{2,}/).map((p: string) => p.replace(/\n/g, ' ').trim()).filter((p: string) => p.length > 0).join('\n\n');
           const platformLabel = getPlatformLabel(item.category);
+          const isEmailPlatform = platformLabel === 'Email';
           await writeApproval({
             source: `${item.agent_id}_social`, trigger_type: item.category,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
             task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
             output: postContent, original_content: internalNotes || null,
             status: 'pending', notify_deanna: false,
-            priority: 'normal', category: 'social', platform: platformLabel,
+            // "Emails" is its own category, separate from social media — Aug 2026 fix, category
+            // was wrongly lumping Email in with LinkedIn/Facebook/Instagram under 'social'.
+            // Email cards are high priority since they need same-day approval to send that day.
+            priority: isEmailPlatform ? 'high' : 'normal', category: isEmailPlatform ? 'email' : 'social', platform: platformLabel,
           });
           console.log(`[raymond] Social card: ${item.agent_name} → ${platformLabel}${internalNotes ? ' (internal notes split off)' : ''}`);
         }
@@ -462,10 +466,10 @@ ${allSummary}`,
           status: 'pending',
           notify_deanna: false,
           priority: item.priority === 'high' ? 'high' : 'normal',
-          category: (isChloe || isKwame || isJaylen) ? 'social' : 'content_review',
+          category: isJaylen ? 'email' : (isChloe || isKwame) ? 'social' : 'content_review',
           platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : isJaylen ? 'Email' : null,
         });
-        console.log(`[raymond] ${(isChloe || isKwame || isJaylen) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
+        console.log(`[raymond] ${isJaylen ? 'Email' : (isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
       } catch (err) {
         console.error(`[raymond] Standalone card failed for ${item.agent_name}:`, err);
       }
