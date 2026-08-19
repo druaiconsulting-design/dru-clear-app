@@ -24,8 +24,10 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
-    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
   });
   if (!res.ok) {
     console.error(`[jaylen-nonmember-signup] Contact search failed: ${res.status} ${await res.text()}`);
@@ -42,7 +44,17 @@ async function createContact(email: string, firstName: string, lastName: string,
     body: JSON.stringify({ locationId: GHL_LOCATION_ID, email, firstName, lastName }),
   });
   if (!res.ok) {
-    console.error(`[jaylen-nonmember-signup] Create contact failed: ${res.status} ${await res.text()}`);
+    const errText = await res.text();
+    console.error(`[jaylen-nonmember-signup] Create contact failed: ${res.status} ${errText}`);
+    // GHL rejects duplicates but includes the existing contact's real ID in the error body —
+    // use it rather than dead-ending, in case search missed it for some other reason.
+    try {
+      const errBody = JSON.parse(errText);
+      if (errBody?.meta?.contactId) {
+        console.log(`[jaylen-nonmember-signup] Recovered existing contact ID from duplicate error: ${errBody.meta.contactId}`);
+        return errBody.meta.contactId;
+      }
+    } catch { /* not JSON, nothing to recover */ }
     return null;
   }
   const data = await res.json();
