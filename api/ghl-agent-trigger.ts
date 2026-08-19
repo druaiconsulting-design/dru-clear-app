@@ -626,7 +626,7 @@ async function runNia(): Promise<string|null> {
   const camilaBrief  = await getCrossRead(['camila']);
   const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const trademarks   = `TRADEMARK RULES: Always ™ on every mention. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
+  const trademarks   = `TRADEMARK RULES: Add ™ ONLY to these exact approved marks, nowhere else: ${brandMarks}\nDo NOT add ™ to any other term — including offer/product names like "Strategic Diagnostic," "Executive Diagnostic," or course names — even if it sounds proprietary. If a term isn't in the approved list above, write it plain, no symbol.\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
   const strategyContext = camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
     : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.';
@@ -672,22 +672,22 @@ async function runNia(): Promise<string|null> {
     // Non-member edition — true non-members, GHL tag "non-member"
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_nonmember','newsletter_nonmember',
       `## LEAD, CLARITY, WIN! Newsletter — Non-Member Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Executives who have NOT yet joined DRU AI Consulting.\n${trademarks}${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Surface — reveal the problem clearly, hint at the solution, stop before delivering it. Hook them on the promise.\nFORMAT: Subject line | Opening hook (2-3 sentences that stop them) | The problem (1 paragraph — they should feel seen) | A glimpse of what's possible (1 paragraph — tease, do NOT teach) | CTA\nCTA: "Your AI transformation starts with one assessment. → assessment.druaiconsulting.com"\nTOPIC: ${topic}\nDo NOT give away framework IP. No framework detail — name only.${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,1000);
+      'high',0,null,1000);
 
     // Free-Tier edition — joined the portal, hasn't upgraded, GHL tag "free-tier"
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_freetier','newsletter_freetier',
       `## LEAD, CLARITY, WIN! Newsletter — Free-Tier Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Free-tier members — executives who completed the assessment and joined the DRU AI Leadership Ecosystem™, but haven't upgraded yet.\n${trademarks}${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Between surface and medium — give them real value, but hold back enough that leveling up still matters. Do not teach full framework application.\nFORMAT: Subject line | Opening (acknowledge they're already part of the community) | One valuable insight, held at partial depth | What's waiting for them at the next level | CTA\nCTA: "Ready to go deeper? Join Navigator — that's how you unlock the full community. → https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,1000);
+      'high',0,null,1000);
 
     // Navigator edition
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_navigator','newsletter_navigator',
       `## LEAD, CLARITY, WIN! Newsletter — Navigator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Navigator members ($97/mo) — executives who completed the assessment and joined.\n${trademarks}${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Medium — apply one framework concept to a real leadership challenge. Give real value but leave the full system for the 90-Day Journey.\nFORMAT: Subject line | Opening (acknowledge where they are as executives) | One framework concept + one action step they can take this week | What becomes possible when they go deeper | CTA\nCTA: "Ready to go all in? Start your 90-Day Transformation Pathway. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,1000);
+      'high',0,null,1000);
 
     // Accelerator edition
     return await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
       `## LEAD, CLARITY, WIN! Newsletter — Accelerator Edition\nYou are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${trademarks}${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Subject line | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,1000);
+      'high',0,null,1000);
   }
 
   return null; // Monday, Tuesday — Darius days
@@ -801,7 +801,7 @@ async function promoteDeployToDominate(): Promise<number> {
 
 async function runJaylen(): Promise<{ sequence_emails_generated: number; dominate_promotions: number; weekly_emails_generated: number }> {
   const brandMarks = await fetchBrandMarks();
-  const trademarks = `TRADEMARK RULES: Always ™ on every mention. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
+  const trademarks = `TRADEMARK RULES: Add ™ ONLY to these exact approved marks, nowhere else: ${brandMarks}\nDo NOT add ™ to any other term — including offer/product names like "Strategic Diagnostic," "Executive Diagnostic," or course names — even if it sounds proprietary. If a term isn't in the approved list above, write it plain, no symbol.\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
   const brandLine = `\nBRAND THEME: Work "EQ Meets AI: People-Centered Leadership, AI-Powered Insight" naturally into this email — it's DRU AI Consulting's core positioning line.`;
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
@@ -810,7 +810,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
   for (const stage of dueStages) {
     await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', `jaylen_sequence_${stage}`, 'email_marketing',
       `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${trademarks}${brandLine}${JAYLEN_PERSONALIZATION}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
-      'normal', 0, null, 1000);
+      'high', 0, null, 1000);
   }
 
   // ── 2. Deploy -> Dominate promotion (silent, no content) ─────────────────────
@@ -827,7 +827,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
     for (const t of tiers) {
       await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', t.trigger, 'email_marketing',
         `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${trademarks}${brandLine}${JAYLEN_PERSONALIZATION}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
-        'normal', 0, null, 1000);
+        'high', 0, null, 1000);
       weeklyCount++;
     }
   }
