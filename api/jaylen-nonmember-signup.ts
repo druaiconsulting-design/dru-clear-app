@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { error: upsertError } = await supabase
       .from('jaylen_sequence_progress')
       .upsert(
-        { email: normalizedEmail, ghl_contact_id: contactId, signup_date: new Date().toISOString().slice(0, 10), current_email_number: 0, sequence_complete: false },
+        { email: normalizedEmail, ghl_contact_id: contactId, first_name: first_name ?? null, signup_date: new Date().toISOString().slice(0, 10), current_email_number: 0, sequence_complete: false },
         { onConflict: 'email' }
       );
 
