@@ -692,6 +692,148 @@ async function runNia(): Promise<string|null> {
 
   return null; // Monday, Tuesday — Darius days
 }
+
+// ─── JAYLEN BROOKS — Email Marketing (Revenue, Growth & Sales) ────────────────
+// Runs daily via cron_jaylen_email. Three jobs, every run:
+//   1. Non-member 5-email welcome sequence — checks who's due for their next email today
+//      (Day 0/3/7/10/14 from their own signup date), generates ONE piece of content per
+//      stage that has at least one contact due (not one card per contact — the dispatch
+//      side sends that same content to everyone currently due for that stage).
+//   2. Deploy -> Dominate auto-promotion — pure date math, Day 91 exactly, no content
+//      generation, just tag/database housekeeping.
+//   3. Tuesday only — weekly email to Free-Tier/Navigator/Accelerator (Nia has Wed-Sun).
+// Aug 2026 build.
+
+const JAYLEN_GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const JAYLEN_GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
+const JAYLEN_GHL_VERSION = '2021-07-28';
+
+const SEQUENCE_DAY_OFFSETS: Record<number, number> = { 1: 0, 2: 3, 3: 7, 4: 10, 5: 14 };
+const SEQUENCE_STAGE_NAMES: Record<number, string> = {
+  1: 'Welcome', 2: 'Value Piece / Pain Point', 3: 'Proof / Story', 4: 'Honest', 5: 'The Ask',
+};
+const JAYLEN_SIGNATURE = `\n\nEvery email closes with this exact signature, verbatim:\nAll the Best,\n-DeAnna R Upshaw, Your AI Authority and Partner!`;
+
+async function jaylenFindContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/search?locationId=${JAYLEN_GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
+  });
+  if (!res.ok) { console.error(`[runJaylen] Contact search failed: ${res.status} ${await res.text()}`); return null; }
+  const data = await res.json();
+  return data.contacts?.[0]?.id ?? null;
+}
+
+async function jaylenAddTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[runJaylen] Add tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+async function jaylenRemoveTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  if (tags.length === 0) return true;
+  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[runJaylen] Remove tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+// Returns which of the 5 sequence stages (1-5) have at least one non-member contact due
+// today, so content only gets generated for stages actually needed.
+async function getDueSequenceStages(): Promise<number[]> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) { console.error('[runJaylen] Supabase env vars missing — skipping sequence check'); return []; }
+  const res = await fetch(`${url}/rest/v1/jaylen_sequence_progress?select=current_email_number,signup_date&sequence_complete=eq.false`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) { console.error('[runJaylen] Failed to fetch sequence progress'); return []; }
+  const rows: Array<{ current_email_number: number; signup_date: string }> = await res.json();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dueStages = new Set<number>();
+  for (const row of rows) {
+    const nextStage = row.current_email_number + 1;
+    if (nextStage > 5) continue;
+    const signup = new Date(row.signup_date + 'T00:00:00');
+    const daysSince = Math.floor((today.getTime() - signup.getTime()) / 86400000);
+    if (daysSince >= SEQUENCE_DAY_OFFSETS[nextStage]) dueStages.add(nextStage);
+  }
+  return Array.from(dueStages).sort((a, b) => a - b);
+}
+
+// Pure date math — anyone in Deploy for 91+ days (using the dedicated deploy_started_at
+// timestamp, not profiles.updated_at, which gets touched by unrelated edits) gets promoted
+// to Dominate. No content, no approval card — just tag and database housekeeping.
+async function promoteDeployToDominate(): Promise<number> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
+  if (!url || !key) { console.error('[runJaylen] Supabase env vars missing — skipping Dominate promotion'); return 0; }
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 91);
+  const res = await fetch(`${url}/rest/v1/profiles?select=id,email,deploy_started_at&pathway_stage=eq.Deploy&deploy_started_at=lte.${cutoff.toISOString()}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) { console.error('[runJaylen] Failed to fetch Deploy-stage profiles'); return 0; }
+  const rows: Array<{ id: string; email: string; deploy_started_at: string }> = await res.json();
+  let promoted = 0;
+  for (const row of rows) {
+    const updateRes = await fetch(`${url}/rest/v1/profiles?id=eq.${row.id}`, {
+      method: 'PATCH',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ pathway_stage: 'Dominate', updated_at: new Date().toISOString() }),
+    });
+    if (!updateRes.ok) { console.error(`[runJaylen] Failed to promote ${row.email} to Dominate`); continue; }
+    if (apiKey) {
+      const contactId = await jaylenFindContactIdByEmail(row.email, apiKey);
+      if (contactId) {
+        await jaylenAddTags(contactId, ['90-day-completed'], apiKey);
+        await jaylenRemoveTags(contactId, ['90-day-purchased', 'diagnostic-purchased'], apiKey);
+      } else {
+        console.error(`[runJaylen] No GHL contact found for ${row.email} — Dominate tag sync skipped`);
+      }
+    }
+    promoted++;
+    console.log(`[runJaylen] ${row.email} promoted Deploy -> Dominate (91 days since ${row.deploy_started_at})`);
+  }
+  return promoted;
+}
+
+async function runJaylen(): Promise<{ sequence_emails_generated: number; dominate_promotions: number; weekly_emails_generated: number }> {
+  const brandMarks = await fetchBrandMarks();
+  const trademarks = `TRADEMARK RULES: Always ™ on every mention. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.`;
+  const brandLine = `\nBRAND THEME: Work "EQ Meets AI: People-Centered Leadership, AI-Powered Insight" naturally into this email — it's DRU AI Consulting's core positioning line.`;
+  const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+
+  // ── 1. Non-member sequence — one card per due stage, not per contact ─────────
+  const dueStages = await getDueSequenceStages();
+  for (const stage of dueStages) {
+    await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', `jaylen_sequence_${stage}`, 'email_marketing',
+      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${trademarks}${brandLine}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
+      'normal', 0, null, 1000);
+  }
+
+  // ── 2. Deploy -> Dominate promotion (silent, no content) ─────────────────────
+  const promotions = await promoteDeployToDominate();
+
+  // ── 3. Tuesday — weekly email to Free-Tier/Navigator/Accelerator ─────────────
+  let weeklyCount = 0;
+  if (dayOfWeek === 'Tuesday') {
+    const tiers = [
+      { trigger: 'jaylen_weekly_freetier', label: 'Free-Tier', audience: 'Free-tier members — joined the portal, have not upgraded yet' },
+      { trigger: 'jaylen_weekly_navigator', label: 'Navigator', audience: 'Navigator members ($97/mo)' },
+      { trigger: 'jaylen_weekly_accelerator', label: 'Accelerator', audience: 'Accelerator members ($197/mo)' },
+    ];
+    for (const t of tiers) {
+      await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', t.trigger, 'email_marketing',
+        `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${trademarks}${brandLine}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
+        'normal', 0, null, 1000);
+      weeklyCount++;
+    }
+  }
+
+  return { sequence_emails_generated: dueStages.length, dominate_promotions: promotions, weekly_emails_generated: weeklyCount };
+}
+
 // ─── Marketing Data Fetch ────────────────────────────────────────────────────
 // Pulls real platform data from Supabase for Andre, Hyun-Ji, and Luca.
 // All three agents receive this snapshot so they report actual numbers —
@@ -1102,7 +1244,7 @@ export default async function handler(req:any,res:any): Promise<void> {
     if (urlA&&keyA){const todayA=new Date().toISOString().split('T')[0];const r=await fetch(`${urlA}/rest/v1/chief_of_staff_queue?run_date=eq.${todayA}&agent_id=eq.ryan&order=created_at.desc&limit=1`,{headers:{apikey:keyA,Authorization:`Bearer ${keyA}`}});if (r.ok){const d=await r.json();if (d?.[0]?.raw_output) leadContext=d[0].raw_output;}}
     const id=await runAgentToCSQ('aaliyah','Aaliyah Foster','Revenue, Growth & Sales','personalized_outreach_messages','outreach',`You are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nWrite personalized outreach for each high-intent lead — LinkedIn DM (150 words max) and email (subject + 200 word body). Mention DRU CLEAR™ AI Readiness Assessment and assessment.druaiconsulting.com. If no high-intent leads, write a warm outreach template.\nLead Intelligence:\n${leadContext}`,'high');
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_jaylen'){const id=await runAgentToCSQ('jaylen','Jaylen Brooks','Revenue, Growth & Sales','email_campaign_content','email_marketing',`You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting. Generate today's email marketing content. Audience: executives navigating AI. Offers: DRU CLEAR™ (free), Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), From Confusion to Confident with AI™ Course ($1,497-$12,997).\nRotate: nurture email, re-engagement, or promotional. Include: subject line + A/B variant, preview text, body (300 words max). CTA: assessment.druaiconsulting.com.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_jaylen'){const result=await runJaylen();res.status(202).json({success:true,agent:route.agent_name,...result});}
   else if (route.pipeline==='p1_chloe'){const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`You are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "AI Mastery. Leadership Clarity. Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_zara'){
     const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
