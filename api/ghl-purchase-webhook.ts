@@ -13,11 +13,21 @@ const STAGE_RANK: Record<string, number> = {
 };
 
 // ── Keyword → stage mapping (highest stage checked first) ────────────────────
+// CORRECTED Aug 18, 2026 — the original mapping was wrong in two ways:
+//   1. "full-ecosystem" was wired straight to Dominate. It's actually one of the 3
+//      "90-Day Journey" bundles (Full Ecosystem $26k, DRU CLEAR+2 $19.5k, DRU CLEAR+1
+//      $13.5k) — all 3 land in Deploy on purchase, same as any individual framework.
+//      Dominate is reached only by: (a) an Advisory Retainer purchase directly, or
+//      (b) 91 days after entering Deploy (handled separately — see the daily
+//      promoteDeployToDominate() check in ghl-agent-trigger.ts's runJaylen()).
+//   2. Diagnostic purchases were mapped to 'Diagnose'. Diagnose & Design are reached
+//      together as one milestone (buying either diagnostic gets you both) — the stored
+//      value is 'Design', the higher of the pair. 'Diagnose' still exists in STAGE_RANK
+//      for ordering purposes but this webhook never sets it directly anymore.
 const KEYWORD_MAP: Array<{ pattern: RegExp; stage: string }> = [
-  { pattern: /dominate|full[\s-]?ecosystem|advisory[\s-]?retainer/i,         stage: 'Dominate' },
-  { pattern: /deploy|bundle|all[\s-]?in|complete[\s-]?package/i,             stage: 'Deploy'   },
-  { pattern: /design|framework|90[\s-]?day|transformation[\s-]?session/i,    stage: 'Design'   },
-  { pattern: /diagnos|diagnostic|deep[\s-]?dive/i,                           stage: 'Diagnose' },
+  { pattern: /dominate|advisory[\s-]?retainer/i, stage: 'Dominate' },
+  { pattern: /deploy|bundle|all[\s-]?in|complete[\s-]?package|full[\s-]?ecosystem|dru[\s-]?clear|5d[\s-]?leadership|5c[\s-]?cultural|ai[\s-]?sales[\s-]?mastery|90[\s-]?day|transformation[\s-]?session/i, stage: 'Deploy' },
+  { pattern: /design|diagnos|diagnostic|deep[\s-]?dive/i, stage: 'Design' },
   { pattern: /discover|assess|scorecard|ai[\s-]?readiness|free[\s-]?result/i, stage: 'Discover' },
 ];
 
@@ -49,6 +59,81 @@ function detectStage(signals: string[]): string | null {
 //   Bundle purchased          -> Deploy
 //   Full Ecosystem / Advisory -> Dominate
 // =============================================================================
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
+const GHL_VERSION = '2021-07-28';
+
+// One pathway tag active at a time, same invariant as the tier tags (non-member/free-tier/
+// navigator-tier/accelerator-tier). Design and Deploy are the only stages this webhook sets
+// directly that have a tag; Dominate only gets tagged here on the direct Advisory Retainer
+// path (the 91-day auto-promotion path tags it separately, see runJaylen()).
+const PATHWAY_TAG_TO_ADD: Record<string, string> = {
+  Design: 'diagnostic-purchased',
+  Deploy: '90-day-purchased',
+  Dominate: '90-day-completed',
+};
+const PATHWAY_TAGS_TO_REMOVE: Record<string, string[]> = {
+  Design: [],
+  Deploy: ['diagnostic-purchased'],
+  Dominate: ['diagnostic-purchased', '90-day-purchased'],
+};
+
+async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  });
+  if (!res.ok) {
+    console.error(`[ghl-purchase-webhook] GHL contact search failed: ${res.status} ${await res.text()}`);
+    return null;
+  }
+  const data = await res.json();
+  return data.contacts?.[0]?.id ?? null;
+}
+
+async function addTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[ghl-purchase-webhook] Add tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+async function removeTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
+  if (tags.length === 0) return true;
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}/tags`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ tags }),
+  });
+  if (!res.ok) console.error(`[ghl-purchase-webhook] Remove tags failed for ${contactId}: ${res.status} ${await res.text()}`);
+  return res.ok;
+}
+
+// Syncs the GHL pathway tag to match the stage just set in Supabase. Never blocks or fails
+// the webhook response — the pathway_stage update already succeeded, which is what matters
+// for the member's portal experience; a GHL hiccup here just means Jaylen's targeting is
+// stale until the next purchase event, logged clearly so it's visible, not silent.
+async function syncPathwayTag(email: string, newStage: string): Promise<void> {
+  const tagToAdd = PATHWAY_TAG_TO_ADD[newStage];
+  if (!tagToAdd) return; // Discover has no tag to sync
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
+  if (!apiKey) { console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATION_KEY not set — skipping tag sync'); return; }
+  try {
+    const contactId = await findContactIdByEmail(email, apiKey);
+    if (!contactId) { console.error(`[ghl-purchase-webhook] No GHL contact found for ${email} — pathway tag sync skipped`); return; }
+    const tagsToRemove = PATHWAY_TAGS_TO_REMOVE[newStage] ?? [];
+    const [addOk, removeOk] = await Promise.all([
+      addTags(contactId, [tagToAdd], apiKey),
+      removeTags(contactId, tagsToRemove, apiKey),
+    ]);
+    console.log(`[ghl-purchase-webhook] Pathway tag sync for ${email}: added ${tagToAdd} (${addOk}), removed ${tagsToRemove.join(',') || 'none'} (${removeOk})`);
+  } catch (err) {
+    console.error(`[ghl-purchase-webhook] Pathway tag sync error for ${email}:`, err);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -125,9 +210,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Update
+    const updateFields: Record<string, unknown> = { pathway_stage: newStage, updated_at: new Date().toISOString() };
+    // Dedicated timestamp for the 91-day Deploy→Dominate check — profiles.updated_at gets
+    // touched by unrelated edits (bio, headline, etc.) so it can't be trusted for this.
+    if (newStage === 'Deploy') updateFields.deploy_started_at = new Date().toISOString();
+
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ pathway_stage: newStage, updated_at: new Date().toISOString() })
+      .update(updateFields)
       .eq('id', profile.id);
 
     if (updateError) {
@@ -137,6 +227,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const name = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || email;
     console.log(`[ghl-purchase-webhook] SUCCESS: ${name} -> ${profile.pathway_stage ?? 'null'} -> ${newStage}`);
+
+    // Sync the GHL pathway tag to match (Aug 2026 addition).
+    await syncPathwayTag(email, newStage);
 
     return res.status(200).json({ ok: true, email, name, previousStage: profile.pathway_stage, newStage, signals });
 
