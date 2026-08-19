@@ -7,7 +7,7 @@
 // the row in jaylen_sequence_progress that the daily sequence check reads from (see
 // runJaylen() in ghl-agent-trigger.ts).
 //
-// Uses GHL_PRIVATE_INTEGRATION_KEY (contacts.readonly + contacts.write + conversations/message.write).
+// Uses GHL_PRIVATE_INTEGRATIONS_KEY (contacts.readonly + contacts.write + conversations/message.write).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from '@supabase/supabase-js';
@@ -66,8 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!email || typeof email !== 'string') { res.status(400).json({ error: 'email is required' }); return; }
   const normalizedEmail = email.toLowerCase().trim();
 
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATION_KEY not set' }); return; }
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   try {
     // GHL's own inbound webhook (fired by the website form, same submit) may not have
