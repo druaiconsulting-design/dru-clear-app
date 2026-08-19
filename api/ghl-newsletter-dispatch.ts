@@ -192,13 +192,18 @@ async function getDueSequenceContacts(stage: number): Promise<Array<{ email: str
     .map(row => ({ email: row.email, ghl_contact_id: row.ghl_contact_id, first_name: row.first_name }));
 }
 
+// GHL's official upsert endpoint — finds-or-creates by email using GHL's own duplicate
+// detection, replacing the unverified advanced-search approach entirely.
+// https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
-    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, email }),
   });
-  if (!res.ok) { console.error(`[ghl-newsletter-dispatch] Contact search failed: ${res.status} ${await res.text()}`); return null; }
+  if (!res.ok) { console.error(`[ghl-newsletter-dispatch] Contact upsert failed: ${res.status} ${await res.text()}`); return null; }
   const data = await res.json();
-  return data.contacts?.[0]?.id ?? null;
+  return data.contact?.id ?? null;
 }
 
 async function markSequenceSent(email: string, stage: number): Promise<void> {
