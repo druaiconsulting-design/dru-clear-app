@@ -19,8 +19,10 @@ const TAGS_TO_REMOVE: Record<string, string[]> = {
 };
 
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
-    headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
   });
   if (!res.ok) {
     console.error(`[ghl-subscription-webhook] GHL contact search failed: ${res.status} ${await res.text()}`);
