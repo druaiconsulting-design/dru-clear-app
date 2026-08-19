@@ -37,7 +37,9 @@ function getPlatformLabel(category: string): string {
     twitter_post: 'X', tiktok_post: 'TikTok', youtube_post: 'YouTube', social_post: 'Social',
     content_creation: 'Content', press_release: 'Press', design_brief: 'Design',
     localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
-    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
+    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_freetier: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
+    jaylen_sequence_1: 'Email', jaylen_sequence_2: 'Email', jaylen_sequence_3: 'Email', jaylen_sequence_4: 'Email', jaylen_sequence_5: 'Email',
+    jaylen_weekly_freetier: 'Email', jaylen_weekly_navigator: 'Email', jaylen_weekly_accelerator: 'Email',
   };
   return map[category] ?? 'Social';
 }
@@ -355,9 +357,13 @@ async function runTwinSynthesisOnItem(
 
     // Categories with a known social/platform label get tagged as such; everything
     // else gets a generic content_review card. Either way, the content is verbatim.
-    const knownPlatformCategories = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','press_release','design_brief','localization','copywriting','linkedin_article','newsletter_nonmember','newsletter_navigator','newsletter_accelerator'];
+    const knownPlatformCategories = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','press_release','design_brief','localization','copywriting','linkedin_article','newsletter_nonmember','newsletter_freetier','newsletter_navigator','newsletter_accelerator','jaylen_sequence_1','jaylen_sequence_2','jaylen_sequence_3','jaylen_sequence_4','jaylen_sequence_5','jaylen_weekly_freetier','jaylen_weekly_navigator','jaylen_weekly_accelerator'];
     if (knownPlatformCategories.includes(item.category as string)) {
       const platformLabel = getPlatformLabel(item.category as string);
+      // "Emails" is its own category, separate from social media (Aug 2026 fix) — matches
+      // the same split made in raymond.ts's daily synthesis path, so a card looks and
+      // dispatches the same whether it came from the daily cron or an on-demand chat request.
+      const isEmailPlatform = platformLabel === 'Email';
       return await dbInsert("approvals", {
         source:        "twin_on_demand",
         trigger_type:  item.category,
@@ -369,7 +375,7 @@ async function runTwinSynthesisOnItem(
         status:        "pending",
         notify_deanna: true,
         priority:      "high",
-        category:      "social",
+        category:      isEmailPlatform ? "email" : "social",
         platform:      platformLabel,
       });
     }
