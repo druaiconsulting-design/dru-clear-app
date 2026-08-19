@@ -1,28 +1,23 @@
 // api/ghl-newsletter-dispatch.ts
-// Sends an approved LEAD, CLARITY, WIN! Newsletter edition to its real recipient list via
-// GHL's Conversations/Messages send API — the piece that was missing entirely before this.
+// Sends an approved LEAD, CLARITY, WIN! Newsletter/Jaylen email to its real recipient list via
+// GHL's Conversations/Messages send API.
 //
-// Fires from AdminApprovals.tsx's handleApprove() when an Email-platform "social" card is
-// approved (fireEmailDispatch), instead of the LinkedIn/Facebook/Instagram social-publisher path.
+// Fires from AdminApprovals.tsx's handleApprove() when an Email-platform card is approved
+// (fireEmailDispatch), instead of the LinkedIn/Facebook/Instagram social-publisher path.
 //
-// Uses GHL_PRIVATE_INTEGRATIONS_KEY — NOT GHL_API_KEY (a different, older credential used
-// elsewhere in this codebase for Omar/Ryan's lead scoring). This key is scoped specifically for
-// contacts.readonly + conversations/message.write, confirmed live Aug 16, 2026.
+// Uses GHL_PRIVATE_INTEGRATIONS_KEY — plural "INTEGRATIONS" — NOT GHL_API_KEY (a different,
+// older credential used elsewhere in this codebase for Omar/Ryan's lead scoring).
 //
-// Recipient tags (created live in GHL, Aug 2026): non-member, free-tier, navigator, accelerator.
-// free-tier has no newsletter edition yet (Nia doesn't write one) — TIER_TAG_MAP includes it
-// for when that 4th edition exists; until then no trigger_type of "newsletter_freetier" will
-// exist to dispatch, since Nia isn't writing that content yet outside this build. Once she is,
-// no changes are needed here — the mapping already covers it.
-//
-// KNOWN RISK, flagged honestly rather than guessed past: the exact filter schema GHL's
-// POST /contacts/search expects for tag-based filtering could not be fully confirmed against
-// official docs (the docs site is JS-rendered and blocked full extraction; one third-party
-// report suggested friction with tag filters specifically). The shape used below —
-// {"field":"tags","operator":"contains","value":"<tag>"} — matches GHL's own documented
-// example format for advanced filters. This is the one part of this build that needs a real
-// first-test check: confirm the contact count returned for a known tag matches what's actually
-// in GHL before trusting a real send.
+// RECIPIENT LOOKUP — Aug 19, 2026 architecture, replaces an earlier GHL tag-search approach
+// that was never verifiable against real GHL behavior and, once tested, turned out to be
+// broken. Recipients now come from Supabase directly: `profiles.tier` for free-tier/
+// navigator/accelerator (independently verified reliable since May 2026), and a dedicated
+// `non_members` table for true non-members (people with no login, tracked separately — see
+// TIER_SOURCE_MAP below). GHL is still used, but only for the part it's actually needed for:
+// finding/creating each person's real contact record by email (via the official Upsert
+// Contact endpoint, confirmed working) and sending the message. GHL tags themselves still
+// exist and stay in sync for her own reference in the GHL UI, but dispatch no longer reads
+// them to decide who gets an email.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from '@supabase/supabase-js';
@@ -37,18 +32,45 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 
-// Maps each newsletter edition's trigger_type to the GHL tag identifying its recipients.
-// Jaylen's weekly tier emails (Aug 2026 addition) reuse the exact same tier tags Nia's
-// newsletter uses — same recipients, different content, different day (Tuesday vs Thursday).
-const TIER_TAG_MAP: Record<string, string> = {
-  newsletter_nonmember:   'non-member',
-  newsletter_freetier:    'free-tier',
-  newsletter_navigator:   'navigator-tier',
-  newsletter_accelerator: 'accelerator-tier',
-  jaylen_weekly_freetier:    'free-tier',
-  jaylen_weekly_navigator:   'navigator-tier',
-  jaylen_weekly_accelerator: 'accelerator-tier',
+// Maps each newsletter/weekly-email trigger_type to which Supabase table holds its
+// recipients. Aug 19, 2026 — replaces GHL tag search entirely. The GHL tags themselves still
+// exist and stay in sync (that part is proven working via ghl-subscription-webhook.ts /
+// ghl-tag-freetier.ts), but dispatch no longer asks GHL "who has this tag" — it asks
+// Supabase directly, independently verified reliable since May 2026 (profiles.tier), plus
+// the new non_members table (Aug 2026) for true non-members, who have no profiles row.
+const TIER_SOURCE_MAP: Record<string, { table: 'non_members' | 'profiles'; tierValue?: string }> = {
+  newsletter_nonmember:      { table: 'non_members' },
+  newsletter_freetier:       { table: 'profiles', tierValue: 'free' },
+  newsletter_navigator:      { table: 'profiles', tierValue: 'navigator' },
+  newsletter_accelerator:    { table: 'profiles', tierValue: 'accelerator' },
+  jaylen_weekly_freetier:    { table: 'profiles', tierValue: 'free' },
+  jaylen_weekly_navigator:   { table: 'profiles', tierValue: 'navigator' },
+  jaylen_weekly_accelerator: { table: 'profiles', tierValue: 'accelerator' },
 };
+
+async function getSupabaseTierContacts(trigger_type: string, apiKey: string): Promise<Array<{ id: string; firstName: string | null }>> {
+  const source = TIER_SOURCE_MAP[trigger_type];
+  if (!source) return [];
+
+  let rows: Array<{ email: string; first_name: string | null; ghl_contact_id?: string | null }> = [];
+  if (source.table === 'non_members') {
+    const { data, error } = await supabase.from('non_members').select('email, first_name, ghl_contact_id').is('converted_at', null);
+    if (error) { console.error('[ghl-newsletter-dispatch] non_members query failed:', error); return []; }
+    rows = data ?? [];
+  } else {
+    const { data, error } = await supabase.from('profiles').select('email, first_name').eq('tier', source.tierValue);
+    if (error) { console.error('[ghl-newsletter-dispatch] profiles query failed:', error); return []; }
+    rows = data ?? [];
+  }
+
+  const contactsOut: Array<{ id: string; firstName: string | null }> = [];
+  for (const row of rows) {
+    const contactId = row.ghl_contact_id || await findContactIdByEmail(row.email, apiKey);
+    if (contactId) contactsOut.push({ id: contactId, firstName: row.first_name });
+    else console.error(`[ghl-newsletter-dispatch] No GHL contact for ${row.email} — skipped`);
+  }
+  return contactsOut;
+}
 
 // Jaylen's non-member 5-email sequence (Aug 2026) doesn't use tags at all — recipients are
 // whoever's currently due in jaylen_sequence_progress, not a stable GHL tag. Stage number is
@@ -94,6 +116,23 @@ function extractSubjectAndBody(content: string): { subject: string; body: string
   if (headingIdx !== -1) {
     const removeIndices = new Set([headingIdx]);
     if (textIdx !== -1 && textIdx !== headingIdx) removeIndices.add(textIdx);
+
+    // The model sometimes writes literal section labels/dividers (e.g. "---" then "BODY:")
+    // despite the format instruction being descriptive, not literal text to include — strip
+    // any of those found in the few lines right after the subject, so they never reach the
+    // actual sent email. Scans up to 3 non-blank lines past the subject.
+    let checked = 0;
+    for (let j = (textIdx !== -1 ? textIdx : headingIdx) + 1; j < lines.length && checked < 3; j++) {
+      const trimmed = lines[j].trim();
+      if (!trimmed) continue;
+      checked++;
+      if (/^[-_—=]{3,}$/.test(trimmed) || /^body\s*:?\s*$/i.test(trimmed)) {
+        removeIndices.add(j);
+      } else {
+        break; // real content starts here — stop scanning
+      }
+    }
+
     bodyLines = lines.filter((_, idx) => !removeIndices.has(idx));
   }
   const body = bodyLines.join('\n').trim();
@@ -114,43 +153,6 @@ function toHtml(body: string): string {
 // universally rather than branching by agent.
 function personalize(html: string, firstName: string | null | undefined): string {
   return html.replace(/\{\{\s*contact\.first_name\s*\}\}/gi, firstName?.trim() || 'there');
-}
-
-// Paginates through GHL's contact search for a given tag. Hard safety cap of 50 pages
-// (5,000 contacts) — well beyond current real list sizes; prevents a runaway loop if GHL's
-// pagination cursor behaves unexpectedly.
-async function getTaggedContacts(tag: string, apiKey: string): Promise<Array<{ id: string; firstName: string | null }>> {
-  const contactsOut: Array<{ id: string; firstName: string | null }> = [];
-  let startAfterId: string | undefined;
-  let startAfter: number | undefined;
-
-  for (let page = 0; page < 50; page++) {
-    const body: Record<string, unknown> = {
-      locationId: GHL_LOCATION_ID,
-      pageLimit: 100,
-      filters: [{ field: 'tags', operator: 'contains', value: tag }],
-    };
-    if (startAfterId) body.startAfterId = startAfterId;
-    if (startAfter)   body.startAfter = startAfter;
-
-    const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      console.error(`[ghl-newsletter-dispatch] Contact search failed for tag "${tag}": ${res.status} ${await res.text()}`);
-      break;
-    }
-    const data = await res.json();
-    const contacts = data.contacts ?? [];
-    for (const c of contacts) if (c.id) contactsOut.push({ id: c.id, firstName: c.firstName ?? null });
-    if (contacts.length < 100) break;
-    const last = contacts[contacts.length - 1];
-    startAfterId = last.id;
-    startAfter = last.dateAdded ? new Date(last.dateAdded).getTime() : undefined;
-  }
-  return contactsOut;
 }
 
 async function sendEmailToContact(contactId: string, subject: string, html: string, apiKey: string): Promise<boolean> {
@@ -256,14 +258,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const tag = TIER_TAG_MAP[trigger_type];
-  if (!tag) { res.status(400).json({ error: `No recipient tag mapped for trigger_type: ${trigger_type}` }); return; }
+  const source = TIER_SOURCE_MAP[trigger_type];
+  if (!source) { res.status(400).json({ error: `No recipient source mapped for trigger_type: ${trigger_type}` }); return; }
 
   try {
-    const contacts = await getTaggedContacts(tag, apiKey);
+    const contacts = await getSupabaseTierContacts(trigger_type, apiKey);
     if (contacts.length === 0) {
-      console.log(`[ghl-newsletter-dispatch] No contacts found tagged "${tag}" for approval ${approval_id}`);
-      res.status(200).json({ success: true, sent: 0, failed: 0, note: `No contacts tagged "${tag}"` });
+      console.log(`[ghl-newsletter-dispatch] No contacts found for ${trigger_type} (source: ${source.table}) — approval ${approval_id}`);
+      res.status(200).json({ success: true, sent: 0, failed: 0, note: `No contacts found for ${trigger_type}` });
       return;
     }
 
@@ -274,7 +276,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sent = results.filter(Boolean).length;
     const failed = results.length - sent;
 
-    console.log(`[ghl-newsletter-dispatch] ${trigger_type} → tag "${tag}": ${sent} sent, ${failed} failed (approval ${approval_id})`);
+    console.log(`[ghl-newsletter-dispatch] ${trigger_type} (source: ${source.table}): ${sent} sent, ${failed} failed (approval ${approval_id})`);
     res.status(200).json({ success: failed === 0, sent, failed });
   } catch (err) {
     console.error('[ghl-newsletter-dispatch] Fatal error:', err);
