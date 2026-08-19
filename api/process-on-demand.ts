@@ -357,6 +357,20 @@ async function runTwinSynthesisOnItem(
 
     // Categories with a known social/platform label get tagged as such; everything
     // else gets a generic content_review card. Either way, the content is verbatim.
+    // Readable label for Jaylen's specific email editions, so the card heading says which one
+    // this is (non-member sequence stage, or which tier's weekly email) instead of just "Email."
+    const JAYLEN_LABELS: Record<string, string> = {
+      jaylen_sequence_1: 'Non-Member Sequence — Email 1 (Welcome)',
+      jaylen_sequence_2: 'Non-Member Sequence — Email 2 (Value/Pain Point)',
+      jaylen_sequence_3: 'Non-Member Sequence — Email 3 (Proof/Story)',
+      jaylen_sequence_4: 'Non-Member Sequence — Email 4 (Honest)',
+      jaylen_sequence_5: 'Non-Member Sequence — Email 5 (The Ask)',
+      jaylen_weekly_freetier: 'Weekly Email — Free-Tier',
+      jaylen_weekly_navigator: 'Weekly Email — Navigator',
+      jaylen_weekly_accelerator: 'Weekly Email — Accelerator',
+    };
+    const jaylenLabel = JAYLEN_LABELS[item.task as string];
+
     const knownPlatformCategories = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','press_release','design_brief','localization','copywriting','linkedin_article','newsletter_nonmember','newsletter_freetier','newsletter_navigator','newsletter_accelerator','jaylen_sequence_1','jaylen_sequence_2','jaylen_sequence_3','jaylen_sequence_4','jaylen_sequence_5','jaylen_weekly_freetier','jaylen_weekly_navigator','jaylen_weekly_accelerator'];
     if (knownPlatformCategories.includes(item.category as string)) {
       const platformLabel = getPlatformLabel(item.category as string);
@@ -366,11 +380,11 @@ async function runTwinSynthesisOnItem(
       const isEmailPlatform = platformLabel === 'Email';
       return await dbInsert("approvals", {
         source:        "twin_on_demand",
-        trigger_type:  item.category,
+        trigger_type:  item.task,
         agent_name:    item.agent_name,
         agent_role:    item.division,
         division:      item.division,
-        task_brief:    `${platformLabel} — On-Demand: ${item.agent_name} | ${today}`,
+        task_brief:    `${jaylenLabel ?? platformLabel} — On-Demand: ${item.agent_name} | ${today}`,
         output:        content,
         status:        "pending",
         notify_deanna: true,
@@ -382,7 +396,7 @@ async function runTwinSynthesisOnItem(
 
     return await dbInsert("approvals", {
       source:        "twin_on_demand",
-      trigger_type:  item.category,
+      trigger_type:  item.task,
       agent_name:    item.agent_name,
       agent_role:    item.division,
       division:      item.division,
