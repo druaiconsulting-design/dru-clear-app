@@ -436,6 +436,19 @@ ${allSummary}`,
         const isKwame  = item.agent_name.toLowerCase().includes('kwame');
         const isCamila = item.agent_name.toLowerCase().includes('camila');
         const isJaylen = item.agent_name.toLowerCase().includes('jaylen');
+        // Readable label for Jaylen's specific email editions — matches the same mapping in
+        // process-on-demand.ts so a card reads the same whether it's the Tuesday/daily cron
+        // or a manually-triggered one.
+        const JAYLEN_LABELS: Record<string, string> = {
+          jaylen_sequence_1: 'Non-Member Sequence — Email 1 (Welcome)',
+          jaylen_sequence_2: 'Non-Member Sequence — Email 2 (Value/Pain Point)',
+          jaylen_sequence_3: 'Non-Member Sequence — Email 3 (Proof/Story)',
+          jaylen_sequence_4: 'Non-Member Sequence — Email 4 (Honest)',
+          jaylen_sequence_5: 'Non-Member Sequence — Email 5 (The Ask)',
+          jaylen_weekly_freetier: 'Weekly Email — Free-Tier',
+          jaylen_weekly_navigator: 'Weekly Email — Navigator',
+          jaylen_weekly_accelerator: 'Weekly Email — Accelerator',
+        };
 
         // Jaylen's content needs the same treatment Nia's gets in the SOCIAL_DIVISIONS path
         // above (markdown cleanup + internal-notes split) — he doesn't go through that path
@@ -460,6 +473,8 @@ ${allSummary}`,
           division: item.division,
           task_brief: isCamila
             ? `Weekly LinkedIn Queue — ${item.agent_name} | ${today}`
+            : isJaylen && JAYLEN_LABELS[item.task]
+            ? `${JAYLEN_LABELS[item.task]} — ${item.agent_name} | ${today}`
             : `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
           output: isJaylen ? jaylenOutput : item.raw_output,
           original_content: isJaylen ? (jaylenInternalNotes || null) : undefined,
@@ -534,3 +549,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const result = await runRaymondSynthesis();
   res.status(202).json({ success: true, ...result });
 }
+
