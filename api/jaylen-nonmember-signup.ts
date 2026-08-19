@@ -23,38 +23,18 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 
-async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
-  });
-  if (!res.ok) {
-    console.error(`[jaylen-nonmember-signup] Contact search failed: ${res.status} ${await res.text()}`);
-    return null;
-  }
-  const data = await res.json();
-  return data.contacts?.[0]?.id ?? null;
-}
-
-async function createContact(email: string, firstName: string, lastName: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts`, {
+// GHL's official upsert endpoint — one call finds-or-creates by email using GHL's own
+// duplicate-detection logic (the same logic that produced "This location does not allow
+// duplicated contacts" when this file tried to create a contact that already existed).
+// Replaces the separate search+create dance entirely — https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
+async function upsertGHLContact(email: string, firstName: string, lastName: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
     body: JSON.stringify({ locationId: GHL_LOCATION_ID, email, firstName, lastName }),
   });
   if (!res.ok) {
-    const errText = await res.text();
-    console.error(`[jaylen-nonmember-signup] Create contact failed: ${res.status} ${errText}`);
-    // GHL rejects duplicates but includes the existing contact's real ID in the error body —
-    // use it rather than dead-ending, in case search missed it for some other reason.
-    try {
-      const errBody = JSON.parse(errText);
-      if (errBody?.meta?.contactId) {
-        console.log(`[jaylen-nonmember-signup] Recovered existing contact ID from duplicate error: ${errBody.meta.contactId}`);
-        return errBody.meta.contactId;
-      }
-    } catch { /* not JSON, nothing to recover */ }
+    console.error(`[jaylen-nonmember-signup] Upsert contact failed: ${res.status} ${await res.text()}`);
     return null;
   }
   const data = await res.json();
@@ -82,15 +62,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   try {
-    // GHL's own inbound webhook (fired by the website form, same submit) may not have
-    // finished creating the contact yet — look it up, create directly if it hasn't landed.
-    let contactId = await findContactIdByEmail(normalizedEmail, apiKey);
+    const contactId = await upsertGHLContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey);
     if (!contactId) {
-      contactId = await createContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey);
-    }
-    if (!contactId) {
-      console.error(`[jaylen-nonmember-signup] Could not find or create a GHL contact for ${normalizedEmail}`);
-      res.status(500).json({ error: 'Could not find or create GHL contact' });
+      console.error(`[jaylen-nonmember-signup] Could not upsert GHL contact for ${normalizedEmail}`);
+      res.status(500).json({ error: 'Could not upsert GHL contact' });
       return;
     }
 
