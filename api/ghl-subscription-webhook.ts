@@ -18,14 +18,17 @@ const TAGS_TO_REMOVE: Record<string, string[]> = {
   accelerator: ['non-member', 'free-tier', 'navigator-tier'],
 };
 
+// GHL's official upsert endpoint — finds-or-creates by email using GHL's own duplicate
+// detection, replacing the unverified advanced-search approach entirely.
+// https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
+  const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, email }),
   });
   if (!res.ok) {
-    console.error(`[ghl-subscription-webhook] GHL contact search failed: ${res.status} ${await res.text()}`);
+    console.error(`[ghl-subscription-webhook] GHL contact upsert failed: ${res.status} ${await res.text()}`);
     return null;
   }
   const data = await res.json();
