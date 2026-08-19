@@ -530,3 +530,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const result = await runRaymondSynthesis();
   res.status(202).json({ success: true, ...result });
 }
+
