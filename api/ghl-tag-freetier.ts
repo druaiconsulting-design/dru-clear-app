@@ -3,7 +3,7 @@
 // Called from druaiconsulting-assessment's Results.tsx, right after supabase.auth.signUp()
 // succeeds — a cross-repo call, since the assessment app has no backend of its own.
 //
-// Uses GHL_PRIVATE_INTEGRATION_KEY (contacts.readonly + contacts.write + conversations/message.write
+// Uses GHL_PRIVATE_INTEGRATIONS_KEY (contacts.readonly + contacts.write + conversations/message.write
 // — the contacts.write scope was added Aug 18, 2026 specifically for this and the
 // ghl-subscription-webhook.ts tag sync).
 //
@@ -61,8 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { email } = req.body ?? {};
   if (!email || typeof email !== 'string') { res.status(400).json({ error: 'email is required' }); return; }
 
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATION_KEY not set' }); return; }
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   try {
     let contactId = await findContactIdByEmail(email, apiKey);
