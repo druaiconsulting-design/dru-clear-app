@@ -32,7 +32,7 @@ const INTERNAL_NOTES_MARKER = '===INTERNAL NOTES===';
 
 // Agents that always get their own standalone Intelligence Hub card
 // regardless of division — never buried in division synthesis
-const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Camila Flores', 'Zara Ahmed'];
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Jaylen Brooks', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Camila Flores', 'Zara Ahmed'];
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
@@ -431,6 +431,23 @@ ${allSummary}`,
         const isChloe  = item.agent_name.toLowerCase().includes('chloe');
         const isKwame  = item.agent_name.toLowerCase().includes('kwame');
         const isCamila = item.agent_name.toLowerCase().includes('camila');
+        const isJaylen = item.agent_name.toLowerCase().includes('jaylen');
+
+        // Jaylen's content needs the same treatment Nia's gets in the SOCIAL_DIVISIONS path
+        // above (markdown cleanup + internal-notes split) — he doesn't go through that path
+        // since his division isn't in SOCIAL_DIVISIONS, so it's applied here instead.
+        let jaylenOutput = item.raw_output;
+        let jaylenInternalNotes = '';
+        if (isJaylen) {
+          const notesIdx = jaylenOutput.indexOf(INTERNAL_NOTES_MARKER);
+          if (notesIdx !== -1) {
+            jaylenInternalNotes = jaylenOutput.slice(notesIdx + INTERNAL_NOTES_MARKER.length).trim();
+            jaylenOutput = jaylenOutput.slice(0, notesIdx).trim();
+          }
+          jaylenOutput = jaylenOutput.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+          jaylenOutput = jaylenOutput.split(/\n{2,}/).map((p: string) => p.replace(/\n/g, ' ').trim()).filter((p: string) => p.length > 0).join('\n\n');
+        }
+
         await writeApproval({
           source: `${item.agent_id}_content`,
           trigger_type: item.category,
@@ -440,14 +457,15 @@ ${allSummary}`,
           task_brief: isCamila
             ? `Weekly LinkedIn Queue — ${item.agent_name} | ${today}`
             : `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
-          output: item.raw_output,
+          output: isJaylen ? jaylenOutput : item.raw_output,
+          original_content: isJaylen ? (jaylenInternalNotes || null) : undefined,
           status: 'pending',
           notify_deanna: false,
           priority: item.priority === 'high' ? 'high' : 'normal',
-          category: (isChloe || isKwame) ? 'social' : 'content_review',
-          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : null,
+          category: (isChloe || isKwame || isJaylen) ? 'social' : 'content_review',
+          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : isJaylen ? 'Email' : null,
         });
-        console.log(`[raymond] ${(isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
+        console.log(`[raymond] ${(isChloe || isKwame || isJaylen) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
       } catch (err) {
         console.error(`[raymond] Standalone card failed for ${item.agent_name}:`, err);
       }
