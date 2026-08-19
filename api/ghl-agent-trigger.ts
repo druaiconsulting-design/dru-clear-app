@@ -715,15 +715,18 @@ const SEQUENCE_STAGE_NAMES: Record<number, string> = {
 const JAYLEN_SIGNATURE = `\n\nEvery email closes with this exact signature, verbatim:\nAll the Best,\n-DeAnna R Upshaw, Your AI Authority and Partner!`;
 const JAYLEN_PERSONALIZATION = `\nPERSONALIZATION: Open with GHL's merge tag exactly as written — Hi {{contact.first_name}}, — do not substitute a placeholder name or write it any other way; GHL fills in the real first name at send time using this exact tag.`;
 
+// GHL's official upsert endpoint — finds-or-creates by email using GHL's own duplicate
+// detection, replacing the unverified advanced-search approach entirely.
+// https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
 async function jaylenFindContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/search`, {
+  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
-    body: JSON.stringify({ locationId: JAYLEN_GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
+    body: JSON.stringify({ locationId: JAYLEN_GHL_LOCATION_ID, email }),
   });
-  if (!res.ok) { console.error(`[runJaylen] Contact search failed: ${res.status} ${await res.text()}`); return null; }
+  if (!res.ok) { console.error(`[runJaylen] Contact upsert failed: ${res.status} ${await res.text()}`); return null; }
   const data = await res.json();
-  return data.contacts?.[0]?.id ?? null;
+  return data.contact?.id ?? null;
 }
 
 async function jaylenAddTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
