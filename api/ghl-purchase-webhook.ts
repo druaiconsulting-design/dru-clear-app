@@ -118,8 +118,8 @@ async function removeTags(contactId: string, tags: string[], apiKey: string): Pr
 async function syncPathwayTag(email: string, newStage: string): Promise<void> {
   const tagToAdd = PATHWAY_TAG_TO_ADD[newStage];
   if (!tagToAdd) return; // Discover has no tag to sync
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
-  if (!apiKey) { console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATION_KEY not set — skipping tag sync'); return; }
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+  if (!apiKey) { console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATIONS_KEY not set — skipping tag sync'); return; }
   try {
     const contactId = await findContactIdByEmail(email, apiKey);
     if (!contactId) { console.error(`[ghl-purchase-webhook] No GHL contact found for ${email} — pathway tag sync skipped`); return; }
