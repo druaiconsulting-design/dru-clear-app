@@ -19,28 +19,17 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 
-async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pageLimit: 1, filters: [{ field: 'email', operator: 'eq', value: email }] }),
-  });
-  if (!res.ok) {
-    console.error(`[ghl-tag-freetier] Contact search failed: ${res.status} ${await res.text()}`);
-    return null;
-  }
-  const data = await res.json();
-  return data.contacts?.[0]?.id ?? null;
-}
-
-async function createContact(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts`, {
+// GHL's official upsert endpoint — one call finds-or-creates by email using GHL's own
+// duplicate-detection logic, replacing the separate search+create dance entirely.
+// https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
+async function upsertGHLContact(email: string, apiKey: string): Promise<string | null> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
     body: JSON.stringify({ locationId: GHL_LOCATION_ID, email }),
   });
   if (!res.ok) {
-    console.error(`[ghl-tag-freetier] Create contact failed: ${res.status} ${await res.text()}`);
+    console.error(`[ghl-tag-freetier] Contact upsert failed: ${res.status} ${await res.text()}`);
     return null;
   }
   const data = await res.json();
@@ -67,14 +56,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   try {
-    let contactId = await findContactIdByEmail(email, apiKey);
+    const contactId = await upsertGHLContact(email, apiKey);
     if (!contactId) {
-      console.log(`[ghl-tag-freetier] No GHL contact found yet for ${email} — creating directly`);
-      contactId = await createContact(email, apiKey);
-    }
-    if (!contactId) {
-      console.error(`[ghl-tag-freetier] Could not find or create a GHL contact for ${email}`);
-      res.status(500).json({ error: 'Could not find or create GHL contact' });
+      console.error(`[ghl-tag-freetier] Could not upsert GHL contact for ${email}`);
+      res.status(500).json({ error: 'Could not upsert GHL contact' });
       return;
     }
 
