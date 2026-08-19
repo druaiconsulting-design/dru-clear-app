@@ -713,6 +713,7 @@ const SEQUENCE_STAGE_NAMES: Record<number, string> = {
   1: 'Welcome', 2: 'Value Piece / Pain Point', 3: 'Proof / Story', 4: 'Honest', 5: 'The Ask',
 };
 const JAYLEN_SIGNATURE = `\n\nEvery email closes with this exact signature, verbatim:\nAll the Best,\n-DeAnna R Upshaw, Your AI Authority and Partner!`;
+const JAYLEN_PERSONALIZATION = `\nPERSONALIZATION: Open with GHL's merge tag exactly as written — Hi {{contact.first_name}}, — do not substitute a placeholder name or write it any other way; GHL fills in the real first name at send time using this exact tag.`;
 
 async function jaylenFindContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
   const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/search?locationId=${JAYLEN_GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`, {
@@ -808,7 +809,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
   const dueStages = await getDueSequenceStages();
   for (const stage of dueStages) {
     await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', `jaylen_sequence_${stage}`, 'email_marketing',
-      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${trademarks}${brandLine}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
+      `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${trademarks}${brandLine}${JAYLEN_PERSONALIZATION}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
       'normal', 0, null, 1000);
   }
 
@@ -825,7 +826,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
     ];
     for (const t of tiers) {
       await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', t.trigger, 'email_marketing',
-        `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${trademarks}${brandLine}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
+        `You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${trademarks}${brandLine}${JAYLEN_PERSONALIZATION}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Subject line | Body${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
         'normal', 0, null, 1000);
       weeklyCount++;
     }
