@@ -370,7 +370,7 @@ ${allSummary}`,
         if (multiPlatform) {
           // Multi-platform card — Darius Phase 2 structured output
           await writeApproval({
-            source: `${item.agent_id}_social`, trigger_type: item.category,
+            source: `${item.agent_id}_social`, trigger_type: item.task,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
             task_brief: `Social — ${item.agent_name} | ${today}`,
             output: multiPlatform.linkedin_content,
@@ -404,7 +404,7 @@ ${allSummary}`,
           const platformLabel = getPlatformLabel(item.category);
           const isEmailPlatform = platformLabel === 'Email';
           await writeApproval({
-            source: `${item.agent_id}_social`, trigger_type: item.category,
+            source: `${item.agent_id}_social`, trigger_type: item.task,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
             task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
             output: postContent, original_content: internalNotes || null,
@@ -454,7 +454,7 @@ ${allSummary}`,
 
         await writeApproval({
           source: `${item.agent_id}_content`,
-          trigger_type: item.category,
+          trigger_type: item.task,
           agent_name: item.agent_name,
           agent_role: item.division,
           division: item.division,
@@ -534,4 +534,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const result = await runRaymondSynthesis();
   res.status(202).json({ success: true, ...result });
 }
-
