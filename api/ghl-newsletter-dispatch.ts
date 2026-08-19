@@ -5,7 +5,7 @@
 // Fires from AdminApprovals.tsx's handleApprove() when an Email-platform "social" card is
 // approved (fireEmailDispatch), instead of the LinkedIn/Facebook/Instagram social-publisher path.
 //
-// Uses GHL_PRIVATE_INTEGRATION_KEY — NOT GHL_API_KEY (a different, older credential used
+// Uses GHL_PRIVATE_INTEGRATIONS_KEY — NOT GHL_API_KEY (a different, older credential used
 // elsewhere in this codebase for Omar/Ryan's lead scoring). This key is scoped specifically for
 // contacts.readonly + conversations/message.write, confirmed live Aug 16, 2026.
 //
@@ -215,8 +215,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { content, trigger_type, approval_id } = req.body ?? {};
   if (!content || !trigger_type) { res.status(400).json({ error: 'content and trigger_type are required' }); return; }
 
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATION_KEY not set' }); return; }
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+  if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   // Non-member sequence — recipients come from Supabase, not a GHL tag.
   const sequenceMatch = /^jaylen_sequence_(\d)$/.exec(trigger_type);
