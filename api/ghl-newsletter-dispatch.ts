@@ -106,11 +106,21 @@ function toHtml(body: string): string {
   return `<div style="font-family: Georgia, serif; font-size: 15px; line-height: 1.6; color: #0A2342;">${htmlParas}</div>`;
 }
 
+// Substitutes the {{contact.first_name}} merge tag ourselves rather than relying on GHL to
+// resolve it — that resolution is confirmed for GHL's own Workflow "Send Email" action, but
+// this dispatch calls /conversations/messages directly, a different path with no confirmed
+// merge-tag support. Doing it in our own code means it's guaranteed, not assumed. No-op on
+// content that doesn't contain the tag (e.g. Nia's newsletters), so this is safe to apply
+// universally rather than branching by agent.
+function personalize(html: string, firstName: string | null | undefined): string {
+  return html.replace(/\{\{\s*contact\.first_name\s*\}\}/gi, firstName?.trim() || 'there');
+}
+
 // Paginates through GHL's contact search for a given tag. Hard safety cap of 50 pages
 // (5,000 contacts) — well beyond current real list sizes; prevents a runaway loop if GHL's
 // pagination cursor behaves unexpectedly.
-async function getTaggedContactIds(tag: string, apiKey: string): Promise<string[]> {
-  const ids: string[] = [];
+async function getTaggedContacts(tag: string, apiKey: string): Promise<Array<{ id: string; firstName: string | null }>> {
+  const contactsOut: Array<{ id: string; firstName: string | null }> = [];
   let startAfterId: string | undefined;
   let startAfter: number | undefined;
 
@@ -134,13 +144,13 @@ async function getTaggedContactIds(tag: string, apiKey: string): Promise<string[
     }
     const data = await res.json();
     const contacts = data.contacts ?? [];
-    for (const c of contacts) if (c.id) ids.push(c.id);
+    for (const c of contacts) if (c.id) contactsOut.push({ id: c.id, firstName: c.firstName ?? null });
     if (contacts.length < 100) break;
     const last = contacts[contacts.length - 1];
     startAfterId = last.id;
     startAfter = last.dateAdded ? new Date(last.dateAdded).getTime() : undefined;
   }
-  return ids;
+  return contactsOut;
 }
 
 async function sendEmailToContact(contactId: string, subject: string, html: string, apiKey: string): Promise<boolean> {
@@ -163,10 +173,10 @@ async function sendEmailToContact(contactId: string, subject: string, html: stri
 // through the CSQ->approval pipeline, and correct as long as approval happens same-day,
 // which is the norm. If approval happens later than the generation day, this naturally
 // picks up anyone newly due since then too, rather than silently missing them.
-async function getDueSequenceContacts(stage: number): Promise<Array<{ email: string; ghl_contact_id: string | null }>> {
+async function getDueSequenceContacts(stage: number): Promise<Array<{ email: string; ghl_contact_id: string | null; first_name: string | null }>> {
   const { data, error } = await supabase
     .from('jaylen_sequence_progress')
-    .select('email, ghl_contact_id, current_email_number, signup_date')
+    .select('email, ghl_contact_id, first_name, current_email_number, signup_date')
     .eq('sequence_complete', false)
     .eq('current_email_number', stage - 1);
   if (error) { console.error('[ghl-newsletter-dispatch] Sequence lookup failed:', error); return []; }
@@ -179,7 +189,7 @@ async function getDueSequenceContacts(stage: number): Promise<Array<{ email: str
       const daysSince = Math.floor((today.getTime() - signup.getTime()) / 86400000);
       return daysSince >= offset;
     })
-    .map(row => ({ email: row.email, ghl_contact_id: row.ghl_contact_id }));
+    .map(row => ({ email: row.email, ghl_contact_id: row.ghl_contact_id, first_name: row.first_name }));
 }
 
 async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
@@ -227,7 +237,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const contact of dueContacts) {
         const contactId = contact.ghl_contact_id ?? await findContactIdByEmail(contact.email, apiKey);
         if (!contactId) { failed++; console.error(`[ghl-newsletter-dispatch] No GHL contact for ${contact.email} — skipped`); continue; }
-        const ok = await sendEmailToContact(contactId, subject, html, apiKey);
+        const personalizedHtml = personalize(html, contact.first_name);
+        const ok = await sendEmailToContact(contactId, subject, personalizedHtml, apiKey);
         if (ok) { sent++; await markSequenceSent(contact.email, stage); } else { failed++; }
       }
 
@@ -244,8 +255,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!tag) { res.status(400).json({ error: `No recipient tag mapped for trigger_type: ${trigger_type}` }); return; }
 
   try {
-    const contactIds = await getTaggedContactIds(tag, apiKey);
-    if (contactIds.length === 0) {
+    const contacts = await getTaggedContacts(tag, apiKey);
+    if (contacts.length === 0) {
       console.log(`[ghl-newsletter-dispatch] No contacts found tagged "${tag}" for approval ${approval_id}`);
       res.status(200).json({ success: true, sent: 0, failed: 0, note: `No contacts tagged "${tag}"` });
       return;
@@ -254,7 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { subject, body } = extractSubjectAndBody(content);
     const html = toHtml(body);
 
-    const results = await Promise.all(contactIds.map(id => sendEmailToContact(id, subject, html, apiKey)));
+    const results = await Promise.all(contacts.map(c => sendEmailToContact(c.id, subject, personalize(html, c.firstName), apiKey)));
     const sent = results.filter(Boolean).length;
     const failed = results.length - sent;
 
