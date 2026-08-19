@@ -55,8 +55,8 @@ async function removeTags(contactId: string, tags: string[], apiKey: string): Pr
 // through; a GHL tag hiccup shouldn't be allowed to look like a failed payment. Logs clearly
 // so a silent tagging failure is still visible in Vercel logs.
 async function syncGHLTag(email: string, tier: string): Promise<void> {
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
-  if (!apiKey) { console.error('[ghl-subscription-webhook] GHL_PRIVATE_INTEGRATION_KEY not set — skipping tag sync'); return; }
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+  if (!apiKey) { console.error('[ghl-subscription-webhook] GHL_PRIVATE_INTEGRATIONS_KEY not set — skipping tag sync'); return; }
   try {
     const contactId = await findContactIdByEmail(email, apiKey);
     if (!contactId) { console.error(`[ghl-subscription-webhook] No GHL contact found for ${email} — tag sync skipped`); return; }
