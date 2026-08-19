@@ -65,7 +65,7 @@ const PDF_CATEGORIES = new Set([
 ]);
 
 const APPROVAL_CATEGORIES = new Set([
-  "social", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
+  "social", "email", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
   "travis_video_production", "video_script",
 ]);
@@ -233,7 +233,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
 }
 
 function getDraftHeading(approval: Approval): string {
-  if (approval.category === "social")                  return `${approval.agent_name}'s Draft`;
+  if (approval.category === "social" || approval.category === "email") return `${approval.agent_name}'s Draft`;
   if (approval.category === "community_post")          return `${approval.agent_name}'s Post`;
   if (approval.category === "daily_briefing")          return "Daily Briefing";
   if (approval.category === "community_comment_reply") return "Agent Reply";
@@ -248,6 +248,7 @@ function getDraftHeading(approval: Approval): string {
 }
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
+  if (approval.category === "email")                   return status === "posted" ? "✓ Sent"                : status === "posting" ? "Sending..."         : "⚠ Send Failed";
   if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"       : status === "posting" ? "Routing..."         : "⚠ Route Failed";
   if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"      : status === "posting" ? "Generating PDF..."   : "⚠ PDF Failed";
   if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
@@ -354,7 +355,7 @@ function isMultiPlatformCard(approval: Approval): boolean {
 }
 
 function getBadgeInfo(approval: Approval): { text: string; color: string } {
-  if (approval.category === "social") {
+  if (approval.category === "social" || approval.category === "email") {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
@@ -1064,11 +1065,13 @@ export default function AdminApprovals() {
     if (error) { setSaving(null); return; }
 
     const content = approval.edited_output || approval.output;
-    if (approval.category === "social") {
+    if (approval.category === "email") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
-      const ok = approval.platform === "Email"
-        ? await fireEmailDispatch(approval)
-        : await fireSocialPublisher(approval);
+      const ok = await fireEmailDispatch(approval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "social") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireSocialPublisher(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
@@ -1171,16 +1174,18 @@ export default function AdminApprovals() {
     setEditingId(null);
     setEditingPlatform(null);
 
-    if (approval.category === "social") {
+    if (approval.category === "email") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireEmailDispatch({ ...approval, edited_output: editText });
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const overrideContent = isMulti && editingPlatform ? {
         linkedin: editingPlatform === 'LinkedIn' ? editText : (approval.linkedin_content ?? approval.output),
         facebook: editingPlatform === 'Facebook' ? editText : (approval.facebook_content ?? ''),
         instagram: editingPlatform === 'Instagram' ? editText : (approval.instagram_caption ?? ''),
       } : undefined;
-      const ok = approval.platform === "Email"
-        ? await fireEmailDispatch({ ...approval, edited_output: editText })
-        : await fireSocialPublisher({ ...approval, edited_output: editText }, overrideContent);
+      const ok = await fireSocialPublisher({ ...approval, edited_output: editText }, overrideContent);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "community_post") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
@@ -1217,7 +1222,7 @@ export default function AdminApprovals() {
     if (!qs.open) {
       let savedMessages: ConversationMessage[] = [];
       if (approval.context) { try { savedMessages = JSON.parse(approval.context); } catch { savedMessages = []; } }
-      const autoAgent = approval.category === "social" ? { agent_id: approval.source?.replace('_social','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
+      const autoAgent = (approval.category === "social" || approval.category === "email") ? { agent_id: approval.source?.replace('_social','').replace('_content','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "community_post" ? { agent_id: approval.source?.replace('_cc','') ?? 'dominique', agent_name: approval.agent_name, role: 'CC Agent' }
         : approval.category === "daily_briefing" ? { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" } : null;
       setQS(approval.id, { open:true, selectedAgent:autoAgent, messages: savedMessages });
@@ -1386,7 +1391,7 @@ export default function AdminApprovals() {
               const badge         = getBadgeInfo(approval);
               const origCol       = getOriginalColumn(approval);
               const draftHead     = getDraftHeading(approval);
-              const isBriefing    = approval.category !== "social" && approval.category !== "community_post";
+              const isBriefing    = approval.category !== "social" && approval.category !== "email" && approval.category !== "community_post";
               const qs            = getQS(approval.id);
               const divAgents     = DIVISION_AGENTS[approval.division] ?? [];
               const isLead        = approval.category === "lead_intelligence";
@@ -1396,7 +1401,7 @@ export default function AdminApprovals() {
               const isCCPost      = approval.category === "community_post";
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = READ_CATEGORIES.has(approval.category);
-              const isSocial        = approval.category === "social";
+              const isSocial        = approval.category === "social" || approval.category === "email";
               const isTravisVideo   = approval.category === "travis_video_production";
               const isVideoScript   = approval.category === "video_script";
               const isMulti         = isMultiPlatformCard(approval);
@@ -1657,7 +1662,7 @@ export default function AdminApprovals() {
                           </div>
                         </div>
                       )}
-                      {(approval.category === "social" || approval.category === "community_post" || approval.category === "daily_briefing" || isCCReply) && qs.selectedAgent && (
+                      {(approval.category === "social" || approval.category === "email" || approval.category === "community_post" || approval.category === "daily_briefing" || isCCReply) && qs.selectedAgent && (
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:"0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
                       )}
                       {qs.messages.length > 0 && (
