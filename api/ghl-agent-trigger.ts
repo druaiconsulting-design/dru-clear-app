@@ -770,7 +770,7 @@ async function getDueSequenceStages(): Promise<number[]> {
 // to Dominate. No content, no approval card — just tag and database housekeeping.
 async function promoteDeployToDominate(): Promise<number> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATION_KEY;
+  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
   if (!url || !key) { console.error('[runJaylen] Supabase env vars missing — skipping Dominate promotion'); return 0; }
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 91);
   const res = await fetch(`${url}/rest/v1/profiles?select=id,email,deploy_started_at&pathway_stage=eq.Deploy&deploy_started_at=lte.${cutoff.toISOString()}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
