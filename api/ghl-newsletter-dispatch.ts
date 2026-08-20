@@ -58,7 +58,7 @@ async function getSupabaseTierContacts(trigger_type: string, apiKey: string): Pr
     if (error) { console.error('[ghl-newsletter-dispatch] non_members query failed:', error); return []; }
     rows = data ?? [];
   } else {
-    const { data, error } = await supabase.from('profiles').select('email, first_name').eq('tier', source.tierValue);
+    const { data, error } = await supabase.from('profiles').select('email, first_name').eq('tier', source.tierValue).eq('newsletter_subscribed', true);
     if (error) { console.error('[ghl-newsletter-dispatch] profiles query failed:', error); return []; }
     rows = data ?? [];
   }
