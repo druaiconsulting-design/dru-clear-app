@@ -10,6 +10,10 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
+// DeAnna R. Upshaw's voice system, condensed from her deanna-voice skill for injection into Haiku prompts.
+const VOICE_DNA = `VOICE — write as DeAnna R. Upshaw. Dead prose: one idea per sentence, active voice, present tense, contractions allowed, exact numbers only (never "about," never rounded — "$4,997," "240+ clients," "25+ years"). Hook-then-unpack: a punch line under 8 words, followed by one 25-35 word sentence that unpacks it. No boxed single reader, ever — write to leaders and organizations broadly, never an invented persona with a specific age, job, or worry. Anchor words: Insight and CLEAR — weave them in as the throughline of what she delivers, not just a tagline (e.g. "Insight is what happens when EQ meets AI," "a CLEAR vision"). Reframe over rebuttal — never argue a point or handle an objection, flip the frame instead ("It's not if they can afford it, it's how they can afford it.").
+BANNED, no exceptions: "or," "but," "not," "assume," "what if," "I guess," any negative-wording construction, corporate jargon (leverage, utilize, unlock, robust, seamless, game-changer, cutting-edge, empower, elevate, navigate, delve, dive into, harness, in order to), hedges (might, maybe, perhaps, could potentially, sort of), intensifiers (very, really, incredibly, literally, absolutely).
+HOOK/QUESTION RULE: every hook, headline, and question must be open-ended and declarative — never phrased as yes/no, never "X or Y." Use DeAnna's real brand phrases directly: CLEAR, Insight, People-Centered Leadership, AI-Powered Insight, Leadership Clarity, AI Mastery, Measurable Results.`;
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -28,6 +32,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
   cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
+  cron_kwame_prospect_scout:      { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'prospect_scout',                pipeline: 'p1_kwame_scout' },
   cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
   cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
@@ -351,6 +356,68 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
   } catch(error){ console.error('[adaeze] Scout error:',error); return { count:0, csqId:null }; }
 }
 
+async function getKnownProspectKeys(): Promise<Set<string>> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return new Set();
+  const res = await fetch(`${url}/rest/v1/prospect_opportunities?select=prospect_name,organization`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return new Set();
+  const rows = await res.json() as {prospect_name:string;organization:string}[];
+  return new Set(rows.map(r => `${(r.prospect_name||'').trim().toLowerCase()}|${(r.organization||'').trim().toLowerCase()}`));
+}
+
+async function writeProspectOpportunities(items: Record<string,unknown>[]): Promise<number> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key||items.length===0) return 0;
+  const res = await fetch(`${url}/rest/v1/prospect_opportunities`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(items)});
+  if (!res.ok){console.error(`[kwame] prospect_opportunities write failed: ${await res.text()}`);return 0;}
+  const data = await res.json(); return Array.isArray(data)?data.length:0;
+}
+
+// Kwame's second job: Prospect Scout. Signal-only — deliberately no demographic,
+// title, company-size, or industry filter, per DeAnna's direction. Mirrors
+// runAdaezeScout()'s exact pattern (web-search-enabled call, dedup against known
+// rows, write to a dedicated table, surface top picks). Runs on-demand only —
+// no pg_cron entry exists for this yet; that stays out until DeAnna says go.
+async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}> {
+  try {
+    const positioning = await fetchBrandCopy('positioning');
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are Kwame Asante, Prospect Scout for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nSearch the web for real, current signals of leaders and organizations showing they need what she offers — public posts, articles, interviews, or news where someone expresses a leadership, culture, or AI-adoption pain point. Signal-only: do NOT filter or select by title, company size, industry, or demographic. Any real signal of the right pain point qualifies, regardless of who it comes from.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"prospect_name\": string,\n      \"organization\": string,\n      \"signal_summary\": string (1-2 sentences on the real signal found),\n      \"matched_question\": string (one open-ended, declarative question in DeAnna's voice that speaks directly to this signal — follow the HOOK/QUESTION RULE above exactly: never yes/no, never \"X or Y\"),\n      \"source_url\": string,\n      \"fit_score\": number (1-10),\n      \"fit_reasoning\": string (1-2 sentences),\n      \"status\": \"new\"\n    }\n  ]\n}\nOnly include prospects you found real, current information on. If you find none, return {\"opportunities\": []}.`;
+    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownProspectKeys()]);
+    const parsed = extractJSONObject(raw);
+    const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
+    const newOnes = allFound.filter(o => {
+      const nameKey = `${String(o.prospect_name||'').trim().toLowerCase()}|${String(o.organization||'').trim().toLowerCase()}`;
+      return !knownKeys.has(nameKey);
+    });
+    if (newOnes.length === 0) return { count: 0, csqId: null };
+
+    const rows = newOnes.map(o => ({...o, found_at:new Date().toISOString()}));
+    const written = await writeProspectOpportunities(rows);
+    const top = newOnes.slice(0,5).map((o:any) => [
+      `**${o.prospect_name}** — ${o.organization}`,
+      `Fit: ${o.fit_score}/10`,
+      `Signal: ${o.signal_summary}`,
+      `Opening question: ${o.matched_question}`,
+      `Source: ${o.source_url ?? 'URL not found'}`,
+    ].join('\n')).join('\n\n---\n\n');
+    const approvalId = await writeApprovalDirect({
+      source: 'kwame_prospect_scout',
+      trigger_type: 'prospects',
+      agent_name: 'Kwame Asante',
+      agent_role: 'Revenue, Growth & Sales',
+      division: 'Revenue, Growth & Sales',
+      task_brief: `Prospect Scout — Kwame Asante | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
+      output: `Found ${written} new prospect signal(s):\n\n${top}\n\nFull list stored in the prospect_opportunities table.`,
+      status: 'pending',
+      notify_deanna: false,
+      priority: 'normal',
+      category: 'prospects',
+      platform: null,
+    });
+    return { count: written, csqId: approvalId };
+  } catch(error){ console.error('[kwame] Prospect Scout error:',error); return { count:0, csqId:null }; }
+}
+
 async function writeApprovalDirect(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
@@ -560,7 +627,7 @@ async function runDarius(): Promise<string|null> {
   const positioning=await fetchBrandCopy('positioning');
   const topicContext=topicBrief||`Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}`;
   const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — memorize these exact definitions before writing. Never paraphrase or invent framework content:\n${FRAMEWORK_KNOWLEDGE}\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — memorize these exact definitions before writing. Never paraphrase or invent framework content:\n${FRAMEWORK_KNOWLEDGE}\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, strong hook, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nFollow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
   const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
@@ -937,7 +1004,7 @@ async function fetchLegalFinanceData(): Promise<string> {
       ? clients.map((c: any) => `  - ${c.client_name} | Stage: ${c.stage} | Paid: $${c.amount_paid ?? 0} | Updated: ${c.stage_updated_at?.slice(0,10) ?? 'unknown'}${c.notes ? ` | Note: ${c.notes}` : ''}`).join('\n')
       : '  (none)';
     const lines = [
-      'REAL PIPELINE DATA ' + em + ' use only these numbers, never invent or estimate:',
+      'REAL PIPELINE DATA — use only these numbers, never invent or estimate:',
       `Clients in journey: ${Array.isArray(clients) ? clients.length : 0}`,
       `Client list:\n${clientList}`,
       `Total revenue collected: $${totalRevenue.toFixed(2)}`,
@@ -1301,6 +1368,7 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p1_elena'){const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`You are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`You are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic™ ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
+  else if (route.pipeline==='p1_kwame_scout'){const result=await runKwameProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
