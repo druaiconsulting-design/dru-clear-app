@@ -10,16 +10,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 export const config = { maxDuration: 300 };
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
-
-const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ ONLY to these exact approved marks, nowhere else: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. Do NOT add ™ to any other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," or offer/product names like "Executive Diagnostic" — even if it sounds proprietary. Never abbreviate an approved mark by dropping a required word (e.g. never write "CLEAR™" alone). If a term isn't in the approved list above, write it plain, no symbol. Never write a compliance clearance stamp, status line, or reviewer signature into your own content — that is issued externally, never by you. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
-
-// DeAnna R. Upshaw's voice system, condensed from her deanna-voice skill. Same content as
-// the VOICE_DNA constant in api/ghl-agent-trigger.ts — keep both in sync if either changes.
-const VOICE_DNA = `VOICE — write as DeAnna R. Upshaw. Dead prose: one idea per sentence, active voice, present tense, contractions allowed, exact numbers only (never "about," never rounded — "$4,997," "240+ clients," "25+ years"). Hook-then-unpack: a punch line under 8 words, followed by one 25-35 word sentence that unpacks it. No boxed single reader, ever — write to leaders and organizations broadly, never an invented persona with a specific age, job, or worry. Anchor words: Insight and CLEAR — weave them in as the throughline of what she delivers, not just a tagline (e.g. "Insight is what happens when EQ meets AI," "a CLEAR vision"). Reframe over rebuttal — never argue a point or handle an objection, flip the frame instead ("The real question was never affordability. It was sequencing.").
-BANNED, no exceptions: "or," "but," "not" (including sentence fragments that start with "Not" — rewrite as one complete sentence instead), "assume," "what if," "I guess," any negative-wording construction, corporate jargon (leverage, utilize, unlock, robust, seamless, game-changer, cutting-edge, empower, elevate, navigate, delve, dive into, harness, in order to), hedges (might, maybe, perhaps, could potentially, sort of), intensifiers (very, really, incredibly, literally, absolutely). Em dashes are banned — use a period or comma instead; never join two ideas into one sentence with a dash.
-FACTUAL ACCURACY: never invent a specific client result, dollar figure, percentage, testimonial, or case study that wasn't explicitly given to you in this prompt. If no specific data point is provided, write in principles and outcomes generally — do not fabricate a number to sound concrete.
-HOOK/QUESTION RULE: every hook, headline, and question must be open-ended and declarative — never phrased as yes/no, never "X or Y." Use DeAnna's real brand phrases directly: CLEAR, Insight, People-Centered Leadership, AI-Powered Insight, Leadership Clarity, AI Mastery, Measurable Results.`;
+import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
@@ -284,9 +275,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const agentName = AGENT_NAMES[agent_id];
   const division  = AGENT_DIVISIONS[agent_id];
   const category  = AGENT_CATEGORIES[agent_id] ?? "on_demand";
-  const systemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
+  const baseSystemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
 
-  if (!agentName || !systemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
+  if (!agentName || !baseSystemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
+
+  // Layer in the live knowledge block (fetched fresh from Supabase brand_marks) on top of
+  // the synced static rules above — this way a mark added in Supabase shows up immediately,
+  // without needing a redeploy of this file.
+  const liveKnowledge = await getAgentKnowledge();
+  const systemPrompt = `${baseSystemPrompt}\n\n${liveKnowledge}`;
 
   const cronSecret = process.env.CRON_SECRET ?? "";
   const baseUrl    = "https://app.druaiconsulting.com";
