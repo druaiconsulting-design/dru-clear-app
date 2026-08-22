@@ -6,6 +6,13 @@
 //   content blocks, not a plain string — the old code called .trim() directly on content and crashed
 //   with a 500 on every attachment message, before any Anthropic call was ever made. getMessageText()
 //   and hasContent() below handle both shapes safely.
+// FIX (Aug 22 2026) — Layer 1: removed the hardcoded "COMMAND ROUTING ACTIVE... already
+//   executing" script. Twin now (1) asks DeAnna one real clarifying question herself when a
+//   request is too vague to route without guessing, and (2) once an agent is routed,
+//   actually reads the agent's real output (twin-on-demand already returned it as `preview`,
+//   this file just never looked at it before) and responds honestly — relaying a genuine
+//   clarifying question from the agent instead of hiding it, or acknowledging a real draft
+//   without claiming it's already cleared through compliance when it hasn't been yet.
 
 export const config = { runtime: "edge" };
 
@@ -100,20 +107,30 @@ TASK TYPE → PRIMARY AGENT MAPPING:
 
 MESSAGE: "{MESSAGE}"
 
-If the message is asking for work/content/a task to be done — even described conversationally without naming an agent — return ONLY valid JSON:
-{"is_command":true,"agent_id":"best_agent_id","agent_name":"Full Name","task":"complete description of the full task including all details from the message"}
+Decide one of three outcomes:
 
-If it is a question, conversation, or NOT asking for work to be created, return ONLY:
+1. The message is asking for work/content/a task to be done, AND there's enough in it to actually know what to produce (a clear subject, format, or audience — nothing you'd have to invent) — return ONLY valid JSON:
+{"is_command":true,"needs_clarification":false,"agent_id":"best_agent_id","agent_name":"Full Name","task":"complete description of the full task including all details from the message"}
+
+2. The message is clearly asking for work, but it is too vague to route without guessing (no clear subject, format, or audience — you would have to make something up that isn't in the message) — return ONLY valid JSON with ONE specific question that would resolve it:
+{"is_command":true,"needs_clarification":true,"clarifying_question":"one specific, plain-English question — not stacked, not multiple questions"}
+
+3. It is a question, conversation, or NOT asking for work to be created — return ONLY:
 {"is_command":false}`;
 
-async function detectCommand(lastMessage: string, apiKey: string): Promise<{ is_command: false } | { is_command: true; agent_id: string; agent_name: string; task: string }> {
+type CommandDetection =
+  | { is_command: false }
+  | { is_command: true; needs_clarification: true; clarifying_question: string }
+  | { is_command: true; needs_clarification: false; agent_id: string; agent_name: string; task: string };
+
+async function detectCommand(lastMessage: string, apiKey: string): Promise<CommandDetection> {
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 150,
+        max_tokens: 200,
         messages: [{ role: "user", content: CLASSIFY_PROMPT.replace("{MESSAGE}", lastMessage.replace(/"/g, '\\"')) }],
       }),
     });
@@ -271,11 +288,39 @@ export default async function handler(req: Request): Promise<Response> {
       ? `${baseSystemPrompt}\n\nPERSISTENT MEMORY (durable facts from past conversations — DeAnna started a fresh conversation, but you still know this):\n${memory}`
       : baseSystemPrompt;
 
-    if (detection?.is_command) {
+    // ── Case: the request is asking for work but is too vague to route without ──
+    // ── guessing. Twin asks DeAnna the one clarifying question directly. Nothing ──
+    // ── is routed, nothing is invented, no agent runs yet. ──────────────────────
+    if (detection?.is_command && detection.needs_clarification) {
+      const clarifySystemPrompt = `${memorySystemPrompt}
+
+DeAnna just asked for work, but there isn't enough detail yet to route it to an agent without guessing at things she didn't say. Ask her exactly this one clarifying question, in your own natural voice — do not invent an answer, do not route anything, do not claim any work is in motion:
+
+"${detection.clarifying_question}"
+
+Keep it short — 1-2 sentences, warm and direct, just the question.`;
+
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 300, stream: true, system: clarifySystemPrompt, messages: cleanMessages }),
+      });
+
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text();
+        return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
+      }
+
+      return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+    }
+
+    // ── Case: request is clear enough to route. ─────────────────────────────────
+    if (detection?.is_command && !detection.needs_clarification) {
       const { agent_id, agent_name, task } = detection;
 
       const baseUrl = "https://app.druaiconsulting.com";
       let routingSucceeded = true;
+      let agentPreview = "";
       try {
         const routeRes = await fetch(`${baseUrl}/api/twin-on-demand`, {
           method: "POST",
@@ -285,6 +330,12 @@ export default async function handler(req: Request): Promise<Response> {
         if (!routeRes.ok) {
           routingSucceeded = false;
           console.error(`[twin] twin-on-demand returned ${routeRes.status}`);
+        } else {
+          // twin-on-demand already runs the agent synchronously and hands back its
+          // real output as `preview` before this response even returns — Twin just
+          // never read it before. That's what lets us respond honestly below.
+          const routeData = await routeRes.json();
+          agentPreview = typeof routeData?.preview === "string" ? routeData.preview : "";
         }
       } catch (err) {
         routingSucceeded = false;
@@ -300,25 +351,34 @@ export default async function handler(req: Request): Promise<Response> {
 
       const commandSystemPrompt = `${memorySystemPrompt}
 
-COMMAND ROUTING ACTIVE: DeAnna just issued a command. It has been routed to ${agent_name} and is already executing through the full governance chain — Agent → Isabella → Governance Panel → Priya, Travis & Raymond → Twin synthesis → AdminApprovals + GHL notification. Raymond has been notified and is expecting the result.
+DeAnna just commanded that "${task}" be routed to ${agent_name}. Here is exactly what ${agent_name} actually sent back — read it for real, do not assume:
 
-YOUR VOICE FOR THIS RESPONSE:
-- You are DeAnna's AI Twin — speak with her authority, warmth, and strategic command
-- Acknowledge what she set in motion and who is carrying it
-- Let her feel the ecosystem executing on her behalf — alive, coordinated, moving
+---
+${agentPreview || "(no output returned)"}
+---
+
+Decide which of these it actually is, based on the text above, and respond accordingly:
+
+CASE A — ${agent_name} is asking DeAnna a real question, is missing information, or is presenting options for her to choose, instead of delivering finished work:
+- Relay that question/those options to DeAnna directly, in your own voice, honestly
+- Do NOT claim anything is "in motion" or "executing" — nothing is; ${agent_name} is waiting on her answer
+- Do NOT invent an answer on her behalf
+
+CASE B — ${agent_name} actually produced real work (a draft, script, copy, etc.):
+- Acknowledge honestly — something like "On it" — ${agent_name} has handed off a first draft
+- Say it is now headed through compliance and voice review — do NOT claim it has already been reviewed, cleared, or approved, because that has not happened yet
 - NEVER give timelines or delivery estimates of any kind
-- NEVER say "I will" or "I'll" — it is already done and in motion
+- NEVER claim a "full governance chain" has already executed — say only what has actually happened
 
 FORMATTING RULES — strictly enforced:
 - Write in short, punchy paragraphs with a blank line between each
-- Each distinct thought gets its own paragraph — never run everything into one block
-- 3 to 4 paragraphs maximum
+- 2 to 4 paragraphs maximum
 - No bullet points, no headers, no numbered lists — flowing paragraphs only
 - Each paragraph should be 1 to 3 sentences`;
 
       const routingMessages = [
         ...cleanMessages.slice(0, -1),
-        { role: "user", content: `DeAnna just commanded: "${task}" — routed to ${agent_name}, moving through the full governance chain now. Respond in your full Twin voice across 3-4 short paragraphs with a blank line between each. First paragraph: what she just activated and who is on it. Second paragraph: what the agent is doing / what she's getting. Third paragraph: governance chain status and where it lands. Optional fourth: closing commanding line. No timelines. No "I will". Already executing.` },
+        { role: "user", content: `DeAnna just commanded: "${task}" — routed to ${agent_name}. Respond honestly, in your own voice, based on what ${agent_name} actually sent back — not on an assumption about what should have happened.` },
       ];
 
       const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
