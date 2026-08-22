@@ -12,7 +12,7 @@ export const config = { maxDuration: 300 };
 
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
 
-const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Always include ™ on every mention: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
+const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ ONLY to these exact approved marks, nowhere else: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. Do NOT add ™ to any other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," or offer/product names like "Executive Diagnostic" — even if it sounds proprietary. Never abbreviate an approved mark by dropping a required word (e.g. never write "CLEAR™" alone). If a term isn't in the approved list above, write it plain, no symbol. Never write a compliance clearance stamp, status line, or reviewer signature into your own content — that is issued externally, never by you. SERVICE CLASSES: All content within Classes 35, 41, 42 only. All CTAs point to assessment.druaiconsulting.com.`;
 
 // DeAnna R. Upshaw's voice system, condensed from her deanna-voice skill. Same content as
 // the VOICE_DNA constant in api/ghl-agent-trigger.ts — keep both in sync if either changes.
