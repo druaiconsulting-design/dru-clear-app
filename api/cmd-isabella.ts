@@ -6,7 +6,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, getAgentKnowledge } from './_lib/agentKnowledge';
+import { GENIUS_MODE, getAgentKnowledge } from './_lib/agentKnowledge.js';
 
 
 interface CSQItem {
