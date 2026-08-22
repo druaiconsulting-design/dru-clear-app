@@ -6,63 +6,8 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
+import { GENIUS_MODE, getAgentKnowledge } from './_lib/agentKnowledge';
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
-
-const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
-
-const FRAMEWORK_KNOWLEDGE = `
-## THE DRU AI TRANSFORMATION PATHWAY™
-Sequential journey every client walks — no shortcuts, no skipped steps:
-Discover → Diagnose → Design → Deploy → Dominate
-- DISCOVER: Uncover where the organization is today and where AI can take them
-- DIAGNOSE: Deep analysis across all frameworks — identify gaps and highest-impact opportunities
-- DESIGN: Build the strategy, execution plan, and alignment system
-- DEPLOY: Activate transformation — implement frameworks with live facilitation
-- DOMINATE: Sustain, measure, and scale AI leadership results
-
-## THE 4 FRAMEWORKS — TRUE MEANINGS
-
-### DRU CLEAR™ — The Connector (Flagship) | $7,500 | 3 sessions x 90 min
-NOT just an assessment. The complete AI readiness diagnosis, strategy design, and
-execution alignment system that CONNECTS all four frameworks into a unified strategy.
-- C — CLARITY: Define the AI vision with precision. Where are you going, why does it matter?
-- L — LEADERSHIP: AI fluency, executive sponsorship, strategic conviction top-down and inside-out.
-- E — EXECUTION: Close the gap between strategy and action. Identify processes and capabilities.
-- A — ALIGNMENT: Unify around a single AI strategy. Break silos, synchronize departments.
-- R — RESULTS: Define, measure, and demonstrate ROI. What gets measured gets transformed.
-
-### 5C Cultural DNA™ — Culture | $6,000 | 3 sessions x 90 min
-Theme: Learn IT. Live IT. Lead IT. Leadership Thinking with AI.
-Most organizations don't have an AI problem — they have a CULTURE problem.
-- COMMUNICATION: Foundation. How leaders and teams share vision and create clarity around AI.
-- CONNECTION: Relational layer. Trust and meaningful relationships that enable collaboration.
-- COLLABORATION: Action layer. Breaking silos so AI initiatives flow through the whole organization.
-- COACHING: Development layer. Building confidence and competency from the inside out.
-- CULTURE TRANSFORMATION: Outcome. From resistance and fear to ownership and strategic adoption.
-
-### 5D Leadership™ — Leadership | $6,500 | 3 sessions x 90 min
-An AI-infused methodology where personal mastery and strategic impact develop together.
-- I. SELF: Personal mastery. How a leader thinks, decides, and shows up.
-- II. PEOPLE: Relational intelligence. Connects with and develops the individuals around them.
-- III. TEAM: Collective effectiveness. Builds cohesion, trust, and high performance.
-- IV. ORGANIZATION: Systemic strength. Aligns culture, strategy, and operations.
-- V. VISIONARY: Strategic impact. Sees beyond today, positions organization to lead.
-
-### AI Sales Mastery™ — Sales | $6,000 | 3 sessions x 90 min
-Combines DISC behavioral insights with AI. Selling stops feeling like selling.
-- HYPER-PERSONALIZED OUTREACH AT SCALE: Right person, right message, right time — every time.
-- SPEAK YOUR CLIENT'S DECISION LANGUAGE: DISC gives you the map. AI gives you the speed.
-- PREDICT OBJECTIONS BEFORE THEY HAPPEN: Stop reacting and start anticipating.
-- CLOSE WITH CONFIDENCE, NOT PRESSURE: Clarity makes closing a natural next step.
-- BUILD LONG-TERM CLIENT RELATIONSHIPS: Not transactions — transformation.
-
-## HOW THE FRAMEWORKS RELATE
-DRU CLEAR™ is the CONNECTOR — anchors every engagement.
-Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
-Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
-Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
-`;
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
@@ -151,32 +96,6 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
   });
 }
 
-async function getAgentKnowledge(): Promise<string> {
-  let tmMarks: string[] = [];
-  try {
-    const url = process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (url && key) {
-      const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-      });
-      if (res.ok) { const data = await res.json(); tmMarks = (data as { mark: string }[]).map(m => m.mark).filter(Boolean); }
-    }
-  } catch (err) { console.error('[agentKnowledge] fetch error:', err); }
-  if (tmMarks.length === 0) tmMarks = FALLBACK_TM_MARKS;
-  const tmList = tmMarks.map(m => `  - ${m}`).join('\n');
-  return `=== DRU AI CONSULTING — AGENT KNOWLEDGE BASE ===
-
-PROTECTED IP MARKS — TM REQUIRED ON EVERY USE, NO EXCEPTIONS:
-${tmList}
-
-RULES: Every mark above MUST include TM every time. NO other terms carry TM.
-Do NOT add TM to anything not on this list. 'DRU AI Consulting' = business name, NO TM.
-REQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)
-${FRAMEWORK_KNOWLEDGE}
-=== END AGENT KNOWLEDGE BASE ===`.trim();
-}
-
 async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRetryCount: number): Promise<void> {
   try {
     const agentKnowledge = await getAgentKnowledge();
@@ -196,6 +115,7 @@ async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRet
 
 async function processIsabellaItem(item: CSQItem): Promise<'cleared' | 'sent_back' | 'rejected' | 'error'> {
   try {
+    const agentKnowledge = await getAgentKnowledge();
     const raw = await callTwin(
       `${GENIUS_MODE}
 
@@ -206,13 +126,13 @@ RESPONSIBILITIES:
 2. Content stays within Classes 35, 41, 42
 3. Flag content outside these classes
 
-DRU PROPRIETARY MARKS (always ™): DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
-
-BUSINESS NAME — NOT A TRADEMARK: 'DRU AI Consulting' is the registered business name. It does NOT require ™. Do NOT flag it.
+${agentKnowledge}
 
 CLEARING STANDARD:
-- All marks with ™ AND content within Classes 35/41/42 → cleared:true
-- Missing ™ → cleared:false, state exactly which mark and where
+- All marks with ™, exact casing, and full mark name (no abbreviation), AND content within Classes 35/41/42 → cleared:true
+- A brand phrase (see BRAND VOCABULARY section above) used without ™ is CORRECT, not a violation — do not flag it
+- Missing or incorrect ™ on an approved mark → cleared:false, state exactly which mark and where
+- A self-issued compliance stamp or clearance signature embedded in the content → cleared:false, state that clearance must be removed from the body
 - Outside classes → cleared:false, state exactly what
 
 LEGAL & FINANCE EXCEPTION: Content from the Legal & Finance division is INTERNAL OPERATIONAL advisory for DeAnna only. Check ™ marks and service class usage as normal. Do NOT flag the surrounding operational subject matter as a class violation. If ™ marks are correct, return cleared:true.
