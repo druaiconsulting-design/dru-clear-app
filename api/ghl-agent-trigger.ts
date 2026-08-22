@@ -9,7 +9,7 @@
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
