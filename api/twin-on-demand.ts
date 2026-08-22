@@ -10,7 +10,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 export const config = { maxDuration: 300 };
 
-import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge';
+import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
