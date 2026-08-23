@@ -6,7 +6,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 
 
 interface CSQItem {
@@ -99,8 +99,9 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
 async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRetryCount: number): Promise<void> {
   try {
     const agentKnowledge = await getAgentKnowledge();
+    const agentCorrections = await getAgentCorrections(item.agent_name);
     const output = await callAnthropic(
-      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${item.raw_output}\nProduce a corrected version that applies exactly what the correction notes above require — whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
+      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${item.raw_output}\nProduce a corrected version that applies exactly what the correction notes above require — whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
       1500
     );
     await writeToCSQ({
