@@ -848,8 +848,11 @@ async function fetchLegalFinanceData(): Promise<string> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return 'Pipeline data unavailable.';
   try {
+    // Real revenue lives in profiles.pathway_stage / amount_paid now (Aug 23, 2026 fix) --
+    // the automated system tied to the DRU AI Transformation Pathway(TM), not the old
+    // client_journey_stages manual table, which had no confirmed writer and no identity spine.
     const [clientRes, statsRes, subRes] = await Promise.all([
-      fetch(`${url}/rest/v1/client_journey_stages?select=client_name,stage,amount_paid,stage_updated_at,notes&order=stage_updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/profiles?pathway_stage=in.(Diagnose,Design,Deploy,Dominate)&select=first_name,last_name,pathway_stage,amount_paid,updated_at&order=updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/stats?select=id,value`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/submissions?select=id,total_score,tier,role,company,created_at&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
     ]);
@@ -860,7 +863,10 @@ async function fetchLegalFinanceData(): Promise<string> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const recentSubs = Array.isArray(subs) ? subs.filter((s: any) => s.created_at >= sevenDaysAgo) : [];
     const clientList = Array.isArray(clients) && clients.length > 0
-      ? clients.map((c: any) => `  - ${c.client_name} | Stage: ${c.stage} | Paid: $${c.amount_paid ?? 0} | Updated: ${c.stage_updated_at?.slice(0,10) ?? 'unknown'}${c.notes ? ` | Note: ${c.notes}` : ''}`).join('\n')
+      ? clients.map((c: any) => {
+          const name = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || 'Unknown';
+          return `  - ${name} | Stage: ${c.pathway_stage} | Paid: $${c.amount_paid ?? 0} | Updated: ${c.updated_at?.slice(0,10) ?? 'unknown'}`;
+        }).join('\n')
       : '  (none)';
     const lines = [
       'REAL PIPELINE DATA — use only these numbers, never invent or estimate:',
@@ -1011,8 +1017,13 @@ async function fetchClientDeliveryData(): Promise<string> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return 'Client delivery data unavailable.';
   try {
+    // Real clients live in profiles.pathway_stage now (Aug 23, 2026 fix) -- the automated,
+    // GHL-driven system that matches the actual DRU AI Transformation Pathway(TM) IP, not
+    // the old client_journey_stages manual table, which had no confirmed source and no
+    // identity spine. 'Discover' (free assessment only) is excluded -- these are paying
+    // clients only, matching what "clients in journey" has always meant to the agents below.
     const [clientRes, postsRes, lbRes, streakRes, enrollRes, progressRes] = await Promise.all([
-      fetch(`${url}/rest/v1/client_journey_stages?select=client_name,email,ghl_contact_id,stage,amount_paid,stage_updated_at&order=stage_updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/profiles?pathway_stage=in.(Diagnose,Design,Deploy,Dominate)&select=first_name,last_name,email,ghl_contact_id,pathway_stage,amount_paid,updated_at&order=updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/community_posts?select=id,created_at,profile_id&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/community_leaderboard?select=user_id,total_points,rank&order=rank.asc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/user_streaks?select=user_id,current_streak,longest_streak`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
@@ -1021,10 +1032,9 @@ async function fetchClientDeliveryData(): Promise<string> {
     ]);
     const [clients, posts, lb, streaks, enrollments, progress]: [any[],any[],any[],any[],any[],any[]] = await Promise.all([clientRes.json(),postsRes.json(),lbRes.json(),streakRes.json(),enrollRes.json(),progressRes.json()]);
 
-    // Join each client back to their pre-payment history (Aug 23, 2026 fix) via
-    // ghl_contact_id -- the shared identity spine. Gives Keisha and the rest of Client
-    // Delivery real context (where they came from, how they scored, whether Aaliyah
-    // reached them) instead of a blank slate at the moment of payment.
+    // Join each client back to their pre-payment history via ghl_contact_id -- the shared
+    // identity spine. Gives Keisha and the rest of Client Delivery real context (where they
+    // came from, how they scored, whether Aaliyah reached them) instead of a blank slate.
     let historyByContactId: Record<string, { source_campaign?: string; score?: number; outreach_count: number }> = {};
     const contactIds = (Array.isArray(clients) ? clients : []).map((c:any) => c.ghl_contact_id).filter(Boolean);
     if (contactIds.length > 0) {
@@ -1048,9 +1058,10 @@ async function fetchClientDeliveryData(): Promise<string> {
     }
     const clientList = Array.isArray(clients) && clients.length > 0
       ? clients.map((c:any) => {
+          const name = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.email;
           const h = c.ghl_contact_id ? historyByContactId[c.ghl_contact_id] : undefined;
           const historyNote = h ? ` | came from: ${h.source_campaign ?? 'unknown'} | scored: ${h.score ?? 'n/a'} | outreach sent: ${h.outreach_count}` : ' | no prior scoring/outreach history';
-          return `  - ${c.client_name} | ${c.stage} | $${c.amount_paid ?? 0}${historyNote}`;
+          return `  - ${name} | ${c.pathway_stage} | $${c.amount_paid ?? 0}${historyNote}`;
         }).join('\n')
       : '  (none)';
     const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
