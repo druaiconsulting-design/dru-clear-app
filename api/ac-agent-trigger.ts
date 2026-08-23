@@ -7,7 +7,15 @@
 
 export const config = { maxDuration: 60 };
 
+import { VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
+
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
+
+// Applied alongside VOICE_DNA only for AC daily community content (runACAgent, runACAgentReply) —
+// this content has a hard rule against naming frameworks/pricing/™, which conflicts with
+// VOICE_DNA's CLEAR/Insight anchor-word instruction. This note resolves the conflict per
+// DeAnna's explicit direction: keep the rest of VOICE_DNA, drop only the anchor-word part.
+const AC_VOICE_EXCEPTION = `\nEXCEPTION TO THE ABOVE: Do NOT weave in "CLEAR" or any named framework, program, diagnostic, course, bundle, price, or the ™ symbol as an anchor word or otherwise — Accelerator Circle daily community content never references DRU AI Consulting IP by name. Everything else in the voice rules above still applies in full.`;
 
 interface ACAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 
@@ -73,7 +81,8 @@ async function postACKnowledgmentComment(postId: string, firstName: string, sign
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
-    const prompt = `${GENIUS_MODE}\n\nYou are Petra Vance, Accelerator Circle Member Experience Manager for DRU AI Consulting.\nAn Accelerator member named ${firstName} has been engaging in a meaningful way inside the Accelerator Circle.\nContext: "${signalContext}"\n\nWrite a warm, executive-appropriate community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out directly to explore how to go deeper together. Do NOT mention products, pricing, or services. Be warm, peer-level, and genuine. Write ONLY the reply text.`;
+    const agentCorrections = await getAgentCorrections('Petra Vance');
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Petra Vance, Accelerator Circle Member Experience Manager for DRU AI Consulting.\nAn Accelerator member named ${firstName} has been engaging in a meaningful way inside the Accelerator Circle.\nContext: "${signalContext}"\n\nWrite a warm, executive-appropriate community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out directly to explore how to go deeper together. Do NOT mention products, pricing, or services. Be warm, peer-level, and genuine. Write ONLY the reply text.`;
     const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
     await fetch(`${url}/rest/v1/community_comments`, {
       method: 'POST',
@@ -187,8 +196,9 @@ async function runACAgent(
 ): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
     const agentKnowledge = await getACCommunityKnowledge();
+    const agentCorrections = await getAgentCorrections(agentName);
     const raw = await callAnthropic(
-      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
+      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${AC_VOICE_EXCEPTION}${agentCorrections}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
       1500,
     );
     let title = ''; let content = '';
@@ -337,7 +347,8 @@ async function runACAgentReply(
   const petraInstructions = `- Acknowledge the member's reality with executive specificity — make them feel genuinely seen\n- Validate what they are navigating without softening it\n- Add warmth that holds space without pressure\n- Voice: warm executive peer — encouraging and steady`;
   const matthewInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Draw on real experience, not any named methodology or framework\n- Add one strategic insight that moves the conversation forward — specific and substantive, never generic (this member pays a premium monthly membership for real depth)\n- Invite further executive-level reflection\n- Voice: sophisticated, grounded, purposeful`;
 
-  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${agentRole} inside the Accelerator Circle. Today: ${today}.\nDO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a warm, momentum-building close.' : 'End with a high-stakes question or executive invitation.'} No calls to action.`;
+  const agentCorrections = await getAgentCorrections(agentName);
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${AC_VOICE_EXCEPTION}${agentCorrections}\n\nYou are ${agentName}, ${agentRole} inside the Accelerator Circle. Today: ${today}.\nDO NOT name, reference, or promote any DRU AI Consulting framework, program, diagnostic, course, bundle, or price. This is peer-to-peer community content, not consulting or sales content.\nCONTEXT: Accelerator Circle — a premium executive space. Your reply should feel peer-level and exclusive.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isPetra ? petraInstructions : matthewInstructions}\nWrite ONLY the reply. ${isPetra ? 'End with a warm, momentum-building close.' : 'End with a high-stakes question or executive invitation.'} No calls to action.`;
 
   try {
     const raw      = await callAnthropic(prompt, 600);
@@ -407,7 +418,8 @@ async function fireACUpsellCard(
   await postACKnowledgmentComment(postId, firstName, signalReason);
 
   // Aaliyah writes personal outreach draft (Approval card — DeAnna approves and sends)
-  const prompt = `${GENIUS_MODE}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nAn Accelerator member named ${firstName} is showing strong signals of readiness to go deeper.\nSignal: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personal outreach message (100-120 words). Reference their Accelerator engagement specifically. Make the offer feel like a natural next step for where they already are — not a pitch. Be specific and human.\nOffer: ${offer.label}\nLink: ${offer.link}\nWrite ONLY the message.`;
+  const aaliyahCorrections = await getAgentCorrections('Aaliyah Foster');
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${aaliyahCorrections}\n\nYou are Aaliyah Foster, Outreach Specialist for DRU AI Consulting.\nAn Accelerator member named ${firstName} is showing strong signals of readiness to go deeper.\nSignal: "${signalReason}"\nRecent post: "${postTitle}"\nWrite a warm, personal outreach message (100-120 words). Reference their Accelerator engagement specifically. Make the offer feel like a natural next step for where they already are — not a pitch. Be specific and human.\nOffer: ${offer.label}\nLink: ${offer.link}\nWrite ONLY the message.`;
 
   const outreach = enforceTM(await callAnthropic(prompt, 400));
 
@@ -452,7 +464,8 @@ async function runACUpsellScan(): Promise<void> {
     const alreadyFlagged = await hasRecentACUpsellCard(memberId);
     if (alreadyFlagged) { console.log(`[ac_upsell_scan] ${profile.first_name} — card exists, skipping`); continue; }
 
-    const detectionPrompt = `${GENIUS_MODE}\n\nYou are Matthew Elliot, Accelerator Circle Leader.\nAn Accelerator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals? Scan for:\nDIAGNOSTICS: course ($4,997 on-demand learning), strategic ($3,497 90-min session), executive ($4,997 120-min session)\nFRAMEWORKS: dru_clear ($7,500), five_c ($6,000), five_d ($6,500), ai_sales_mastery ($6,000)\nBUNDLES: bundle_full ($26,000), bundle_plus_two ($19,500), bundle_plus_one ($13,500)\nPick the SINGLE strongest signal only. Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: [course|strategic|executive|dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one] | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
+    const matthewCorrections = await getAgentCorrections('Matthew Elliot');
+    const detectionPrompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${matthewCorrections}\n\nYou are Matthew Elliot, Accelerator Circle Leader.\nAn Accelerator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals? Scan for:\nDIAGNOSTICS: course ($4,997 on-demand learning), strategic ($3,497 90-min session), executive ($4,997 120-min session)\nFRAMEWORKS: dru_clear ($7,500), five_c ($6,000), five_d ($6,500), ai_sales_mastery ($6,000)\nBUNDLES: bundle_full ($26,000), bundle_plus_two ($19,500), bundle_plus_one ($13,500)\nPick the SINGLE strongest signal only. Write the REASON in Matthew's voice, following the voice rules above. Everything else in the response format below must be EXACTLY as shown — no extra words, no preamble, no markdown, nothing before or after these tokens:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: [course|strategic|executive|dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one] | REASON: [one sentence, in voice]\nUPSELL SIGNAL: NO`;
 
     const detection = await callAnthropic(detectionPrompt, 150);
     if (!detection.includes('UPSELL SIGNAL: YES')) { console.log(`[ac_upsell_scan] No signal for ${profile.first_name}`); continue; }
