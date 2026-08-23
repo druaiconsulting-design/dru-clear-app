@@ -170,12 +170,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No contact email found in payload' });
     }
 
+    // Real GHL contact_id, straight from the webhook payload -- the shared identity spine
+    // (Aug 23, 2026) that links this profile back to lead_scoring_events and outreach_log.
+    const ghlContactId: string | null = (
+      body?.contact?.id       ??
+      body?.data?.contact?.id ??
+      body?.contactId         ??
+      null
+    );
+
     // Collect signal strings
     const signals: string[] = [];
     const tags: unknown = body?.contact?.tags ?? body?.data?.contact?.tags ?? body?.tags;
     if (Array.isArray(tags)) signals.push(...tags.map(String));
     const productName = body?.product?.name ?? body?.data?.product?.name ?? body?.order?.product_name ?? body?.customData?.product ?? '';
     if (productName) signals.push(String(productName));
+
+    // Payment amount, if this event carries one (Order Created events do; a plain Tag
+    // Added or Pipeline stage changed event may not -- amountPaid stays 0 in that case,
+    // and updateFields below only touches profiles.amount_paid when it's actually > 0).
+    const rawAmount = body?.order?.amount ?? body?.data?.order?.amount ?? body?.payment?.amount ?? body?.invoice?.amount ?? body?.customData?.amount ?? null;
+    const amountPaid: number = typeof rawAmount === 'number' ? rawAmount : (parseFloat(String(rawAmount ?? '')) || 0);
     const pipelineName = body?.opportunity?.pipeline_stage_name ?? body?.data?.pipeline_stage ?? '';
     if (pipelineName) signals.push(String(pipelineName));
     const workflowName = body?.workflow?.name ?? body?.triggerName ?? '';
@@ -193,7 +208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Look up profile by email
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, pathway_stage, first_name, last_name')
+      .select('id, pathway_stage, first_name, last_name, ghl_contact_id')
       .eq('email', email)
       .maybeSingle();
 
@@ -211,11 +226,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const newRank     = STAGE_RANK[newStage] ?? 0;
 
     if (newRank <= currentRank) {
-      return res.status(200).json({ ok: true, message: 'Already at equal or higher stage', currentStage: profile.pathway_stage, detectedStage: newStage });
+      // Stage isn't advancing, but still backfill ghl_contact_id and accumulate any real
+      // payment amount on this event -- a client can buy a second framework/bundle without
+      // their stage changing (e.g. already at Deploy, buys another Deploy-tier item).
+      const staleUpdate: Record<string, unknown> = {};
+      if (ghlContactId && !profile.ghl_contact_id) staleUpdate.ghl_contact_id = ghlContactId;
+      if (Object.keys(staleUpdate).length > 0 || amountPaid > 0) {
+        if (amountPaid > 0) {
+          const { data: current } = await supabase.from('profiles').select('amount_paid').eq('id', profile.id).maybeSingle();
+          await supabase.from('profiles').update({ ...staleUpdate, amount_paid: (current?.amount_paid ?? 0) + amountPaid }).eq('id', profile.id);
+        } else if (Object.keys(staleUpdate).length > 0) {
+          await supabase.from('profiles').update(staleUpdate).eq('id', profile.id);
+        }
+      }
+      return res.status(200).json({ ok: true, message: 'Already at equal or higher stage', currentStage: profile.pathway_stage, detectedStage: newStage, amountAdded: amountPaid });
     }
 
     // Update
     const updateFields: Record<string, unknown> = { pathway_stage: newStage, updated_at: new Date().toISOString() };
+    if (ghlContactId && !profile.ghl_contact_id) updateFields.ghl_contact_id = ghlContactId;
+    if (amountPaid > 0) {
+      const { data: currentAmount } = await supabase.from('profiles').select('amount_paid').eq('id', profile.id).maybeSingle();
+      updateFields.amount_paid = (currentAmount?.amount_paid ?? 0) + amountPaid;
+    }
     // Dedicated timestamp for the 91-day Deploy→Dominate check — profiles.updated_at gets
     // touched by unrelated edits (bio, headline, etc.) so it can't be trusted for this.
     if (newStage === 'Deploy') updateFields.deploy_started_at = new Date().toISOString();
