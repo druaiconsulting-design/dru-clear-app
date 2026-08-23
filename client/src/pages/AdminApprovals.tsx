@@ -234,6 +234,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
 
 function getDraftHeading(approval: Approval): string {
   if (approval.category === "social" || approval.category === "email") return `${approval.agent_name}'s Draft`;
+  if (approval.category === "outreach")                return "Aaliyah RGS Outreach Draft";
   if (approval.category === "community_post")          return `${approval.agent_name}'s Post`;
   if (approval.category === "daily_briefing")          return "Daily Briefing";
   if (approval.category === "community_comment_reply") return "Agent Reply";
@@ -249,6 +250,7 @@ function getDraftHeading(approval: Approval): string {
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
   if (approval.category === "email")                   return status === "posted" ? "✓ Sent"                : status === "posting" ? "Sending..."         : "⚠ Send Failed";
+  if (approval.category === "outreach")                return status === "posted" ? "✓ Sent to Lead"       : status === "posting" ? "Sending..."         : "⚠ Send Failed";
   if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"       : status === "posting" ? "Routing..."         : "⚠ Route Failed";
   if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"      : status === "posting" ? "Generating PDF..."   : "⚠ PDF Failed";
   if (approval.category === "community_comment_reply") return status === "posted" ? "✓ Comment Posted"      : status === "posting" ? "Posting..."          : "⚠ Post Failed";
@@ -359,6 +361,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     const platform = approval.platform ?? "Social";
     return { text: platform, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
+  if (approval.category === "outreach")                    return { text: "RGS Outreach",       color: "#D4AF37" };
   if (approval.category === "community_post")              return { text: "CC Post",            color: "#2D5A8E" };
   if (approval.category === "community_comment_reply")     return { text: "CC Agent Reply",     color: "#2D5A8E" };
   if (approval.category === "CC Post Triggers")            return { text: "CC Policy Violation",color: "#C2185B" };
@@ -1026,6 +1029,22 @@ export default function AdminApprovals() {
     } catch { return false; }
   };
 
+  // Fires Aaliyah's approved structured outreach (JSON, one entry per lead) to
+  // ghl-outreach-dispatch, which sends each lead's email via GHL and logs it.
+  const fireOutreachDispatch = async (approval: Approval): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/ghl-outreach-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: approval.edited_output || approval.output,
+          approval_id: approval.id,
+        }),
+      });
+      return res.ok;
+    } catch { return false; }
+  };
+
   // Fires approved social response reply back to Make.com → posts to platform
   const fireSocialReply = async (approval: Approval): Promise<boolean> => {
     try {
@@ -1070,6 +1089,10 @@ export default function AdminApprovals() {
     if (approval.category === "email") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await fireEmailDispatch(approval);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "outreach") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireOutreachDispatch(approval);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
