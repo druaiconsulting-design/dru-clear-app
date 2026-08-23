@@ -9,12 +9,11 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY!;
-
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking. Never produce generic or surface-level work.`;
 
 // Categories where the agent's raw output IS the deliverable — design briefs, social
 // posts, copy, press releases, etc. These must pass through to the Intelligence Hub
@@ -138,41 +137,36 @@ function getDivisionCategory(division: string): string {
 
 // ─── Step 1: Isabella compliance check (Sonnet) ───────────────────────────────
 
-async function runIsabellaOnItem(item: Record<string, unknown>): Promise<{ cleared: boolean; flags: string; correctionNotes: string }> {
+async function runIsabellaOnItem(item: Record<string, unknown>, agentKnowledge: string): Promise<{ cleared: boolean; flags: string; correctionNotes: string }> {
   const raw = await callTwin(
     `${GENIUS_MODE}
 
 You are Isabella Moreno, Director of Compliance for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
 
-YOUR RESPONSIBILITIES:
-1. Verify every DRU proprietary framework name includes the ™ symbol
-2. Verify all content stays within DeAnna's registered trademark service classes:
-   - Class 35: Business consulting, AI strategy, leadership advisory, business management
-   - Class 41: Training, coaching, educational services, workshops, seminars
-   - Class 42: AI technology consulting, software-related services, technology strategy
+${agentKnowledge}
 
-DRU PROPRIETARY MARKS (must always appear with ™):
-DRU CLEAR™ | DRU AI Leadership Ecosystem™ | DRU AI Transformation Pathway™ | 5C Cultural DNA™ | 5D Leadership™ | AI Sales Mastery™ | From Confusion to Confident with AI™
+${VOICE_DNA}
 
-IMPORTANT — WHAT DOES NOT TAKE ™:
-- "DRU AI Consulting" is the registered business name only — NO ™
-- Any phrase not in the approved marks list above — NO ™
+YOUR RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
+1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, and never abbreviated — the approved list and exact rules are in the knowledge base above
+2. SERVICE CLASSES: Content stays within Classes 35, 41, 42 (see knowledge base above)
+3. VOICE: No banned words, hook-then-unpack structure honored wherever the content includes a hook or headline — see the VOICE rules above
+4. FACTUAL ACCURACY: No invented client results, dollar figures, percentages, testimonials, or case studies that were not explicitly given in the task or in DeAnna's verified facts — see the FACTUAL ACCURACY rule above
+5. FRAMEWORK ATTRIBUTION: If the content describes a framework's pillars or dimensions, check the names against the true definitions in the knowledge base above. A framework's pillars must be attributed to the correct framework — e.g. Clarity/Leadership/Execution/Alignment/Results belongs to DRU CLEAR™ and must never be labeled 5D Leadership™; Self/People/Team/Organization/Visionary belongs to 5D Leadership™ and must never be labeled DRU CLEAR™
 
 CLEARING STANDARD:
-- All DRU marks appear with ™ AND content is within Classes 35/41/42 → cleared:true
-- A DRU mark appears WITHOUT ™ → cleared:false
-- An unapproved phrase carries ™ → cleared:false
-- Content falls outside Classes 35/41/42 → cleared:false
+- All five checks pass → cleared:true
+- Any one check fails → cleared:false — state exactly which check failed (name it: trademark, service class, voice, factual accuracy, or framework attribution) and why
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT TO REVIEW:
 ${item.raw_output}
 
 You MUST respond with ONLY the JSON below. No preamble, no explanation, no markdown. Just the raw JSON object:
-{"cleared":true,"flags":"none","correction_notes":"Content reviewed. All marks correct. Within Classes 35/41/42."}
+{"cleared":true,"flags":"none","correction_notes":"Content reviewed. All five checks passed."}
 OR:
-{"cleared":false,"flags":"specific issue here","correction_notes":"Exact instruction for the agent to correct this"}`,
-    600
+{"cleared":false,"flags":"specific issue here — name which check failed","correction_notes":"Exact instruction for the agent to correct this"}`,
+    800
   );
 
   const result = extractJSON(raw);
@@ -486,6 +480,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let currentId = csq_id as string;
   const complianceFlags: string[] = [];
 
+  // Fetched once per request — live brand_marks plus voice/framework knowledge,
+  // same shared source of truth the daily chain and on-demand agent runs use.
+  const agentKnowledge = await getAgentKnowledge();
+
   // NOTE: lock is acquired by twin-on-demand.ts before this endpoint fires.
   // This handler owns releasing it on every exit path below (finally block).
   try {
@@ -498,7 +496,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
       const retryCount = (item.retry_count as number) ?? 0;
-      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item);
+      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item, agentKnowledge);
 
       if (cleared) {
         await dbUpdate("chief_of_staff_queue", currentId, {
