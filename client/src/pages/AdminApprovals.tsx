@@ -388,6 +388,8 @@ export default function AdminApprovals() {
   const [editText, setEditText]               = useState("");
   const [editingPlatform, setEditingPlatform] = useState<PlatformTab | null>(null);
   const [saving, setSaving]                   = useState<string | null>(null);
+  const [rejectingId, setRejectingId]         = useState<string | null>(null);
+  const [correctionNote, setCorrectionNote]   = useState("");
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
@@ -1123,7 +1125,20 @@ export default function AdminApprovals() {
     setSaving(null);
   };
 
-  const handleReject  = async (id: string) => { setSaving(id); await supabase.from("approvals").update({ status:"rejected", archived: true }).eq("id", id); setSaving(null); };
+  const writeAgentCorrection = async (agentName: string, note: string, approvalId: string, source: "reject" | "edit") => {
+    await supabase.from("agent_corrections").insert({ agent_name: agentName, correction_note: note.trim(), approval_id: approvalId, source });
+  };
+  const handleRejectClick = (id: string) => { setRejectingId(id); setCorrectionNote(""); };
+  const handleRejectCancel = () => { setRejectingId(null); setCorrectionNote(""); };
+  const handleReject  = async (id: string) => {
+    const note = correctionNote.trim();
+    if (!note) return;
+    setSaving(id);
+    const approval = approvals.find(a => a.id === id);
+    if (approval) await writeAgentCorrection(approval.agent_name, note, id, "reject");
+    await supabase.from("approvals").update({ status:"rejected", archived: true }).eq("id", id);
+    setRejectingId(null); setCorrectionNote(""); setSaving(null);
+  };
   const handleReadyToUse = async (id: string) => {
     setSaving(id);
     await supabase.from("approvals").update({ status: "ready_to_use", archived: true }).eq("id", id);
@@ -1138,6 +1153,7 @@ export default function AdminApprovals() {
 
   const handleEditStart = (approval: Approval) => {
     setEditingId(approval.id);
+    setCorrectionNote("");
     if (isMultiPlatformCard(approval)) {
       const tab = getActivePlatformTab(approval.id);
       setEditingPlatform(tab);
@@ -1150,9 +1166,13 @@ export default function AdminApprovals() {
   };
 
   const handleEditSave = async (id: string) => {
+    const note = correctionNote.trim();
+    if (!note) return;
     setSaving(id);
     const approval = approvals.find(a => a.id === id);
     if (!approval) { setSaving(null); return; }
+    await writeAgentCorrection(approval.agent_name, note, id, "edit");
+    setCorrectionNote("");
     const media = getMediaUrls(id, approval);
     const isMulti = isMultiPlatformCard(approval);
 
@@ -1521,7 +1541,16 @@ export default function AdminApprovals() {
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{draftHead}</p>
                       {editingId === approval.id ? (
-                        <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
+                        <>
+                          <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{ width:"100%", minHeight:isBriefing ? 200 : 100, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.4)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem", lineHeight:1.6, resize:"vertical" as const, boxSizing:"border-box" as const, outline:"none" }} />
+                          <textarea
+                            value={correctionNote}
+                            onChange={e => setCorrectionNote(e.target.value)}
+                            placeholder="What was off? (required — this trains the agent)"
+                            rows={2}
+                            style={{ width:"100%", marginTop:"0.5rem", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(212,175,55,0.4)", resize:"vertical" as const, boxSizing:"border-box" as const }}
+                          />
+                        </>
                       ) : (
                         <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
                       )}
@@ -1691,6 +1720,25 @@ export default function AdminApprovals() {
                     </div>
                   )}
 
+                  {/* Reject reason — required, trains this agent's next output */}
+                  {rejectingId === approval.id && (
+                    <div style={{ padding:"0 1rem 1rem" }}>
+                      <textarea
+                        value={correctionNote}
+                        onChange={e => setCorrectionNote(e.target.value)}
+                        placeholder="What was wrong with this? (required — this trains the agent)"
+                        rows={2}
+                        style={{ width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(194,24,91,0.4)", resize:"vertical" as const }}
+                      />
+                      <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.4rem", justifyContent:"flex-end" }}>
+                        <button onClick={handleRejectCancel} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
+                        <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id || !correctionNote.trim()} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#C2185B", color:"#FAFAF8", letterSpacing:"0.06em", opacity:(saving === approval.id || !correctionNote.trim()) ? 0.5 : 1 }}>
+                          {saving === approval.id ? "..." : "Confirm Reject"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
                     {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
@@ -1712,9 +1760,9 @@ export default function AdminApprovals() {
                           {saving === approval.id ? "..." : "Dismiss"}
                         </button>
                       )}
-                      {!isKnowledge && approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
+                      {!isKnowledge && approval.status === "pending" && editingId !== approval.id && rejectingId !== approval.id && !isPostTrigger && (
                         <>
-                          <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
+                          <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
                           </button>
@@ -1762,8 +1810,8 @@ export default function AdminApprovals() {
                       )}
                       {editingId === approval.id && (
                         <>
-                          <button onClick={() => { setEditingId(null); setEditingPlatform(null); }} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
-                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:saving === approval.id ? 0.6 : 1 }}>
+                          <button onClick={() => { setEditingId(null); setEditingPlatform(null); setCorrectionNote(""); }} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
+                          <button onClick={() => handleEditSave(approval.id)} disabled={saving === approval.id || !correctionNote.trim()} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || !correctionNote.trim()) ? 0.5 : 1 }}>
                             {saving === approval.id ? "Saving..." : isMulti ? `Save ${editingPlatform} & Publish` : "Save & Approve"}
                           </button>
                         </>
