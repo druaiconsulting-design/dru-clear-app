@@ -187,6 +187,40 @@ const FALLBACK_TM_MARKS = [
 ];
 
 /**
+ * Fetches this agent's own recent correction history (rejections and edits
+ * DeAnna has given them, with her stated reason) from the agent_corrections
+ * table and returns a formatted block for prompt injection. Each agent only
+ * ever sees their own corrections. Returns '' if none exist yet — callers
+ * should only include this block in the prompt when it's non-empty.
+ */
+export async function getAgentCorrections(agentName: string, limit = 5): Promise<string> {
+  try {
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return '';
+
+    const res = await fetch(
+      `${url}/rest/v1/agent_corrections?agent_name=eq.${encodeURIComponent(agentName)}&order=created_at.desc&limit=${limit}&select=correction_note,created_at`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!res.ok) return '';
+
+    const data = await res.json() as { correction_note: string; created_at: string }[];
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    const notes = data.map(row => {
+      const date = new Date(row.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      return `- (${date}) ${row.correction_note}`;
+    }).join('\n');
+
+    return `\n\n## CORRECTIONS DEANNA HAS GIVEN YOU BEFORE — DO NOT REPEAT THESE\n${notes}\nApply these corrections to everything you write above. If a correction here conflicts with an instruction elsewhere in this prompt, DeAnna's correction wins.`;
+  } catch (err) {
+    console.error(`[agentCorrections] fetch error for ${agentName}:`, err);
+    return '';
+  }
+}
+
+/**
  * Fetches current protected IP marks from Supabase brand_marks table
  * and returns a complete formatted knowledge block for agent prompt injection.
  * Uses raw fetch to match existing pattern in both trigger files.
