@@ -11,7 +11,21 @@
 
 export const config = { maxDuration: 60 };
 
+import { VOICE_DNA } from './_lib/agentKnowledge.js';
+
 const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
+
+const BRAND_COPY_FALLBACK: Record<string,string> = {
+  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
+};
+async function fetchBrandCopy(key: string): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const fallback = BRAND_COPY_FALLBACK[key] || '';
+  if (!url||!svcKey) return fallback;
+  const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`,{headers:{apikey:svcKey,Authorization:`Bearer ${svcKey}`}});
+  if (!res.ok) return fallback;
+  const data = await res.json(); return (data as {value:string}[])[0]?.value || fallback;
+}
 
 interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 
@@ -90,7 +104,7 @@ async function postAcknowledgmentComment(postId: string, firstName: string, sign
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
-    const prompt = `${GENIUS_MODE}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Do NOT mention products, pricing, services, or include any links. Be warm, human, and community-focused. Write ONLY the reply text.`;
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Do NOT mention products, pricing, services, or include any links. Be warm, human, and community-focused. Write ONLY the reply text.`;
     const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
     await fetch(`${url}/rest/v1/community_comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Micah Santos', content: acknowledgment, is_flagged: false, is_active: true }) });
     console.log(`[micah] Acknowledgment posted to post ${postId} for ${firstName}`);
@@ -172,7 +186,9 @@ async function getAgentKnowledge(): Promise<string> {
 async function runCCAgent(agentId: string, agentName: string, task: string, postType: string, category: string, prompt: string): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
     const agentKnowledge = await getAgentKnowledge();
-    const raw = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`, 1500);
+    const positioning = await fetchBrandCopy('positioning');
+    const brandLine = `\nBRAND THEME: Where it fits naturally, let "${positioning}" — DRU AI Consulting's core positioning — come through in how you frame the insight. Never force it in as a tagline.`;
+    const raw = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n${prompt}${brandLine}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`, 1500);
     let title = ''; let content = ''; let upsellSignal: string | null = null;
     try {
       const cleaned = raw.replace(/```json\s*|```/g, '').trim();
@@ -228,7 +244,8 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
     ? `\n\nTARIQ'S RECENT REVENUE INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${tariqContext}\n`
     : '';
 
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting. Today: ${today}.
+  const positioning = await fetchBrandCopy('positioning');
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content.
@@ -302,7 +319,8 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
 
   const angle = angleMap[dayOfWeek] ?? angleMap['Monday'];
 
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting. Today: ${today}.
+  const positioning = await fetchBrandCopy('positioning');
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content.
@@ -373,7 +391,7 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor\n- Connect to a relevant DRU framework (DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™)\n- Add one strategic insight that elevates the conversation\n- Invite further reflection or engagement\n- Your voice: grounded, clear, purposeful`;
   const micahInstructions = `- Acknowledge the member personally — make them feel genuinely seen\n- Validate their experience with specificity\n- Add warmth, encouragement, and a sense of belonging\n- Your voice: warm, engaged, human`;
-  const prompt = `${GENIUS_MODE}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
   try {
     const raw = await callAnthropic(prompt, 600);
     const corrected = enforceTM(raw);
@@ -473,7 +491,7 @@ async function runUpsellScan(): Promise<void> {
     if (tier === 'navigator') {
       const alreadyFlagged = await hasRecentUpsellCard(memberId);
       if (!alreadyFlagged) {
-        const detectionPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA Navigator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing Accelerator-ready signals? Respond EXACTLY:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence]\nUPSELL SIGNAL: NO`;
+        const detectionPrompt = `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA Navigator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing Accelerator-ready signals?\nWrite the REASON in Zoe's voice, following the voice rules above. Everything else in the response format below must be EXACTLY as shown — no extra words, no preamble, no markdown, nothing before or after these tokens:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence, in voice]\nUPSELL SIGNAL: NO`;
         const detection = await callAnthropic(detectionPrompt, 120);
         if (detection.includes('UPSELL SIGNAL: YES')) {
           const reasonMatch = detection.match(/REASON:\s*(.+)/); const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
@@ -485,7 +503,7 @@ async function runUpsellScan(): Promise<void> {
 
     const alreadyFrameworkFlagged = await hasRecentFrameworkCard(memberId);
     if (!alreadyFrameworkFlagged) {
-      const frameworkPrompt = `${GENIUS_MODE}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA ${tier} member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals for any DRU AI Consulting framework or bundle? Scan for signals of:\nFRAMEWORKS (a la carte):\n- dru_clear: DRU CLEAR™ ($7,500) — mentions clarity framework, AI readiness, connecting strategy\n- five_c: 5C Cultural DNA™ ($6,000) — mentions culture, communication, collaboration, cultural shift\n- five_d: 5D Leadership™ ($6,500) — mentions leadership development, team, organizational leadership\n- ai_sales_mastery: AI Sales Mastery™ ($6,000) — mentions sales, DISC, revenue, client relationships\nBUNDLES:\n- bundle_full: Full Ecosystem $26,000 — mentions full transformation, entire program, everything\n- bundle_plus_two: DRU CLEAR + 2 frameworks $19,500 — mentions combining two frameworks\n- bundle_plus_one: DRU CLEAR + 1 framework $13,500 — mentions adding a framework to DRU CLEAR\nPick the single strongest signal only. Respond EXACTLY in one of these formats:\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: dru_clear | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_c | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_d | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: ai_sales_mastery | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_full | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_two | REASON: [one sentence]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_one | REASON: [one sentence]\nFRAMEWORK SIGNAL: NO`;
+      const frameworkPrompt = `${GENIUS_MODE}\n\n${VOICE_DNA}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA ${tier} member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals for any DRU AI Consulting framework or bundle? Scan for signals of:\nFRAMEWORKS (a la carte):\n- dru_clear: DRU CLEAR™ ($7,500) — mentions clarity framework, AI readiness, connecting strategy\n- five_c: 5C Cultural DNA™ ($6,000) — mentions culture, communication, collaboration, cultural shift\n- five_d: 5D Leadership™ ($6,500) — mentions leadership development, team, organizational leadership\n- ai_sales_mastery: AI Sales Mastery™ ($6,000) — mentions sales, DISC, revenue, client relationships\nBUNDLES:\n- bundle_full: Full Ecosystem $26,000 — mentions full transformation, entire program, everything\n- bundle_plus_two: DRU CLEAR + 2 frameworks $19,500 — mentions combining two frameworks\n- bundle_plus_one: DRU CLEAR + 1 framework $13,500 — mentions adding a framework to DRU CLEAR\nPick the single strongest signal only. Write the REASON in Zoe's voice, following the voice rules above. Everything else in the response format below must be EXACTLY as shown — no extra words, no preamble, no markdown, nothing before or after these tokens. Respond in one of these formats:\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: dru_clear | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_c | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_d | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: ai_sales_mastery | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_full | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_two | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_one | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: NO`;
       const frameworkDetection = await callAnthropic(frameworkPrompt, 150);
       if (frameworkDetection.includes('FRAMEWORK SIGNAL: YES')) {
         const reasonMatch  = frameworkDetection.match(/REASON:\s*(.+)/);
