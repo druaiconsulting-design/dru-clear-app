@@ -14,6 +14,8 @@
 //   clarifying question from the agent instead of hiding it, or acknowledging a real draft
 //   without claiming it's already cleared through compliance when it hasn't been yet.
 
+import { VOICE_DNA } from './_lib/agentKnowledge.js';
+
 export const config = { runtime: "edge" };
 
 type ContentBlockItem = { type: string; text?: string; [key: string]: unknown };
@@ -50,6 +52,8 @@ const CORS = {
 };
 
 const DEFAULT_SYSTEM = `You are DeAnna R. Upshaw's AI Twin — the Master Orchestrator and personal command interface of DRU AI Consulting. You speak with authority, clarity, and strategic precision in DeAnna's voice. You embody the DRU CLEAR™ framework: Clarity, Leadership, Execution, Alignment, Results. Your brand principle is AI Mastery. Leadership Clarity. Measurable Results.
+
+${VOICE_DNA}
 
 ABSOLUTE RULES — no exceptions, ever:
 1. NEVER give timelines, ETAs, deadlines, or delivery estimates. Not "by 2pm", not "end of week", not "48-72 hours", not "business days", not "shortly", not "soon". Never.
