@@ -373,6 +373,34 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
   }
   let crmUpdates=0;
   for (const lead of omarResult.scored_leads){if (lead.contact_id){await fetch(`${GHL_API_BASE}/contacts/${lead.contact_id}`,{method:'PUT',headers:{Authorization:`Bearer ${ghlApiKey}`,Version:'2021-07-28','Content-Type':'application/json'},body:JSON.stringify({tags:[`ai-scored`,`intent-${lead.intent_level}`,`score-${lead.score}`]})});crmUpdates++;}}
+  // Write the durable, structured scoring record -- this is what Aaliyah reads directly
+  // (contact_id intact), separate from the narrative briefing below which is for DeAnna.
+  // Enriches each lead with its original campaign source from `submissions`, joined on
+  // ghl_contact_id first (the real identity spine), falling back to email for older rows.
+  const sbUrlEvents=process.env.VITE_SUPABASE_URL; const sbKeyEvents=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (sbUrlEvents&&sbKeyEvents&&omarResult.scored_leads.length>0){
+    try{
+      const contactIds=omarResult.scored_leads.map(l=>l.contact_id).filter(Boolean);
+      const emails=omarResult.scored_leads.map(l=>l.email).filter(Boolean);
+      let submissionsById: Record<string, any> = {}; let submissionsByEmail: Record<string, any> = {};
+      if (contactIds.length>0){
+        const r=await fetch(`${sbUrlEvents}/rest/v1/submissions?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id,email,utm_campaign`,{headers:{apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`}});
+        if (r.ok){const rows=await r.json();for (const row of rows){if (row.ghl_contact_id) submissionsById[row.ghl_contact_id]=row;}}
+      }
+      if (emails.length>0){
+        const r=await fetch(`${sbUrlEvents}/rest/v1/submissions?email=in.(${emails.join(',')})&select=email,utm_campaign&order=created_at.desc`,{headers:{apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`}});
+        if (r.ok){const rows=await r.json();for (const row of rows){if (row.email && !(row.email in submissionsByEmail)) submissionsByEmail[row.email]=row;}}
+      }
+      const events=omarResult.scored_leads.map(l=>({
+        ghl_contact_id: l.contact_id || null,
+        name: l.name, email: l.email, score: l.score, intent_level: l.intent_level,
+        recommended_action: l.recommended_action,
+        source_campaign: (l.contact_id && submissionsById[l.contact_id]?.utm_campaign) || submissionsByEmail[l.email]?.utm_campaign || null,
+        run_date: new Date().toISOString().split('T')[0],
+      }));
+      await fetch(`${sbUrlEvents}/rest/v1/lead_scoring_events`,{method:'POST',headers:{'Content-Type':'application/json',apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`,Prefer:'return=minimal'},body:JSON.stringify(events)});
+    } catch(err){console.error('[runRyan] lead_scoring_events write failed:',err);}
+  }
   const highIntentSummary = omarResult.high_intent_leads.map(l=>`* ${l.name} (Score: ${l.score}/10) — ${l.recommended_action}`).join('\n');
   const agentKnowledge = await getAgentKnowledge();
   const agentCorrections = await getAgentCorrections('Ryan Nakamura');
@@ -984,7 +1012,7 @@ async function fetchClientDeliveryData(): Promise<string> {
   if (!url || !key) return 'Client delivery data unavailable.';
   try {
     const [clientRes, postsRes, lbRes, streakRes, enrollRes, progressRes] = await Promise.all([
-      fetch(`${url}/rest/v1/client_journey_stages?select=client_name,stage,amount_paid,stage_updated_at&order=stage_updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      fetch(`${url}/rest/v1/client_journey_stages?select=client_name,email,ghl_contact_id,stage,amount_paid,stage_updated_at&order=stage_updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/community_posts?select=id,created_at,profile_id&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/community_leaderboard?select=user_id,total_points,rank&order=rank.asc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
       fetch(`${url}/rest/v1/user_streaks?select=user_id,current_streak,longest_streak`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
@@ -992,8 +1020,38 @@ async function fetchClientDeliveryData(): Promise<string> {
       fetch(`${url}/rest/v1/course_progress?select=id,lesson_id,completed_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
     ]);
     const [clients, posts, lb, streaks, enrollments, progress]: [any[],any[],any[],any[],any[],any[]] = await Promise.all([clientRes.json(),postsRes.json(),lbRes.json(),streakRes.json(),enrollRes.json(),progressRes.json()]);
+
+    // Join each client back to their pre-payment history (Aug 23, 2026 fix) via
+    // ghl_contact_id -- the shared identity spine. Gives Keisha and the rest of Client
+    // Delivery real context (where they came from, how they scored, whether Aaliyah
+    // reached them) instead of a blank slate at the moment of payment.
+    let historyByContactId: Record<string, { source_campaign?: string; score?: number; outreach_count: number }> = {};
+    const contactIds = (Array.isArray(clients) ? clients : []).map((c:any) => c.ghl_contact_id).filter(Boolean);
+    if (contactIds.length > 0) {
+      const [scoringRes, outreachRes] = await Promise.all([
+        fetch(`${url}/rest/v1/lead_scoring_events?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id,score,source_campaign&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+        fetch(`${url}/rest/v1/outreach_log?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
+      ]);
+      const scoringRows = scoringRes.ok ? await scoringRes.json() : [];
+      const outreachRows = outreachRes.ok ? await outreachRes.json() : [];
+      for (const row of (Array.isArray(scoringRows) ? scoringRows : [])) {
+        if (row.ghl_contact_id && !historyByContactId[row.ghl_contact_id]) {
+          historyByContactId[row.ghl_contact_id] = { source_campaign: row.source_campaign, score: row.score, outreach_count: 0 };
+        }
+      }
+      for (const row of (Array.isArray(outreachRows) ? outreachRows : [])) {
+        if (row.ghl_contact_id) {
+          if (!historyByContactId[row.ghl_contact_id]) historyByContactId[row.ghl_contact_id] = { outreach_count: 0 };
+          historyByContactId[row.ghl_contact_id].outreach_count++;
+        }
+      }
+    }
     const clientList = Array.isArray(clients) && clients.length > 0
-      ? clients.map((c:any) => `  - ${c.client_name} | ${c.stage} | $${c.amount_paid ?? 0}`).join('\n')
+      ? clients.map((c:any) => {
+          const h = c.ghl_contact_id ? historyByContactId[c.ghl_contact_id] : undefined;
+          const historyNote = h ? ` | came from: ${h.source_campaign ?? 'unknown'} | scored: ${h.score ?? 'n/a'} | outreach sent: ${h.outreach_count}` : ' | no prior scoring/outreach history';
+          return `  - ${c.client_name} | ${c.stage} | $${c.amount_paid ?? 0}${historyNote}`;
+        }).join('\n')
       : '  (none)';
     const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     const recentPosts = Array.isArray(posts) ? posts.filter((p:any) => p.created_at >= sevenDaysAgo).length : 0;
@@ -1165,11 +1223,20 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confident with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
-    const urlA=process.env.VITE_SUPABASE_URL; const keyA=process.env.SUPABASE_SERVICE_ROLE_KEY; let leadContext='No lead data available today.';
-    if (urlA&&keyA){const todayA=new Date().toISOString().split('T')[0];const r=await fetch(`${urlA}/rest/v1/chief_of_staff_queue?run_date=eq.${todayA}&agent_id=eq.ryan&order=created_at.desc&limit=1`,{headers:{apikey:keyA,Authorization:`Bearer ${keyA}`}});if (r.ok){const d=await r.json();if (d?.[0]?.raw_output) leadContext=d[0].raw_output;}}
+    // Reads lead_scoring_events directly (Aug 23, 2026 fix) instead of Ryan's narrative
+    // briefing -- that briefing drops contact_id, which Aaliyah needs to write real,
+    // dispatchable outreach instead of prose with no traceable recipient.
+    const urlA=process.env.VITE_SUPABASE_URL; const keyA=process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let highIntentLeads:any[]=[];
+    if (urlA&&keyA){
+      const todayA=new Date().toISOString().split('T')[0];
+      const r=await fetch(`${urlA}/rest/v1/lead_scoring_events?run_date=eq.${todayA}&intent_level=eq.high&select=ghl_contact_id,name,email,score,recommended_action,source_campaign`,{headers:{apikey:keyA,Authorization:`Bearer ${keyA}`}});
+      if (r.ok) highIntentLeads=await r.json();
+    }
     const agentKnowledge=await getAgentKnowledge();
-    const id=await runAgentToCSQ('aaliyah','Aaliyah Foster','Revenue, Growth & Sales','personalized_outreach_messages','outreach',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nWrite personalized outreach for each high-intent lead — LinkedIn DM (150 words max) and email (subject + 200 word body). Mention DRU CLEAR™ AI Readiness Assessment and assessment.druaiconsulting.com. If no high-intent leads, write a warm outreach template.\nLead Intelligence:\n${leadContext}`,'high');
-    res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+    const leadContext = highIntentLeads.length>0 ? JSON.stringify(highIntentLeads) : 'No high-intent leads today.';
+    const id=await runAgentToCSQ('aaliyah','Aaliyah Foster','Revenue, Growth & Sales','personalized_outreach_messages','outreach',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Aaliyah Foster, Personalized Outreach Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nFor each lead below, write personalized outreach: a LinkedIn DM (150 words max) and an email (subject + 200 word body). Mention DRU CLEAR™ AI Readiness Assessment and assessment.druaiconsulting.com.\nReturn ONLY a JSON object, no preamble, no markdown fences:\n{"outreach":[{"ghl_contact_id":"...","email":"...","subject":"...","email_body":"...","linkedin_dm":"..."}]}\nIf there are no leads below, return {"outreach":[]} and nothing else.\nLeads (JSON):\n${leadContext}`,'high');
+    res.status(202).json({success:true,agent:route.agent_name,csq_id:id,high_intent_count:highIntentLeads.length});}
   else if (route.pipeline==='p1_jaylen'){const result=await runJaylen();res.status(202).json({success:true,agent:route.agent_name,...result});}
   else if (route.pipeline==='p1_chloe'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "Leadership Clarity · AI Mastery · Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_zara'){
