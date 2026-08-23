@@ -10,7 +10,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 export const config = { maxDuration: 300 };
 
-import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
@@ -283,7 +283,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // the synced static rules above — this way a mark added in Supabase shows up immediately,
   // without needing a redeploy of this file.
   const liveKnowledge = await getAgentKnowledge();
-  const systemPrompt = `${baseSystemPrompt}\n\n${liveKnowledge}`;
+  const agentCorrections = await getAgentCorrections(agentName);
+  const systemPrompt = `${baseSystemPrompt}\n\n${liveKnowledge}${agentCorrections}`;
 
   const cronSecret = process.env.CRON_SECRET ?? "";
   const baseUrl    = "https://app.druaiconsulting.com";
