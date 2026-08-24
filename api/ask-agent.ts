@@ -30,6 +30,9 @@ export default async function handler(req: any, res: any): Promise<void> {
     question,
     card_output,
     conversation_history = [],
+    csq_id = null, // Set only when this conversation is about a hard-rejected
+                    // chief_of_staff_queue item -- second learning channel,
+                    // alongside Isabella's automatic note (cmd-isabella.ts).
   } = req.body;
 
   if (!agent_id || !question) {
@@ -106,6 +109,23 @@ Answer DeAnna\'s question directly. If she asks you to expand on something you i
     ? 'claude-sonnet-4-6'
     : 'claude-haiku-4-5-20251001';
 
+  // Second learning channel: DeAnna talking directly to the agent about a
+  // hard-rejected item. Only fires when csq_id is present -- ordinary
+  // questions about fine cards don't need to train anything.
+  async function writeAgentCorrection(note: string): Promise<void> {
+    if (!csq_id) return;
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return;
+    try {
+      await fetch(`${url}/rest/v1/agent_corrections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
+        body: JSON.stringify({ agent_name, correction_note: note, source: 'deanna_conversation', csq_id }),
+      });
+    } catch (err) { console.error(`[ask-agent] Failed to write agent_correction for ${agent_name}:`, err); }
+  }
+
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -133,6 +153,7 @@ Answer DeAnna\'s question directly. If she asks you to expand on something you i
     const response = data.content?.[0]?.text ?? 'I was unable to generate a response. Please try again.';
 
     console.log(`[ask-agent] ✅ ${agent_name} responded to DeAnna's question`);
+    await writeAgentCorrection(question);
     res.status(200).json({ response, agent_name, agent_id });
 
   } catch (error) {
