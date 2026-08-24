@@ -142,6 +142,8 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"elena",   agent_name:"Elena Vasquez",    role:"Product Knowledge" },
     { agent_id:"kwame",   agent_name:"Kwame Asante",     role:"Proposal Writer" },
     { agent_id:"adaeze",  agent_name:"Adaeze Nwosu",     role:"Grant Strategist" },
+    { agent_id:"tariq",   agent_name:"Tariq Oladele",    role:"Revenue Acceleration Intelligence" },
+    { agent_id:"sasha",   agent_name:"Sasha Kim",        role:"AI Sales Mastery™ Intelligence" },
   ],
   "Content & Brand": [
     { agent_id:"camila",  agent_name:"Camila Flores",    role:"Social Media Strategist" },
@@ -1592,7 +1594,7 @@ export default function AdminApprovals() {
                         // Only these categories are genuine multi-agent roll-ups where more than
                         // one agent's work could appear in a single card — text-matching is needed
                         // to figure out who's actually in today's synthesis.
-                        const isMultiAgentRollup = ['daily_briefing','revenue_growth','content_brand','marketing','legal_finance','ai_governance','hr','client_delivery','customer_support'].includes(approval.category);
+                        const isMultiAgentRollup = ['daily_briefing','content_brand','marketing','legal_finance','ai_governance','hr','client_delivery','customer_support'].includes(approval.category);
                         let agentsToShow: typeof divAgents;
                         if (isMultiAgentRollup) {
                           const contentText = approval.edited_output || approval.output || '';
