@@ -48,6 +48,14 @@ interface QuestionState {
   input: string; messages: ConversationMessage[]; loading: boolean;
 }
 
+// A chief_of_staff_queue item Isabella hard-rejected after 3 attempts.
+// Shown as its own addressable block at the bottom of its division's card.
+interface RejectedItem {
+  id: string; agent_id: string; agent_name: string; division: string;
+  task: string; correction_notes: string | null; isabella_flags: string | null;
+  context: string | null; created_at: string;
+}
+
 interface MediaState { video_url: string; image_url: string; instagram_video_url: string; facebook_reel_url: string; }
 
 const LEAD_DIRECTIONS = [
@@ -396,6 +404,10 @@ export default function AdminApprovals() {
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
+  // Rejected chief_of_staff_queue items, keyed by their own id -- separate
+  // state map from `questions` above (which is keyed by approvals.id).
+  const [rejectedItems, setRejectedItems]     = useState<RejectedItem[]>([]);
+  const [rejectedQuestions, setRejectedQuestions] = useState<Record<string, QuestionState>>({});
   const [memberCounts, setMemberCounts]       = useState({ total: 0, navigator: 0, accelerator: 0 });
   const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([]);
   const [flaggedLoading, setFlaggedLoading]   = useState(true);
@@ -472,11 +484,26 @@ export default function AdminApprovals() {
     setAgentPhotoByName(byName);
   };
 
+  // Hard-rejected items (Isabella's 3rd-strike kills) from the last 7 days --
+  // shown as their own addressable block at the bottom of each division's card.
+  const fetchRejectedItems = async () => {
+    const since = new Date(); since.setDate(since.getDate() - 7);
+    const { data, error } = await supabase
+      .from("chief_of_staff_queue")
+      .select("id, agent_id, agent_name, division, task, correction_notes, isabella_flags, context, created_at")
+      .eq("status", "rejected")
+      .gte("created_at", since.toISOString())
+      .order("created_at", { ascending: false });
+    if (error) { console.error("[rejected items]", error); return; }
+    setRejectedItems((data as RejectedItem[]) || []);
+  };
+
   useEffect(() => {
-    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments(); fetchAgentPhotos();
+    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments(); fetchAgentPhotos(); fetchRejectedItems();
     const channel = supabase.channel("approvals-realtime").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals()).subscribe();
     const commentsChannel = supabase.channel("flagged-comments-realtime").on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments()).subscribe();
-    return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); };
+    const rejectedChannel = supabase.channel("csq-rejected-realtime").on("postgres_changes", { event: "*", schema: "public", table: "chief_of_staff_queue" }, () => fetchRejectedItems()).subscribe();
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); supabase.removeChannel(rejectedChannel); };
   }, []);
 
   const downloadPDF = (approval: Approval): void => {
@@ -1290,6 +1317,43 @@ export default function AdminApprovals() {
     }
   };
 
+  // ── Rejected-item conversation threads (second learning channel) ──────────
+  const getRejectedQS = (id: string): QuestionState => rejectedQuestions[id] ?? { open:false, selectedAgent:null, input:"", messages:[], loading:false };
+  const setRejectedQS = (id: string, update: Partial<QuestionState>) => setRejectedQuestions(prev => ({ ...prev, [id]: { ...getRejectedQS(id), ...update } }));
+
+  const toggleRejectedQuestion = (item: RejectedItem) => {
+    const qs = getRejectedQS(item.id);
+    if (!qs.open) {
+      let savedMessages: ConversationMessage[] = [];
+      if (item.context) { try { savedMessages = JSON.parse(item.context); } catch { savedMessages = []; } }
+      // Pre-aimed at the specific agent who wrote it -- never the Twin default
+      // that division-card questions fall back to.
+      const roster = DIVISION_AGENTS[item.division] ?? [];
+      const found = roster.find(a => a.agent_id === item.agent_id);
+      const agent = { agent_id: item.agent_id, agent_name: item.agent_name, role: found?.role ?? item.agent_name };
+      setRejectedQS(item.id, { open:true, selectedAgent:agent, messages: savedMessages });
+    } else { setRejectedQS(item.id, { open:false }); }
+  };
+
+  const handleAskAboutRejection = async (item: RejectedItem) => {
+    const qs = getRejectedQS(item.id);
+    if (!qs.selectedAgent || !qs.input.trim()) return;
+    const question = qs.input.trim();
+    const newMessages = [...qs.messages, { role:'user' as const, text:question }];
+    setRejectedQS(item.id, { messages:newMessages, input:"", loading:true });
+    try {
+      const cardOutput = `WHAT YOU WROTE: (see task: ${item.task})\n\nWHY IT WAS REJECTED: ${item.correction_notes ?? item.isabella_flags ?? 'Not specified.'}`;
+      const res = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: cardOutput, conversation_history: qs.messages, csq_id: item.id }) });
+      const data = await res.json();
+      const reply = data.response ?? "Unable to respond. Please try again.";
+      const updatedMessages: ConversationMessage[] = [...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:reply }];
+      setRejectedQS(item.id, { messages: updatedMessages, loading:false });
+      await supabase.from("chief_of_staff_queue").update({ context: JSON.stringify(updatedMessages) }).eq("id", item.id);
+    } catch {
+      setRejectedQS(item.id, { messages: [...newMessages, { role:'agent', agentName:qs.selectedAgent?.agent_name, text:"Something went wrong. Please try again." }], loading:false });
+    }
+  };
+
   const presentCategories = [...new Set(approvals.map(a => a.category === "division_briefing" ? "revenue_growth" : a.category))];
   const orderedCategories   = CATEGORY_ORDER.filter(c => presentCategories.includes(c));
   const remainingCategories = presentCategories.filter(c => !CATEGORY_ORDER.includes(c));
@@ -1761,6 +1825,62 @@ export default function AdminApprovals() {
                       </div>
                     </div>
                   )}
+
+                  {/* Needs Attention — items Isabella hard-rejected after 3 tries for
+                      this division. Each one is its own addressable block, not just
+                      a line of text: its own agent photo, its own note on what went
+                      wrong, and its own "Ask" thread aimed directly at that agent —
+                      talking to them here is the second training channel, alongside
+                      the automatic note Isabella already saved. */}
+                  {isBriefing && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                    const divRejected = rejectedItems.filter(r => r.division === approval.division);
+                    return (
+                      <div style={{ padding:"0 1rem 1rem" }}>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.6rem" }}>Needs Attention</p>
+                        <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.6rem" }}>
+                          {divRejected.map(item => {
+                            const rqs = getRejectedQS(item.id);
+                            const photo = agentPhotoByName[item.agent_name];
+                            return (
+                              <div key={item.id} style={{ border:"1px solid rgba(194,24,91,0.25)", borderRadius:8, padding:"0.65rem 0.75rem", background:"rgba(194,24,91,0.03)" }}>
+                                <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.4rem" }}>
+                                  {photo && <img src={photo} alt={item.agent_name} style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(194,24,91,0.4)", flexShrink:0 }} />}
+                                  <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#0A2342" }}>{item.agent_name}</span>
+                                  <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.4)" }}>· {item.task}</span>
+                                </div>
+                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.65)", lineHeight:1.5, margin:"0 0 0.5rem" }}>{item.correction_notes ?? item.isabella_flags ?? "Rejected -- no detail recorded."}</p>
+                                {rqs.messages.length > 0 && (
+                                  <div style={{ marginBottom:"0.5rem", display:"flex", flexDirection:"column" as const, gap:"0.4rem", maxHeight:220, overflowY:"auto" as const }}>
+                                    {rqs.messages.map((msg, i) => (
+                                      <div key={i} style={{ padding:"0.4rem 0.6rem", borderRadius:6, background:msg.role === "user" ? "rgba(212,175,55,0.08)" : "#FFFFFF", border:`1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(10,35,66,0.1)"}` }}>
+                                        <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, letterSpacing:"0.08em", color:msg.role === "user" ? "#D4AF37" : "rgba(10,35,66,0.4)", marginBottom:"0.2rem", textTransform:"uppercase" as const }}>{msg.role === "user" ? "You" : msg.agentName}</p>
+                                        <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"#0A2342", lineHeight:1.5, margin:0 }}>{msg.text}</p>
+                                      </div>
+                                    ))}
+                                    {rqs.loading && (
+                                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, color:"rgba(212,175,55,0.6)", margin:0, letterSpacing:"0.08em" }}>{item.agent_name} is responding...</p>
+                                    )}
+                                  </div>
+                                )}
+                                {!rqs.open ? (
+                                  <button onClick={() => toggleRejectedQuestion(item)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.3rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.4)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>
+                                    Ask {item.agent_name}
+                                  </button>
+                                ) : (
+                                  <div style={{ display:"flex", gap:"0.4rem" }}>
+                                    <input type="text" value={rqs.input} onChange={e => setRejectedQS(item.id, { input:e.target.value })} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskAboutRejection(item); } }} placeholder={`Talk to ${item.agent_name} about this...`} disabled={rqs.loading}
+                                      style={{ flex:1, background:"#FFFFFF", border:"1px solid rgba(194,24,91,0.3)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.6rem", outline:"none", opacity:rqs.loading ? 0.6 : 1 }} />
+                                    <button onClick={() => handleAskAboutRejection(item)} disabled={rqs.loading || !rqs.input.trim()}
+                                      style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.9rem", borderRadius:6, cursor:"pointer", border:"none", background:"#C2185B", color:"#FAFAF8", letterSpacing:"0.06em", opacity:(rqs.loading || !rqs.input.trim()) ? 0.5 : 1 }}>Send</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
