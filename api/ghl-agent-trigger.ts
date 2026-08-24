@@ -252,11 +252,38 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
       task_brief: `Prospect Scout — Kwame Asante | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
       output: `Found ${written} new prospect signal(s):\n\n${top}\n\nFull list stored in the prospect_opportunities table.`,
       status: 'pending',
-      notify_deanna: false,
+      notify_deanna: true,
       priority: 'normal',
       category: 'prospects',
       platform: null,
     });
+    // SMS/email notification (Aug 24, 2026) -- same GHL webhook Raymond's Daily Briefing
+    // uses, fired separately here since Kwame bypasses that chain entirely and nothing else
+    // would ever trigger it for his card. Only fires when he actually finds something new --
+    // no text on a zero-result day.
+    if (written > 0) {
+      const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
+      if (webhookUrl) {
+        try {
+          const label = `${written} new lead${written > 1 ? 's' : ''} found by Kwame's Prospect Scout.`;
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: 'druaiconsulting@gmail.com', phone: '+19796186671',
+              first_name: 'DeAnna', last_name: 'Upshaw',
+              agent_name: 'Kwame Asante', task: 'Prospect Scout',
+              approval_id: approvalId, summary: label, triggered_at: new Date().toISOString(),
+              review_url: 'https://app.druaiconsulting.com/admin-approvals',
+              sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
+              email_subject: `DRU AI Consulting — New Leads Found`,
+              email_body: `${label}\n\nReview:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+            }),
+          });
+          console.log('[kwame] Lead notification sent');
+        } catch (err) { console.error('[kwame] Notification failed (non-fatal):', err); }
+      }
+    }
     return { count: written, csqId: approvalId };
   } catch(error){ console.error('[kwame] Prospect Scout error:',error); return { count:0, csqId:null }; }
 }
