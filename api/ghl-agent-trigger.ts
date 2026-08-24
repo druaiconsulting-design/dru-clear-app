@@ -381,39 +381,46 @@ async function runRyan(omarResult:OmarResult): Promise<{csq_id:string|null;crm_u
   }
   let crmUpdates=0;
   for (const lead of omarResult.scored_leads){if (lead.contact_id){await fetch(`${GHL_API_BASE}/contacts/${lead.contact_id}`,{method:'PUT',headers:{Authorization:`Bearer ${ghlApiKey}`,Version:'2021-07-28','Content-Type':'application/json'},body:JSON.stringify({tags:[`ai-reviewed`]})});crmUpdates++;}}
-  // Write the durable, structured scoring record -- this is what Aaliyah reads directly
-  // (contact_id intact), separate from the narrative briefing below which is for DeAnna.
-  // Enriches each lead with its original campaign source from `submissions`, joined on
+  // Enrich each lead with its original campaign source from `submissions`, joined on
   // ghl_contact_id first (the real identity spine), falling back to email for older rows.
+  // This lookup now feeds BOTH the durable lead_scoring_events record (for Aaliyah/Client
+  // Delivery) AND Ryan's narrative briefing below (Aug 23, 2026 fix -- previously the
+  // source was captured in the database but never actually surfaced in the text DeAnna
+  // reads, so content-to-lead attribution was invisible day to day).
   const sbUrlEvents=process.env.VITE_SUPABASE_URL; const sbKeyEvents=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let sourceByContactId: Record<string, string> = {}; let sourceByEmail: Record<string, string> = {};
   if (sbUrlEvents&&sbKeyEvents&&omarResult.scored_leads.length>0){
     try{
       const contactIds=omarResult.scored_leads.map(l=>l.contact_id).filter(Boolean);
       const emails=omarResult.scored_leads.map(l=>l.email).filter(Boolean);
-      let submissionsById: Record<string, any> = {}; let submissionsByEmail: Record<string, any> = {};
       if (contactIds.length>0){
         const r=await fetch(`${sbUrlEvents}/rest/v1/submissions?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id,email,utm_campaign`,{headers:{apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`}});
-        if (r.ok){const rows=await r.json();for (const row of rows){if (row.ghl_contact_id) submissionsById[row.ghl_contact_id]=row;}}
+        if (r.ok){const rows=await r.json();for (const row of rows){if (row.ghl_contact_id && row.utm_campaign) sourceByContactId[row.ghl_contact_id]=row.utm_campaign;}}
       }
       if (emails.length>0){
         const r=await fetch(`${sbUrlEvents}/rest/v1/submissions?email=in.(${emails.join(',')})&select=email,utm_campaign&order=created_at.desc`,{headers:{apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`}});
-        if (r.ok){const rows=await r.json();for (const row of rows){if (row.email && !(row.email in submissionsByEmail)) submissionsByEmail[row.email]=row;}}
+        if (r.ok){const rows=await r.json();for (const row of rows){if (row.email && row.utm_campaign && !(row.email in sourceByEmail)) sourceByEmail[row.email]=row.utm_campaign;}}
       }
       const events=omarResult.scored_leads.map(l=>({
         ghl_contact_id: l.contact_id || null,
         name: l.name, email: l.email,
         recommended_action: l.recommended_action,
-        source_campaign: (l.contact_id && submissionsById[l.contact_id]?.utm_campaign) || submissionsByEmail[l.email]?.utm_campaign || null,
+        source_campaign: (l.contact_id && sourceByContactId[l.contact_id]) || sourceByEmail[l.email] || null,
         run_date: new Date().toISOString().split('T')[0],
       }));
       await fetch(`${sbUrlEvents}/rest/v1/lead_scoring_events`,{method:'POST',headers:{'Content-Type':'application/json',apikey:sbKeyEvents,Authorization:`Bearer ${sbKeyEvents}`,Prefer:'return=minimal'},body:JSON.stringify(events)});
     } catch(err){console.error('[runRyan] lead_scoring_events write failed:',err);}
   }
   // Every lead is treated equally (Aug 23, 2026 -- no more high/medium/low tiering).
-  const leadSummary = omarResult.scored_leads.map(l=>`* ${l.name} — ${l.recommended_action}`).join('\n');
+  // Each line now names the source campaign so DeAnna can see which content is actually
+  // producing leads, not just that leads exist.
+  const leadSummary = omarResult.scored_leads.map(l=>{
+    const source = (l.contact_id && sourceByContactId[l.contact_id]) || sourceByEmail[l.email] || 'unknown';
+    return `* ${l.name} — ${l.recommended_action} (source: ${source})`;
+  }).join('\n');
   const agentKnowledge = await getAgentKnowledge();
   const agentCorrections = await getAgentCorrections('Ryan Nakamura');
-  const briefing = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing. Every lead is valued equally here -- do not rank, score, or tier them.\nDATA: Total new leads today: ${omarResult.total_leads_scanned} | Already purchased, skipped: ${omarResult.already_purchased_skipped ?? 0}\nLEADS: ${leadSummary||'None today'}\nInclude: each lead with its recommended action (all directed to assessment.druaiconsulting.com), CRM updates completed, strategic next steps. Do not use "Briefing," "Brief," or "Executive Summary" as a heading.`);
+  const briefing = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting. Write a precise lead intelligence briefing. Every lead is valued equally here -- do not rank, score, or tier them.\nDATA: Total new leads today: ${omarResult.total_leads_scanned} | Already purchased, skipped: ${omarResult.already_purchased_skipped ?? 0}\nLEADS: ${leadSummary||'None today'}\nInclude: each lead with its recommended action (all directed to assessment.druaiconsulting.com) AND the source campaign shown for it in LEADS -- never drop or omit this, DeAnna needs to see which content brought each lead in. If several leads share the same source campaign, note that pattern explicitly. CRM updates completed, strategic next steps. Do not use "Briefing," "Brief," or "Executive Summary" as a heading.`);
   const csq_id = await writeToCSQ({agent_id:'ryan',agent_name:'Ryan Nakamura',division:'Revenue, Growth & Sales',task:'overnight_crm_sync',category:'lead_intelligence',raw_output:briefing,priority:omarResult.total_leads_scanned>0?'high':'normal',status:'pending',retry_count:0});
   const sbUrl=process.env.VITE_SUPABASE_URL; const sbKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (sbUrl&&sbKey){
