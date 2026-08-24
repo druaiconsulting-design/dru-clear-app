@@ -96,6 +96,24 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
   });
 }
 
+// Writes Isabella's final hard-reject note straight to the long-term training
+// table, same table DeAnna's manual reject/edit in AdminApprovals already uses.
+// This is the "first learning channel" -- automatic, no action needed from
+// DeAnna. csq_id is set (not approval_id) since this item lives in
+// chief_of_staff_queue, not approvals.
+async function writeAgentCorrection(agentName: string, note: string, csqId: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  try {
+    await fetch(`${url}/rest/v1/agent_corrections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
+      body: JSON.stringify({ agent_name: agentName, correction_note: note, source: 'isabella_hard_reject', csq_id: csqId }),
+    });
+  } catch (err) { console.error(`[isabella] Failed to write agent_correction for ${agentName}:`, err); }
+}
+
 async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRetryCount: number): Promise<void> {
   try {
     const agentKnowledge = await getAgentKnowledge();
@@ -171,6 +189,10 @@ OR: {"cleared":false,"flags":"specific issue — name which check failed","corre
           status: 'rejected',
         });
         console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
+        // First learning channel: save the final note automatically, no
+        // action needed from DeAnna. If she also talks to the agent about
+        // this item from the card, that's the second channel (ask-agent.ts).
+        await writeAgentCorrection(item.agent_name, result.correction_notes, item.id);
         return 'rejected';
       } else {
         await updateCSQ(item.id, {
