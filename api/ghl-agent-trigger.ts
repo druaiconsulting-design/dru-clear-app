@@ -337,6 +337,38 @@ async function getCrossRead(agentIds: string[], days = 7): Promise<string> {
   } catch { return ''; }
 }
 
+// Content theme log (Aug 24, 2026) -- shared running record of what Darius and Nia have
+// each actually published this week, so they can reference/build on each other's real
+// output instead of just following the same abstract weekly theme in parallel. Replaces
+// the dead content_queue dependency Darius previously read from (nothing has written to
+// content_queue since the CSQ migration -- see runDarius below).
+async function getContentThemeLog(days = 7): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const since = new Date(); since.setDate(since.getDate() - days);
+    const sinceDate = since.toISOString().split('T')[0];
+    const res = await fetch(`${url}/rest/v1/content_theme_log?created_at=gte.${sinceDate}&order=created_at.desc&limit=20&select=agent_name,format,theme,framework_covered,hook,created_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!res.ok) return '';
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    return rows.map((r:any) => {
+      const day = new Date(r.created_at).toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+      return `[${r.agent_name} — ${r.format} — ${day}] ${r.theme}${r.framework_covered ? ` (${r.framework_covered})` : ''}${r.hook ? ` | Hook: "${r.hook}"` : ''}`;
+    }).join('\n');
+  } catch { return ''; }
+}
+
+async function writeContentThemeLog(agentId:string, agentName:string, format:string, theme:string, hook?:string|null, frameworkCovered?:string|null): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  try {
+    await fetch(`${url}/rest/v1/content_theme_log`, { method:'POST', headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=minimal'}, body: JSON.stringify([{ agent_id: agentId, agent_name: agentName, format, theme: (theme||'').slice(0,300), hook: hook ? hook.slice(0,300) : null, framework_covered: frameworkCovered || null }]) });
+  } catch(err){ console.error('[content_theme_log] write failed:', err); }
+}
+
 async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500): Promise<string|null> {
   try {
     const agentKnowledge = await getAgentKnowledge();
@@ -558,26 +590,35 @@ Be specific about angles, not generic. Every framework reference must include �
 
 // PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON
 async function runDarius(): Promise<string|null> {
-  const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const today=new Date().toISOString().split('T')[0];
-  const now=new Date(); const monday=new Date(now); monday.setDate(now.getDate()-now.getDay()+1);
-  const weekOf=monday.toISOString().split('T')[0];
-  let topicBrief=''; let queueId:string|null=null;
-  if (url&&key){
-    const res=await fetch(`${url}/rest/v1/content_queue?week_of=eq.${weekOf}&status=eq.queued&scheduled_for=eq.${today}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-    if (res.ok){const queue=await res.json();if(queue.length>0){queueId=queue[0].id;topicBrief=`Framework: ${queue[0].framework_covered} | Type: ${queue[0].post_type} | Hook direction: ${queue[0].hook} | Content direction: ${queue[0].content}`;}}
-  }
   const brandMarks=await fetchBrandMarks();
   const positioning=await fetchBrandCopy('positioning');
   const agentKnowledge=await getAgentKnowledge();
   const agentCorrections=await getAgentCorrections('Darius King');
-  const topicContext=topicBrief||`Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}`;
+  // Aug 24, 2026 fix: previously read from content_queue, a table nothing has written to
+  // since the CSQ migration -- topicBrief was always empty and Darius silently fell back
+  // to a generic prompt, disconnected from Camila's weekly theme and Nia's actual output.
+  // Now reads Camila's weekly Content Strategy Brief (same cross-read Nia already uses)
+  // plus the shared content theme log, so today's post is grounded in what's real.
+  const camilaBrief = await getCrossRead(['camila']);
+  const themeLog = await getContentThemeLog();
+  const weeklyContext = camilaBrief
+    ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align today's post with this week's direction:\n${camilaBrief}`
+    : '';
+  const logContext = themeLog
+    ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (yours and Nia Robinson's) — reference or build on this, don't repeat it:\n${themeLog}`
+    : '';
+  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}`;
   const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
   const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
-  if (queueId&&url&&key){await fetch(`${url}/rest/v1/content_queue?id=eq.${queueId}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({status:'submitted',submitted_at:new Date().toISOString()})});}
+  // Log this piece to the shared content theme log so Nia (and tomorrow's Darius) can see
+  // exactly what went out today, not just the abstract weekly plan.
+  try {
+    const parsed = JSON.parse(structuredOutput.replace(/```json|```/g,'').trim());
+    await writeContentThemeLog('darius','Darius King','linkedin_post', parsed.content_type ? `${parsed.content_type} — ${positioning}` : positioning, parsed.hook || null, null);
+  } catch(err){ console.error('[runDarius] content_theme_log write failed:', err); }
   return csqId;
 }
 
@@ -638,12 +679,19 @@ async function runNia(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
   const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
   const camilaBrief  = await getCrossRead(['camila']);
+  const themeLog     = await getContentThemeLog();
   const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const niaPrefix    = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n`;
-  const strategyContext = camilaBrief
+  // Aug 24, 2026 fix: previously Nia only saw the abstract weekly plan, never what Darius
+  // had actually published. logContext folds his real output (and her own) from the shared
+  // log into strategyContext once here, so every prompt below picks it up automatically.
+  const logContext = themeLog
+    ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (Darius King's posts and your own) — reference or build on this where it fits naturally, don't repeat it:\n${themeLog}`
+    : '';
+  const strategyContext = (camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
-    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.';
+    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext;
   const intelContext = clientIntel
     ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
     : '\nNo prior intelligence — draw from framework-based scenarios.';
@@ -656,9 +704,11 @@ async function runNia(): Promise<string|null> {
       framework_spotlight: `Write a 200-300 word LinkedIn post spotlighting one proprietary framework (™). Hook: the problem it solves. Body: what shifts when leaders apply it. One concrete real-world example. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
       executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference (™). CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
     };
-    return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
+    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
       `${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${postInstructions[postTypeMap[dayOfWeek]]}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
       'normal',0,null,800);
+    await writeContentThemeLog('nia','Nia Robinson','linkedin_post', postTypeMap[dayOfWeek], null, null);
+    return csqId;
   }
 
   // ── FRIDAY — LinkedIn Native Article (500-700 words, ARTICLE FORMAT) ────────
@@ -672,9 +722,11 @@ async function runNia(): Promise<string|null> {
       executive_ai_mistakes: `Write a 500-700 word LinkedIn native article on the top mistakes executives make implementing AI. DeAnna as the authority who's seen it firsthand. One framework (™) as the solution lens. CTA: assessment.druaiconsulting.com.`,
       ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA™. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
     };
-    return await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
+    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
       `## ARTICLE FORMAT — LinkedIn Native Article\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${articleInstructions[topic]}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
       'normal',0,null,1500);
+    await writeContentThemeLog('nia','Nia Robinson','linkedin_article', topic, null, null);
+    return csqId;
   }
 
   // ── THURSDAY — LEAD, CLARITY, WIN! Newsletter × 4 tiers ─────────────────────
@@ -699,9 +751,12 @@ async function runNia(): Promise<string|null> {
       'high',0,null,1000);
 
     // Accelerator edition
-    return await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
+    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
       `## LEAD, CLARITY, WIN! Newsletter — Accelerator Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
       'high',0,null,1000);
+    // One log entry represents the whole newsletter (all 4 tiers share the same theme).
+    await writeContentThemeLog('nia','Nia Robinson','newsletter', topic, null, null);
+    return csqId;
   }
 
   return null; // Monday, Tuesday — Darius days
