@@ -99,6 +99,57 @@ async function getPeerCrossRead(source: string, limit = 2): Promise<string> {
   } catch { return ''; }
 }
 
+// ─── Real material for genius-level thinking ────────────────────────────────
+// GENIUS_MODE alone was never enough -- it's an instruction about the bar, not
+// the material. These two feeds give Tariq and Sasha something specific and
+// current to actually reason about, instead of riffing on static framework
+// definitions in a vacuum.
+
+// DeAnna's own DISC/Sales Copy training material -- whatever she's uploaded
+// most recently to the training-materials bucket (auto-extracted to text by
+// api/process-training-doc.ts). Capped at ~4 documents / ~12k chars combined
+// so the prompt stays a reasonable size.
+async function getTrainingMaterial(): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/training_materials?status=eq.processed&order=processed_at.desc&limit=4&select=original_filename,extracted_text`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!res.ok) return '';
+    const docs = await res.json() as { original_filename: string; extracted_text: string }[];
+    if (!Array.isArray(docs) || docs.length === 0) return '';
+    let combined = docs.map(d => `[${d.original_filename}]\n${d.extracted_text}`).join('\n\n---\n\n');
+    if (combined.length > 12000) combined = combined.slice(0, 12000) + '\n\n[...truncated]';
+    return combined;
+  } catch { return ''; }
+}
+
+// Kwame's real, sourced market signals -- actual people and organizations
+// showing real leadership/AI-adoption pain points, found via live web search.
+// Sitting unused in prospect_opportunities until now.
+async function getProspectSignals(limit = 8): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/prospect_opportunities?order=found_at.desc&limit=${limit}&select=prospect_name,organization,signal_summary,fit_reasoning`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!res.ok) return '';
+    const rows = await res.json() as { prospect_name: string; organization: string; signal_summary: string; fit_reasoning: string }[];
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    return rows.map(r => `- ${r.prospect_name} (${r.organization}): ${r.signal_summary} — ${r.fit_reasoning}`).join('\n');
+  } catch { return ''; }
+}
+
+// The depth instruction both Sasha and Tariq need alongside GENIUS_MODE --
+// GENIUS_MODE sets the bar, this makes them actually use the material instead
+// of writing generic strategy prose that could apply to any company.
+const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: You have DeAnna's own training material and real market signals below -- use them. Every insight must trace back to something specific in that material: a real signal Kwame found, a concept from DeAnna's own training content, a pattern across more than one data point. A claim that could apply to literally any AI consulting business is a failure, no matter how smart it sounds. If the material below is thin, say less rather than padding with generic strategy language. No artificial length target -- write as much as the material actually supports, and no more.`;
+
+
 // Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
 async function postAcknowledgmentComment(postId: string, firstName: string, signalContext: string): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -246,14 +297,24 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
     ? `\n\nTARIQ'S RECENT REVENUE INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${tariqContext}\n`
     : '';
 
+  // Real material to actually reason about, instead of the static framework
+  // definitions alone (see GENIUS_DEPTH_INSTRUCTION above for why this matters).
+  const [trainingMaterial, prospectSignals] = await Promise.all([getTrainingMaterial(), getProspectSignals()]);
+  const trainingSection = trainingMaterial
+    ? `\n\nDEANNA'S CURRENT DISC/SALES COPY TRAINING MATERIAL (what she's actively developing/teaching right now — ground your thinking in this, not just the static framework definitions above):\n${trainingMaterial}\n`
+    : '';
+  const signalsSection = prospectSignals
+    ? `\n\nKWAME'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen a DISC insight):\n${prospectSignals}\n`
+    : '';
+
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Sasha Kim');
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
+  const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content.
-${peerSection}
-Write a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF (280-320 words). Apply DISC Behavioral Intelligence across ALL FOUR buyer profiles.
+You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
+${peerSection}${trainingSection}${signalsSection}
+Write a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF. Apply DISC Behavioral Intelligence across ALL FOUR buyer profiles.
 
 Cover ALL FOUR DISC profiles every brief — one section per profile:
 
@@ -265,12 +326,12 @@ S — STEADY: How S-style buyers evaluate AI investments. Their need for certain
 
 C — CONSCIENTIOUS: How C-style buyers research AI solutions. Their analytical triggers and what they need to commit. One behavioral signal that indicates readiness. One communication strategy that satisfies their need for detail.
 
-Where Tariq's recent revenue intelligence connects — integrate it naturally. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
+Where Tariq's recent revenue intelligence, DeAnna's training material, or Kwame's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
 Be specific, tactical, and immediately actionable. This is DeAnna's secret weapon.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 1200);
+    const raw = await callAnthropic(prompt, 3000);
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
@@ -322,21 +383,31 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
 
   const angle = angleMap[dayOfWeek] ?? angleMap['Monday'];
 
+  // Real material to actually reason about, instead of the static framework
+  // definitions alone (see GENIUS_DEPTH_INSTRUCTION above for why this matters).
+  const [trainingMaterial, prospectSignals] = await Promise.all([getTrainingMaterial(), getProspectSignals()]);
+  const trainingSection = trainingMaterial
+    ? `\n\nDEANNA'S CURRENT DISC/SALES COPY TRAINING MATERIAL (what she's actively developing/teaching right now — ground your thinking in this, not just the static framework definitions above):\n${trainingMaterial}\n`
+    : '';
+  const signalsSection = prospectSignals
+    ? `\n\nKWAME'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen the strategy):\n${prospectSignals}\n`
+    : '';
+
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Tariq Oladele');
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
+  const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
 TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
-You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content.
+You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
 TODAY'S ANGLE: ${angle.label}
-${peerSection}
+${peerSection}${trainingSection}${signalsSection}
 ${angle.instruction}
 
-200-250 words. Be specific, tactical, and immediately actionable. This is DeAnna's competitive edge — every insight should feel like something she can act on today or this week.
+Be specific, tactical, and immediately actionable. This is DeAnna's competitive edge — every insight should feel like something she can act on today or this week.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 1000);
+    const raw = await callAnthropic(prompt, 3000);
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
