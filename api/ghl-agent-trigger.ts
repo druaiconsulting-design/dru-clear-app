@@ -86,13 +86,25 @@ async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> 
 // max_uses hard-caps search calls per run (cost control after the July on-demand
 // cascade incident); Anthropic bills web search at $10/1,000 searches, so a cap
 // of 6 keeps a weekly run to a few cents regardless of what Claude tries to do.
-async function callAnthropicWithWebSearch(prompt: string, maxTokens = 3000, maxSearches = 6): Promise<string> {
+async function callAnthropicWithWebSearch(prompt: string, maxTokens = 3000, maxSearches = 6, label = 'web_search'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search',max_uses:maxSearches}]})});
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
-  const blocks = (data.content ?? []) as Array<{type:string;text?:string}>;
+  const blocks = (data.content ?? []) as Array<{type:string;text?:string;name?:string;input?:{query?:string};content?:Array<{url?:string;title?:string}>}>;
+
+  // Previously discarded entirely -- only text blocks were kept, so there was
+  // no way to see what was actually searched. Logs every query issued and how
+  // many results came back for it.
+  const queries = blocks.filter(b => b.type === 'server_tool_use' && b.name === 'web_search').map(b => b.input?.query ?? '(no query)');
+  const resultCounts = blocks.filter(b => b.type === 'web_search_tool_result').map(b => Array.isArray(b.content) ? b.content.length : 0);
+  if (queries.length > 0) {
+    queries.forEach((q, i) => console.log(`[${label}] Searched: "${q}" — ${resultCounts[i] ?? '?'} result(s)`));
+  } else {
+    console.log(`[${label}] No web searches were issued for this run.`);
+  }
+
   return blocks.filter(b=>b.type==='text').map(b=>b.text ?? '').join('\n').trim();
 }
 
@@ -225,13 +237,14 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections('Kwame Asante');
     const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Prospect Scout for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nSearch the web for real, current signals of leaders and organizations showing they need what she offers — public posts, articles, interviews, or news where someone expresses a leadership, culture, or AI-adoption pain point. Signal-only: do NOT filter or select by title, company size, industry, or demographic. Any real signal of the right pain point qualifies, regardless of who it comes from.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"prospect_name\": string,\n      \"organization\": string,\n      \"signal_summary\": string (1-2 sentences on the real signal found),\n      \"matched_question\": string (one open-ended, declarative question in DeAnna's voice that speaks directly to this signal — follow the HOOK/QUESTION RULE above exactly: never yes/no, never \"X or Y\"),\n      \"source_url\": string,\n      \"fit_score\": number (1-10),\n      \"fit_reasoning\": string (1-2 sentences),\n      \"status\": \"new\"\n    }\n  ]\n}\nOnly include prospects you found real, current information on. If you find none, return {\"opportunities\": []}.`;
-    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownProspectKeys()]);
+    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt, 3000, 6, 'kwame'), getKnownProspectKeys()]);
     const parsed = extractJSONObject(raw);
     const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
     const newOnes = allFound.filter(o => {
       const nameKey = `${String(o.prospect_name||'').trim().toLowerCase()}|${String(o.organization||'').trim().toLowerCase()}`;
       return !knownKeys.has(nameKey);
     });
+    console.log(`[kwame] Found ${allFound.length} total, ${newOnes.length} new after dedup.`);
     if (newOnes.length === 0) return { count: 0, csqId: null };
 
     const rows = newOnes.map(o => ({...o, found_at:new Date().toISOString()}));
