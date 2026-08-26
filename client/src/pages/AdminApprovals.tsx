@@ -49,7 +49,7 @@ interface QuestionState {
 }
 
 // A chief_of_staff_queue item Isabella hard-rejected after 3 attempts.
-// Shown as its own addressable block at the bottom of that specific agent's own card.
+// Shown as its own addressable block at the bottom of each division's card (except Prospects).
 interface RejectedItem {
   id: string; agent_id: string; agent_name: string; division: string;
   task: string; correction_notes: string | null; isabella_flags: string | null;
@@ -487,7 +487,7 @@ export default function AdminApprovals() {
   };
 
   // Hard-rejected items (Isabella's 3rd-strike kills) from the last 7 days --
-  // shown as their own addressable block at the bottom of that specific agent's own card.
+  // shown as their own addressable block at the bottom of each division's card (except Prospects).
   const fetchRejectedItems = async () => {
     const since = new Date(); since.setDate(since.getDate() - 7);
     const { data, error } = await supabase
@@ -1829,13 +1829,18 @@ export default function AdminApprovals() {
                   )}
 
                   {/* Needs Attention — items Isabella hard-rejected after 3 tries for
-                      this specific agent. Each one is its own addressable block, not just
+                      this division. Each one is its own addressable block, not just
                       a line of text: its own agent photo, its own note on what went
                       wrong, and its own "Ask" thread aimed directly at that agent —
                       talking to them here is the second training channel, alongside
-                      the automatic note Isabella already saved. */}
-                  {isBriefing && rejectedItems.filter(r => r.agent_name === approval.agent_name).length > 0 && (() => {
-                    const divRejected = rejectedItems.filter(r => r.agent_name === approval.agent_name);
+                      the automatic note Isabella already saved. Division-wide on
+                      purpose: some agents (e.g. Elena, Jaylen) never get a standalone
+                      approval card of their own, this is the only place their
+                      corrections can surface. Excluded from the Prospects card only,
+                      since that's revenue opportunities, not agent training, and has
+                      no real connection to the rest of the division's corrections. */}
+                  {isBriefing && approval.category !== "prospects" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                    const divRejected = rejectedItems.filter(r => r.division === approval.division);
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.6rem" }}>Needs Attention</p>
