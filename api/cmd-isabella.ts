@@ -161,6 +161,8 @@ LEGAL & FINANCE EXCEPTION: Content from the Legal & Finance division is INTERNAL
 
 COMMUNITY CONNECTION EXCEPTION: Content from the Community Connection division is educational community content for Navigator and Accelerator subscribers. Framework lessons, action challenges, daily insights, strategic edge posts are firmly within Class 41 (educational) and Class 35 (community facilitation). UPSELL SIGNAL notes in Zoe and Micah outputs are internal routing instructions — do NOT flag them as class violations. If all five checks pass, return cleared:true.
 
+correction_notes is your finished verdict. Write it the way you'd state a conclusion you've already reached: the specific issue, and exactly how to fix it, in one to three sentences. When more than one issue exists, give each its own short sentence, stated as a finished finding.
+
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT: ${item.raw_output}
 
