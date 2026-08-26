@@ -98,9 +98,17 @@ async function callAnthropicWithWebSearch(prompt: string, maxTokens = 3000, maxS
   // no way to see what was actually searched. Logs every query issued and how
   // many results came back for it.
   const queries = blocks.filter(b => b.type === 'server_tool_use' && b.name === 'web_search').map(b => b.input?.query ?? '(no query)');
-  const resultCounts = blocks.filter(b => b.type === 'web_search_tool_result').map(b => Array.isArray(b.content) ? b.content.length : 0);
+  const resultBlocks = blocks.filter(b => b.type === 'web_search_tool_result');
+  const resultCounts = resultBlocks.map(b => Array.isArray(b.content) ? b.content.length : 0);
   if (queries.length > 0) {
-    queries.forEach((q, i) => console.log(`[${label}] Searched: "${q}" — ${resultCounts[i] ?? '?'} result(s)`));
+    queries.forEach((q, i) => {
+      console.log(`[${label}] Searched: "${q}" — ${resultCounts[i] ?? '?'} result(s)`);
+      // Diagnostic (Aug 25, 2026): log each result's title so we can see WHAT was
+      // found, not just how many — needed to tell "genuinely nothing out there"
+      // apart from "results came back but didn't name a specific person/org."
+      const titles = (resultBlocks[i]?.content ?? []).map(r => r.title ?? '(no title)');
+      titles.forEach(t => console.log(`[${label}]   - ${t}`));
+    });
   } else {
     console.log(`[${label}] No web searches were issued for this run.`);
   }
