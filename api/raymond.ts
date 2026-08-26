@@ -12,8 +12,8 @@
 //     Raymond removes metadata preambles but NEVER summarizes, compresses, or rewrites deliverables.
 //     No "Done:" prefix. The work speaks for itself.
 //   - "Needs Attention" section: last 24 hours ONLY (date-filtered). One brief line per agent
-//     showing the actual reason — so DeAnna can see who needs support without opening the queue.
-//     Flagged agents also get a ⚠️ inline on their card block. (Previously: verbose counts, stale flags.)
+//     showing a truncated slice of the actual reason — so DeAnna can see who needs support
+//     without opening the queue. Flagged agents also get a ⚠️ inline on their card block.
 //
 // PHASE 2: Detects Darius multi-platform JSON → populates linkedin_content, facebook_content, instagram_caption
 // The AI Twin no longer runs daily synthesis — she is the face of all video content and retains on-demand chat (twin.ts).
@@ -204,15 +204,18 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
     getCSQItems('needs_correction', flagsSince),
   ]);
 
-  // One entry per agent per division — store a brief reason (first sentence of correction_notes)
-  // so DeAnna can see what happened at a glance without opening the queue.
+  // One entry per agent per division — store a brief reason so DeAnna can see
+  // what happened at a glance without opening the queue.
   const flagData: Record<string, Record<string, { count: number; reason: string }>> = {};
   for (const f of [...rejectedItems, ...correctionItems]) {
     if (!flagData[f.division]) flagData[f.division] = {};
     if (!flagData[f.division][f.agent_name]) {
-      // Take the first sentence of correction_notes as the brief reason
-      const full = (f.correction_notes ?? f.isabella_flags ?? '').trim();
-      const brief = full.split(/\.\s+/)[0].replace(/\n/g, ' ').slice(0, 120);
+      // A straight slice of correction_notes, not a "first sentence" guess -- Isabella's
+      // notes are often numbered lists ("1. ... 2. ..."), and splitting on ". " cut the
+      // reason off right after the list number itself (e.g. just "1"). Truncating on
+      // length instead always shows real, actionable text, regardless of her formatting.
+      const full = (f.correction_notes ?? f.isabella_flags ?? '').trim().replace(/\n+/g, ' ');
+      const brief = full.length > 140 ? `${full.slice(0, 140).trim()}...` : full;
       flagData[f.division][f.agent_name] = { count: 1, reason: brief || 'flagged by Isabella' };
     } else {
       flagData[f.division][f.agent_name].count++;
@@ -549,4 +552,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const result = await runRaymondSynthesis();
   res.status(202).json({ success: true, ...result });
 }
-
