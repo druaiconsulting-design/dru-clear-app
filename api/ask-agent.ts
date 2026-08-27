@@ -15,6 +15,16 @@ interface ConversationMessage {
   text: string;
 }
 
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ask-agent', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -151,6 +161,7 @@ Answer DeAnna\'s question directly. If she asks you to expand on something you i
 
     const data     = await anthropicRes.json();
     const response = data.content?.[0]?.text ?? 'I was unable to generate a response. Please try again.';
+    await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
 
     console.log(`[ask-agent] ✅ ${agent_name} responded to DeAnna's question`);
     await writeAgentCorrection(question);
