@@ -124,17 +124,32 @@ const AGENT_CATEGORIES: Record<string, string> = {
 
 type ContentBlockItem = { type: string; text?: string; [key: string]: unknown };
 
-async function callAnthropic(content: string | ContentBlockItem[], maxTokens = 2000): Promise<string> {
+// Agents whose on-demand chat replies also run on Sonnet, matching their daily-cron depth.
+const SONNET_AGENTS = new Set(["sasha", "tariq", "marcus", "renata", "serena", "zara", "simone", "amelia", "jordan"]);
+
+async function callAnthropic(content: string | ContentBlockItem[], maxTokens = 2000, model = "claude-haiku-4-5-20251001"): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+  const startedAt = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content }] }),
   });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt).catch(() => {});
   return data.content?.[0]?.text ?? "";
+}
+
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: "twin-on-demand", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
 
 // ─── Concurrency lock — prevents fan-out / repeat-fire cascades ──────────────
@@ -315,7 +330,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     try {
       const raw = await callAnthropic(
         `${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
-        1200
+        1200,
+        "claude-sonnet-4-6"
       );
       const cleaned = raw.replace(/```json\s*|```/g, "").trim();
       const firstBrace = cleaned.indexOf("{");
@@ -364,7 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
       ? [...attachmentBlocks, { type: "text", text: taskText }]
       : taskText;
-    const output = await callAnthropic(agentContent, 2000);
+    const output = await callAnthropic(agentContent, 2000, SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ
