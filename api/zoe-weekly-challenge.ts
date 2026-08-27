@@ -14,6 +14,15 @@ const GHL_WEBHOOK_SECRET    = process.env.GHL_WEBHOOK_SECRET!;
 
 export const config = { maxDuration: 60 };
 
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${SUPABASE_URL}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` }, body: JSON.stringify({ source_file: 'zoe-weekly-challenge', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Auth: only pg_cron (with secret header) may call this
   const secret = req.headers['x-cron-secret'];
@@ -71,6 +80,7 @@ Rules:
     }
 
     const anthropicData = await anthropicRes.json();
+    await logModelUsage('claude-sonnet-4-6', anthropicData.usage?.input_tokens ?? 0, anthropicData.usage?.output_tokens ?? 0).catch(() => {});
     const content: string = anthropicData.content?.[0]?.text?.trim() ?? '';
 
     if (!content) {
