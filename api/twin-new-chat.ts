@@ -15,6 +15,16 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: "twin-new-chat", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
+}
+
 const MEMORY_DISTILL_PROMPT = `You maintain durable long-term memory for DeAnna R. Upshaw's AI Twin — a command interface for her DRU AI Consulting business.
 
 EXISTING MEMORY (facts already known from past conversations):
@@ -90,6 +100,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const anthropicData = await anthropicRes.json();
+    await logModelUsage("claude-haiku-4-5-20251001", anthropicData.usage?.input_tokens ?? 0, anthropicData.usage?.output_tokens ?? 0).catch(() => {});
     const updatedMemory: string = anthropicData.content?.[0]?.text?.trim() ?? existingMemory;
 
     await fetch(`${supabaseUrl}/rest/v1/twin_memory?id=eq.1`, {
