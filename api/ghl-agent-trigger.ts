@@ -75,12 +75,25 @@ const AALIYAH_CC_ROUTING: Record<string, string> = {
   course_interest:     'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/EDVsKWuDioWGDHaI1K7S',
 };
 
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens = 2000, model = 'claude-haiku-4-5-20251001'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+  const startedAt = Date.now();
+  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json(); return data.content?.[0]?.text ?? '';
+  const data = await res.json();
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt).catch(() => {});
+  return data.content?.[0]?.text ?? '';
+}
+
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ghl-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
 // Web-search-enabled Anthropic call — used only by Adaeze's weekly grant scout.
 // max_uses hard-caps search calls per run (cost control after the July on-demand
@@ -424,11 +437,11 @@ async function writeContentThemeLog(agentId:string, agentName:string, format:str
   } catch(err){ console.error('[content_theme_log] write failed:', err); }
 }
 
-async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500): Promise<string|null> {
+async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500,model='claude-haiku-4-5-20251001'): Promise<string|null> {
   try {
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections(agentName);
-    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}${agentCorrections}`,maxTokens);
+    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}${agentCorrections}`,maxTokens,model);
     return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{})});
   } catch(error){console.error(`[${agentId}] Error:`,error);return null;}
 }
@@ -1109,7 +1122,7 @@ async function runMarcus(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const pipelineData = await fetchLegalFinanceData();
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. DISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES:\n1. Calibrate every recommendation to the actual revenue stage shown in the data. Do not advise on quarterly estimated tax payments if total revenue = $0.\n2. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"No revenue collected yet. Tax planning is in setup stage.\" Then give one specific structural action to complete before the first dollar arrives.\n3. If there IS real revenue, report it by client and advise on tax obligations tied to those exact amounts.\n4. Do not repeat the same S-Corp election or home office advice every week unless something in the data has changed that makes it newly relevant.\n5. One time-sensitive flag only if something is genuinely urgent based on real data or the calendar.\n\nFormat: 150 words or fewer. Write in first person as Marcus.`,'normal',0,null,600);
+  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. DISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES:\n1. Calibrate every recommendation to the actual revenue stage shown in the data. Do not advise on quarterly estimated tax payments if total revenue = $0.\n2. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"No revenue collected yet. Tax planning is in setup stage.\" Then give one specific structural action to complete before the first dollar arrives.\n3. If there IS real revenue, report it by client and advise on tax obligations tied to those exact amounts.\n4. Do not repeat the same S-Corp election or home office advice every week unless something in the data has changed that makes it newly relevant.\n5. One time-sensitive flag only if something is genuinely urgent based on real data or the calendar.\n\nFormat: 150 words or fewer. Write in first person as Marcus.`,'normal',0,null,600,'claude-sonnet-4-6');
 }
 
 // P5
@@ -1316,7 +1329,7 @@ async function runJordan(): Promise<string|null> {
     weekly_creative_recap:`Review this week's creative direction. Note what was assigned. Do not describe any deliverable as completed or live unless confirmed in the delivery data above. One quality recommendation for next week.`
   };
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('jordan','Jordan Hayes','Client Delivery','daily_creative_direction','creative_direction',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. You coordinate: Simone Laurent (Course Architect), Theo Nguyen (Presentation Designer), Amelia Santos (Training Video Producer).\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULE: Do not describe any asset, module, or video as complete, deployed, or live unless the data above confirms it. Course enrollments and lessons completed are the truth — report them as-is.\n\nFOCUS: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,1500);
+  return await runAgentToCSQ('jordan','Jordan Hayes','Client Delivery','daily_creative_direction','creative_direction',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. You coordinate: Simone Laurent (Course Architect), Theo Nguyen (Presentation Designer), Amelia Santos (Training Video Producer).\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULE: Do not describe any asset, module, or video as complete, deployed, or live unless the data above confirms it. Course enrollments and lessons completed are the truth — report them as-is.\n\nFOCUS: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,1500,'claude-sonnet-4-6');
 }
 async function runSimone(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1325,7 +1338,7 @@ async function runSimone(): Promise<string|null> {
   const moduleMap:Record<string,string>={Monday:'Module 1: AI Readiness (DRU CLEAR™ Foundation)',Tuesday:'Module 2: AI Strategy (DRU AI Transformation Pathway™ — Discover & Diagnose)',Wednesday:'Module 3: AI Design & Deploy (DRU AI Transformation Pathway™ — Design & Deploy)',Thursday:'Module 4: AI Leadership (5D Leadership™ + 5C Cultural DNA™)',Friday:'Module 5: AI Mastery (DRU AI Leadership Ecosystem™.)'};
   const todayModule=moduleMap[dayOfWeek]??'Module 1: AI Readiness (DRU CLEAR™ Foundation)';
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCOURSE: From Confusion to Confident with AI™. Tiers: Self-Paced $1,497, Live Cohort $7,997, Cohort Mastermind $12,997.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent completion rates, cohort data, learner feedback, or engagement metrics. The real numbers are above — use only those.\n2. If course lessons completed = 0, the course has not been completed by any student yet. Do not reference student outcomes.\n3. Course enrollments shows how many students exist. Calibrate your architecture decisions to that reality.\n4. You are building architecture — that is real, valuable work even before students arrive. But describe it as design in progress, not as complete or validated.\n\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check and one real-world application activity.\n**Today's Priority** — Single most important architecture decision or asset to produce today.\n\nFormat: 250 words or fewer. Write in first person as Simone.`,'normal',0,null,1500);
+  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCOURSE: From Confusion to Confident with AI™. Tiers: Self-Paced $1,497, Live Cohort $7,997, Cohort Mastermind $12,997.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent completion rates, cohort data, learner feedback, or engagement metrics. The real numbers are above — use only those.\n2. If course lessons completed = 0, the course has not been completed by any student yet. Do not reference student outcomes.\n3. Course enrollments shows how many students exist. Calibrate your architecture decisions to that reality.\n4. You are building architecture — that is real, valuable work even before students arrive. But describe it as design in progress, not as complete or validated.\n\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check and one real-world application activity.\n**Today's Priority** — Single most important architecture decision or asset to produce today.\n\nFormat: 250 words or fewer. Write in first person as Simone.`,'normal',0,null,1500,'claude-sonnet-4-6');
 }
 async function runTheo(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1353,7 +1366,7 @@ async function runAmelia(): Promise<string|null> {
     social_video_brief:`30-60 second video concept for LinkedIn or Instagram Reels. First 3-second hook, core message tied to one DRU framework, visual direction, CTA to assessment.druaiconsulting.com.`
   };
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery','daily_video_production','video_production',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent view counts, engagement rates, or video performance metrics. No real video data exists yet — say so if relevant.\n2. If clients in journey = 0, testimonial frameworks are prep work only — label them as such, not as active production.\n3. You are producing creative briefs and scripts — that is real, valuable work. Just be honest about what stage the business is at.\n\nVIDEO TYPE: ${videoType}\n${videoInstructions[videoType]}\n**Production Checklist** — Three technical requirements for today's video type.\n**Today's Priority** — Single most important video asset to advance today.\n\nFormat: 250 words or fewer. Write in first person as Amelia.`,'normal',0,null,1500);
+  return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery','daily_video_production','video_production',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent view counts, engagement rates, or video performance metrics. No real video data exists yet — say so if relevant.\n2. If clients in journey = 0, testimonial frameworks are prep work only — label them as such, not as active production.\n3. You are producing creative briefs and scripts — that is real, valuable work. Just be honest about what stage the business is at.\n\nVIDEO TYPE: ${videoType}\n${videoInstructions[videoType]}\n**Production Checklist** — Three technical requirements for today's video type.\n**Today's Priority** — Single most important video asset to advance today.\n\nFormat: 250 words or fewer. Write in first person as Amelia.`,'normal',0,null,1500,'claude-sonnet-4-6');
 }
 
 // P8
@@ -1433,7 +1446,7 @@ export default async function handler(req:any,res:any): Promise<void> {
 
   if (route.pipeline==='p1_omar'){const omar=await runOmar();const ryan=await runRyan(omar);res.status(202).json({success:true,agent:route.agent_name,leads_scanned:omar.total_leads_scanned,crm_updates:ryan.crm_updates});}
   else if (route.pipeline==='p1_omar_realtime'){const result=await runOmarRealtime(payload);res.status(202).json({success:result.success,agent:route.agent_name,contact_id:result.contact_id,skipped_reason:result.skipped_reason});}
-  else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`,'normal',0,null,1500,'claude-sonnet-4-6');res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confident with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
     // PARKED Aug 23, 2026 -- Aaliyah's outreach-email job was found fully redundant with
@@ -1476,7 +1489,7 @@ THIS WEEK'S ACTION — exactly 3 concrete micro-steps a member can do this week,
 
 REFLECTION — one powerful question that makes them pause and answer for themselves.
 
-Do NOT include "The Real Cost," "The Pattern," or any fear/cost-contrast section — no fear language of any kind. Lead with what is possible throughout; avoid negative constructions ("don't," "didn't," "not," "instead of") — reframe every statement as active, affirmative, forward-moving language. Vocabulary register is elevated and deliberate ("achieved significant advancement," "meticulously prepared") while staying warm, not stiff. Vary sentence rhythm — semicolons for flow, short punchy statements for emphasis. Write every word as DeAnna herself would — this must sound like DeAnna authored it, not a content writer approximating her.
+Lead with what is possible throughout — write every statement as active, affirmative, forward-moving language, the kind that names what's true and what to do next rather than what to fear or avoid. Vocabulary register is elevated and deliberate ("achieved significant advancement," "meticulously prepared") while staying warm, not stiff. Vary sentence rhythm — semicolons for flow, short punchy statements for emphasis. Write every word as DeAnna herself would — this must sound like DeAnna authored it, not a content writer approximating her.
 
 CLOSING — always four parts, in this order:
 
@@ -1489,7 +1502,7 @@ CLOSING — always four parts, in this order:
 4. Want to continue on your DRU AI Transformation Pathway™ journey with a custom-made, just-for-you roadmap? Click here frameworks.druaiconsulting.com
 
 Write the complete article. This is the full PDF content — not a summary or outline.`,
-    'normal',0,null,2500);
+    'normal',0,null,2500,'claude-sonnet-4-6');
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});
   }
   else if (route.pipeline==='p1_elena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
