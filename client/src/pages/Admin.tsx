@@ -71,6 +71,32 @@ function useStats() {
   return { stats, loading };
 }
 
+interface ModelCost { today_usd: number; last_7_days_usd: number; }
+
+function useModelCost() {
+  const [cost, setCost] = useState<ModelCost>({ today_usd: 0, last_7_days_usd: 0 });
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    async function fetchCost() {
+      try {
+        const sevenDaysAgo = new Date(); sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7); sevenDaysAgo.setUTCHours(0, 0, 0, 0);
+        const startOfToday = new Date(); startOfToday.setUTCHours(0, 0, 0, 0);
+        const { data, error } = await supabase.from("model_usage_log").select("cost_usd, created_at").gte("created_at", sevenDaysAgo.toISOString());
+        if (error) throw error;
+        let todayTotal = 0, weekTotal = 0;
+        data?.forEach((row: { cost_usd: number; created_at: string }) => {
+          weekTotal += Number(row.cost_usd);
+          if (new Date(row.created_at) >= startOfToday) todayTotal += Number(row.cost_usd);
+        });
+        setCost({ today_usd: todayTotal, last_7_days_usd: weekTotal });
+      } catch (err) { console.error("Failed to fetch model cost:", err); }
+      finally { setLoading(false); }
+    }
+    fetchCost();
+  }, []);
+  return { cost, loading };
+}
+
 interface Submission {
   id: string; created_at: string; first_name: string; last_name: string; email: string;
   company: string; role: string; country_name: string; total_score: number; tier: string;
@@ -454,6 +480,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [copied, setCopied]                     = useState(false);
   const { stats, loading }                      = useStats();
+  const { cost, loading: costLoading }          = useModelCost();
   const [hasPasskey, setHasPasskey]             = useState(false);
   const [passkeyLoading, setPasskeyLoading]     = useState(false);
   const [passkeyMessage, setPasskeyMessage]     = useState("");
@@ -544,6 +571,16 @@ export default function Admin() {
           </div>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>Sessions Booked</p>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>Running total · updates in real time on booking</p>
+        </div>
+
+        {/* AI model cost */}
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 10, padding: "1.1rem 1rem", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>🤖</span>
+            <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontWeight: 700, fontSize: "1.4rem", margin: 0 }}>{costLoading ? "..." : `$${cost.today_usd.toFixed(2)}`}</p>
+          </div>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>AI Model Cost — Today</p>
+          <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.65rem", margin: 0 }}>{costLoading ? "..." : `$${cost.last_7_days_usd.toFixed(2)} over the last 7 days`} · real Anthropic API spend, logged per call</p>
         </div>
 
         <ClientIntelligenceDashboard />
