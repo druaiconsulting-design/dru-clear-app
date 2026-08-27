@@ -13,7 +13,7 @@ export const config = { maxDuration: 60 };
 
 import { VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
+const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Make every sentence earn its place with real specificity and depth.`;
 
 const BRAND_COPY_FALLBACK: Record<string,string> = {
   positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
@@ -60,12 +60,25 @@ function enforceTM(content: string): string {
   return corrected;
 }
 
-async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens = 1500, model = 'claude-haiku-4-5-20251001'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }) });
+  const startedAt = Date.now();
+  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }) });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json(); return data.content?.[0]?.text ?? '';
+  const data = await res.json();
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt).catch(() => {});
+  return data.content?.[0]?.text ?? '';
+}
+
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'cc-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
 async function writeToCommunityPosts(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -147,7 +160,7 @@ async function getProspectSignals(limit = 8): Promise<string> {
 // The depth instruction both Sasha and Tariq need alongside GENIUS_MODE --
 // GENIUS_MODE sets the bar, this makes them actually use the material instead
 // of writing generic strategy prose that could apply to any company.
-const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: You have DeAnna's own training material and real market signals below -- use them. Every insight must trace back to something specific in that material: a real signal Kwame found, a concept from DeAnna's own training content, a pattern across more than one data point. A claim that could apply to literally any AI consulting business is a failure, no matter how smart it sounds. If the material below is thin, say less rather than padding with generic strategy language. No artificial length target -- write as much as the material actually supports, and no more.`;
+const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Kwame found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — DISC and sales acceleration are one lens, not the only one.`;
 
 
 // Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
@@ -156,7 +169,7 @@ async function postAcknowledgmentComment(postId: string, firstName: string, sign
   if (!url || !key) return;
   try {
     const agentCorrections = await getAgentCorrections('Micah Santos');
-    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Do NOT mention products, pricing, services, or include any links. Be warm, human, and community-focused. Write ONLY the reply text.`;
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Keep the reply focused entirely on their engagement itself — warm, human, and community-focused, with no product, pricing, service, or link mentions. Write ONLY the reply text.`;
     const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
     await fetch(`${url}/rest/v1/community_comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Micah Santos', content: acknowledgment, is_flagged: false, is_active: true }) });
     console.log(`[micah] Acknowledgment posted to post ${postId} for ${firstName}`);
@@ -327,11 +340,12 @@ S — STEADY: How S-style buyers evaluate AI investments. Their need for certain
 C — CONSCIENTIOUS: How C-style buyers research AI solutions. Their analytical triggers and what they need to commit. One behavioral signal that indicates readiness. One communication strategy that satisfies their need for detail.
 
 Where Tariq's recent revenue intelligence, DeAnna's training material, or Kwame's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
+Draw the connection to DRU CLEAR™, 5C Cultural DNA™, or 5D Leadership™ wherever a DISC insight genuinely touches one of them — a D-style buyer's need for control connects to 5D Leadership's SELF dimension, an S-style buyer's need for relational safety connects to 5C's CONNECTION. Make the link only where it's real, not in every section.
 Be specific, tactical, and immediately actionable. This is DeAnna's secret weapon.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 3000);
+    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-4-6');
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
@@ -402,12 +416,13 @@ You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence,
 TODAY'S ANGLE: ${angle.label}
 ${peerSection}${trainingSection}${signalsSection}
 ${angle.instruction}
+Draw the connection to DRU CLEAR™, 5C Cultural DNA™, or 5D Leadership™ wherever this week's angle genuinely touches one of them — a conversion play often runs through 5D Leadership's PEOPLE dimension, a pipeline move often runs through DRU CLEAR's ALIGNMENT dimension. Make the link only where it's real, not in every section.
 
 Be specific, tactical, and immediately actionable. This is DeAnna's competitive edge — every insight should feel like something she can act on today or this week.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 3000);
+    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-4-6');
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
