@@ -127,6 +127,48 @@ type CommandDetection =
   | { is_command: true; needs_clarification: true; clarifying_question: string }
   | { is_command: true; needs_clarification: false; agent_id: string; agent_name: string; task: string };
 
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: "twin", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
+}
+
+// Twin's replies stream directly to the client, so usage can't be read from a
+// single .json() call the way every other file does it. This reads a teed copy
+// of the same stream independently, in the background, purely to log real
+// token counts — it never touches or delays what the client actually receives.
+async function logStreamUsage(stream: ReadableStream<Uint8Array>, model: string): Promise<void> {
+  try {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          if (evt.type === "message_start") inputTokens = evt.message?.usage?.input_tokens ?? inputTokens;
+          if (evt.type === "message_delta") outputTokens = evt.usage?.output_tokens ?? outputTokens;
+        } catch { /* ignore malformed SSE lines */ }
+      }
+    }
+    await logModelUsage(model, inputTokens, outputTokens);
+  } catch (err) {
+    console.error("[twin] Stream usage logging failed:", err);
+  }
+}
+
 async function detectCommand(lastMessage: string, apiKey: string): Promise<CommandDetection> {
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -140,6 +182,7 @@ async function detectCommand(lastMessage: string, apiKey: string): Promise<Comma
     });
     if (!res.ok) return { is_command: false };
     const data = await res.json();
+    await logModelUsage("claude-haiku-4-5-20251001", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
     const text: string = data.content?.[0]?.text ?? '{"is_command":false}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return { is_command: false };
@@ -315,7 +358,9 @@ Keep it short — 1-2 sentences, warm and direct, just the question.`;
         return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
       }
 
-      return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+      const [clientStream1, usageStream1] = anthropicRes.body!.tee();
+      logStreamUsage(usageStream1, "claude-haiku-4-5-20251001").catch(() => {});
+      return new Response(clientStream1, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
     }
 
     // ── Case: request is clear enough to route. ─────────────────────────────────
@@ -396,7 +441,9 @@ FORMATTING RULES — strictly enforced:
         return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
       }
 
-      return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+      const [clientStream2, usageStream2] = anthropicRes.body!.tee();
+      logStreamUsage(usageStream2, "claude-haiku-4-5-20251001").catch(() => {});
+      return new Response(clientStream2, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
     }
 
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -410,7 +457,9 @@ FORMATTING RULES — strictly enforced:
       return new Response(JSON.stringify({ error: `Anthropic error: ${anthropicRes.status}`, detail: errText }), { status: anthropicRes.status, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
-    return new Response(anthropicRes.body, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
+    const [clientStream3, usageStream3] = anthropicRes.body!.tee();
+    logStreamUsage(usageStream3, "claude-haiku-4-5-20251001").catch(() => {});
+    return new Response(clientStream3, { headers: { ...CORS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" } });
 
   } catch (error: unknown) {
     console.error("[twin] Unhandled error:", error instanceof Error ? error.stack ?? error.message : String(error));
