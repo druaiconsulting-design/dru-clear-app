@@ -17,6 +17,16 @@ import type { OmarResult, ScoredLead } from './omar';
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ryan', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
+}
+
 export interface RyanResult {
   success: boolean;
   approval_id: string | null;
@@ -102,6 +112,7 @@ Keep it concise, actionable, and aligned with DRU AI Consulting's brand voice. D
   if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
 
   const data = await response.json();
+  await logModelUsage('claude-haiku-4-5-20251001', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? 'Briefing card generation failed.';
 }
 
