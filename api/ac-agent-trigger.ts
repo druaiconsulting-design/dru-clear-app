@@ -9,13 +9,13 @@ export const config = { maxDuration: 60 };
 
 import { VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
 
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Never produce generic or surface-level work. Every sentence must earn its place.`;
+const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Make every sentence earn its place with real specificity and depth.`;
 
 // Applied alongside VOICE_DNA only for AC daily community content (runACAgent, runACAgentReply) —
 // this content has a hard rule against naming frameworks/pricing/™, which conflicts with
 // VOICE_DNA's CLEAR/Insight anchor-word instruction. This note resolves the conflict per
 // DeAnna's explicit direction: keep the rest of VOICE_DNA, drop only the anchor-word part.
-const AC_VOICE_EXCEPTION = `\nEXCEPTION TO THE ABOVE: Do NOT weave in "CLEAR" or any named framework, program, diagnostic, course, bundle, price, or the ™ symbol as an anchor word or otherwise — Accelerator Circle daily community content never references DRU AI Consulting IP by name. Everything else in the voice rules above still applies in full.`;
+const AC_VOICE_EXCEPTION = `\nEXCEPTION TO THE ABOVE: Accelerator Circle daily community content stays free of DRU AI Consulting IP by name — write it without "CLEAR," any named framework, program, diagnostic, course, bundle, price, or the ™ symbol. Everything else in the voice rules above still applies in full.`;
 
 interface ACAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 
@@ -40,16 +40,31 @@ function enforceTM(content: string): string {
   return corrected;
 }
 
-async function callAnthropic(prompt: string, maxTokens = 1500): Promise<string> {
+// All three Accelerator Circle agents (Matthew, Petra, Renata) run on Sonnet —
+// this file serves only ACC content, so the change applies at the file level.
+async function callAnthropic(prompt: string, maxTokens = 1500, model = 'claude-sonnet-4-6'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+  const startedAt = Date.now();
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json(); return data.content?.[0]?.text ?? '';
+  const data = await res.json();
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt).catch(() => {});
+  return data.content?.[0]?.text ?? '';
+}
+
+// Logs every real API call's actual token usage and cost to Supabase so spend
+// is visible in the Intelligence Hub instead of estimated by hand.
+async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ac-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
 
 async function writeToCommunityPosts(record: Record<string, unknown>): Promise<string | null> {
