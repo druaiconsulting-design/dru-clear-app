@@ -221,9 +221,11 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
 
     const rows = activeOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
     const written = await writeGrantOpportunities(rows);
-    // Surface the top 5 with everything needed to actually apply — not just a list.
-    // DeAnna needs: where to apply, what it pays, why it fits, and the deadline.
-    const top = activeOnes.slice(0,5).map((o:any) => {
+    // Every opportunity found today, not just a top-5 slice -- DeAnna reviews and
+    // picks herself; no funder link in the text itself, the card's own layout
+    // (source: adaeze_grants_full_list) puts a "View Funder Page" link and a
+    // "Have Kwame Draft This" button directly under each entry.
+    const allToday = activeOnes.map((o:any) => {
       // Clean up opportunity_name if it already embeds the funder name in parens — prevents double display
       const cleanName = String(o.opportunity_name ?? '').replace(
         new RegExp(`\\s*\\(${String(o.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
@@ -232,20 +234,19 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
         `**${cleanName}** — ${o.funder}`,
         `Fit: ${o.fit_score}/10 | Amount: ${o.amount_range ?? 'See link'} | Deadline: ${o.deadline}`,
         `Why it fits: ${o.fit_reasoning ?? 'Strong brand alignment'}`,
-        `Apply here: ${o.source_url ?? 'URL not found — search funder name'}`,
       ];
       return lines.join('\n');
     }).join('\n\n---\n\n');
     // Write directly to approvals — bypasses CSQ → command layer → Raymond chain
     // which was adding a full day of delay for no benefit (Raymond passes grants through untouched).
     const approvalId = await writeApprovalDirect({
-      source: 'adaeze_grants',
+      source: 'adaeze_grants_full_list',
       trigger_type: 'grants',
       agent_name: 'Adaeze Nwosu',
       agent_role: 'Revenue, Growth & Sales',
       division: 'Revenue, Growth & Sales',
       task_brief: `Daily Grant Scout — Adaeze Nwosu | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
-      output: `Found ${written} new grant opportunity/opportunities today. Top picks ready to apply:\n\n${top}\n\nFull list with all details stored in the grant_opportunities table.`,
+      output: allToday,
       status: 'pending',
       notify_deanna: false,
       priority: 'normal',
