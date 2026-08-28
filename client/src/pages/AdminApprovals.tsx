@@ -117,7 +117,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
   cc_upsell_outreach:"CC Upsell Signal",
   community_opportunity:"CC Opportunity",
-  ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants",
+  ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants", grant_applications:"Grant Application Drafts",
   travis_video_production:"Travis Video Production",
   video_script:"Video Script",
 };
@@ -125,7 +125,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CATEGORY_ORDER = [
   "daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
-  "community_connection","community_post","social","travis_video_production","video_script","email","proposal","grants","content","other",
+  "community_connection","community_post","social","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
 
@@ -386,6 +386,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "video_script")                return { text: "📝 Video Script",    color: "#1A5276" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
   if (approval.category === "grants")                       return { text: "Grants",             color: "#8A6E1A" };
+  if (approval.category === "grant_applications")            return { text: "Grant Application Drafts", color: "#8A6E1A" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
     return { text: "Revenue, Growth & Sales", color: "#D4AF37" };
   if (approval.division && DIVISION_COLORS[approval.division])
@@ -1916,7 +1917,7 @@ export default function AdminApprovals() {
                       corrections can surface. Excluded from the Prospects card only,
                       since that's revenue opportunities, not agent training, and has
                       no real connection to the rest of the division's corrections. */}
-                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
                     const divRejected = rejectedItems.filter(r => r.division === approval.division);
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
