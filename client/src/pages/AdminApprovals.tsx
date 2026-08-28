@@ -1681,43 +1681,40 @@ export default function AdminApprovals() {
                             style={{ width:"100%", marginTop:"0.5rem", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(212,175,55,0.4)", resize:"vertical" as const, boxSizing:"border-box" as const }}
                           />
                         </>
-                      ) : (
-                        <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
-                      )}
-                      {approval.source === "adaeze_grants_full_list" && editingId !== approval.id && (
-                        <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(212,175,55,0.2)", paddingTop:"0.875rem" }}>
-                          <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.6rem" }}>
-                            Pick One For Kwame To Draft
-                          </p>
-                          <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.5rem", maxHeight:420, overflowY:"auto" as const }}>
-                            {grantOpps.length === 0 && (
-                              <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", color:"rgba(10,35,66,0.4)" }}>No open opportunities right now.</p>
-                            )}
-                            {grantOpps.map(o => (
-                              <div key={o.id} style={{ border:"1px solid rgba(10,35,66,0.1)", borderRadius:8, padding:"0.6rem 0.75rem", background:"rgba(10,35,66,0.015)" }}>
-                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#0A2342", margin:"0 0 0.2rem" }}>{o.opportunity_name} — {o.funder}</p>
-                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.5)", margin:"0 0 0.5rem" }}>
-                                  Amount: {o.amount_range} | Deadline: {o.deadline} | Fit: {o.fit_score}/10
-                                </p>
-                                <a href={o.source_url} target="_blank" rel="noopener noreferrer" style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none", background:"rgba(212,175,55,0.08)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:6, padding:"0.4rem 0.6rem", marginBottom:"0.5rem" }}>
-                                  View Funder Page →
-                                </a>
-                                <button
-                                  onClick={() => handleDraftGrant(o.opportunity_name)}
-                                  disabled={draftingGrant === o.opportunity_name}
-                                  style={{ display:"block", width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 0.75rem", borderRadius:6, cursor: draftingGrant === o.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === o.opportunity_name ? 0.6 : 1 }}
-                                >
-                                  {draftingGrant === o.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
-                                </button>
-                                {draftedGrantMsg[o.opportunity_name] && (
-                                  <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[o.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
-                                    {draftedGrantMsg[o.opportunity_name]}
-                                  </p>
+                      ) : approval.source === "adaeze_grants_full_list" ? (
+                        <div>
+                          {activeContent.split(/\n\n---\n\n/).map((chunk, idx) => {
+                            const nameMatch = chunk.match(/^\*\*(.+?)\*\*/);
+                            const parsedName = nameMatch ? nameMatch[1].trim() : null;
+                            const matched = parsedName ? grantOpps.find(o => o.opportunity_name.trim().toLowerCase() === parsedName.toLowerCase()) : undefined;
+                            return (
+                              <div key={idx} style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: idx < activeContent.split(/\n\n---\n\n/).length - 1 ? "1px solid rgba(10,35,66,0.08)" : "none" }}>
+                                {renderDraft(chunk)}
+                                {matched && (
+                                  <div style={{ marginTop: "0.5rem" }}>
+                                    <a href={matched.source_url} target="_blank" rel="noopener noreferrer" style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none", background:"rgba(212,175,55,0.08)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:6, padding:"0.4rem 0.6rem", marginBottom:"0.5rem" }}>
+                                      View Funder Page →
+                                    </a>
+                                    <button
+                                      onClick={() => handleDraftGrant(matched.opportunity_name)}
+                                      disabled={draftingGrant === matched.opportunity_name}
+                                      style={{ display:"block", width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 0.75rem", borderRadius:6, cursor: draftingGrant === matched.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === matched.opportunity_name ? 0.6 : 1 }}
+                                    >
+                                      {draftingGrant === matched.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
+                                    </button>
+                                    {draftedGrantMsg[matched.opportunity_name] && (
+                                      <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[matched.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
+                                        {draftedGrantMsg[matched.opportunity_name]}
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
                         </div>
+                      ) : (
+                        <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
                       )}
                     </div>
                   </div>
