@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+\import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph as DocxParagraph, TextRun, ImageRun, Table as DocxTable, TableRow, TableCell, WidthType, ShadingType, BorderStyle, AlignmentType, convertInchesToTwip } from "docx";
 import { createClient } from "@supabase/supabase-js";
@@ -1696,21 +1696,19 @@ export default function AdminApprovals() {
                             {grantOpps.map(o => (
                               <div key={o.id} style={{ border:"1px solid rgba(10,35,66,0.1)", borderRadius:8, padding:"0.6rem 0.75rem", background:"rgba(10,35,66,0.015)" }}>
                                 <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#0A2342", margin:"0 0 0.2rem" }}>{o.opportunity_name} — {o.funder}</p>
-                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.5)", margin:"0 0 0.4rem" }}>
+                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.5)", margin:"0 0 0.5rem" }}>
                                   Amount: {o.amount_range} | Deadline: {o.deadline} | Fit: {o.fit_score}/10
                                 </p>
-                                <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", flexWrap:"wrap" as const }}>
-                                  <a href={o.source_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none" }}>
-                                    View Funder Page →
-                                  </a>
-                                  <button
-                                    onClick={() => handleDraftGrant(o.opportunity_name)}
-                                    disabled={draftingGrant === o.opportunity_name}
-                                    style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor: draftingGrant === o.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === o.opportunity_name ? 0.6 : 1 }}
-                                  >
-                                    {draftingGrant === o.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
-                                  </button>
-                                </div>
+                                <a href={o.source_url} target="_blank" rel="noopener noreferrer" style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none", background:"rgba(212,175,55,0.08)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:6, padding:"0.4rem 0.6rem", marginBottom:"0.5rem" }}>
+                                  View Funder Page →
+                                </a>
+                                <button
+                                  onClick={() => handleDraftGrant(o.opportunity_name)}
+                                  disabled={draftingGrant === o.opportunity_name}
+                                  style={{ display:"block", width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 0.75rem", borderRadius:6, cursor: draftingGrant === o.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === o.opportunity_name ? 0.6 : 1 }}
+                                >
+                                  {draftingGrant === o.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
+                                </button>
                                 {draftedGrantMsg[o.opportunity_name] && (
                                   <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[o.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
                                     {draftedGrantMsg[o.opportunity_name]}
