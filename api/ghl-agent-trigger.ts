@@ -29,6 +29,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
   cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
+  manual_kwame_grant_draft:       { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'grant_application_draft',       pipeline: 'p1_kwame_grants' },
   cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
   cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
@@ -157,13 +158,33 @@ async function writeGrantOpportunities(items: Record<string,unknown>[]): Promise
   const data = await res.json(); return Array.isArray(data)?data.length:0;
 }
 
-async function getKnownGrantKeys(): Promise<Set<string>> {
+// Fuzzy dedup — catches the SAME grant re-found with a reworded name across different
+// scout runs (was exact-match only, which let ~130 duplicate rows through over 6 weeks
+// -- cleaned up Aug 28, 2026). Strips filler words/punctuation, compares remaining
+// significant words; 60%+ overlap counts as already known.
+const GRANT_DEDUP_STOPWORDS = new Set(['the','grant','grants','program','small','business','businesses','for','women','owned','of','and','monthly','quarterly','award','awards','a','initiative','fund','fellowship']);
+function grantNameTokens(name: string): Set<string> {
+  const cleaned = String(name || '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9 ]/g, ' ');
+  return new Set(cleaned.split(/\s+/).filter(w => w.length > 1 && !GRANT_DEDUP_STOPWORDS.has(w)));
+}
+async function getKnownGrantTokenSets(): Promise<Set<string>[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return new Set();
-  const res = await fetch(`${url}/rest/v1/grant_opportunities?select=opportunity_name,funder`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return new Set();
-  const rows = await res.json() as {opportunity_name:string;funder:string}[];
-  return new Set(rows.map(r => `${(r.opportunity_name||'').trim().toLowerCase()}|${(r.funder||'').trim().toLowerCase()}`));
+  if (!url||!key) return [];
+  const res = await fetch(`${url}/rest/v1/grant_opportunities?select=opportunity_name`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return [];
+  const rows = await res.json() as {opportunity_name:string}[];
+  return rows.map(r => grantNameTokens(r.opportunity_name));
+}
+function isKnownGrant(name: string, knownSets: Set<string>[]): boolean {
+  const tokens = grantNameTokens(name);
+  if (tokens.size === 0) return false;
+  for (const known of knownSets) {
+    if (known.size === 0) continue;
+    let overlap = 0;
+    for (const t of tokens) if (known.has(t)) overlap++;
+    if (overlap / Math.min(tokens.size, known.size) >= 0.6) return true;
+  }
+  return false;
 }
 
 async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
@@ -171,13 +192,18 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections('Adaeze Nwosu');
     const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Adaeze Nwosu, Grant Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, Founder/CEO of Dimensional Solns, LLC (a FOR-PROFIT AI leadership & culture consulting business, not a nonprofit). Brand fit: AI adoption/leadership training, women-owned business, 5C Cultural DNA™, 5D Leadership™, DRU CLEAR™ AI Readiness frameworks.\n\nSearch the web broadly (no certification status assumed — search as if broadly eligible) for CURRENTLY OPEN small-business grants, grant contests, or funding programs a for-profit consulting/leadership-training business could realistically apply to. Do NOT include federal grants.gov-style research/nonprofit grants — those don't fit a for-profit LLC. Focus on: corporate small-business grant programs, women-owned/minority-owned business grant contests, and small-business funding competitions with open or upcoming application windows.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"opportunity_name\": string,\n      \"funder\": string,\n      \"amount_range\": string,\n      \"eligibility\": string,\n      \"deadline\": string (YYYY-MM-DD if known, else best available description),\n      \"source_url\": string,\n      \"fit_score\": number (1-10, how well this fits DeAnna's brand/business),\n      \"fit_reasoning\": string (1-2 sentences)\n    }\n  ]\n}\nOnly include opportunities you found real, current information on. If you find none, return {\"opportunities\": []}.`;
-    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownGrantKeys()]);
+    const [raw, knownSets] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownGrantTokenSets()]);
     const parsed = extractJSONObject(raw);
     const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
-    // Dedup — only keep opportunities not already logged (case-insensitive name+funder match)
-    const newOnes = allFound.filter(o => {
-      const nameKey = `${String(o.opportunity_name||'').trim().toLowerCase()}|${String(o.funder||'').trim().toLowerCase()}`;
-      return !knownKeys.has(nameKey);
+    // Dedup — fuzzy token-overlap match against every grant already on file, plus
+    // within this same run's results (catches reworded re-finds either way)
+    const notAlreadyKnown = allFound.filter(o => !isKnownGrant(String(o.opportunity_name||''), knownSets));
+    const seenThisRun: Set<string>[] = [];
+    const newOnes = notAlreadyKnown.filter(o => {
+      const name = String(o.opportunity_name||'');
+      if (isKnownGrant(name, seenThisRun)) return false;
+      seenThisRun.push(grantNameTokens(name));
+      return true;
     });
     if (newOnes.length === 0) return { count: 0, csqId: null }; // nothing new — no card, no noise
 
@@ -230,7 +256,64 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
   } catch(error){ console.error('[adaeze] Scout error:',error); return { count:0, csqId:null }; }
 }
 
-async function getKnownProspectKeys(): Promise<Set<string>> {
+async function getGrantOpportunityByName(name: string): Promise<Record<string,unknown>|null> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return null;
+  const res = await fetch(`${url}/rest/v1/grant_opportunities?opportunity_name=ilike.${encodeURIComponent(name)}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return null;
+  const rows = await res.json() as Record<string,unknown>[];
+  return rows[0] ?? null;
+}
+async function getOrgProfile(): Promise<Record<string,unknown>|null> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return null;
+  const res = await fetch(`${url}/rest/v1/org_profile?limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!res.ok) return null;
+  const rows = await res.json() as Record<string,unknown>[];
+  return rows[0] ?? null;
+}
+async function markGrantOpportunity(id: string, fields: Record<string,unknown>): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url||!key) return;
+  await fetch(`${url}/rest/v1/grant_opportunities?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(fields)});
+}
+// Kwame's second job: Grant Writer. Drafts the ONE opportunity DeAnna names --
+// no automatic selection, no fit_score ranking, no cron. She researches the funder
+// herself and tells Claude/the admin which opportunity to draft; that name is passed
+// in as opportunityName. Goes through the normal CSQ -> Isabella -> Governance ->
+// Raymond pipeline (not the direct-to-approvals bypass Adaeze/Aaliyah use for
+// scouting), since DeAnna wants compliance review on actual application drafts
+// before they reach her.
+async function runKwameGrantWriter(opportunityName: string): Promise<{count:number;csqId:string|null}> {
+  try {
+    if (!opportunityName || !opportunityName.trim()) { console.error('[kwame] Grant Writer: no opportunity name given'); return { count: 0, csqId: null }; }
+    const [opportunity, orgProfile] = await Promise.all([getGrantOpportunityByName(opportunityName.trim()), getOrgProfile()]);
+    if (!opportunity) { console.error(`[kwame] Grant Writer: no opportunity matching "${opportunityName}" found`); return { count: 0, csqId: null }; }
+    if (!orgProfile) { console.error('[kwame] Grant Writer: org_profile is empty, cannot draft without real facts'); return { count: 0, csqId: null }; }
+    const agentKnowledge = await getAgentKnowledge();
+    const agentCorrections = await getAgentCorrections('Kwame Asante');
+    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC) — DeAnna R. Upshaw, Leadership Strategist and AI Authority.\n\nUse ONLY these real facts about the business -- never invent a statistic, credential, or outcome that isn't given here:\nMISSION: ${orgProfile.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfile.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfile.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfile.standard_budget_categories ?? 'Not provided'}\n\nDraft an application for this specific grant opportunity, which DeAnna has personally reviewed and selected:\nOPPORTUNITY: ${opportunity.opportunity_name}\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\nELIGIBILITY: ${opportunity.eligibility}\nDEADLINE: ${opportunity.deadline}\nSOURCE: ${opportunity.source_url}\n\nSearch the web if needed to confirm the funder's actual application questions/format at the source URL. Write the application content in plain text, matching what that funder actually asks for -- do not invent generic sections if the real application asks for something specific.\n\nAlso determine how this grant is actually submitted: if the funder's own page states a direct application email address, extract it exactly. Otherwise (a web portal, online form, or third-party platform), mark it as a portal submission.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (the full application content, plain text, ready for DeAnna to review),\n  \"submission_method\": \"email\" | \"portal\",\n  \"submission_email\": string or null (only if submission_method is \"email\" and a real address was found)\n}`;
+    const raw = await callAnthropicWithWebSearch(prompt, 3000, 4, 'kwame');
+    const parsed = extractJSONObject(raw) as Record<string,unknown> | null;
+    if (!parsed?.application_draft) { console.error('[kwame] Grant Writer: no draft returned'); return { count: 0, csqId: null }; }
+    const method = parsed.submission_method === 'email' && parsed.submission_email ? 'email' : 'portal';
+    const cleanName = String(opportunity.opportunity_name ?? '').replace(
+      new RegExp(`\\s*\\(${String(opportunity.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
+    ).trim();
+    const submissionLine = method === 'email'
+      ? `**Submission (email):** [Click to open a pre-filled email to ${parsed.submission_email}](mailto:${encodeURIComponent(String(parsed.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(String(parsed.application_draft))}) -- review before sending, nothing sends automatically.`
+      : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${opportunity.source_url ?? 'source URL not found'}`;
+    const output = `**${cleanName}** — ${opportunity.funder}\nAmount: ${opportunity.amount_range ?? 'See link'} | Deadline: ${opportunity.deadline}\n\n---\n\n${parsed.application_draft}\n\n---\n\n${submissionLine}`;
+    await markGrantOpportunity(String(opportunity.id), { status: 'drafted', submission_method: method, submission_email: parsed.submission_email ?? null });
+    const csqId = await writeToCSQ({
+      agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
+      task: 'grant_application_draft', category: 'grant_applications',
+      raw_output: output, priority: 'normal', status: 'pending', retry_count: 0,
+    });
+    return { count: 1, csqId };
+  } catch(error){ console.error('[kwame] Grant Writer error:',error); return { count:0, csqId:null }; }
+}
+
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return new Set();
   const res = await fetch(`${url}/rest/v1/prospect_opportunities?select=prospect_name,organization`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
@@ -1509,6 +1592,12 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p1_elena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority. Use only the figures given here — never invent a statistic, percentage, dollar range, or timeframe that wasn't provided.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
+  else if (route.pipeline==='p1_kwame_grants'){
+    const opportunityName = typeof payload.opportunity_name === 'string' ? payload.opportunity_name : '';
+    if (!opportunityName.trim()){res.status(400).json({error:'opportunity_name is required -- DeAnna must specify which opportunity to draft, Kwame does not select one'});return;}
+    const result=await runKwameGrantWriter(opportunityName);
+    res.status(202).json({success:true,agent:route.agent_name,drafted:result.count,csq_id:result.csqId});
+  }
   else if (route.pipeline==='p1_aaliyah_scout'){const result=await runAaliyahProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
