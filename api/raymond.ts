@@ -39,6 +39,7 @@ interface CSQItem {
   task: string; category: string; raw_output: string; priority: string;
   retry_count?: number; raymond_notes?: string; travis_notes?: string;
   priya_notes?: string; isabella_flags?: string; correction_notes?: string;
+  context?: string;
 }
 
 interface MultiPlatformPost {
@@ -447,7 +448,8 @@ ${allSummary}`,
     if (shouldSurface) {
       try {
         const isChloe  = item.agent_name.toLowerCase().includes('chloe');
-        const isKwame  = item.agent_name.toLowerCase().includes('kwame');
+        const isKwame  = item.agent_name.toLowerCase().includes('kwame') && item.task !== 'grant_application_draft';
+        const isKwameGrant = item.task === 'grant_application_draft';
         const isCamila = item.agent_name.toLowerCase().includes('camila');
         const isJaylen = item.agent_name.toLowerCase().includes('jaylen');
         // Readable label for Jaylen's specific email editions — matches the same mapping in
@@ -485,7 +487,9 @@ ${allSummary}`,
           agent_name: item.agent_name,
           agent_role: item.division,
           division: item.division,
-          task_brief: isCamila
+          task_brief: isKwameGrant
+            ? `${item.context || 'Grant Application'} — ${item.agent_name} | ${today}`
+            : isCamila
             ? `Weekly LinkedIn Queue — ${item.agent_name} | ${today}`
             : isJaylen && JAYLEN_LABELS[item.task]
             ? `${JAYLEN_LABELS[item.task]} — ${item.agent_name} | ${today}`
@@ -495,10 +499,10 @@ ${allSummary}`,
           status: 'pending',
           notify_deanna: false,
           priority: item.priority === 'high' ? 'high' : 'normal',
-          category: isJaylen ? 'email' : (isChloe || isKwame) ? 'social' : 'content_review',
-          platform: isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : isJaylen ? 'Email' : null,
+          category: isKwameGrant ? 'grant_applications' : isJaylen ? 'email' : (isChloe || isKwame) ? 'social' : 'content_review',
+          platform: isKwameGrant ? null : isChloe ? 'Copy' : isKwame ? 'Proposal' : isCamila ? 'LinkedIn Queue' : isJaylen ? 'Email' : null,
         });
-        console.log(`[raymond] ${isJaylen ? 'Email' : (isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
+        console.log(`[raymond] ${isKwameGrant ? 'Grant Application' : isJaylen ? 'Email' : (isChloe || isKwame) ? 'Folder' : 'CONTENT_ALWAYS_SURFACE'} standalone card: ${item.agent_name}`);
       } catch (err) {
         console.error(`[raymond] Standalone card failed for ${item.agent_name}:`, err);
       }
