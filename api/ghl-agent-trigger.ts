@@ -307,7 +307,7 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
     await markGrantOpportunity(String(opportunity.id), { status: 'drafted', submission_method: method, submission_email: parsed.submission_email ?? null });
     const csqId = await writeToCSQ({
       agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
-      task: 'grant_application_draft', category: 'grant_applications',
+      task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
       raw_output: output, priority: 'normal', status: 'pending', retry_count: 0,
     });
     return { count: 1, csqId };
