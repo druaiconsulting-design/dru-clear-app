@@ -1839,7 +1839,7 @@ export default function AdminApprovals() {
                       corrections can surface. Excluded from the Prospects card only,
                       since that's revenue opportunities, not agent training, and has
                       no real connection to the rest of the division's corrections. */}
-                  {isBriefing && approval.category !== "prospects" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
                     const divRejected = rejectedItems.filter(r => r.division === approval.division);
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
