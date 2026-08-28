@@ -1686,7 +1686,9 @@ export default function AdminApprovals() {
                           {activeContent.split(/\n\n---\n\n/).map((chunk, idx) => {
                             const nameMatch = chunk.match(/^\*\*(.+?)\*\*/);
                             const parsedName = nameMatch ? nameMatch[1].trim() : null;
-                            const matched = parsedName ? grantOpps.find(o => o.opportunity_name.trim().toLowerCase() === parsedName.toLowerCase()) : undefined;
+                            const cleanDbName = (name: string, funder: string) =>
+                              name.replace(new RegExp(`\\s*\\(${funder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'gi'), '').trim();
+                            const matched = parsedName ? grantOpps.find(o => cleanDbName(o.opportunity_name, o.funder).toLowerCase() === parsedName.toLowerCase()) : undefined;
                             return (
                               <div key={idx} style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: idx < activeContent.split(/\n\n---\n\n/).length - 1 ? "1px solid rgba(10,35,66,0.08)" : "none" }}>
                                 {renderDraft(chunk)}
