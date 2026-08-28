@@ -416,6 +416,9 @@ export default function AdminApprovals() {
   const [savingComment, setSavingComment]     = useState<string | null>(null);
   const [mediaUrls, setMediaUrls]             = useState<Record<string, MediaState>>({});
   const [platformTabs, setPlatformTabs]       = useState<Record<string, PlatformTab>>({});
+  const [grantOpps, setGrantOpps]             = useState<{id:string;opportunity_name:string;funder:string;amount_range:string;deadline:string;fit_score:number;source_url:string;status:string}[]>([]);
+  const [draftingGrant, setDraftingGrant]     = useState<string | null>(null);
+  const [draftedGrantMsg, setDraftedGrantMsg] = useState<Record<string, string>>({});
   const [platformToggles, setPlatformToggles] = useState<Record<string, Record<string, boolean>>>({});
   // Contributor avatars — pulled live from Supabase `agents` table, keyed by
   // agents.name (which matches approval.agent_name exactly). Never hardcode a
@@ -478,6 +481,43 @@ export default function AdminApprovals() {
     setFlaggedLoading(false);
   };
 
+  // Grant opportunities Adaeze found -- fetched separately so DeAnna can see and pick
+  // from the real, live table (status='new' = not yet drafted), not a frozen snapshot
+  // baked into a card's text. Each gets its own "Have Kwame draft this" button --
+  // DeAnna picks, Kwame never auto-selects.
+  const fetchGrantOpps = async () => {
+    const { data, error } = await supabase
+      .from("grant_opportunities")
+      .select("id, opportunity_name, funder, amount_range, deadline, fit_score, source_url, status")
+      .eq("status", "new")
+      .order("opportunity_name", { ascending: true });
+    if (error) { console.error("[grant opportunities]", error); return; }
+    setGrantOpps((data as typeof grantOpps) || []);
+  };
+
+  const handleDraftGrant = async (opportunityName: string) => {
+    setDraftingGrant(opportunityName);
+    setDraftedGrantMsg(prev => { const next = { ...prev }; delete next[opportunityName]; return next; });
+    try {
+      const res = await fetch("/api/ghl-agent-trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trigger_type: "manual_kwame_grant_draft", opportunity_name: opportunityName, source: "admin_ui" }),
+      });
+      if (res.ok) {
+        setDraftedGrantMsg(prev => ({ ...prev, [opportunityName]: "Sent to Kwame -- draft will appear in Approvals once Isabella clears it." }));
+        fetchGrantOpps();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setDraftedGrantMsg(prev => ({ ...prev, [opportunityName]: `Failed: ${err.error || res.statusText}` }));
+      }
+    } catch (e) {
+      setDraftedGrantMsg(prev => ({ ...prev, [opportunityName]: "Failed -- network error." }));
+    } finally {
+      setDraftingGrant(null);
+    }
+  };
+
   const fetchAgentPhotos = async () => {
     const { data, error } = await supabase.from("agents").select("name, photo_url");
     if (error || !data) { console.error("[agent photos]", error); return; }
@@ -501,7 +541,7 @@ export default function AdminApprovals() {
   };
 
   useEffect(() => {
-    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments(); fetchAgentPhotos(); fetchRejectedItems();
+    fetchApprovals(); fetchMemberCounts(); fetchFlaggedComments(); fetchAgentPhotos(); fetchRejectedItems(); fetchGrantOpps();
     const channel = supabase.channel("approvals-realtime").on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, () => fetchApprovals()).subscribe();
     const commentsChannel = supabase.channel("flagged-comments-realtime").on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, () => fetchFlaggedComments()).subscribe();
     const rejectedChannel = supabase.channel("csq-rejected-realtime").on("postgres_changes", { event: "*", schema: "public", table: "chief_of_staff_queue" }, () => fetchRejectedItems()).subscribe();
@@ -1642,6 +1682,43 @@ export default function AdminApprovals() {
                         </>
                       ) : (
                         <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
+                      )}
+                      {approval.source === "adaeze_grants_full_list" && editingId !== approval.id && (
+                        <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(212,175,55,0.2)", paddingTop:"0.875rem" }}>
+                          <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.6rem" }}>
+                            Pick One For Kwame To Draft
+                          </p>
+                          <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.5rem", maxHeight:420, overflowY:"auto" as const }}>
+                            {grantOpps.length === 0 && (
+                              <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", color:"rgba(10,35,66,0.4)" }}>No open opportunities right now.</p>
+                            )}
+                            {grantOpps.map(o => (
+                              <div key={o.id} style={{ border:"1px solid rgba(10,35,66,0.1)", borderRadius:8, padding:"0.6rem 0.75rem", background:"rgba(10,35,66,0.015)" }}>
+                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#0A2342", margin:"0 0 0.2rem" }}>{o.opportunity_name} — {o.funder}</p>
+                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.5)", margin:"0 0 0.4rem" }}>
+                                  Amount: {o.amount_range} | Deadline: {o.deadline} | Fit: {o.fit_score}/10
+                                </p>
+                                <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", flexWrap:"wrap" as const }}>
+                                  <a href={o.source_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none" }}>
+                                    View Funder Page →
+                                  </a>
+                                  <button
+                                    onClick={() => handleDraftGrant(o.opportunity_name)}
+                                    disabled={draftingGrant === o.opportunity_name}
+                                    style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor: draftingGrant === o.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === o.opportunity_name ? 0.6 : 1 }}
+                                  >
+                                    {draftingGrant === o.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
+                                  </button>
+                                </div>
+                                {draftedGrantMsg[o.opportunity_name] && (
+                                  <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[o.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
+                                    {draftedGrantMsg[o.opportunity_name]}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
