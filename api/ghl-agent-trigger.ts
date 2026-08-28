@@ -23,12 +23,12 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_serena_coaching:           { agent_id: 'serena',   agent_name: 'Serena Jackson',    division: 'Revenue, Growth & Sales', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
   cron_mateo_sales_support:       { agent_id: 'mateo',    agent_name: 'Mateo Gonzalez',    division: 'Revenue, Growth & Sales', task: 'sales_pipeline_review',         pipeline: 'p1_mateo' },
   cron_aaliyah_outreach:          { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'personalized_outreach_messages',pipeline: 'p1_aaliyah' },
+  cron_aaliyah_prospect_scout:    { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'prospect_scout',                pipeline: 'p1_aaliyah_scout' },
   cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue, Growth & Sales', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
   cron_chloe_copy:                { agent_id: 'chloe',    agent_name: 'Chloe Dubois',      division: 'Revenue, Growth & Sales', task: 'daily_copy_asset',              pipeline: 'p1_chloe' },
   cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
   cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   cron_kwame_proposal:            { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'proposal_template_update',      pipeline: 'p1_kwame' },
-  cron_kwame_prospect_scout:      { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'prospect_scout',                pipeline: 'p1_kwame_scout' },
   cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
   cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
@@ -243,22 +243,23 @@ async function writeProspectOpportunities(items: Record<string,unknown>[]): Prom
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key||items.length===0) return 0;
   const res = await fetch(`${url}/rest/v1/prospect_opportunities`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(items)});
-  if (!res.ok){console.error(`[kwame] prospect_opportunities write failed: ${await res.text()}`);return 0;}
+  if (!res.ok){console.error(`[prospect-scout] prospect_opportunities write failed: ${await res.text()}`);return 0;}
   const data = await res.json(); return Array.isArray(data)?data.length:0;
 }
 
-// Kwame's second job: Prospect Scout. Signal-only — deliberately no demographic,
-// title, company-size, or industry filter, per DeAnna's direction. Mirrors
-// runAdaezeScout()'s exact pattern (web-search-enabled call, dedup against known
-// rows, write to a dedicated table, surface top picks). Runs on-demand only —
-// no pg_cron entry exists for this yet; that stays out until DeAnna says go.
-async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}> {
+// Aaliyah's job: Prospect Scout. Reassigned from Kwame Asante Aug 27, 2026 --
+// same approved prompt, word for word, just running under Aaliyah Foster.
+// Signal-only — deliberately no demographic, title, company-size, or industry
+// filter, per DeAnna's direction. Mirrors runAdaezeScout()'s exact pattern
+// (web-search-enabled call, dedup against known rows, write to a dedicated
+// table, surface top picks).
+async function runAaliyahProspectScout(): Promise<{count:number;csqId:string|null}> {
   try {
     const positioning = await fetchBrandCopy('positioning');
     const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections('Kwame Asante');
-    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}${agentCorrections}\n\nYou are Kwame Asante, Prospect Scout for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nWHO YOU ARE LOOKING FOR: your complete, standalone definition of who qualifies is below, independent of any client or framework description elsewhere in this prompt. A real, named person responsible for other people getting results. Any setting, any title, any size, all qualify equally: a crew lead, a unit manager, a school principal, a founder with three employees, a nonprofit director, a department head, a shop owner. Signal-only: what qualifies someone is the real signal they put out, regardless of title, company size, industry, or demographic.\n\nWHAT THE SIGNAL LOOKS LIKE: the person is expressing real pain, in whatever words they use for it. Angry, exhausted, defeated, lost, done trying, at the end of what they know how to do. The pain shows up in areas like these:\n- Confused about AI: overwhelmed, unsure where to start, watching others move while they stand still\n- Their team needs leadership they don't have to give right now\n- Silos: teams that don't talk to each other, and they're carrying the cost\n- Culture problems: trust breaking down, turnover, conflict they can't resolve\n- Any other people-and-AI struggle in this same pattern\n\nSomeone publicly reaching for growth in these same areas qualifies too. Same bar: a real person, their own words, a real stake.\n\nWHERE TO LOOK: search where people speak in their own words, and where a real name is attached to what they said. Interviews, podcast transcripts, quoted case studies in industry press, personal blogs and newsletters, local news, LinkedIn posts and comments.\n\nSEARCH SPREAD: run at least one of your searches aimed specifically at a small-scale or non-corporate setting — a local business, a school, a small nonprofit, a small team. Large, well-known companies are easy to find and fill the other searches on their own; this one exists to reach the settings that don't show up by default.\n\nHARD REQUIREMENT — REAL NAMED INDIVIDUAL: prospect_name is a real, specific, named human being (or organization is a real, specific, named company), grounded in a real quote, post, article, or interview you actually found.\n\nIDENTITY-LEVEL STAKE, NOT TOPIC-LEVEL: the signal shows what the struggle costs this person personally — their trust, their clarity, their confidence, their control, the respect they hold. Example only, not exact wording to search for: a broad statement about a company looking into AI is topic-level; a specific, personal statement about how it's costing them is identity-level.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"prospect_name\": string (a real, named individual),\n      \"organization\": string (a real, named company or group),\n      \"stake_word\": string (a single word for the personal stake — e.g. "Trust," "Clarity," "Confidence," "Respect"),\n      \"signal_summary\": string (what the person actually said, close to their own words, and the situation around it — quote directly where you can, plain text, no interpretation added on top of what they said),\n      \"source_url\": string,\n      \"status\": \"new\"\n    }\n  ]\n}\nInclude prospects that pass both requirements above with real, current information you found. A genuine zero-result day is a normal, expected outcome — if nothing clears both bars, return {\"opportunities\": []}. Zero is always a complete, correct answer.`;
-    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt, 3000, 6, 'kwame'), getKnownProspectKeys()]);
+    const agentCorrections = await getAgentCorrections('Aaliyah Foster');
+    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}${agentCorrections}\n\nYou are Aaliyah Foster, Prospect Scout for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nWHO YOU ARE LOOKING FOR: your complete, standalone definition of who qualifies is below, independent of any client or framework description elsewhere in this prompt. A real, named person responsible for other people getting results. Any setting, any title, any size, all qualify equally: a crew lead, a unit manager, a school principal, a founder with three employees, a nonprofit director, a department head, a shop owner. Signal-only: what qualifies someone is the real signal they put out, regardless of title, company size, industry, or demographic.\n\nWHAT THE SIGNAL LOOKS LIKE: the person is expressing real pain, in whatever words they use for it. Angry, exhausted, defeated, lost, done trying, at the end of what they know how to do. The pain shows up in areas like these:\n- Confused about AI: overwhelmed, unsure where to start, watching others move while they stand still\n- Their team needs leadership they don't have to give right now\n- Silos: teams that don't talk to each other, and they're carrying the cost\n- Culture problems: trust breaking down, turnover, conflict they can't resolve\n- Any other people-and-AI struggle in this same pattern\n\nSomeone publicly reaching for growth in these same areas qualifies too. Same bar: a real person, their own words, a real stake.\n\nWHERE TO LOOK: search where people speak in their own words, and where a real name is attached to what they said. Interviews, podcast transcripts, quoted case studies in industry press, personal blogs and newsletters, local news, LinkedIn posts and comments.\n\nSEARCH SPREAD: run at least one of your searches aimed specifically at a small-scale or non-corporate setting — a local business, a school, a small nonprofit, a small team. Large, well-known companies are easy to find and fill the other searches on their own; this one exists to reach the settings that don't show up by default.\n\nHARD REQUIREMENT — REAL NAMED INDIVIDUAL: prospect_name is a real, specific, named human being (or organization is a real, specific, named company), grounded in a real quote, post, article, or interview you actually found.\n\nIDENTITY-LEVEL STAKE, NOT TOPIC-LEVEL: the signal shows what the struggle costs this person personally — their trust, their clarity, their confidence, their control, the respect they hold. Example only, not exact wording to search for: a broad statement about a company looking into AI is topic-level; a specific, personal statement about how it's costing them is identity-level.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"prospect_name\": string (a real, named individual),\n      \"organization\": string (a real, named company or group),\n      \"stake_word\": string (a single word for the personal stake — e.g. "Trust," "Clarity," "Confidence," "Respect"),\n      \"signal_summary\": string (what the person actually said, close to their own words, and the situation around it — quote directly where you can, plain text, no interpretation added on top of what they said),\n      \"source_url\": string,\n      \"status\": \"new\"\n    }\n  ]\n}\nInclude prospects that pass both requirements above with real, current information you found. A genuine zero-result day is a normal, expected outcome — if nothing clears both bars, return {\"opportunities\": []}. Zero is always a complete, correct answer.`;
+    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt, 3000, 6, 'aaliyah'), getKnownProspectKeys()]);
     const parsed = extractJSONObject(raw);
     const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
     // Claude's web-search-grounded output can carry raw <cite> markup in its text --
@@ -273,7 +274,7 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
       const nameKey = `${String(o.prospect_name||'').trim().toLowerCase()}|${String(o.organization||'').trim().toLowerCase()}`;
       return !knownKeys.has(nameKey);
     });
-    console.log(`[kwame] Found ${allFound.length} total, ${newOnes.length} new after dedup.`);
+    console.log(`[aaliyah] Found ${allFound.length} total, ${newOnes.length} new after dedup.`);
     if (newOnes.length === 0) return { count: 0, csqId: null };
 
     const rows = newOnes.map(o => ({...o, found_at:new Date().toISOString()}));
@@ -285,12 +286,12 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
       `Source: ${o.source_url ?? 'URL not found'}`,
     ].join('\n')).join('\n\n---\n\n');
     const approvalId = await writeApprovalDirect({
-      source: 'kwame_prospect_scout',
+      source: 'aaliyah_prospect_scout',
       trigger_type: 'prospects',
-      agent_name: 'Kwame Asante',
+      agent_name: 'Aaliyah Foster',
       agent_role: 'Revenue, Growth & Sales',
       division: 'Revenue, Growth & Sales',
-      task_brief: `Prospect Scout — Kwame Asante | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
+      task_brief: `Prospect Scout — Aaliyah Foster | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
       output: `Found ${written} new prospect signal(s):\n\n${top}\n\nFull list stored in the prospect_opportunities table.`,
       status: 'pending',
       notify_deanna: true,
@@ -299,21 +300,21 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
       platform: null,
     });
     // SMS/email notification (Aug 24, 2026) -- same GHL webhook Raymond's Daily Briefing
-    // uses, fired separately here since Kwame bypasses that chain entirely and nothing else
-    // would ever trigger it for his card. Only fires when he actually finds something new --
-    // no text on a zero-result day.
+    // uses, fired separately here since this scout bypasses that chain entirely and nothing
+    // else would ever trigger it for the card. Only fires when it actually finds something
+    // new -- no text on a zero-result day.
     if (written > 0) {
       const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
       if (webhookUrl) {
         try {
-          const label = `${written} new lead${written > 1 ? 's' : ''} found by Kwame's Prospect Scout.`;
+          const label = `${written} new lead${written > 1 ? 's' : ''} found by Aaliyah's Prospect Scout.`;
           await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: 'druaiconsulting@gmail.com', phone: '+19796186671',
               first_name: 'DeAnna', last_name: 'Upshaw',
-              agent_name: 'Kwame Asante', task: 'Prospect Scout',
+              agent_name: 'Aaliyah Foster', task: 'Prospect Scout',
               approval_id: approvalId, summary: label, triggered_at: new Date().toISOString(),
               review_url: 'https://app.druaiconsulting.com/admin-approvals',
               sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
@@ -321,12 +322,12 @@ async function runKwameProspectScout(): Promise<{count:number;csqId:string|null}
               email_body: `${label}\n\nReview:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
             }),
           });
-          console.log('[kwame] Lead notification sent');
-        } catch (err) { console.error('[kwame] Notification failed (non-fatal):', err); }
+          console.log('[aaliyah] Lead notification sent');
+        } catch (err) { console.error('[aaliyah] Notification failed (non-fatal):', err); }
       }
     }
     return { count: written, csqId: approvalId };
-  } catch(error){ console.error('[kwame] Prospect Scout error:',error); return { count:0, csqId:null }; }
+  } catch(error){ console.error('[aaliyah] Prospect Scout error:',error); return { count:0, csqId:null }; }
 }
 
 async function writeApprovalDirect(record: Record<string, unknown>): Promise<string | null> {
@@ -1508,7 +1509,7 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p1_elena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_kwame'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('kwame','Kwame Asante','Revenue, Growth & Sales','proposal_template_update','proposals',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Kwame Asante, Proposal Writer for DRU AI Consulting. Generate weekly proposal update. Include: executive summary template for Executive Diagnostic ($4,997) in McKinsey-style, proposal outline for C-suite client, value proposition (3 versions: short/medium/long), one proposal best practice. Brand: DeAnna R. Upshaw — 25+ years IT, 10+ years leadership development, AI Authority. Use only the figures given here — never invent a statistic, percentage, dollar range, or timeframe that wasn't provided.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
-  else if (route.pipeline==='p1_kwame_scout'){const result=await runKwameProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
+  else if (route.pipeline==='p1_aaliyah_scout'){const result=await runAaliyahProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
