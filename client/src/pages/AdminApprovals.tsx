@@ -1,4 +1,4 @@
-\import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph as DocxParagraph, TextRun, ImageRun, Table as DocxTable, TableRow, TableCell, WidthType, ShadingType, BorderStyle, AlignmentType, convertInchesToTwip } from "docx";
 import { createClient } from "@supabase/supabase-js";
