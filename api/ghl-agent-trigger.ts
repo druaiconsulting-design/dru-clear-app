@@ -315,6 +315,7 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
   } catch(error){ console.error('[kwame] Grant Writer error:',error); return { count:0, csqId:null }; }
 }
 
+async function getKnownProspectKeys(): Promise<Set<string>> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url||!key) return new Set();
   const res = await fetch(`${url}/rest/v1/prospect_opportunities?select=prospect_name,organization`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
