@@ -417,7 +417,7 @@ export default function AdminApprovals() {
   const [savingComment, setSavingComment]     = useState<string | null>(null);
   const [mediaUrls, setMediaUrls]             = useState<Record<string, MediaState>>({});
   const [platformTabs, setPlatformTabs]       = useState<Record<string, PlatformTab>>({});
-  const [grantOpps, setGrantOpps]             = useState<{id:string;opportunity_name:string;funder:string;amount_range:string;deadline:string;fit_score:number;source_url:string;status:string}[]>([]);
+  const [grantOpps, setGrantOpps]             = useState<{id:string;opportunity_name:string;funder:string;amount_range:string;deadline:string;fit_score:number;source_url:string;status:string;personal_story?:string;testimonials_success_stories?:string}[]>([]);
   const [draftingGrant, setDraftingGrant]     = useState<string | null>(null);
   const [draftedGrantMsg, setDraftedGrantMsg] = useState<Record<string, string>>({});
   const [platformToggles, setPlatformToggles] = useState<Record<string, Record<string, boolean>>>({});
@@ -489,17 +489,30 @@ export default function AdminApprovals() {
   const fetchGrantOpps = async () => {
     const { data, error } = await supabase
       .from("grant_opportunities")
-      .select("id, opportunity_name, funder, amount_range, deadline, fit_score, source_url, status")
+      .select("id, opportunity_name, funder, amount_range, deadline, fit_score, source_url, status, personal_story, testimonials_success_stories")
       .eq("status", "new")
       .order("opportunity_name", { ascending: true });
     if (error) { console.error("[grant opportunities]", error); return; }
     setGrantOpps((data as typeof grantOpps) || []);
   };
 
-  const handleDraftGrant = async (opportunityName: string) => {
+  const handleDraftGrant = async (opportunity: { id: string; opportunity_name: string; personal_story?: string; testimonials_success_stories?: string }) => {
+    const opportunityName = opportunity.opportunity_name;
     setDraftingGrant(opportunityName);
     setDraftedGrantMsg(prev => { const next = { ...prev }; delete next[opportunityName]; return next; });
     try {
+      const { error: saveError } = await supabase
+        .from("grant_opportunities")
+        .update({
+          personal_story: opportunity.personal_story ?? null,
+          testimonials_success_stories: opportunity.testimonials_success_stories ?? null,
+        })
+        .eq("id", opportunity.id);
+      if (saveError) {
+        setDraftedGrantMsg(prev => ({ ...prev, [opportunityName]: `Failed to save story/testimonials: ${saveError.message}` }));
+        setDraftingGrant(null);
+        return;
+      }
       const res = await fetch("/api/ghl-agent-trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1697,12 +1710,32 @@ export default function AdminApprovals() {
                                     <a href={matched.source_url} target="_blank" rel="noopener noreferrer" style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#D4AF37", textDecoration:"none", background:"rgba(212,175,55,0.08)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:6, padding:"0.4rem 0.6rem", marginBottom:"0.5rem" }}>
                                       View Funder Page →
                                     </a>
+                                    <label style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#0A2342", marginBottom:"0.2rem" }}>
+                                      Personal Story (for this grant)
+                                    </label>
+                                    <textarea
+                                      value={matched.personal_story ?? ""}
+                                      onChange={(e) => setGrantOpps(prev => prev.map(o => o.id === matched.id ? { ...o, personal_story: e.target.value } : o))}
+                                      placeholder="What personal story fits this specific grant?"
+                                      rows={3}
+                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box" }}
+                                    />
+                                    <label style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#0A2342", marginBottom:"0.2rem" }}>
+                                      Testimonials / Success Stories (for this grant)
+                                    </label>
+                                    <textarea
+                                      value={matched.testimonials_success_stories ?? ""}
+                                      onChange={(e) => setGrantOpps(prev => prev.map(o => o.id === matched.id ? { ...o, testimonials_success_stories: e.target.value } : o))}
+                                      placeholder="Which testimonials or success stories fit this specific grant?"
+                                      rows={3}
+                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box" }}
+                                    />
                                     <button
-                                      onClick={() => handleDraftGrant(matched.opportunity_name)}
+                                      onClick={() => handleDraftGrant(matched)}
                                       disabled={draftingGrant === matched.opportunity_name}
                                       style={{ display:"block", width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 0.75rem", borderRadius:6, cursor: draftingGrant === matched.opportunity_name ? "default" : "pointer", border:"none", background:"#0A2342", color:"#FAFAF8", letterSpacing:"0.05em", opacity: draftingGrant === matched.opportunity_name ? 0.6 : 1 }}
                                     >
-                                      {draftingGrant === matched.opportunity_name ? "Sending to Kwame..." : "Have Kwame Draft This"}
+                                      {draftingGrant === matched.opportunity_name ? "Saving & sending to Kwame..." : "Have Kwame Draft This"}
                                     </button>
                                     {draftedGrantMsg[matched.opportunity_name] && (
                                       <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[matched.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
