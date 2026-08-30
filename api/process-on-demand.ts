@@ -92,6 +92,29 @@ async function dbInsert(table: string, record: Record<string, unknown>): Promise
   return data?.[0]?.id ?? null;
 }
 
+// Same real facts Kwame and Chloe already work from (org_profile is a single-row
+// table; the grant row is looked up by name, matching getOrgProfile/
+// getGrantOpportunityByName in ghl-agent-trigger.ts). Isabella needs these to check
+// a claim against DeAnna's actual verified facts instead of guessing whether it
+// sounds invented.
+async function getOrgProfileFacts(): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/org_profile?limit=1`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows?.[0] ?? null;
+}
+
+async function getGrantFactsByName(name: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/grant_opportunities?opportunity_name=ilike.${encodeURIComponent(name)}&limit=1`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows?.[0] ?? null;
+}
+
 // ─── Anthropic helpers ────────────────────────────────────────────────────────
 
 // Logs every real API call's actual token usage and cost to Supabase so spend
@@ -149,7 +172,7 @@ function getDivisionCategory(division: string): string {
 
 // ─── Step 1: Isabella compliance check (Sonnet) ───────────────────────────────
 
-async function runIsabellaOnItem(item: Record<string, unknown>, agentKnowledge: string): Promise<{ cleared: boolean; flags: string; correctionNotes: string }> {
+async function runIsabellaOnItem(item: Record<string, unknown>, agentKnowledge: string, verifiedFacts: string = ''): Promise<{ cleared: boolean; flags: string; correctionNotes: string }> {
   const raw = await callTwin(
     `${GENIUS_MODE}
 
@@ -163,13 +186,13 @@ YOUR RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
 1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, and never abbreviated — the approved list and exact rules are in the knowledge base above
 2. SERVICE CLASSES: Content stays within Classes 35, 41, 42 (see knowledge base above)
 3. VOICE: No banned words, hook-then-unpack structure honored wherever the content includes a hook or headline — see the VOICE rules above
-4. FACTUAL ACCURACY: No invented client results, dollar figures, percentages, testimonials, or case studies that were not explicitly given in the task or in DeAnna's verified facts — see the FACTUAL ACCURACY rule above
+4. FACTUAL ACCURACY: Check every specific client result, dollar figure, percentage, testimonial, or case study against DeAnna's verified facts below (when given) or against the knowledge base above -- a claim that matches a verified fact is accurate even if it looks surprising or specific
 5. FRAMEWORK ATTRIBUTION: If the content describes a framework's pillars or dimensions, check the names against the true definitions in the knowledge base above. A framework's pillars must be attributed to the correct framework — e.g. Clarity/Leadership/Execution/Alignment/Results belongs to DRU CLEAR™ and must never be labeled 5D Leadership™; Self/People/Team/Organization/Visionary belongs to 5D Leadership™ and must never be labeled DRU CLEAR™
 
 CLEARING STANDARD:
 - All five checks pass → cleared:true
 - Any one check fails → cleared:false — state exactly which check failed (name it: trademark, service class, voice, factual accuracy, or framework attribution) and why
-
+${verifiedFacts ? `\n${verifiedFacts}\n` : ''}
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT TO REVIEW:
 ${item.raw_output}
@@ -496,6 +519,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // same shared source of truth the daily chain and on-demand agent runs use.
   const agentKnowledge = await getAgentKnowledge();
 
+  // Grant application drafts: pull the same org_profile and grant-row facts Kwame
+  // and Chloe already work from, ONCE, before the retry loop starts. This has to
+  // happen up front because the CSQ item's own `context` field (which names the
+  // opportunity) does not carry over to the corrected copy runCorrectionAgent
+  // creates -- if this were re-derived per attempt it would be lost after the
+  // first correction, right when Isabella needs it most.
+  let verifiedFacts = '';
+  const initialItem = await dbGet("chief_of_staff_queue", csq_id as string);
+  if (initialItem && initialItem.task === 'grant_application_draft' && initialItem.context) {
+    const [orgProfile, grantRow] = await Promise.all([
+      getOrgProfileFacts(),
+      getGrantFactsByName(String(initialItem.context)),
+    ]);
+    if (orgProfile) {
+      verifiedFacts = `DEANNA'S VERIFIED FACTS FOR THIS GRANT -- check every specific claim in the content below against these before flagging anything as invented:
+MISSION: ${orgProfile.mission_statement ?? 'Not provided'}
+BIO/CREDENTIALS: ${orgProfile.bio_credentials ?? 'Not provided'}
+TRACK RECORD: ${orgProfile.track_record ?? 'Not provided'}
+BUDGET CATEGORIES: ${orgProfile.standard_budget_categories ?? 'Not provided'}
+PERSONAL STORY (for this specific grant): ${grantRow?.personal_story ?? 'Not provided'}
+TESTIMONIALS/SUCCESS STORIES (for this specific grant): ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
+    }
+  }
+
   // NOTE: lock is acquired by twin-on-demand.ts before this endpoint fires.
   // This handler owns releasing it on every exit path below (finally block).
   try {
@@ -508,7 +555,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
       const retryCount = (item.retry_count as number) ?? 0;
-      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item, agentKnowledge);
+      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item, agentKnowledge, verifiedFacts);
 
       if (cleared) {
         await dbUpdate("chief_of_staff_queue", currentId, {
