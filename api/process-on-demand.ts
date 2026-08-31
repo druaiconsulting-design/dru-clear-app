@@ -606,7 +606,7 @@ ${realStandard}`;
 
         try {
           const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
-          const rewriteRaw = await callAnthropic(rewritePrompt, 3000);
+          const rewriteRaw = await callAnthropic(rewritePrompt, 6000);
           const rewriteParsed = extractJSON(rewriteRaw) as {application_draft?: string} | null;
           if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
         } catch (error) {
