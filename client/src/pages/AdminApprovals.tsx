@@ -1691,7 +1691,7 @@ export default function AdminApprovals() {
                             onChange={e => setCorrectionNote(e.target.value)}
                             placeholder="What was off? (required — this trains the agent)"
                             rows={2}
-                            style={{ width:"100%", marginTop:"0.5rem", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(212,175,55,0.4)", resize:"vertical" as const, boxSizing:"border-box" as const }}
+                            style={{ width:"100%", marginTop:"0.5rem", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(212,175,55,0.4)", resize:"vertical" as const, boxSizing:"border-box" as const, background:"#FFFFFF", color:"#0A2342" }}
                           />
                         </>
                       ) : approval.source === "adaeze_grants_full_list" ? (
@@ -1718,7 +1718,7 @@ export default function AdminApprovals() {
                                       onChange={(e) => setGrantOpps(prev => prev.map(o => o.id === matched.id ? { ...o, personal_story: e.target.value } : o))}
                                       placeholder="What personal story fits this specific grant?"
                                       rows={3}
-                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box" }}
+                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box", background:"#FFFFFF", color:"#0A2342" }}
                                     />
                                     <label style={{ display:"block", fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#0A2342", marginBottom:"0.2rem" }}>
                                       Testimonials / Success Stories (for this grant)
@@ -1728,7 +1728,7 @@ export default function AdminApprovals() {
                                       onChange={(e) => setGrantOpps(prev => prev.map(o => o.id === matched.id ? { ...o, testimonials_success_stories: e.target.value } : o))}
                                       placeholder="Which testimonials or success stories fit this specific grant?"
                                       rows={3}
-                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box" }}
+                                      style={{ display:"block", width:"100%", fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", padding:"0.4rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.15)", marginBottom:"0.5rem", resize:"vertical", boxSizing:"border-box", background:"#FFFFFF", color:"#0A2342" }}
                                     />
                                     <button
                                       onClick={() => handleDraftGrant(matched)}
@@ -1925,7 +1925,7 @@ export default function AdminApprovals() {
                         onChange={e => setCorrectionNote(e.target.value)}
                         placeholder="What was wrong with this? (required — this trains the agent)"
                         rows={2}
-                        style={{ width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(194,24,91,0.4)", resize:"vertical" as const }}
+                        style={{ width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(194,24,91,0.4)", resize:"vertical" as const, background:"#FFFFFF", color:"#0A2342" }}
                       />
                       <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.4rem", justifyContent:"flex-end" }}>
                         <button onClick={handleRejectCancel} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
