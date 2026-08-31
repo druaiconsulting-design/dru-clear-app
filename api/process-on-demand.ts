@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -526,12 +526,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // creates -- if this were re-derived per attempt it would be lost after the
   // first correction, right when Isabella needs it most.
   let verifiedFacts = '';
+  let realStandard = '';
+  let answerThatWins = '';
+  let orgProfileFacts: Record<string, unknown> | null = null;
+  let grantRow: Record<string, unknown> | null = null;
   const initialItem = await dbGet("chief_of_staff_queue", csq_id as string);
-  if (initialItem && initialItem.task === 'grant_application_draft' && initialItem.context) {
-    const [orgProfile, grantRow] = await Promise.all([
+  const isGrantDraft = initialItem?.task === 'grant_application_draft';
+  if (initialItem && isGrantDraft && initialItem.context) {
+    const [orgProfile, grantFacts] = await Promise.all([
       getOrgProfileFacts(),
       getGrantFactsByName(String(initialItem.context)),
     ]);
+    orgProfileFacts = orgProfile;
+    grantRow = grantFacts;
+    // Same R.E.A.L. standard and funded reference example Chloe and Kwame work
+    // from in ghl-agent-trigger.ts -- copied here so Chloe's check (Step 0
+    // below) and Isabella's review both use the identical standard.
+    realStandard = `R-ELATABLE: Connect your proposal to the needs and interests of the grantor by demonstrating an understanding of their mission, goals, and priorities.\nE-DUCATIONAL: Clearly explain the impact and outcomes of your project or business, including how it addresses the needs of your target audience or community.\nA-CTIONABLE: Outline concrete steps and strategies for achieving your goals, including a detailed plan for how grant funds will be utilized and managed.\nL-OVABLE: Infuse passion and authenticity into your proposal to make it stand out to grant reviewers. Share personal anecdotes, testimonials, or success stories that demonstrate your commitment to your business's mission and goals.`;
+    answerThatWins = `"Artificial intelligence is transforming every industry, yet only 54% of workers have used AI in their jobs over the past year, and just 14% use it daily, leaving millions of entrepreneurs and small businesses without the skills needed to compete in today's digital economy.\n\nOur mission as Certified AI Consultants is to close that gap by providing accessible AI education, business coaching, and financial empowerment programs that help underserved communities embrace technology, increase productivity, and build sustainable businesses.\n\nA $50,000 grant will allow us to expand free AI workshops, educational courses, financial literacy resources, and community partnerships that create lasting economic opportunity. Our passion comes from seeing how AI transformed our own business—saving time, increasing efficiency, and opening doors we never thought possible. Now, our goal is to ensure every entrepreneur, regardless of their background, has the opportunity to succeed in the AI economy."`;
     if (orgProfile) {
       verifiedFacts = `DEANNA'S VERIFIED FACTS FOR THIS GRANT -- check every specific claim in the content below against these before flagging anything as invented:
 MISSION: ${orgProfile.mission_statement ?? 'Not provided'}
@@ -539,13 +551,96 @@ BIO/CREDENTIALS: ${orgProfile.bio_credentials ?? 'Not provided'}
 TRACK RECORD: ${orgProfile.track_record ?? 'Not provided'}
 BUDGET CATEGORIES: ${orgProfile.standard_budget_categories ?? 'Not provided'}
 PERSONAL STORY (for this specific grant): ${grantRow?.personal_story ?? 'Not provided'}
-TESTIMONIALS/SUCCESS STORIES (for this specific grant): ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
+TESTIMONIALS/SUCCESS STORIES (for this specific grant): ${grantRow?.testimonials_success_stories ?? 'Not provided'}
+
+BACKGROUND -- THE R.E.A.L. STANDARD THIS DRAFT WAS WRITTEN TO SATISFY: Chloe Dubois (Copy Writer) has already reviewed this draft against the R.E.A.L. standard below before it reached you -- this is why it includes personal anecdotes, forward-looking passion, and testimonial-driven language. You do not need to re-check it against R.E.A.L. yourself; your five checks above (trademarks, service classes, voice, factual accuracy, framework attribution) are unchanged and still the only clearing standard you apply. This is context only, so you don't mistake R.E.A.L.-driven content for a compliance problem:
+${realStandard}`;
     }
   }
 
   // NOTE: lock is acquired by twin-on-demand.ts before this endpoint fires.
   // This handler owns releasing it on every exit path below (finally block).
   try {
+    // ── STEP 0: Chloe's R.E.A.L. review/rewrite loop (grant drafts only) ──
+    // Moved here from api/ghl-agent-trigger.ts (Aug 31, 2026) -- that file's
+    // 60s budget was too tight for Kwame's web-search draft plus up to 3 more
+    // sequential AI calls (Chloe x2 + one Kwame rewrite), which is what left a
+    // draft stuck at status 'pending' with no review and no error shown to
+    // DeAnna. This file already runs on a 300s budget for the on-demand chain,
+    // so Chloe's loop runs here instead, still ahead of Isabella, same standard,
+    // same up-to-2-pass shape, same hard-reject-to-addressable-block outcome.
+    if (isGrantDraft) {
+      const item = await dbGet("chief_of_staff_queue", currentId);
+      if (!item) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
+
+      const [chloeCorrections, kwameCorrections] = await Promise.all([
+        getAgentCorrections('Chloe Dubois'),
+        getAgentCorrections('Kwame Asante', 'grant_application_draft'),
+      ]);
+      const factsBlock = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
+
+      let currentDraft = String(item.raw_output ?? '');
+      let chloeFlags = 'none';
+      let chloeNotes = '';
+      let hitsReal = false;
+
+      for (let attempt = 0; attempt <= 1; attempt++) {
+        try {
+          const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
+          const chloeRaw = await callAnthropic(chloePrompt, 1000);
+          const chloeParsed = extractJSON(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
+          hitsReal = chloeParsed?.hits_real === true;
+          chloeNotes = String(chloeParsed?.correction_notes ?? '');
+          chloeFlags = hitsReal ? 'none' : (chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.');
+        } catch (error) {
+          // A Chloe failure never blocks Kwame's draft -- same guarantee the
+          // original single-pass review had.
+          console.error('[on-demand] Chloe R.E.A.L. review error, letting current draft through unblocked:', error);
+          hitsReal = true;
+          chloeNotes = '';
+          chloeFlags = 'none';
+        }
+
+        if (hitsReal) break;
+        if (attempt === 1) break;
+
+        try {
+          const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
+          const rewriteRaw = await callAnthropic(rewritePrompt, 3000);
+          const rewriteParsed = extractJSON(rewriteRaw) as {application_draft?: string} | null;
+          if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
+        } catch (error) {
+          // Keep the previous draft rather than losing everything to one failed rewrite call.
+          console.error('[on-demand] Kwame rewrite error, keeping previous draft and continuing:', error);
+        }
+      }
+
+      if (!hitsReal) {
+        await dbUpdate("chief_of_staff_queue", currentId, {
+          isabella_flags: chloeFlags, correction_notes: chloeNotes, status: "rejected", retry_count: 2,
+        });
+        console.warn(`[on-demand] ⛔ Chloe hard-rejected R.E.A.L. after 2 passes: ${item.agent_name}`);
+        await releaseLock();
+        res.status(200).json({ success: false, reason: "hard_rejected_by_chloe_real", agent: item.agent_name, flags: chloeFlags });
+        return;
+      }
+
+      // Build the final wrapped draft (header + submission line) now that
+      // Chloe has cleared it -- same shape ghl-agent-trigger.ts used to build
+      // before it wrote to the queue, just assembled here instead using the
+      // grant's own row (funder/amount/deadline/submission info) so
+      // ghl-agent-trigger.ts didn't have to look any of it up twice.
+      const cleanName = String(initialItem?.context ?? '');
+      const method = grantRow?.submission_method === 'email' && grantRow?.submission_email ? 'email' : 'portal';
+      const submissionLine = method === 'email'
+        ? `**Submission (email):** [Click to open a pre-filled email to ${grantRow?.submission_email}](mailto:${encodeURIComponent(String(grantRow?.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(currentDraft)}) -- review before sending, nothing sends automatically.`
+        : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${grantRow?.source_url ?? 'source URL not found'}`;
+      const finalOutput = `**${cleanName}** — ${grantRow?.funder ?? ''}\nAmount: ${grantRow?.amount_range ?? 'See link'} | Deadline: ${grantRow?.deadline ?? ''}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
+
+      await dbUpdate("chief_of_staff_queue", currentId, { raw_output: finalOutput });
+      console.log(`[on-demand] ✅ Chloe cleared R.E.A.L. for: ${item.agent_name}`);
+    }
+
     // ── STEP 1: Isabella retry loop ──────────────────────────
     let isabellaPassed = false;
 
