@@ -193,14 +193,15 @@ const FALLBACK_TM_MARKS = [
  * ever sees their own corrections. Returns '' if none exist yet — callers
  * should only include this block in the prompt when it's non-empty.
  */
-export async function getAgentCorrections(agentName: string, limit = 5): Promise<string> {
+export async function getAgentCorrections(agentName: string, task?: string, limit = 5): Promise<string> {
   try {
     const url = process.env.VITE_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) return '';
 
+    const taskFilter = task ? `&task=eq.${encodeURIComponent(task)}` : '';
     const res = await fetch(
-      `${url}/rest/v1/agent_corrections?agent_name=eq.${encodeURIComponent(agentName)}&order=created_at.desc&limit=${limit}&select=correction_note,created_at`,
+      `${url}/rest/v1/agent_corrections?agent_name=eq.${encodeURIComponent(agentName)}${taskFilter}&order=created_at.desc&limit=${limit}&select=correction_note,created_at`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } }
     );
     if (!res.ok) return '';
