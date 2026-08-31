@@ -128,10 +128,15 @@ Answer DeAnna\'s question directly. If she asks you to expand on something you i
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) return;
     try {
+      let task: string | null = null;
+      try {
+        const taskRes = await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${csq_id}&select=task`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+        if (taskRes.ok) { const rows = await taskRes.json(); task = rows?.[0]?.task ?? null; }
+      } catch { /* task lookup is best-effort -- correction still saves without it */ }
       await fetch(`${url}/rest/v1/agent_corrections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
-        body: JSON.stringify({ agent_name, correction_note: note, source: 'deanna_conversation', csq_id }),
+        body: JSON.stringify({ agent_name, correction_note: note, source: 'deanna_conversation', csq_id, ...(task ? { task } : {}) }),
       });
     } catch (err) { console.error(`[ask-agent] Failed to write agent_correction for ${agent_name}:`, err); }
   }
