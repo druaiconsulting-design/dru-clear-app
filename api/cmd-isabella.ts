@@ -132,6 +132,18 @@ async function runIsabellaCorrectionText(item: CSQItem, currentContent: string, 
 
 async function processIsabellaItem(item: CSQItem): Promise<'cleared' | 'rejected' | 'error'> {
   try {
+    // A grant_application_draft item can reach this cron as an empty
+    // placeholder -- ghl-agent-trigger.ts queues it instantly and hands off
+    // to process-on-demand.ts to actually research and write it (Aug 31,
+    // 2026). If the on-demand chain hasn't gotten to it yet, there's nothing
+    // here yet to review -- leave it pending rather than judging empty
+    // content, and let the next on-demand attempt or the next cron pass
+    // pick it up once Kwame has actually written something.
+    if (item.task === 'grant_application_draft' && !String(item.raw_output ?? '').trim()) {
+      console.log(`[isabella] Skipping empty grant placeholder, not yet drafted: ${item.id}`);
+      return 'error';
+    }
+
     const agentKnowledge = await getAgentKnowledge();
     let currentContent = item.raw_output;
     let finalFlags = 'none';
