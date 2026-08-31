@@ -10,7 +10,7 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -342,53 +342,30 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
     const [opportunity, orgProfile] = await Promise.all([getGrantOpportunityByName(opportunityName.trim()), getOrgProfile()]);
     if (!opportunity) { console.error(`[kwame] Grant Writer: no opportunity matching "${opportunityName}" found`); return { count: 0, csqId: null }; }
     if (!orgProfile) { console.error('[kwame] Grant Writer: org_profile is empty, cannot draft without real facts'); return { count: 0, csqId: null }; }
-    const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections('Kwame Asante', 'grant_application_draft');
-    const factsBlock = `MISSION: ${orgProfile.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfile.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfile.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfile.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${opportunity.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${opportunity.testimonials_success_stories ?? 'Not provided'}`;
 
-    // STEP A: research only, no JSON, no length pressure -- Kwame can spend
-    // his whole response reading search results and thinking, instead of
-    // splitting that budget with the two-essay application he still has to
-    // write. Fails open: a research failure doesn't block the draft, it just
-    // means STEP B writes from general knowledge instead of fresh research.
-    let research = '';
-    try {
-      const researchPrompt = `${GENIUS_MODE}\n\nYou are researching a specific grant opportunity for DRU AI Consulting (Dimensional Solns, LLC) before drafting an application.\n\nOPPORTUNITY: ${opportunity.opportunity_name}\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\nELIGIBILITY: ${opportunity.eligibility}\nDEADLINE: ${opportunity.deadline}\nSOURCE: ${opportunity.source_url}\n\nSearch the web and find:\n1. The funder's official rules or judging criteria page (not just marketing pages) -- what specific criteria do they score submissions against, and how are they weighted?\n2. The funder's own stated mission, goals, and community priorities, in their own specific language, not a generic paraphrase.\n3. The exact application questions, sections, and format this funder asks for -- exact prompts, word or character limits, section titles, whenever the source states them.\n4. How this grant is actually submitted -- a direct application email address if one is stated, or note that it's a web portal, online form, or third-party platform.\n\nWrite your findings as organized plain-text notes under those four headings. Quote or closely paraphrase exact language, section titles, and limits when you find them. This is research only -- do not draft the application itself.`;
-      research = await callAnthropicWithWebSearch(researchPrompt, 4000, 4, 'kwame-research');
-    } catch (error) {
-      console.error('[kwame] Research call failed, writing from general knowledge instead:', error);
-    }
-
-    // STEP B: writing only, no search tool competing for the response budget --
-    // every token here goes to the application itself.
-    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC) — DeAnna R. Upshaw, Leadership Strategist and AI Authority.\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nDraft an application for this specific grant opportunity, which DeAnna has personally reviewed and selected:\nOPPORTUNITY: ${opportunity.opportunity_name}\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\nELIGIBILITY: ${opportunity.eligibility}\nDEADLINE: ${opportunity.deadline}\nSOURCE: ${opportunity.source_url}\n\nHere is what's already been researched about this specific funder -- use it directly, it's already gathered:\n${research || '(research unavailable this run -- write from the facts above and general knowledge of grant applications)'}\n\nWrite this application to satisfy the R.E.A.L. standard:\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach, and write fully original content in your own words for this specific funder:\n${REAL_FUNDED_EXAMPLE}\n\nUse the mission, track record, budget categories, personal story, and testimonials/success stories given above, plus the funder research above, as the real facts behind each R.E.A.L. element. Write every sentence describing what a client experienced, reported, or achieved by drawing directly from the testimonials and track record given above. Describe what the frameworks are designed to deliver in forward-looking language. Build the closing from whichever facts are strongest among personal story, testimonials, mission, track record, and budget categories.\n\n${DEANNA_MARKER_FOR_KWAME}\n\nWrite the application content in plain text, matching exactly what the funder research above says their application asks for -- their specific sections, questions, and word limits.\n\nAlso determine how this grant is actually submitted, using the funder research above: if a direct application email address was found, use it exactly. Otherwise mark it as a portal submission.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (the full application content, plain text, ready for DeAnna to review),\n  \"submission_method\": \"email\" | \"portal\",\n  \"submission_email\": string or null (only if submission_method is \"email\" and a real address was found)\n}`;
-    const raw = await callAnthropic(prompt, GRANT_CONTENT_MAX_TOKENS);
-    const parsed = extractJSONObject(raw) as Record<string,unknown> | null;
-    if (!parsed?.application_draft) {
-      console.error(`[kwame] Grant Writer: no draft returned. Raw response (first 500 chars): ${raw.slice(0, 500)}`);
-      return { count: 0, csqId: null };
-    }
-    const method = parsed.submission_method === 'email' && parsed.submission_email ? 'email' : 'portal';
     const cleanName = String(opportunity.opportunity_name ?? '').replace(
       new RegExp(`\\s*\\(${String(opportunity.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
     ).trim();
 
-    // Chloe's R.E.A.L. review/rewrite loop and Isabella's compliance check both
-    // now run inside api/process-on-demand.ts (300s budget) instead of here
-    // (60s budget) -- that loop is what was timing out. This function's only
-    // job now is to get Kwame's raw draft into the queue as fast as possible
-    // so the on-demand chain can fire before this file's clock runs out.
-    // process-on-demand.ts builds the final wrapped output (header + submission
-    // line) once Chloe clears it, using submission_method/submission_email off
-    // the grant_opportunities row this call is about to write below.
-    await markGrantOpportunity(String(opportunity.id), { status: 'drafted', submission_method: method, submission_email: parsed.submission_email ?? null });
-
+    // Kwame's actual research and drafting now happen in api/process-on-demand.ts
+    // (300s budget) instead of here (60s budget) -- Aug 31, 2026. A research
+    // call plus a writing call, even with the token budget split cleanly
+    // between them, was still too much sequential work for this file's fixed
+    // 60-second ceiling and caused a hard timeout. This function's only job
+    // now is to queue an empty placeholder and hand off immediately --
+    // process-on-demand.ts recognizes an empty raw_output on a grant draft as
+    // its cue to research and write the draft itself, before Chloe or
+    // Isabella ever see anything.
     const csqId = await writeToCSQ({
       agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
       task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
-      raw_output: String(parsed.application_draft), priority: 'normal', status: 'pending', retry_count: 0,
+      raw_output: '', priority: 'normal', status: 'pending', retry_count: 0,
     });
-    return { count: csqId ? 1 : 0, csqId };
+    if (!csqId) { console.error('[kwame] Grant Writer: failed to queue placeholder'); return { count: 0, csqId: null }; }
+
+    await markGrantOpportunity(String(opportunity.id), { status: 'drafted' });
+
+    return { count: 1, csqId };
   } catch(error){ console.error('[kwame] Grant Writer error:',error); return { count:0, csqId:null }; }
 }
 
