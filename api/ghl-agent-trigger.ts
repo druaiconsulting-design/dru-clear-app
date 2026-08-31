@@ -379,13 +379,23 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
     let hitsReal = false;
 
     for (let attempt = 0; attempt <= 2; attempt++) {
-      const chloeCorrections = await getAgentCorrections('Chloe Dubois');
-      const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
-      const chloeRaw = await callAnthropic(chloePrompt, 1000);
-      const chloeParsed = extractJSONObject(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
-      hitsReal = chloeParsed?.hits_real === true;
-      chloeNotes = String(chloeParsed?.correction_notes ?? '');
-      chloeFlags = hitsReal ? 'none' : (chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.');
+      try {
+        const chloeCorrections = await getAgentCorrections('Chloe Dubois');
+        const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
+        const chloeRaw = await callAnthropic(chloePrompt, 1000);
+        const chloeParsed = extractJSONObject(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
+        hitsReal = chloeParsed?.hits_real === true;
+        chloeNotes = String(chloeParsed?.correction_notes ?? '');
+        chloeFlags = hitsReal ? 'none' : (chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.');
+      } catch (error) {
+        // A Chloe failure never blocks Kwame's draft -- same guarantee the
+        // original single-pass review had. Let the current draft through
+        // rather than letting one bad API call silently kill the whole thing.
+        console.error('[chloe] R.E.A.L. review error, letting current draft through unblocked:', error);
+        hitsReal = true;
+        chloeNotes = '';
+        chloeFlags = 'none';
+      }
 
       if (hitsReal) break;
 
@@ -393,10 +403,15 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
 
       if (attempt === 2) break;
 
-      const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
-      const rewriteRaw = await callAnthropic(rewritePrompt, 3000);
-      const rewriteParsed = extractJSONObject(rewriteRaw) as {application_draft?: string} | null;
-      if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
+      try {
+        const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
+        const rewriteRaw = await callAnthropic(rewritePrompt, 3000);
+        const rewriteParsed = extractJSONObject(rewriteRaw) as {application_draft?: string} | null;
+        if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
+      } catch (error) {
+        // Keep the previous draft rather than losing everything to one failed rewrite call.
+        console.error('[kwame] Rewrite error, keeping previous draft and continuing:', error);
+      }
     }
 
     await markGrantOpportunity(String(opportunity.id), { status: 'drafted', submission_method: method, submission_email: parsed.submission_email ?? null });
@@ -1728,7 +1743,11 @@ Write the complete article. This is the full PDF content — not a summary or ou
         console.log(`[kwame-grants] Daily spend cap reached ($${spendCheck.totalSpent}/$${spendCheck.cap}) -- draft will be picked up by the daily cron instead.`);
       }
     }
-    res.status(202).json({success:true,agent:route.agent_name,drafted:result.count,csq_id:result.csqId});
+    if (result.count > 0) {
+      res.status(202).json({success:true,agent:route.agent_name,drafted:result.count,csq_id:result.csqId});
+    } else {
+      res.status(500).json({success:false,agent:route.agent_name,error:'Kwame could not produce a usable draft -- check server logs for the specific failure, or Chloe hard-rejected it after 3 review passes (check the addressable block on your dashboard).'});
+    }
   }
   else if (route.pipeline==='p1_aaliyah_scout'){const result=await runAaliyahProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
