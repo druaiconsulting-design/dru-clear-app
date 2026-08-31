@@ -45,6 +45,18 @@ function getPlatformLabel(category: string): string {
 
 // ─── JSON extractor — finds first complete JSON object, ignores surrounding content ──
 
+// Logs a gap Chloe finds against Kwame's grant drafts so his NEXT draft --
+// this grant on a future click, or any other grant -- inherits the feedback
+// via getAgentCorrections, instead of starting cold every time.
+async function writeAgentCorrection(agentName: string, note: string, source: string, task?: string): Promise<void> {
+  if (!note) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_corrections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: 'return=minimal' },
+    body: JSON.stringify({ agent_name: agentName, correction_note: note, source, ...(task ? { task } : {}) }),
+  }).catch((err) => console.error(`[on-demand] writeAgentCorrection failed for ${agentName}:`, err));
+}
+
 function extractJSON(text: string): Record<string, unknown> | null {
   const start = text.indexOf("{");
   if (start === -1) return null;
@@ -228,7 +240,10 @@ OR:
 
 // ─── Correction agent ─────────────────────────────────────────────────────────
 
-async function runCorrectionAgent(item: Record<string, unknown>, correctionNotes: string, retryCount: number): Promise<string | null> {
+// Returns Isabella's corrected text in memory -- no new queue row. The retry
+// loop below keeps one draft in memory across every attempt and writes it to
+// the same row once, at the end, the same pattern Chloe and Kwame's loop uses.
+async function runIsabellaCorrectionText(item: Record<string, unknown>, currentContent: string, correctionNotes: string): Promise<string | null> {
   const correctedOutput = await callAnthropic(
     `You are a compliance editor making ONE targeted correction to an existing document.
 
@@ -244,25 +259,10 @@ RULES — strictly enforced:
 6. If you are unsure what to change, change only the minimum possible
 
 ORIGINAL CONTENT (copy verbatim, apply only the one correction above):
-${item.raw_output}`,
+${currentContent}`,
     2000
   );
-
-  return await dbInsert("chief_of_staff_queue", {
-    agent_id:         item.agent_id,
-    agent_name:       item.agent_name,
-    division:         item.division,
-    task:             item.task,
-    category:         item.category,
-    raw_output:       correctedOutput,
-    priority:         item.priority ?? "high",
-    status:           "pending",
-    retry_count:      retryCount,
-    correction_notes: correctionNotes,
-    parent_csq_id:    item.id,
-    raymond_notes:    item.raymond_notes ?? null,
-    run_date:         new Date().toISOString().split("T")[0],
-  });
+  return correctedOutput || null;
 }
 
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
@@ -520,11 +520,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const agentKnowledge = await getAgentKnowledge();
 
   // Grant application drafts: pull the same org_profile and grant-row facts Kwame
-  // and Chloe already work from, ONCE, before the retry loop starts. This has to
-  // happen up front because the CSQ item's own `context` field (which names the
-  // opportunity) does not carry over to the corrected copy runCorrectionAgent
-  // creates -- if this were re-derived per attempt it would be lost after the
-  // first correction, right when Isabella needs it most.
+  // and Chloe already work from, ONCE, before the retry loop starts, and reuse
+  // them across every attempt within this single request.
   let verifiedFacts = '';
   let realStandard = '';
   let answerThatWins = '';
@@ -565,12 +562,14 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
   try {
     // ── STEP 0: Chloe's R.E.A.L. review/rewrite loop (grant drafts only) ──
     // Moved here from api/ghl-agent-trigger.ts (Aug 31, 2026) -- that file's
-    // 60s budget was too tight for Kwame's web-search draft plus up to 3 more
-    // sequential AI calls (Chloe x2 + one Kwame rewrite), which is what left a
-    // draft stuck at status 'pending' with no review and no error shown to
-    // DeAnna. This file already runs on a 300s budget for the on-demand chain,
-    // so Chloe's loop runs here instead, still ahead of Isabella, same standard,
-    // same up-to-2-pass shape, same hard-reject-to-addressable-block outcome.
+    // 60s budget was too tight for Kwame's web-search draft plus several more
+    // sequential AI calls, which is what left a draft stuck at status 'pending'
+    // with no review and no error shown to DeAnna. This file already runs on a
+    // 300s budget for the on-demand chain, so Chloe's loop runs here instead,
+    // still ahead of Isabella. 3 total review passes with 2 real rewrite
+    // chances in between -- same shape as Isabella's loop below, extended from
+    // 2 passes on Aug 31 so Kwame gets a genuine chance to learn and improve,
+    // not just one shot before rejection.
     if (isGrantDraft) {
       const item = await dbGet("chief_of_staff_queue", currentId);
       if (!item) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
@@ -586,7 +585,7 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
       let chloeNotes = '';
       let hitsReal = false;
 
-      for (let attempt = 0; attempt <= 1; attempt++) {
+      for (let attempt = 0; attempt <= 2; attempt++) {
         try {
           const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nIf you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking DeAnna for a specific detail neither of you has -- a vendor name, an exact cost, a date, or a client story only she can tell. Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
           const chloeRaw = await callAnthropic(chloePrompt, 1000);
@@ -604,7 +603,10 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
         }
 
         if (hitsReal) break;
-        if (attempt === 1) break;
+
+        await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
+
+        if (attempt === 2) break;
 
         try {
           const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nWhen a gap Chloe found calls for something specific that lives outside the facts above -- a vendor or platform, an exact cost, a delivery date, or a concrete story about a client's before-and-after -- ask DeAnna for it directly, right at that spot, naming exactly what's needed: [DEANNA: Which platform will you use for the learning management system, and what's the license cost?] or [DEANNA: Share a specific client story -- who they were, what they struggled with before working with you, and what changed after]. Write the surrounding sentences so the section reads as complete and confident with her answer dropped in.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
@@ -619,9 +621,9 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
 
       if (!hitsReal) {
         await dbUpdate("chief_of_staff_queue", currentId, {
-          isabella_flags: chloeFlags, correction_notes: chloeNotes, status: "rejected", retry_count: 2,
+          isabella_flags: chloeFlags, correction_notes: chloeNotes, status: "rejected", retry_count: 3,
         });
-        console.warn(`[on-demand] ⛔ Chloe hard-rejected R.E.A.L. after 2 passes: ${item.agent_name}`);
+        console.warn(`[on-demand] ⛔ Chloe hard-rejected R.E.A.L. after 3 passes: ${item.agent_name}`);
         await releaseLock();
         res.status(200).json({ success: false, reason: "hard_rejected_by_chloe_real", agent: item.agent_name, flags: chloeFlags });
         return;
@@ -644,54 +646,60 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
     }
 
     // ── STEP 1: Isabella retry loop ──────────────────────────
+    // In-memory, single row -- same pattern Chloe and Kwame's loop uses.
+    // Up to 3 total review passes (attempt 0, 1, 2) with a real rewrite
+    // between each one; only hard-rejects if it's still not clean on the
+    // 3rd pass. The row itself never changes -- currentId stays the same
+    // from here through Governance and Raymond below.
+    const startItem = await dbGet("chief_of_staff_queue", currentId);
+    if (!startItem) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
+
+    let currentContent = String(startItem.raw_output ?? '');
+    let isabellaFlags = 'none';
+    let isabellaNotes = '';
     let isabellaPassed = false;
 
-    for (let attempt = 0; attempt <= 3; attempt++) {
-      const item = await dbGet("chief_of_staff_queue", currentId);
-      if (!item) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
-
-      console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${item.agent_name}`);
-      const retryCount = (item.retry_count as number) ?? 0;
-      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(item, agentKnowledge, verifiedFacts);
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${startItem.agent_name}`);
+      const checkItem = { ...startItem, raw_output: currentContent };
+      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(checkItem, agentKnowledge, verifiedFacts);
+      isabellaFlags = flags;
+      isabellaNotes = correctionNotes;
 
       if (cleared) {
-        await dbUpdate("chief_of_staff_queue", currentId, {
-          isabella_flags: flags,
-          isabella_cleared_at: new Date().toISOString(),
-          status: "isabella_cleared",
-        });
-        console.log(`[on-demand] ✅ Isabella cleared: ${item.agent_name}`);
+        console.log(`[on-demand] ✅ Isabella cleared: ${startItem.agent_name}`);
         isabellaPassed = true;
         break;
       }
 
-      if (attempt >= 2) {
-        await dbUpdate("chief_of_staff_queue", currentId, {
-          isabella_flags: flags,
-          correction_notes: correctionNotes,
-          status: "rejected",
-          governance_cleared: false,
-        });
-        console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${item.agent_name} — ${flags}`);
-        await releaseLock();
-        res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: item.agent_name, flags });
-        return;
-      }
+      if (attempt === 2) break;
 
-      await dbUpdate("chief_of_staff_queue", currentId, {
-        isabella_flags: flags,
-        correction_notes: correctionNotes,
-        status: "needs_correction",
-      });
-      complianceFlags.push(`${item.agent_name} — CORRECTION APPLIED (attempt ${retryCount + 1}) — ${flags}`);
-      console.log(`[on-demand] 🔄 Correction applied for: ${item.agent_name}`);
-
-      const newId = await runCorrectionAgent(item, correctionNotes, retryCount + 1);
-      if (!newId) { await releaseLock(); res.status(500).json({ error: "Correction agent failed" }); return; }
-      currentId = newId;
+      complianceFlags.push(`${startItem.agent_name} — CORRECTION APPLIED (attempt ${attempt + 1}) — ${flags}`);
+      console.log(`[on-demand] 🔄 Correction applied for: ${startItem.agent_name}`);
+      const corrected = await runIsabellaCorrectionText(startItem, currentContent, correctionNotes);
+      if (corrected) currentContent = corrected;
     }
 
-    if (!isabellaPassed) { await releaseLock(); res.status(500).json({ error: "Isabella loop exhausted" }); return; }
+    if (!isabellaPassed) {
+      await dbUpdate("chief_of_staff_queue", currentId, {
+        raw_output: currentContent,
+        isabella_flags: isabellaFlags,
+        correction_notes: isabellaNotes,
+        status: "rejected",
+        governance_cleared: false,
+      });
+      console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${startItem.agent_name} — ${isabellaFlags}`);
+      await releaseLock();
+      res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: startItem.agent_name, flags: isabellaFlags });
+      return;
+    }
+
+    await dbUpdate("chief_of_staff_queue", currentId, {
+      raw_output: currentContent,
+      isabella_flags: isabellaFlags,
+      isabella_cleared_at: new Date().toISOString(),
+      status: "isabella_cleared",
+    });
 
     const clearedItem = await dbGet("chief_of_staff_queue", currentId);
     if (!clearedItem) { await releaseLock(); res.status(404).json({ error: "Cleared item not found" }); return; }
