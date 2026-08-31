@@ -71,20 +71,6 @@ async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> 
   return data.content?.[0]?.text ?? '';
 }
 
-async function writeToCSQ(record: Record<string, unknown>): Promise<string | null> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) { console.error(`[csq] Write failed: ${await res.text()}`); return null; }
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
-}
-
 async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -126,29 +112,35 @@ async function writeAgentCorrection(agentName: string, note: string, csqId: stri
   } catch (err) { console.error(`[isabella] Failed to write agent_correction for ${agentName}:`, err); }
 }
 
-async function runCorrectionAgent(item: CSQItem, correctionNotes: string, newRetryCount: number): Promise<void> {
+// Returns Isabella's corrected text in memory -- no new queue row. The retry
+// loop below keeps one draft in memory across every attempt and writes it to
+// the same row once, at the end.
+async function runIsabellaCorrectionText(item: CSQItem, currentContent: string, correctionNotes: string): Promise<string | null> {
   try {
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections(item.agent_name);
     const output = await callAnthropic(
-      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${item.raw_output}\nProduce a corrected version that applies exactly what the correction notes above require — whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
+      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${currentContent}\nProduce a corrected version that applies exactly what the correction notes above require -- whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
       1500
     );
-    await writeToCSQ({
-      agent_id: item.agent_id, agent_name: item.agent_name, division: item.division,
-      task: item.task, category: item.category, raw_output: output, priority: item.priority,
-      status: 'pending', retry_count: newRetryCount, parent_csq_id: item.id,
-      correction_notes: correctionNotes,
-    });
-    console.log(`[isabella] Correction triggered for ${item.agent_name} (attempt ${newRetryCount})`);
-  } catch (error) { console.error(`[isabella] Correction failed for ${item.agent_name}:`, error); }
+    return output || null;
+  } catch (error) {
+    console.error(`[isabella] Correction failed for ${item.agent_name}:`, error);
+    return null;
+  }
 }
 
-async function processIsabellaItem(item: CSQItem): Promise<'cleared' | 'sent_back' | 'rejected' | 'error'> {
+async function processIsabellaItem(item: CSQItem): Promise<'cleared' | 'rejected' | 'error'> {
   try {
     const agentKnowledge = await getAgentKnowledge();
-    const raw = await callTwin(
-      `${GENIUS_MODE}
+    let currentContent = item.raw_output;
+    let finalFlags = 'none';
+    let finalNotes = '';
+    let cleared = false;
+
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      const raw = await callTwin(
+        `${GENIUS_MODE}
 
 You are Isabella Moreno, Director of Compliance for DRU AI Consulting.
 
@@ -176,48 +168,48 @@ COMMUNITY CONNECTION EXCEPTION: Content from the Community Connection division i
 correction_notes is your finished verdict. Write it the way you'd state a conclusion you've already reached: the specific issue, and exactly how to fix it, in one to three sentences. When more than one issue exists, give each its own short sentence, stated as a finished finding.
 
 AGENT: ${item.agent_name} | TASK: ${item.task}
-CONTENT: ${item.raw_output}
+CONTENT: ${currentContent}
 
 Output ONLY this JSON:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All five checks passed."}
 OR: {"cleared":false,"flags":"specific issue — name which check failed","correction_notes":"Exact correction instruction"}`,
-      800
-    );
+        800
+      );
 
-    const result = JSON.parse(extractJSON(raw));
+      const result = JSON.parse(extractJSON(raw));
+      finalFlags = result.flags ?? 'none';
+      finalNotes = result.correction_notes ?? '';
 
-    if (result.cleared) {
+      if (result.cleared) { cleared = true; break; }
+      if (attempt === 2) break;
+
+      console.log(`[isabella] Correction applied for ${item.agent_name} (attempt ${attempt + 1})`);
+      const corrected = await runIsabellaCorrectionText(item, currentContent, finalNotes);
+      if (corrected) currentContent = corrected;
+    }
+
+    if (cleared) {
       await updateCSQ(item.id, {
-        isabella_flags: result.flags ?? 'none',
+        raw_output: currentContent,
+        isabella_flags: finalFlags,
         isabella_cleared_at: new Date().toISOString(),
         status: 'isabella_cleared',
       });
       return 'cleared';
     } else {
-      const retryCount = item.retry_count ?? 0;
-      if (retryCount >= 2) {
-        await updateCSQ(item.id, {
-          isabella_flags: result.flags,
-          correction_notes: result.correction_notes,
-          governance_cleared: false,
-          status: 'rejected',
-        });
-        console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${result.flags}`);
-        // First learning channel: save the final note automatically, no
-        // action needed from DeAnna. If she also talks to the agent about
-        // this item from the card, that's the second channel (ask-agent.ts).
-        await writeAgentCorrection(item.agent_name, result.correction_notes, item.id);
-        return 'rejected';
-      } else {
-        await updateCSQ(item.id, {
-          isabella_flags: result.flags,
-          correction_notes: result.correction_notes,
-          status: 'needs_correction',
-        });
-        await runCorrectionAgent(item, result.correction_notes, retryCount + 1);
-        console.log(`[isabella] Sent back to ${item.agent_name} (attempt ${retryCount + 1})`);
-        return 'sent_back';
-      }
+      await updateCSQ(item.id, {
+        raw_output: currentContent,
+        isabella_flags: finalFlags,
+        correction_notes: finalNotes,
+        governance_cleared: false,
+        status: 'rejected',
+      });
+      console.warn(`[isabella] HARD REJECT: ${item.agent_name} — ${finalFlags}`);
+      // First learning channel: save the final note automatically, no
+      // action needed from DeAnna. If she also talks to the agent about
+      // this item from the card, that's the second channel (ask-agent.ts).
+      await writeAgentCorrection(item.agent_name, finalNotes, item.id);
+      return 'rejected';
     }
   } catch (error) {
     console.error(`[isabella] Sonnet call failed for ${item.agent_name}:`, error);
@@ -230,7 +222,7 @@ async function runIsabella(): Promise<{ reviewed: number; cleared: number; sent_
   const pending = await getCSQItems('pending', 25, cutoff);
   console.log(`[isabella] Reviewing ${pending.length} pending items (max 25, 48hr window, concurrent batches of 5)...`);
   if (pending.length === 0) return { reviewed: 0, cleared: 0, sent_back: 0, rejected: 0 };
-  let cleared = 0; let sentBack = 0; let rejected = 0;
+  let cleared = 0; let rejected = 0;
   const BATCH_SIZE = 5;
 
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
@@ -239,13 +231,15 @@ async function runIsabella(): Promise<{ reviewed: number; cleared: number; sent_
     for (const outcome of outcomes) {
       if (outcome === 'cleared') cleared++;
       else if (outcome === 'rejected') rejected++;
-      else if (outcome === 'sent_back') sentBack++;
       // 'error' → no counter increment, item stays pending and will be retried next run
     }
   }
 
-  console.log(`[isabella] ${pending.length} reviewed: ${cleared} cleared, ${sentBack} sent back, ${rejected} rejected`);
-  return { reviewed: pending.length, cleared, sent_back: sentBack, rejected };
+  // sent_back is kept at 0 and in the return shape for compatibility -- each
+  // item now fully resolves (cleared or rejected) within one pass instead of
+  // spawning a follow-up row for a future cron run to pick up.
+  console.log(`[isabella] ${pending.length} reviewed: ${cleared} cleared, ${rejected} rejected`);
+  return { reviewed: pending.length, cleared, sent_back: 0, rejected };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
