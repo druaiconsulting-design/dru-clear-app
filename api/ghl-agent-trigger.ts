@@ -334,14 +334,6 @@ async function checkAndReserveOnDemandSpend(): Promise<{ ok: boolean; totalSpent
 // Raymond pipeline (not the direct-to-approvals bypass Adaeze/Aaliyah use for
 // scouting), since DeAnna wants compliance review on actual application drafts
 // before they reach her.
-async function writeAgentCorrection(agentName: string, note: string, source: string, task?: string): Promise<void> {
-  if (!note) return;
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return;
-  await fetch(`${url}/rest/v1/agent_corrections`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=minimal'},body:JSON.stringify({agent_name:agentName,correction_note:note,source,...(task?{task}:{})})})
-    .catch((err) => console.error(`[kwame-grants] writeAgentCorrection failed for ${agentName}:`, err));
-}
-
 async function runKwameGrantWriter(opportunityName: string): Promise<{count:number;csqId:string|null}> {
   try {
     if (!opportunityName || !opportunityName.trim()) { console.error('[kwame] Grant Writer: no opportunity name given'); return { count: 0, csqId: null }; }
@@ -361,78 +353,23 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
     const cleanName = String(opportunity.opportunity_name ?? '').replace(
       new RegExp(`\\s*\\(${String(opportunity.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
     ).trim();
-    const submissionLine = method === 'email'
-      ? `**Submission (email):** [Click to open a pre-filled email to ${parsed.submission_email}](mailto:${encodeURIComponent(String(parsed.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(String(parsed.application_draft))}) -- review before sending, nothing sends automatically.`
-      : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${opportunity.source_url ?? 'source URL not found'}`;
 
-    // Chloe/Kwame R.E.A.L. loop -- up to 2 total review passes. A real gap
-    // logs a correction for Kwame immediately and triggers one automatic
-    // rewrite; if it still doesn't hit R.E.A.L. on the 2nd pass, this
-    // hard-rejects in the same shape Isabella's on-demand hard-rejects use,
-    // so it surfaces via the existing addressable-block UI automatically --
-    // DeAnna sees the issue and can comment directly to Kwame to correct it.
-    // DeAnna only ever sees the final result otherwise: a clean draft.
-    let currentDraft = String(parsed.application_draft);
-    let chloeFlags = 'none';
-    let chloeNotes = '';
-    let hitsReal = false;
-    const chloeCorrections = await getAgentCorrections('Chloe Dubois');
-
-    for (let attempt = 0; attempt <= 1; attempt++) {
-      try {
-        const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
-        const chloeRaw = await callAnthropic(chloePrompt, 1000);
-        const chloeParsed = extractJSONObject(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
-        hitsReal = chloeParsed?.hits_real === true;
-        chloeNotes = String(chloeParsed?.correction_notes ?? '');
-        chloeFlags = hitsReal ? 'none' : (chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.');
-      } catch (error) {
-        // A Chloe failure never blocks Kwame's draft -- same guarantee the
-        // original single-pass review had. Let the current draft through
-        // rather than letting one bad API call silently kill the whole thing.
-        console.error('[chloe] R.E.A.L. review error, letting current draft through unblocked:', error);
-        hitsReal = true;
-        chloeNotes = '';
-        chloeFlags = 'none';
-      }
-
-      if (hitsReal) break;
-
-      await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
-
-      if (attempt === 1) break;
-
-      try {
-        const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
-        const rewriteRaw = await callAnthropic(rewritePrompt, 3000);
-        const rewriteParsed = extractJSONObject(rewriteRaw) as {application_draft?: string} | null;
-        if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
-      } catch (error) {
-        // Keep the previous draft rather than losing everything to one failed rewrite call.
-        console.error('[kwame] Rewrite error, keeping previous draft and continuing:', error);
-      }
-    }
-
+    // Chloe's R.E.A.L. review/rewrite loop and Isabella's compliance check both
+    // now run inside api/process-on-demand.ts (300s budget) instead of here
+    // (60s budget) -- that loop is what was timing out. This function's only
+    // job now is to get Kwame's raw draft into the queue as fast as possible
+    // so the on-demand chain can fire before this file's clock runs out.
+    // process-on-demand.ts builds the final wrapped output (header + submission
+    // line) once Chloe clears it, using submission_method/submission_email off
+    // the grant_opportunities row this call is about to write below.
     await markGrantOpportunity(String(opportunity.id), { status: 'drafted', submission_method: method, submission_email: parsed.submission_email ?? null });
 
-    if (!hitsReal) {
-      const csqId = await writeToCSQ({
-        agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
-        task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
-        raw_output: currentDraft, priority: 'normal', status: 'rejected',
-        isabella_flags: chloeFlags, correction_notes: chloeNotes, retry_count: 2,
-      });
-      console.log(`[kwame-grants] Chloe hard-rejected after 2 passes, CSQ: ${csqId}`);
-      return { count: 0, csqId: null };
-    }
-
-    const output = `**${cleanName}** — ${opportunity.funder}\nAmount: ${opportunity.amount_range ?? 'See link'} | Deadline: ${opportunity.deadline}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
     const csqId = await writeToCSQ({
       agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
       task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
-      raw_output: output, priority: 'normal', status: 'pending', retry_count: 0,
+      raw_output: String(parsed.application_draft), priority: 'normal', status: 'pending', retry_count: 0,
     });
-    return { count: 1, csqId };
+    return { count: csqId ? 1 : 0, csqId };
   } catch(error){ console.error('[kwame] Grant Writer error:',error); return { count:0, csqId:null }; }
 }
 
