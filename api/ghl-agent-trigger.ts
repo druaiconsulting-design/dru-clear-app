@@ -365,22 +365,21 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
       ? `**Submission (email):** [Click to open a pre-filled email to ${parsed.submission_email}](mailto:${encodeURIComponent(String(parsed.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(String(parsed.application_draft))}) -- review before sending, nothing sends automatically.`
       : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${opportunity.source_url ?? 'source URL not found'}`;
 
-    // Chloe/Kwame R.E.A.L. loop -- up to 3 total review passes, matching
-    // Isabella's own 3-strike shape. A real gap logs a correction for Kwame
-    // immediately and triggers one automatic rewrite; if it still doesn't hit
-    // R.E.A.L. on the 3rd pass, this hard-rejects in the same shape Isabella's
-    // on-demand hard-rejects use, so it surfaces via the existing addressable-
-    // block UI automatically -- nothing new needed there. DeAnna only ever
-    // sees the final result: either a clean draft, or a rejected block she can
-    // talk to Kwame about directly.
+    // Chloe/Kwame R.E.A.L. loop -- up to 2 total review passes. A real gap
+    // logs a correction for Kwame immediately and triggers one automatic
+    // rewrite; if it still doesn't hit R.E.A.L. on the 2nd pass, this
+    // hard-rejects in the same shape Isabella's on-demand hard-rejects use,
+    // so it surfaces via the existing addressable-block UI automatically --
+    // DeAnna sees the issue and can comment directly to Kwame to correct it.
+    // DeAnna only ever sees the final result otherwise: a clean draft.
     let currentDraft = String(parsed.application_draft);
     let chloeFlags = 'none';
     let chloeNotes = '';
     let hitsReal = false;
+    const chloeCorrections = await getAgentCorrections('Chloe Dubois');
 
-    for (let attempt = 0; attempt <= 2; attempt++) {
+    for (let attempt = 0; attempt <= 1; attempt++) {
       try {
-        const chloeCorrections = await getAgentCorrections('Chloe Dubois');
         const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
         const chloeRaw = await callAnthropic(chloePrompt, 1000);
         const chloeParsed = extractJSONObject(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
@@ -401,7 +400,7 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
 
       await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
 
-      if (attempt === 2) break;
+      if (attempt === 1) break;
 
       try {
         const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nGRANT OPPORTUNITY:\nFUNDER: ${opportunity.funder}\nAMOUNT: ${opportunity.amount_range}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
@@ -421,9 +420,9 @@ async function runKwameGrantWriter(opportunityName: string): Promise<{count:numb
         agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
         task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
         raw_output: currentDraft, priority: 'normal', status: 'rejected',
-        isabella_flags: chloeFlags, correction_notes: chloeNotes, retry_count: 3,
+        isabella_flags: chloeFlags, correction_notes: chloeNotes, retry_count: 2,
       });
-      console.log(`[kwame-grants] Chloe hard-rejected after 3 passes, CSQ: ${csqId}`);
+      console.log(`[kwame-grants] Chloe hard-rejected after 2 passes, CSQ: ${csqId}`);
       return { count: 0, csqId: null };
     }
 
