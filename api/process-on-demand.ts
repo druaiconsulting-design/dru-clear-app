@@ -434,7 +434,7 @@ async function runTwinSynthesisOnItem(
       status:        "pending",
       notify_deanna: true,
       priority:      "high",
-      category:      "content_review",
+      category:      item.category === "grant_applications" ? "grant_applications" : "content_review",
       platform:      null,
     });
   }
