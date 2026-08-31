@@ -24,6 +24,39 @@ HOOK/QUESTION RULE: Make every hook, headline, and question open-ended and decla
 // same safety-net pattern as FALLBACK_TM_MARKS.
 export const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ only to these exact approved marks, written in full, in their original casing, every time: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. Every other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," and offer names like "Executive Diagnostic" — stays plain text, no matter how proprietary it sounds. Compliance clearance stamps, status lines, and reviewer signatures come from the external review process, issued after your content is written — leave them out of your own draft. SERVICE CLASSES: Keep all content within Classes 35, 41, 42. All CTAs point to assessment.druaiconsulting.com.`;
 
+// ─── Grant drafting — shared across Kwame's draft, Kwame's rewrite, Chloe's
+// review, and Isabella's context (api/ghl-agent-trigger.ts and
+// api/process-on-demand.ts). Single source of truth (Aug 31, 2026) -- these
+// used to be separately hardcoded in both files, which is why a wording fix
+// or a token-cap fix kept needing to happen twice and occasionally only
+// landed in one place. Change any of this once, here, and every file that
+// imports it stays in sync automatically.
+
+export const REAL_STANDARD = `R-ELATABLE: Connect your proposal to the needs and interests of the grantor by demonstrating an understanding of their mission, goals, and priorities.
+E-DUCATIONAL: Clearly explain the impact and outcomes of your project or business, including how it addresses the needs of your target audience or community.
+A-CTIONABLE: Outline concrete steps and strategies for achieving your goals, including a detailed plan for how grant funds will be utilized and managed.
+L-OVABLE: Infuse passion and authenticity into your proposal to make it stand out to grant reviewers. Share personal anecdotes, testimonials, or success stories that demonstrate your commitment to your business's mission and goals.`;
+
+export const REAL_FUNDED_EXAMPLE = `"Artificial intelligence is transforming every industry, yet only 54% of workers have used AI in their jobs over the past year, and just 14% use it daily, leaving millions of entrepreneurs and small businesses without the skills needed to compete in today's digital economy.
+
+Our mission as Certified AI Consultants is to close that gap by providing accessible AI education, business coaching, and financial empowerment programs that help underserved communities embrace technology, increase productivity, and build sustainable businesses.
+
+A $50,000 grant will allow us to expand free AI workshops, educational courses, financial literacy resources, and community partnerships that create lasting economic opportunity. Our passion comes from seeing how AI transformed our own business—saving time, increasing efficiency, and opening doors we never thought possible. Now, our goal is to ensure every entrepreneur, regardless of their background, has the opportunity to succeed in the AI economy."`;
+
+// For Kwame -- drafting or rewriting. Tells him what to do when a fact he
+// needs (a vendor, a cost, a date, a specific client story) isn't in what
+// he's been given.
+export const DEANNA_MARKER_FOR_KWAME = `When something specific is needed that lives outside the facts given -- a vendor or platform, an exact cost, a delivery date, or a concrete story about a client's before-and-after -- ask DeAnna for it directly, right at that spot, naming exactly what's needed: [DEANNA: Which platform will you use for the learning management system, and what's the license cost?] or [DEANNA: Share a specific client story -- who they were, what they struggled with before working with you, and what changed after]. Write the surrounding sentences so the section reads as complete and confident with her answer dropped in.`;
+
+// For Chloe or Isabella -- reviewing. Tells them what a [DEANNA: ...] marker
+// means so neither one treats it as a gap or a compliance problem.
+export const DEANNA_MARKER_FOR_REVIEWERS = `A bracketed note like [DEANNA: ...] is Kwame correctly asking DeAnna for a specific detail no one else has -- a vendor name, an exact cost, a date, or a client story only she can tell.`;
+
+// Shared budget for anything Kwame or Chloe writes in full (a draft or a
+// rewrite) -- two essays plus JSON wrapping runs long, and this is the number
+// that's proven to hold that content without truncating mid-generation.
+export const GRANT_CONTENT_MAX_TOKENS = 8000;
+
 // ─── Static framework knowledge ──────────────────────────────────────────────
 // Framework meanings are stable IP — defined here so agents always have full
 // context even if Supabase is temporarily unavailable.
