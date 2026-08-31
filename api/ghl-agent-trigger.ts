@@ -1682,7 +1682,7 @@ Write the complete article. This is the full PDF content — not a summary or ou
     if (result.count > 0) {
       res.status(202).json({success:true,agent:route.agent_name,drafted:result.count,csq_id:result.csqId});
     } else {
-      res.status(500).json({success:false,agent:route.agent_name,error:'Kwame could not produce a usable draft -- check server logs for the specific failure, or Chloe hard-rejected it after 3 review passes (check the addressable block on your dashboard).'});
+      res.status(500).json({success:false,agent:route.agent_name,error:"Kwame's draft failed to generate -- try again, or check server logs if it keeps happening."});
     }
   }
   else if (route.pipeline==='p1_aaliyah_scout'){const result=await runAaliyahProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
