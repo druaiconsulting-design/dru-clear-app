@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -523,8 +523,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // and Chloe already work from, ONCE, before the retry loop starts, and reuse
   // them across every attempt within this single request.
   let verifiedFacts = '';
-  let realStandard = '';
-  let answerThatWins = '';
   let orgProfileFacts: Record<string, unknown> | null = null;
   let grantRow: Record<string, unknown> | null = null;
   const initialItem = await dbGet("chief_of_staff_queue", csq_id as string);
@@ -536,11 +534,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ]);
     orgProfileFacts = orgProfile;
     grantRow = grantFacts;
-    // Same R.E.A.L. standard and funded reference example Chloe and Kwame work
-    // from in ghl-agent-trigger.ts -- copied here so Chloe's check (Step 0
-    // below) and Isabella's review both use the identical standard.
-    realStandard = `R-ELATABLE: Connect your proposal to the needs and interests of the grantor by demonstrating an understanding of their mission, goals, and priorities.\nE-DUCATIONAL: Clearly explain the impact and outcomes of your project or business, including how it addresses the needs of your target audience or community.\nA-CTIONABLE: Outline concrete steps and strategies for achieving your goals, including a detailed plan for how grant funds will be utilized and managed.\nL-OVABLE: Infuse passion and authenticity into your proposal to make it stand out to grant reviewers. Share personal anecdotes, testimonials, or success stories that demonstrate your commitment to your business's mission and goals.`;
-    answerThatWins = `"Artificial intelligence is transforming every industry, yet only 54% of workers have used AI in their jobs over the past year, and just 14% use it daily, leaving millions of entrepreneurs and small businesses without the skills needed to compete in today's digital economy.\n\nOur mission as Certified AI Consultants is to close that gap by providing accessible AI education, business coaching, and financial empowerment programs that help underserved communities embrace technology, increase productivity, and build sustainable businesses.\n\nA $50,000 grant will allow us to expand free AI workshops, educational courses, financial literacy resources, and community partnerships that create lasting economic opportunity. Our passion comes from seeing how AI transformed our own business—saving time, increasing efficiency, and opening doors we never thought possible. Now, our goal is to ensure every entrepreneur, regardless of their background, has the opportunity to succeed in the AI economy."`;
     if (orgProfile) {
       verifiedFacts = `DEANNA'S VERIFIED FACTS FOR THIS GRANT -- check every specific claim in the content below against these before flagging anything as invented:
 MISSION: ${orgProfile.mission_statement ?? 'Not provided'}
@@ -551,9 +544,9 @@ PERSONAL STORY (for this specific grant): ${grantRow?.personal_story ?? 'Not pro
 TESTIMONIALS/SUCCESS STORIES (for this specific grant): ${grantRow?.testimonials_success_stories ?? 'Not provided'}
 
 BACKGROUND -- THE R.E.A.L. STANDARD THIS DRAFT WAS WRITTEN TO SATISFY: Chloe Dubois (Copy Writer) has already reviewed this draft against the R.E.A.L. standard below before it reached you -- this is why it includes personal anecdotes, forward-looking passion, and testimonial-driven language. You do not need to re-check it against R.E.A.L. yourself; your five checks above (trademarks, service classes, voice, factual accuracy, framework attribution) are unchanged and still the only clearing standard you apply. This is context only, so you don't mistake R.E.A.L.-driven content for a compliance problem:
-${realStandard}
+${REAL_STANDARD}
 
-If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking DeAnna for a specific detail neither he nor Chloe had -- a vendor name, an exact cost, a date, or a client story only she can tell. Treat it as accurate and on-voice exactly as written, and continue your review from there.`;
+${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as written, and continue your review from there.`;
     }
   }
 
@@ -587,7 +580,7 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
 
       for (let attempt = 0; attempt <= 2; attempt++) {
         try {
-          const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${realStandard}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${answerThatWins}\n\nIf you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking DeAnna for a specific detail neither of you has -- a vendor name, an exact cost, a date, or a client story only she can tell. Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
+          const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
           const chloeRaw = await callAnthropic(chloePrompt, 1000);
           const chloeParsed = extractJSON(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
           hitsReal = chloeParsed?.hits_real === true;
@@ -609,8 +602,8 @@ If you see a bracketed note like [DEANNA: ...], that is Kwame correctly asking D
         if (attempt === 2) break;
 
         try {
-          const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\nWhen a gap Chloe found calls for something specific that lives outside the facts above -- a vendor or platform, an exact cost, a delivery date, or a concrete story about a client's before-and-after -- ask DeAnna for it directly, right at that spot, naming exactly what's needed: [DEANNA: Which platform will you use for the learning management system, and what's the license cost?] or [DEANNA: Share a specific client story -- who they were, what they struggled with before working with you, and what changed after]. Write the surrounding sentences so the section reads as complete and confident with her answer dropped in.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
-          const rewriteRaw = await callAnthropic(rewritePrompt, 6000);
+          const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
+          const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS);
           const rewriteParsed = extractJSON(rewriteRaw) as {application_draft?: string} | null;
           if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
         } catch (error) {
