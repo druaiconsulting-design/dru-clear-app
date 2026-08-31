@@ -147,6 +147,7 @@ async function callAnthropic(prompt: string, maxTokens = 800): Promise<string> {
   });
   if (!res.ok) throw new Error(`Anthropic Haiku error ${res.status}`);
   const data = await res.json();
+  console.log(`[haiku] stop_reason: ${data.stop_reason ?? 'unknown'}`);
   await logModelUsage("claude-haiku-4-5-20251001", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? "";
 }
@@ -160,8 +161,35 @@ async function callTwin(prompt: string, maxTokens = 1000): Promise<string> {
   });
   if (!res.ok) throw new Error(`Anthropic Sonnet error ${res.status}`);
   const data = await res.json();
+  console.log(`[sonnet] stop_reason: ${data.stop_reason ?? 'unknown'}`);
   await logModelUsage("claude-sonnet-4-6", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? "";
+}
+
+// Web-search-enabled call, for Kwame's grant research step (moved here from
+// api/ghl-agent-trigger.ts, Aug 31, 2026 -- that file's 60s ceiling couldn't
+// hold a research call plus a writing call in sequence, no matter how the
+// token budget was split between them. This file's 300s budget can.
+async function callAnthropicWithWebSearch(prompt: string, maxTokens = 4000, maxSearches = 4, label = 'kwame-research'): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: maxSearches }] }),
+  });
+  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
+  const data = await res.json();
+  console.log(`[${label}] stop_reason: ${data.stop_reason ?? 'unknown'}`);
+  await logModelUsage("claude-haiku-4-5-20251001", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  const blocks = (data.content ?? []) as Array<{type:string;text?:string;name?:string;input?:{query?:string};content?:Array<{url?:string;title?:string}>}>;
+  const queries = blocks.filter(b => b.type === 'server_tool_use' && b.name === 'web_search').map(b => b.input?.query ?? '(no query)');
+  const resultBlocks = blocks.filter(b => b.type === 'web_search_tool_result');
+  const resultCounts = resultBlocks.map(b => Array.isArray(b.content) ? b.content.length : 0);
+  if (queries.length > 0) {
+    queries.forEach((q, i) => console.log(`[${label}] Searched: "${q}" — ${resultCounts[i] ?? '?'} result(s)`));
+  } else {
+    console.log(`[${label}] No web searches were issued for this run.`);
+  }
+  return blocks.filter(b => b.type === 'text').map(b => b.text ?? '').join('\n').trim();
 }
 
 // ─── Division category map ────────────────────────────────────────────────────
@@ -553,6 +581,63 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as writ
   // NOTE: lock is acquired by twin-on-demand.ts before this endpoint fires.
   // This handler owns releasing it on every exit path below (finally block).
   try {
+    // ── STEP -1: Kwame's research + draft (grant drafts only, when Kwame
+    // hasn't written anything yet) ──────────────────────────────────────
+    // Moved here from api/ghl-agent-trigger.ts (Aug 31, 2026). Research and
+    // writing are two separate calls so they don't compete for the same
+    // response budget -- but together they were still too much for that
+    // file's 60s ceiling, which is what caused the hard timeout. This file's
+    // 300s budget holds both comfortably. ghl-agent-trigger.ts now only
+    // queues an empty placeholder and hands off immediately -- an empty
+    // raw_output on a grant draft is exactly how this step knows a draft
+    // still needs to be written.
+    if (isGrantDraft && !String(initialItem?.raw_output ?? '').trim()) {
+      if (!grantRow || !orgProfileFacts) {
+        await releaseLock();
+        res.status(500).json({ error: "Grant opportunity or org profile not found for drafting" });
+        return;
+      }
+
+      const kwameCorrectionsForDraft = await getAgentCorrections('Kwame Asante', 'grant_application_draft');
+      const factsBlockForDraft = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
+
+      let research = '';
+      try {
+        const researchPrompt = `${GENIUS_MODE}\n\nYou are researching a specific grant opportunity for DRU AI Consulting (Dimensional Solns, LLC) before drafting an application.\n\nOPPORTUNITY: ${grantRow?.opportunity_name}\nFUNDER: ${grantRow?.funder}\nAMOUNT: ${grantRow?.amount_range}\nELIGIBILITY: ${grantRow?.eligibility}\nDEADLINE: ${grantRow?.deadline}\nSOURCE: ${grantRow?.source_url}\n\nSearch the web and find:\n1. The funder's official rules or judging criteria page (not just marketing pages) -- what specific criteria do they score submissions against, and how are they weighted?\n2. The funder's own stated mission, goals, and community priorities, in their own specific language, not a generic paraphrase.\n3. The exact application questions, sections, and format this funder asks for -- exact prompts, word or character limits, section titles, whenever the source states them.\n4. How this grant is actually submitted -- a direct application email address if one is stated, or note that it's a web portal, online form, or third-party platform.\n\nWrite your findings as organized plain-text notes under those four headings. Quote or closely paraphrase exact language, section titles, and limits when you find them. This is research only -- do not draft the application itself.`;
+        research = await callAnthropicWithWebSearch(researchPrompt, 4000, 4, 'kwame-research');
+      } catch (error) {
+        console.error('[on-demand] Kwame research call failed, writing from general knowledge instead:', error);
+      }
+
+      const draftPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrectionsForDraft}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC) — DeAnna R. Upshaw, Leadership Strategist and AI Authority.\n\nGround every specific claim in these real facts about the business:\n${factsBlockForDraft}\n\nDraft an application for this specific grant opportunity, which DeAnna has personally reviewed and selected:\nOPPORTUNITY: ${grantRow?.opportunity_name}\nFUNDER: ${grantRow?.funder}\nAMOUNT: ${grantRow?.amount_range}\nELIGIBILITY: ${grantRow?.eligibility}\nDEADLINE: ${grantRow?.deadline}\nSOURCE: ${grantRow?.source_url}\n\nHere is what's already been researched about this specific funder -- use it directly, it's already gathered:\n${research || '(research unavailable this run -- write from the facts above and general knowledge of grant applications)'}\n\nWrite this application to satisfy the R.E.A.L. standard:\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach, and write fully original content in your own words for this specific funder:\n${REAL_FUNDED_EXAMPLE}\n\nUse the mission, track record, budget categories, personal story, and testimonials/success stories given above, plus the funder research above, as the real facts behind each R.E.A.L. element. Write every sentence describing what a client experienced, reported, or achieved by drawing directly from the testimonials and track record given above. Describe what the frameworks are designed to deliver in forward-looking language. Build the closing from whichever facts are strongest among personal story, testimonials, mission, track record, and budget categories.\n\n${DEANNA_MARKER_FOR_KWAME}\n\nWrite the application content in plain text, matching exactly what the funder research above says their application asks for -- their specific sections, questions, and word limits.\n\nAlso determine how this grant is actually submitted, using the funder research above: if a direct application email address was found, use it exactly. Otherwise mark it as a portal submission.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (the full application content, plain text, ready for DeAnna to review),\n  \"submission_method\": \"email\" | \"portal\",\n  \"submission_email\": string or null (only if submission_method is \"email\" and a real address was found)\n}`;
+      const draftRaw = await callAnthropic(draftPrompt, GRANT_CONTENT_MAX_TOKENS);
+      const draftParsed = extractJSON(draftRaw) as { application_draft?: string; submission_method?: string; submission_email?: string } | null;
+
+      if (!draftParsed?.application_draft) {
+        console.error(`[on-demand] Kwame draft failed to generate. Raw response (first 500 chars): ${draftRaw.slice(0, 500)}`);
+        await dbUpdate("chief_of_staff_queue", currentId, {
+          status: "rejected",
+          correction_notes: "Kwame's draft failed to generate this run -- try clicking again.",
+        });
+        await releaseLock();
+        res.status(500).json({ error: "Kwame's draft failed to generate" });
+        return;
+      }
+
+      const submissionMethod = draftParsed.submission_method === 'email' && draftParsed.submission_email ? 'email' : 'portal';
+      await dbUpdate("grant_opportunities", String(grantRow?.id ?? ''), {
+        submission_method: submissionMethod,
+        submission_email: draftParsed.submission_email ?? null,
+      });
+      // Keep the in-memory copy in sync so Step 0 below (which builds the
+      // final wrapped output using grantRow's submission fields) sees this
+      // run's result instead of the pre-draft value.
+      grantRow = { ...grantRow, submission_method: submissionMethod, submission_email: draftParsed.submission_email ?? null };
+
+      await dbUpdate("chief_of_staff_queue", currentId, { raw_output: String(draftParsed.application_draft) });
+      console.log(`[on-demand] ✅ Kwame drafted: ${grantRow?.opportunity_name ?? 'grant application'}`);
+    }
+
     // ── STEP 0: Chloe's R.E.A.L. review/rewrite loop (grant drafts only) ──
     // Moved here from api/ghl-agent-trigger.ts (Aug 31, 2026) -- that file's
     // 60s budget was too tight for Kwame's web-search draft plus several more
