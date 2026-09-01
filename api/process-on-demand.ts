@@ -427,6 +427,33 @@ async function runGrantReviewCycle(
   return { cleared: cycleCleared, finalDraft: currentDraft, lastSummary, lastNotes };
 }
 
+// ─── Turning reviewer notes into plain questions DeAnna can actually answer ──
+// Sept 1, 2026 -- built per DeAnna's direction: she can't see Kwame's draft
+// from the card, so a one-sentence summary alone leaves her guessing what
+// exact question he's asking. This reads the draft's own [DEANNA: ...]
+// placeholders plus the reviewer's notes and produces a plain question next
+// to the real sentence Kwame wrote it into -- not a paraphrase of the
+// reviewer's note, the actual gap in his own words.
+async function extractQuestionsForDeAnna(draft: string, reviewerNotes: string, agentKnowledge: string): Promise<{ question: string; kwameContext: string }[]> {
+  try {
+    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\nYou are turning a grant reviewer's technical notes into a plain list of questions for DeAnna, the business owner -- so she knows exactly what to answer, not a paraphrase of the review, the actual question Kwame needs answered, next to the real sentence he already wrote around it.\n\nREVIEWER'S NOTES (what's missing, in reviewer language):\n${reviewerNotes}\n\nKWAME'S CURRENT DRAFT (find each [DEANNA: ...] placeholder and the real sentence it sits in):\n${draft}\n\nFor every distinct piece of missing information, produce one entry:\n- \"question\": one plain, direct question DeAnna can answer with no grant-writing background needed\n- \"kwame_context\": the exact sentence or phrase from Kwame's draft where that gap sits, quoted, not paraphrased -- if nothing in the draft touches it yet, write \"Not yet in the draft\"\n\nCombine anything about the same missing fact into one question -- never repeat the same ask twice.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"questions\": [\n    {\"question\": \"...\", \"kwame_context\": \"...\"}\n  ]\n}`;
+    const raw = await callAnthropic(prompt, 1500);
+    const parsed = extractJSON(raw) as { questions?: { question?: string; kwame_context?: string }[] } | null;
+    return (parsed?.questions ?? []).map(q => ({ question: String(q.question ?? ''), kwameContext: String(q.kwame_context ?? 'Not yet in the draft') })).filter(q => q.question);
+  } catch (error) {
+    console.error('[on-demand] Question extraction failed, falling back to the plain summary:', error);
+    return [];
+  }
+}
+
+// Builds the actual card text. Falls back to the plain summary only if
+// question extraction genuinely produced nothing.
+function buildNeedsFeedbackOutput(summary: string, questions: { question: string; kwameContext: string }[]): string {
+  if (questions.length === 0) return `Needs Your Feedback — ${summary}`;
+  const qBlocks = questions.map(q => `**Question:** ${q.question}\n**From Kwame's draft:** ${q.kwameContext}`).join('\n\n');
+  return `**Needs Your Feedback**\n\n${qBlocks}`;
+}
+
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
 
 async function runGovernanceOnItem(item: Record<string, unknown>): Promise<{ cleared: boolean; notes: string; flags: string }> {
@@ -829,7 +856,8 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         // the CSQ row id, so grant-resume.ts can find the right draft directly
         // from the card, with no separate lookup.
         const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
-        const stuckOutput = `Stuck after 2 review cycles — ${cycleResult.lastSummary}`;
+        const questions = await extractQuestionsForDeAnna(cycleResult.finalDraft, cycleResult.lastNotes, agentKnowledge);
+        const stuckOutput = buildNeedsFeedbackOutput(cycleResult.lastSummary, questions);
         const existingCardId = await findApprovalByTitle('grant_applications', cleanName);
         if (existingCardId) {
           await dbUpdate("approvals", existingCardId, {
