@@ -127,6 +127,20 @@ async function getGrantFactsByName(name: string): Promise<Record<string, unknown
   return rows?.[0] ?? null;
 }
 
+// One "Grant Application Draft" card per grant, not one per stuck attempt --
+// checks for an existing card in this category with a matching context (the
+// grant's clean name) so a retry updates that same card instead of piling up
+// a new one next to it every time DeAnna clicks the button again.
+async function findApprovalByContext(category: string, context: string): Promise<string | null> {
+  if (!context) return null;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/approvals?category=eq.${encodeURIComponent(category)}&context=eq.${encodeURIComponent(context)}&order=created_at.desc&limit=1`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows?.[0]?.id ?? null;
+}
+
 // ─── Anthropic helpers ────────────────────────────────────────────────────────
 
 // Logs every real API call's actual token usage and cost to Supabase so spend
@@ -231,7 +245,7 @@ YOUR RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
 
 CLEARING STANDARD:
 - All five checks pass → cleared:true
-- Any one check fails → cleared:false — state exactly which check failed (name it: trademark, service class, voice, factual accuracy, or framework attribution) and why
+- Any one check fails → cleared:false — correction_notes gets the exact, detailed instruction the agent needs to fix it; flags gets ONE short, plain-English sentence for DeAnna describing what's blocking it in her own words -- no check names (never say "factual accuracy" or "trademark"), no jargon, no technical detail
 ${verifiedFacts ? `\n${verifiedFacts}\n` : ''}
 AGENT: ${item.agent_name} | TASK: ${item.task}
 CONTENT TO REVIEW:
@@ -240,7 +254,7 @@ ${item.raw_output}
 You MUST respond with ONLY the JSON below. No preamble, no explanation, no markdown. Just the raw JSON object:
 {"cleared":true,"flags":"none","correction_notes":"Content reviewed. All five checks passed."}
 OR:
-{"cleared":false,"flags":"specific issue here — name which check failed","correction_notes":"Exact instruction for the agent to correct this"}`,
+{"cleared":false,"flags":"ONE short plain-English sentence for DeAnna, e.g. 'One phrase restates a number in a way that doesn't quite match the verified fact.'","correction_notes":"Exact, detailed instruction for the agent to correct this"}`,
     800
   );
 
@@ -298,13 +312,14 @@ ${currentContent}`,
 // job. Includes a false-positive guard mirroring Isabella's above: if her own
 // correction_notes admit the draft is ready pending DeAnna's placeholder
 // inputs, that contradicts hits_real:false and is overridden.
-async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chloeCorrections: string, grantRow: Record<string, unknown> | null): Promise<{ hitsReal: boolean; notes: string }> {
+async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chloeCorrections: string, grantRow: Record<string, unknown> | null): Promise<{ hitsReal: boolean; notes: string; summary: string }> {
   try {
-    const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
+    const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, detailed, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true),\n  \"summary\": string (ONE short, plain-English sentence for DeAnna describing what's missing, in her language, not Kwame's -- no R.E.A.L. element names, no jargon, no technical detail -- empty string if hits_real is true)\n}`;
     const chloeRaw = await callAnthropic(chloePrompt, 1000);
-    const chloeParsed = extractJSON(chloeRaw) as { hits_real?: boolean; correction_notes?: string } | null;
+    const chloeParsed = extractJSON(chloeRaw) as { hits_real?: boolean; correction_notes?: string; summary?: string } | null;
     let hitsReal = chloeParsed?.hits_real === true;
     let notes = String(chloeParsed?.correction_notes ?? '');
+    let summary = String(chloeParsed?.summary ?? '');
 
     if (!hitsReal) {
       const noteLower = notes.toLowerCase();
@@ -320,15 +335,16 @@ async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chlo
         console.log(`[on-demand] ⚠️ Chloe false-positive overridden — her own notes confirm the draft is ready pending DeAnna's input`);
         hitsReal = true;
         notes = "False positive overridden. Draft confirmed ready pending DeAnna's placeholder inputs.";
+        summary = '';
       }
     }
 
-    return { hitsReal, notes };
+    return { hitsReal, notes, summary };
   } catch (error) {
     // A Chloe failure never blocks Kwame's draft -- same guarantee the
     // original single-pass review had.
     console.error('[on-demand] Chloe R.E.A.L. review error, letting current draft through unblocked:', error);
-    return { hitsReal: true, notes: '' };
+    return { hitsReal: true, notes: '', summary: '' };
   }
 }
 
@@ -725,23 +741,24 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         getAgentCorrections('Kwame Asante', 'grant_application_draft'),
       ]);
       const factsBlock = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
+      const cleanName = String(initialItem?.context ?? '') || String(item.context ?? '');
 
       let currentDraft = String(item.raw_output ?? '');
-      let lastFlags = 'none';
-      let lastNotes = '';
+      let lastNotes = '';       // detailed, technical -- goes to Kwame's agent_corrections file
+      let lastSummary = 'none'; // one short plain-English sentence -- the only thing DeAnna ever sees
       let cycleCleared = false;
       const MAX_CYCLES = 2;
 
       for (let cycle = 1; cycle <= MAX_CYCLES && !cycleCleared; cycle++) {
         console.log(`[on-demand] Cycle ${cycle}/${MAX_CYCLES} — Chloe R.E.A.L. check for: ${item.agent_name}`);
-        const { hitsReal, notes: chloeNotes } = await runChloeOnItem(currentDraft, agentKnowledge, chloeCorrections, grantRow);
+        const chloeResult = await runChloeOnItem(currentDraft, agentKnowledge, chloeCorrections, grantRow);
 
-        if (!hitsReal) {
-          lastFlags = chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.';
-          lastNotes = chloeNotes;
-          await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
+        if (!chloeResult.hitsReal) {
+          lastNotes = chloeResult.notes;
+          lastSummary = chloeResult.summary || 'Needs another pass on R.E.A.L. before it is ready.';
+          await writeAgentCorrection('Kwame Asante', chloeResult.notes, 'chloe_real_review', 'grant_application_draft');
           console.log(`[on-demand] Cycle ${cycle} — Chloe sent it back to Kwame`);
-          currentDraft = await runKwameRevision(currentDraft, 'Chloe Dubois', chloeNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
+          currentDraft = await runKwameRevision(currentDraft, 'Chloe Dubois', chloeResult.notes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
           continue;
         }
 
@@ -749,8 +766,8 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         const isabellaResult = await runIsabellaOnItem({ ...item, raw_output: currentDraft }, agentKnowledge, verifiedFacts);
 
         if (!isabellaResult.cleared) {
-          lastFlags = isabellaResult.flags;
           lastNotes = isabellaResult.correctionNotes;
+          lastSummary = isabellaResult.flags || 'Needs a compliance fix before it is ready.';
           await writeAgentCorrection('Kwame Asante', isabellaResult.correctionNotes, 'isabella_compliance_review', 'grant_application_draft');
           console.log(`[on-demand] Cycle ${cycle} — Isabella sent it back to Kwame`);
           currentDraft = await runKwameRevision(currentDraft, 'Isabella Moreno', isabellaResult.correctionNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
@@ -758,28 +775,63 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         }
 
         cycleCleared = true;
-        lastFlags = 'none';
+        lastSummary = 'none';
         lastNotes = '';
       }
 
       if (!cycleCleared) {
         await dbUpdate("chief_of_staff_queue", currentId, {
           raw_output: currentDraft,
-          isabella_flags: lastFlags,
+          isabella_flags: lastSummary,
           correction_notes: lastNotes,
           status: "rejected",
           governance_cleared: false,
         });
-        console.warn(`[on-demand] ⛔ Unresolved after ${MAX_CYCLES} cycles: ${item.agent_name} — ${lastFlags}`);
+
+        // One dedicated "Grant Application Draft" card for this grant, showing
+        // only the short summary -- never the review back-and-forth. A retry
+        // on the same grant updates this same card instead of stacking a new
+        // one next to it. This is Kwame's own card type (the one that appears
+        // when a draft clears), not Adaeze's "Grants" scouting card and not
+        // the shared division-wide Needs Attention block -- neither is the
+        // right home for this.
+        const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+        const stuckOutput = `Stuck after ${MAX_CYCLES} review cycles — ${lastSummary}`;
+        const existingCardId = await findApprovalByContext('grant_applications', cleanName);
+        if (existingCardId) {
+          await dbUpdate("approvals", existingCardId, {
+            output: stuckOutput,
+            status: "rejected",
+            task_brief: `${cleanName} — Needs Attention | ${today}`,
+            notify_deanna: true,
+          });
+        } else {
+          await dbInsert("approvals", {
+            source: "kwame_grant_stuck",
+            trigger_type: item.task,
+            agent_name: item.agent_name,
+            agent_role: item.division,
+            division: item.division,
+            task_brief: `${cleanName} — Needs Attention | ${today}`,
+            output: stuckOutput,
+            status: "rejected",
+            notify_deanna: true,
+            priority: "high",
+            category: "grant_applications",
+            platform: null,
+            context: cleanName,
+          });
+        }
+
+        console.warn(`[on-demand] ⛔ Unresolved after ${MAX_CYCLES} cycles: ${item.agent_name} — ${lastSummary}`);
         await releaseLock();
-        res.status(200).json({ success: false, reason: "unresolved_after_cycles", agent: item.agent_name, flags: lastFlags });
+        res.status(200).json({ success: false, reason: "unresolved_after_cycles", agent: item.agent_name, flags: lastSummary });
         return;
       }
 
       // Build the final wrapped draft (header + submission line) now that
       // both Chloe and Isabella have cleared it -- same shape
       // ghl-agent-trigger.ts used to build before it wrote to the queue.
-      const cleanName = String(initialItem?.context ?? '');
       const method = grantRow?.submission_method === 'email' && grantRow?.submission_email ? 'email' : 'portal';
       const submissionLine = method === 'email'
         ? `**Submission (email):** [Click to open a pre-filled email to ${grantRow?.submission_email}](mailto:${encodeURIComponent(String(grantRow?.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(currentDraft)}) -- review before sending, nothing sends automatically.`
