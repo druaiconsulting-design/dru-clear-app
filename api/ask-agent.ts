@@ -57,25 +57,43 @@ export default async function handler(req: any, res: any): Promise<void> {
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' }); return; }
 
   // ── Fetch agent's original CSQ output ─────────────────────
-  // Try today first, then yesterday (in case chain ran yesterday)
+  // If csq_id is given, fetch that exact row -- needed for an agent like
+  // Kwame who can have several grant drafts in flight at once, where "most
+  // recent" isn't necessarily the one DeAnna is actually asking about.
+  // Otherwise fall back to the most recent CSQ row for this agent (today,
+  // then yesterday), the original behavior for every other card type.
   let agentOriginalOutput = card_output ?? '';
 
   if (supabaseUrl && supabaseKey && agent_id !== 'twin') {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
+      if (csq_id) {
+        const r = await fetch(
+          `${supabaseUrl}/rest/v1/chief_of_staff_queue?id=eq.${csq_id}&limit=1`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        );
+        if (r.ok) {
+          const data = await r.json();
+          if (data?.[0]?.raw_output) {
+            agentOriginalOutput = data[0].raw_output;
+            console.log(`[ask-agent] ✅ Fetched exact draft for ${agent_name} by csq_id`);
+          }
+        }
+      } else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
 
-      const r = await fetch(
-        `${supabaseUrl}/rest/v1/chief_of_staff_queue?agent_id=eq.${agent_id}&created_at=gte.${yesterday.toISOString()}&order=created_at.desc&limit=1`,
-        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-      );
-      if (r.ok) {
-        const data = await r.json();
-        if (data?.[0]?.raw_output) {
-          agentOriginalOutput = data[0].raw_output;
-          console.log(`[ask-agent] ✅ Fetched original output for ${agent_name} from CSQ`);
+        const r = await fetch(
+          `${supabaseUrl}/rest/v1/chief_of_staff_queue?agent_id=eq.${agent_id}&created_at=gte.${yesterday.toISOString()}&order=created_at.desc&limit=1`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        );
+        if (r.ok) {
+          const data = await r.json();
+          if (data?.[0]?.raw_output) {
+            agentOriginalOutput = data[0].raw_output;
+            console.log(`[ask-agent] ✅ Fetched original output for ${agent_name} from CSQ`);
+          }
         }
       }
     } catch (e) {
