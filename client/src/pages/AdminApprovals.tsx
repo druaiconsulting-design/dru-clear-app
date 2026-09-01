@@ -1936,18 +1936,25 @@ export default function AdminApprovals() {
                     </div>
                   )}
 
-                  {/* Needs Attention — items Isabella hard-rejected after 3 tries for
-                      this division. Each one is its own addressable block, not just
-                      a line of text: its own agent photo, its own note on what went
-                      wrong, and its own "Ask" thread aimed directly at that agent —
-                      talking to them here is the second training channel, alongside
-                      the automatic note Isabella already saved. Division-wide on
-                      purpose: some agents (e.g. Elena, Jaylen) never get a standalone
-                      approval card of their own, this is the only place their
-                      corrections can surface. Excluded from the Prospects card only,
-                      since that's revenue opportunities, not agent training, and has
-                      no real connection to the rest of the division's corrections. */}
-                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                  {/* Needs Attention — items still unresolved after every automatic
+                      retry for this division. Each one is its own addressable block,
+                      not just a line of text: its own agent photo, its own note on
+                      what went wrong, and its own "Ask" thread aimed directly at that
+                      agent — talking to them here is the second training channel,
+                      alongside the automatic correction note already saved. Division-
+                      wide on purpose: some agents (e.g. Elena, Jaylen) never get a
+                      standalone approval card of their own, this is the only place
+                      their corrections can surface. Excluded from the Prospects card
+                      only, since that's revenue opportunities, not agent training,
+                      and has no real connection to the rest of the division's
+                      corrections. Grants/grant_applications are included as of Aug 31,
+                      2026 -- previously excluded here too, which meant a hard-rejected
+                      grant draft was invisible anywhere in this UI; now that Chloe's
+                      and Isabella's rejections resolve automatically through Kwame's
+                      revision loop, only a genuinely unresolved-after-2-cycles grant
+                      item ever reaches this state, so it belongs here like every
+                      other division's does. */}
+                  {isBriefing && approval.category !== "prospects" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
                     const divRejected = rejectedItems.filter(r => r.division === approval.division);
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
