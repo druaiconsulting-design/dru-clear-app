@@ -407,6 +407,11 @@ export default function AdminApprovals() {
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
+  // Text DeAnna gives Kwame to close a stuck grant draft (needs_your_input),
+  // keyed by approvals.id -- separate from the generic question threads above,
+  // since this sends the draft back through a real revision + review cycle,
+  // not a Q&A conversation.
+  const [grantInputs, setGrantInputs]         = useState<Record<string, { text: string; loading: boolean }>>({});
   // Rejected chief_of_staff_queue items, keyed by their own id -- separate
   // state map from `questions` above (which is keyed by approvals.id).
   const [rejectedItems, setRejectedItems]     = useState<RejectedItem[]>([]);
@@ -1373,6 +1378,29 @@ export default function AdminApprovals() {
     }
   };
 
+  // ── Stuck grant drafts: send DeAnna's real input back through Kwame ────────
+  // Not a chat -- this actually revises the draft and re-runs the review
+  // cycle. Updates the same card either way (cleared, or stuck again with a
+  // new summary), via api/grant-resume.ts.
+  const getGrantInput = (id: string) => grantInputs[id] ?? { text: "", loading: false };
+  const setGrantInput = (id: string, update: Partial<{ text: string; loading: boolean }>) =>
+    setGrantInputs(prev => ({ ...prev, [id]: { ...getGrantInput(id), ...update } }));
+
+  const handleSendToKwame = async (approval: Approval) => {
+    const gi = getGrantInput(approval.id);
+    if (!gi.text.trim() || gi.loading) return;
+    setGrantInput(approval.id, { loading: true });
+    try {
+      const res = await fetch("/api/grant-resume", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval_id: approval.id, deanna_input: gi.text.trim() }) });
+      if (!res.ok) throw new Error(`grant-resume failed: ${res.status}`);
+      setGrantInput(approval.id, { text: "", loading: false });
+      await fetchApprovals();
+    } catch (err) {
+      console.error("Failed to send input to Kwame:", err);
+      setGrantInput(approval.id, { loading: false });
+    }
+  };
+
   // ── Rejected-item conversation threads (second learning channel) ──────────
   const getRejectedQS = (id: string): QuestionState => rejectedQuestions[id] ?? { open:false, selectedAgent:null, input:"", messages:[], loading:false };
   const setRejectedQS = (id: string, update: Partial<QuestionState>) => setRejectedQuestions(prev => ({ ...prev, [id]: { ...getRejectedQS(id), ...update } }));
@@ -1606,7 +1634,7 @@ export default function AdminApprovals() {
                           {getStatusText(approval, publishStatus[approval.id])}
                         </span>
                       )}
-                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : "#C2185B" }}>{approval.status}</span>}
+                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "needs_your_input" ? "#D4AF37" : "#C2185B" }}>{approval.status === "needs_your_input" ? "Needs Your Input" : approval.status}</span>}
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.4)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
@@ -2001,6 +2029,27 @@ export default function AdminApprovals() {
                             );
                           })}
                         </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Stuck grant draft — DeAnna supplies the real missing piece, sent
+                      back through Kwame for an actual revision + review cycle, not a
+                      chat thread. Only shows for a grant card genuinely still needing
+                      her input after 2 automatic cycles. */}
+                  {approval.category === "grant_applications" && approval.status === "needs_your_input" && (() => {
+                    const gi = getGrantInput(approval.id);
+                    return (
+                      <div style={{ margin:"0 1rem 1rem", padding:"0.875rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:8 }}>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>Give Kwame what he needs</p>
+                        <textarea value={gi.text} onChange={e => setGrantInput(approval.id, { text:e.target.value })} disabled={gi.loading}
+                          placeholder="Paste or type the real testimonial, figure, or detail the review said was missing..."
+                          rows={3}
+                          style={{ width:"100%", background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.6rem 0.75rem", outline:"none", resize:"vertical" as const, opacity:gi.loading ? 0.6 : 1, marginBottom:"0.6rem" }} />
+                        <button onClick={() => handleSendToKwame(approval)} disabled={gi.loading || !gi.text.trim()}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.5rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(gi.loading || !gi.text.trim()) ? 0.5 : 1 }}>
+                          {gi.loading ? "Sending to Kwame..." : "Send to Kwame"}
+                        </button>
                       </div>
                     );
                   })()}
