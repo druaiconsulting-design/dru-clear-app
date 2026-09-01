@@ -1634,7 +1634,7 @@ export default function AdminApprovals() {
                           {getStatusText(approval, publishStatus[approval.id])}
                         </span>
                       )}
-                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "needs_your_input" ? "#D4AF37" : "#C2185B" }}>{approval.status === "needs_your_input" ? "Needs Your Input" : approval.status}</span>}
+                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:approval.status === "approved" ? "#4CAF50" : approval.status === "needs_your_input" ? "#D4AF37" : "#C2185B" }}>{approval.status === "needs_your_input" ? "Needs Your Feedback" : approval.status}</span>}
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.4)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
