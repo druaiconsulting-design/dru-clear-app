@@ -74,6 +74,7 @@ export default function AdminArchived() {
   const [saving, setSaving]             = useState<string | null>(null);
   const [archivedOpen, setArchivedOpen]   = useState(false);
   const [rejectedOpen, setRejectedOpen]   = useState(false);
+  const [grantsOpen, setGrantsOpen]       = useState(false);
 
   const fetchArchived = async () => {
     const { data, error } = await supabase
@@ -89,9 +90,16 @@ export default function AdminArchived() {
 
   useEffect(() => { fetchArchived(); }, []);
 
+  // Grant Application Drafts get their own bucket by category, not status --
+  // Sept 1, 2026 fix. A grant card can carry a status this page never knew
+  // about (needs_your_input) and previously had nowhere to render at all once
+  // archived. Grouping by category instead means any grant card, whatever its
+  // status, always has a real, findable home. Excluded from readItems/
+  // rejectedItems below so a grant card never shows twice.
   const readyToUse    = approvals.filter(a => a.status === "ready_to_use");
-  const readItems     = approvals.filter(a => a.status === "read");
-  const rejectedItems = approvals.filter(a => a.status === "rejected");
+  const readItems     = approvals.filter(a => a.status === "read" && a.category !== "grant_applications");
+  const rejectedItems = approvals.filter(a => a.status === "rejected" && a.category !== "grant_applications");
+  const grantItems    = approvals.filter(a => a.category === "grant_applications");
 
   const handleRestore = async (id: string) => {
     setRestoring(id);
@@ -291,6 +299,26 @@ export default function AdminArchived() {
         {loading && (
           <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.4)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>
             LOADING ARCHIVE...
+          </div>
+        )}
+
+        {/* Grant Application Drafts — own section by category, not status, so
+            any grant card (whatever its status) always has a real home here. */}
+        {!loading && grantItems.length > 0 && (
+          <div style={{ marginBottom:"1.25rem" }}>
+            <button
+              onClick={() => setGrantsOpen(prev => !prev)}
+              style={{ width:"100%", background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#8A6E1A" }}>
+                Grant Application Drafts ({grantItems.length})
+              </span>
+              <span style={{ color:"rgba(212,175,55,0.6)", fontSize:"0.75rem" }}>{grantsOpen ? "▲" : "▼"}</span>
+            </button>
+            {grantsOpen && (
+              <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
+                {grantItems.map(approval => renderCard(approval))}
+              </div>
+            )}
           </div>
         )}
 
