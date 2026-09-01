@@ -128,15 +128,17 @@ async function getGrantFactsByName(name: string): Promise<Record<string, unknown
 }
 
 // One "Grant Application Drafts" card per grant, not one per stuck attempt --
-// checks for an existing card in this category with a matching title (the
-// grant's clean name) so a retry updates that same card instead of piling up
-// a new one next to it every time DeAnna clicks the button again. Matches on
-// title, NOT context -- context on this card holds the CSQ row id, so
-// grant-resume.ts can go straight from the card to the right draft with no
-// separate lookup.
+// checks for an existing, non-archived card in this category with a matching
+// title (the grant's clean name) so a retry updates that same card instead of
+// piling up a new one next to it every time DeAnna clicks the button again.
+// Archived cards are excluded on purpose -- once DeAnna archives a stuck card,
+// the next attempt must create a fresh, visible one, not silently update the
+// hidden archived row. Matches on title, NOT context -- context on this card
+// holds the CSQ row id, so grant-resume.ts can go straight from the card to
+// the right draft with no separate lookup.
 async function findApprovalByTitle(category: string, title: string): Promise<string | null> {
   if (!title) return null;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/approvals?category=eq.${encodeURIComponent(category)}&title=eq.${encodeURIComponent(title)}&order=created_at.desc&limit=1`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/approvals?category=eq.${encodeURIComponent(category)}&title=eq.${encodeURIComponent(title)}&archived=eq.false&order=created_at.desc&limit=1`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   });
   if (!res.ok) return null;
