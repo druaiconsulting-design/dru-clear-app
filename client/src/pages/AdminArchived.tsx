@@ -101,9 +101,17 @@ export default function AdminArchived() {
   const rejectedItems = approvals.filter(a => a.status === "rejected" && a.category !== "grant_applications");
   const grantItems    = approvals.filter(a => a.category === "grant_applications");
 
-  const handleRestore = async (id: string) => {
+  // Restoring a grant card must not drop it into generic "pending" -- that
+  // status belongs to the old whole-division question picker (built long
+  // before this work, for cards where several RGS agents contributed), which
+  // has nothing to do with a stuck grant draft. A grant card's real, working
+  // state is needs_your_input -- that's what shows the actual "Give Kwame
+  // what he needs" box. Restoring puts it back exactly there, so it's usable
+  // immediately, not reset into a different feature entirely.
+  const handleRestore = async (id: string, category?: string) => {
     setRestoring(id);
-    await supabase.from("approvals").update({ archived: false, status: "pending" }).eq("id", id);
+    const status = category === "grant_applications" ? "needs_your_input" : "pending";
+    await supabase.from("approvals").update({ archived: false, status }).eq("id", id);
     setApprovals(prev => prev.filter(a => a.id !== id));
     setRestoring(null);
   };
@@ -238,7 +246,7 @@ export default function AdminArchived() {
                 style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:copiedId === approval.id ? "rgba(76,175,80,0.1)" : "transparent", color:copiedId === approval.id ? "#4CAF50" : "rgba(10,35,66,0.6)", letterSpacing:"0.06em" }}>
                 {copiedId === approval.id ? "✓ Copied" : "Copy"}
               </button>
-              <button onClick={() => handleRestore(approval.id)} disabled={restoring === approval.id}
+              <button onClick={() => handleRestore(approval.id, approval.category)} disabled={restoring === approval.id}
                 style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em", opacity:restoring === approval.id ? 0.5 : 1 }}>
                 {restoring === approval.id ? "Restoring..." : "Restore to Queue"}
               </button>
