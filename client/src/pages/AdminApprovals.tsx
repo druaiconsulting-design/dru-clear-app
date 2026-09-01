@@ -1944,17 +1944,18 @@ export default function AdminApprovals() {
                       alongside the automatic correction note already saved. Division-
                       wide on purpose: some agents (e.g. Elena, Jaylen) never get a
                       standalone approval card of their own, this is the only place
-                      their corrections can surface. Excluded from the Prospects card
-                      only, since that's revenue opportunities, not agent training,
-                      and has no real connection to the rest of the division's
-                      corrections. Grants/grant_applications are included as of Aug 31,
-                      2026 -- previously excluded here too, which meant a hard-rejected
-                      grant draft was invisible anywhere in this UI; now that Chloe's
-                      and Isabella's rejections resolve automatically through Kwame's
-                      revision loop, only a genuinely unresolved-after-2-cycles grant
-                      item ever reaches this state, so it belongs here like every
-                      other division's does. */}
-                  {isBriefing && approval.category !== "prospects" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
+                      their corrections can surface. Excluded from Prospects (revenue
+                      opportunities, not agent training) and from Grants/Grant
+                      Application Drafts -- a stuck grant draft now gets its own
+                      dedicated "Grant Application Draft" card (Aug 31, 2026) instead,
+                      the same card type it would have gotten on a clean pass, showing
+                      only a short summary and never the review back-and-forth. This
+                      shared, division-wide block is the wrong home for it: Kwame's
+                      division (Revenue, Growth & Sales) also holds Jaylen, Mateo,
+                      Serena, Elena, and Chloe's unrelated daily rejects, and an
+                      earlier pass here dumped that entire backlog onto every grant
+                      item's card. */}
+                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
                     const divRejected = rejectedItems.filter(r => r.division === approval.division);
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
