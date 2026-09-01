@@ -226,7 +226,7 @@ YOUR RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
 1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, and never abbreviated — the approved list and exact rules are in the knowledge base above
 2. SERVICE CLASSES: Content stays within Classes 35, 41, 42 (see knowledge base above)
 3. VOICE: No banned words, hook-then-unpack structure honored wherever the content includes a hook or headline — see the VOICE rules above
-4. FACTUAL ACCURACY: Check every specific client result, dollar figure, percentage, testimonial, or case study against DeAnna's verified facts below (when given) or against the knowledge base above -- a claim that matches a verified fact is accurate even if it looks surprising or specific
+4. FACTUAL ACCURACY: Check every specific client result, dollar figure, percentage, testimonial, or case study against DeAnna's verified facts below (when given) or against the knowledge base above -- a claim that matches a verified fact is accurate even if it looks surprising or specific. A true fact stated in redundant, awkward, or imprecise wording (e.g. "Over 240+ clients" when the verified fact is "240+ clients") is NOT a factual accuracy failure -- only flag this check if a number, name, or claim is actually wrong, invented, or contradicts a verified fact
 5. FRAMEWORK ATTRIBUTION: If the content describes a framework's pillars or dimensions, check the names against the true definitions in the knowledge base above. A framework's pillars must be attributed to the correct framework — e.g. Clarity/Leadership/Execution/Alignment/Results belongs to DRU CLEAR™ and must never be labeled 5D Leadership™; Self/People/Team/Organization/Visionary belongs to 5D Leadership™ and must never be labeled DRU CLEAR™
 
 CLEARING STANDARD:
@@ -291,6 +291,65 @@ ${currentContent}`,
     2000
   );
   return correctedOutput || null;
+}
+
+// ─── Chloe's R.E.A.L. review (grant drafts) ───────────────────────────────────
+// Judges R.E.A.L./Answer That Wins only -- never compliance, that's Isabella's
+// job. Includes a false-positive guard mirroring Isabella's above: if her own
+// correction_notes admit the draft is ready pending DeAnna's placeholder
+// inputs, that contradicts hits_real:false and is overridden.
+async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chloeCorrections: string, grantRow: Record<string, unknown> | null): Promise<{ hitsReal: boolean; notes: string }> {
+  try {
+    const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
+    const chloeRaw = await callAnthropic(chloePrompt, 1000);
+    const chloeParsed = extractJSON(chloeRaw) as { hits_real?: boolean; correction_notes?: string } | null;
+    let hitsReal = chloeParsed?.hits_real === true;
+    let notes = String(chloeParsed?.correction_notes ?? '');
+
+    if (!hitsReal) {
+      const noteLower = notes.toLowerCase();
+      const isSelfContradicting =
+        noteLower.includes('ready for deanna') ||
+        noteLower.includes('ready pending') ||
+        noteLower.includes('once she provides') ||
+        noteLower.includes('once she supplies') ||
+        noteLower.includes('pending deanna') ||
+        noteLower.includes("pending your input") ||
+        noteLower.includes('this is ready');
+      if (isSelfContradicting) {
+        console.log(`[on-demand] ⚠️ Chloe false-positive overridden — her own notes confirm the draft is ready pending DeAnna's input`);
+        hitsReal = true;
+        notes = "False positive overridden. Draft confirmed ready pending DeAnna's placeholder inputs.";
+      }
+    }
+
+    return { hitsReal, notes };
+  } catch (error) {
+    // A Chloe failure never blocks Kwame's draft -- same guarantee the
+    // original single-pass review had.
+    console.error('[on-demand] Chloe R.E.A.L. review error, letting current draft through unblocked:', error);
+    return { hitsReal: true, notes: '' };
+  }
+}
+
+// ─── Kwame's own revision (grant drafts) ──────────────────────────────────────
+// Replaces the generic "compliance editor" persona for grant drafts -- every
+// fix in this loop is written by Kwame himself, in his own voice, whichever
+// agent's notes triggered it. Per DeAnna's standing principle: no
+// generic/anonymous editor persona anywhere in her business. (The non-grant
+// Isabella loop below still uses the old generic editor -- a known, separate
+// gap parked until this grant pipeline ships.)
+async function runKwameRevision(currentDraft: string, reviewerName: string, reviewerNotes: string, factsBlock: string, kwameCorrections: string, grantRow: Record<string, unknown> | null, agentKnowledge: string): Promise<string> {
+  try {
+    const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). ${reviewerName} reviewed your draft and found gaps. Revise your draft to close them fully.\n\n${reviewerName.toUpperCase()}'S NOTES:\n${reviewerNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap ${reviewerName} found)\n}`;
+    const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS);
+    const rewriteParsed = extractJSON(rewriteRaw) as { application_draft?: string } | null;
+    return rewriteParsed?.application_draft ? String(rewriteParsed.application_draft) : currentDraft;
+  } catch (error) {
+    // Keep the previous draft rather than losing everything to one failed rewrite call.
+    console.error(`[on-demand] Kwame revision error (from ${reviewerName}'s notes), keeping previous draft:`, error);
+    return currentDraft;
+  }
 }
 
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
@@ -574,7 +633,10 @@ TESTIMONIALS/SUCCESS STORIES (for this specific grant): ${grantRow?.testimonials
 BACKGROUND -- THE R.E.A.L. STANDARD THIS DRAFT WAS WRITTEN TO SATISFY: Chloe Dubois (Copy Writer) has already reviewed this draft against the R.E.A.L. standard below before it reached you -- this is why it includes personal anecdotes, forward-looking passion, and testimonial-driven language. You do not need to re-check it against R.E.A.L. yourself; your five checks above (trademarks, service classes, voice, factual accuracy, framework attribution) are unchanged and still the only clearing standard you apply. This is context only, so you don't mistake R.E.A.L.-driven content for a compliance problem:
 ${REAL_STANDARD}
 
-${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as written, and continue your review from there.`;
+Here is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- this is the same reference example Chloe judges against, given to you purely as background so you recognize the style, not so you judge it:
+${REAL_FUNDED_EXAMPLE}
+
+${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder as correct and complete exactly as written -- it already satisfies whichever R.E.A.L. element it covers, since DeAnna will supply the real answer before this goes out. This is not something you check or judge; it's background so the surrounding placeholder-driven language reads as intentional, not as a compliance problem.`;
     }
   }
 
@@ -638,16 +700,22 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as writ
       console.log(`[on-demand] ✅ Kwame drafted: ${grantRow?.opportunity_name ?? 'grant application'}`);
     }
 
-    // ── STEP 0: Chloe's R.E.A.L. review/rewrite loop (grant drafts only) ──
-    // Moved here from api/ghl-agent-trigger.ts (Aug 31, 2026) -- that file's
-    // 60s budget was too tight for Kwame's web-search draft plus several more
-    // sequential AI calls, which is what left a draft stuck at status 'pending'
-    // with no review and no error shown to DeAnna. This file already runs on a
-    // 300s budget for the on-demand chain, so Chloe's loop runs here instead,
-    // still ahead of Isabella. 3 total review passes with 2 real rewrite
-    // chances in between -- same shape as Isabella's loop below, extended from
-    // 2 passes on Aug 31 so Kwame gets a genuine chance to learn and improve,
-    // not just one shot before rejection.
+    // ── STEP 0/1: Kwame ⇄ Chloe ⇄ Isabella review cycle (grant drafts only) ──
+    // Rebuilt Aug 31, 2026 per DeAnna's design. Chloe judges R.E.A.L./Answer
+    // That Wins only. Isabella judges compliance only (trademarks, service
+    // class, voice, factual accuracy, framework attribution) and never
+    // re-judges R.E.A.L. herself -- she's given the R.E.A.L. standard and the
+    // funded example purely as background, so placeholder-driven language
+    // doesn't read as a compliance problem. Either agent's rejection goes
+    // back to Kwame, never to DeAnna -- he wrote the draft, he fixes it, in
+    // his own voice (no generic editor persona anywhere in this loop). Any
+    // Kwame revision restarts the WHOLE cycle at Chloe, since a compliance
+    // fix can shift R.E.A.L. and a R.E.A.L. fix can shift compliance. Capped
+    // at 2 full cycles -- timed against this file's 300s budget using real
+    // per-step durations observed Aug 31 (2 cycles leaves ~100s of margin;
+    // 3 left under 10s and risked the exact silent-timeout failure already
+    // fixed once). Every correction, from either agent, writes to Kwame's
+    // agent_corrections file so he learns from both.
     if (isGrantDraft) {
       const item = await dbGet("chief_of_staff_queue", currentId);
       if (!item) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
@@ -659,59 +727,58 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as writ
       const factsBlock = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
 
       let currentDraft = String(item.raw_output ?? '');
-      let chloeFlags = 'none';
-      let chloeNotes = '';
-      let hitsReal = false;
+      let lastFlags = 'none';
+      let lastNotes = '';
+      let cycleCleared = false;
+      const MAX_CYCLES = 2;
 
-      for (let attempt = 0; attempt <= 2; attempt++) {
-        try {
-          const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true)\n}`;
-          const chloeRaw = await callAnthropic(chloePrompt, 1000);
-          const chloeParsed = extractJSON(chloeRaw) as {hits_real?: boolean; correction_notes?: string} | null;
-          hitsReal = chloeParsed?.hits_real === true;
-          chloeNotes = String(chloeParsed?.correction_notes ?? '');
-          chloeFlags = hitsReal ? 'none' : (chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.');
-        } catch (error) {
-          // A Chloe failure never blocks Kwame's draft -- same guarantee the
-          // original single-pass review had.
-          console.error('[on-demand] Chloe R.E.A.L. review error, letting current draft through unblocked:', error);
-          hitsReal = true;
-          chloeNotes = '';
-          chloeFlags = 'none';
+      for (let cycle = 1; cycle <= MAX_CYCLES && !cycleCleared; cycle++) {
+        console.log(`[on-demand] Cycle ${cycle}/${MAX_CYCLES} — Chloe R.E.A.L. check for: ${item.agent_name}`);
+        const { hitsReal, notes: chloeNotes } = await runChloeOnItem(currentDraft, agentKnowledge, chloeCorrections, grantRow);
+
+        if (!hitsReal) {
+          lastFlags = chloeNotes || 'Did not fully satisfy the R.E.A.L. standard.';
+          lastNotes = chloeNotes;
+          await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
+          console.log(`[on-demand] Cycle ${cycle} — Chloe sent it back to Kwame`);
+          currentDraft = await runKwameRevision(currentDraft, 'Chloe Dubois', chloeNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
+          continue;
         }
 
-        if (hitsReal) break;
+        console.log(`[on-demand] Cycle ${cycle}/${MAX_CYCLES} — Isabella compliance check for: ${item.agent_name}`);
+        const isabellaResult = await runIsabellaOnItem({ ...item, raw_output: currentDraft }, agentKnowledge, verifiedFacts);
 
-        await writeAgentCorrection('Kwame Asante', chloeNotes, 'chloe_real_review', 'grant_application_draft');
-
-        if (attempt === 2) break;
-
-        try {
-          const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). Chloe Dubois, your Copy Writer, reviewed your draft against the R.E.A.L. standard and found gaps. Revise your draft to close them fully.\n\nHER NOTES:\n${chloeNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap Chloe found)\n}`;
-          const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS);
-          const rewriteParsed = extractJSON(rewriteRaw) as {application_draft?: string} | null;
-          if (rewriteParsed?.application_draft) currentDraft = String(rewriteParsed.application_draft);
-        } catch (error) {
-          // Keep the previous draft rather than losing everything to one failed rewrite call.
-          console.error('[on-demand] Kwame rewrite error, keeping previous draft and continuing:', error);
+        if (!isabellaResult.cleared) {
+          lastFlags = isabellaResult.flags;
+          lastNotes = isabellaResult.correctionNotes;
+          await writeAgentCorrection('Kwame Asante', isabellaResult.correctionNotes, 'isabella_compliance_review', 'grant_application_draft');
+          console.log(`[on-demand] Cycle ${cycle} — Isabella sent it back to Kwame`);
+          currentDraft = await runKwameRevision(currentDraft, 'Isabella Moreno', isabellaResult.correctionNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
+          continue;
         }
+
+        cycleCleared = true;
+        lastFlags = 'none';
+        lastNotes = '';
       }
 
-      if (!hitsReal) {
+      if (!cycleCleared) {
         await dbUpdate("chief_of_staff_queue", currentId, {
-          isabella_flags: chloeFlags, correction_notes: chloeNotes, status: "rejected", retry_count: 3,
+          raw_output: currentDraft,
+          isabella_flags: lastFlags,
+          correction_notes: lastNotes,
+          status: "rejected",
+          governance_cleared: false,
         });
-        console.warn(`[on-demand] ⛔ Chloe hard-rejected R.E.A.L. after 3 passes: ${item.agent_name}`);
+        console.warn(`[on-demand] ⛔ Unresolved after ${MAX_CYCLES} cycles: ${item.agent_name} — ${lastFlags}`);
         await releaseLock();
-        res.status(200).json({ success: false, reason: "hard_rejected_by_chloe_real", agent: item.agent_name, flags: chloeFlags });
+        res.status(200).json({ success: false, reason: "unresolved_after_cycles", agent: item.agent_name, flags: lastFlags });
         return;
       }
 
       // Build the final wrapped draft (header + submission line) now that
-      // Chloe has cleared it -- same shape ghl-agent-trigger.ts used to build
-      // before it wrote to the queue, just assembled here instead using the
-      // grant's own row (funder/amount/deadline/submission info) so
-      // ghl-agent-trigger.ts didn't have to look any of it up twice.
+      // both Chloe and Isabella have cleared it -- same shape
+      // ghl-agent-trigger.ts used to build before it wrote to the queue.
       const cleanName = String(initialItem?.context ?? '');
       const method = grantRow?.submission_method === 'email' && grantRow?.submission_email ? 'email' : 'portal';
       const submissionLine = method === 'email'
@@ -719,65 +786,72 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat it as accurate and on-voice exactly as writ
         : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${grantRow?.source_url ?? 'source URL not found'}`;
       const finalOutput = `**${cleanName}** — ${grantRow?.funder ?? ''}\nAmount: ${grantRow?.amount_range ?? 'See link'} | Deadline: ${grantRow?.deadline ?? ''}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
 
-      await dbUpdate("chief_of_staff_queue", currentId, { raw_output: finalOutput });
-      console.log(`[on-demand] ✅ Chloe cleared R.E.A.L. for: ${item.agent_name}`);
-    }
+      await dbUpdate("chief_of_staff_queue", currentId, {
+        raw_output: finalOutput,
+        isabella_flags: 'none',
+        isabella_cleared_at: new Date().toISOString(),
+        status: "isabella_cleared",
+      });
+      console.log(`[on-demand] ✅ Chloe + Isabella both cleared: ${item.agent_name}`);
+    } else {
+      // ── STEP 1: Isabella retry loop (all non-grant on-demand agents) ──────
+      // Unchanged. Still uses the generic correction-editor persona -- a
+      // known, separate gap (same pattern as cmd-isabella.ts) DeAnna asked
+      // to park until the grant pipeline above is done. In-memory, single
+      // row. Up to 3 total review passes (attempt 0, 1, 2) with a real
+      // rewrite between each one; only hard-rejects if still not clean on
+      // the 3rd pass. The row itself never changes -- currentId stays the
+      // same from here through Governance and Raymond below.
+      const startItem = await dbGet("chief_of_staff_queue", currentId);
+      if (!startItem) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
 
-    // ── STEP 1: Isabella retry loop ──────────────────────────
-    // In-memory, single row -- same pattern Chloe and Kwame's loop uses.
-    // Up to 3 total review passes (attempt 0, 1, 2) with a real rewrite
-    // between each one; only hard-rejects if it's still not clean on the
-    // 3rd pass. The row itself never changes -- currentId stays the same
-    // from here through Governance and Raymond below.
-    const startItem = await dbGet("chief_of_staff_queue", currentId);
-    if (!startItem) { await releaseLock(); res.status(404).json({ error: "CSQ item not found" }); return; }
+      let currentContent = String(startItem.raw_output ?? '');
+      let isabellaFlags = 'none';
+      let isabellaNotes = '';
+      let isabellaPassed = false;
 
-    let currentContent = String(startItem.raw_output ?? '');
-    let isabellaFlags = 'none';
-    let isabellaNotes = '';
-    let isabellaPassed = false;
+      for (let attempt = 0; attempt <= 2; attempt++) {
+        console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${startItem.agent_name}`);
+        const checkItem = { ...startItem, raw_output: currentContent };
+        const { cleared, flags, correctionNotes } = await runIsabellaOnItem(checkItem, agentKnowledge, verifiedFacts);
+        isabellaFlags = flags;
+        isabellaNotes = correctionNotes;
 
-    for (let attempt = 0; attempt <= 2; attempt++) {
-      console.log(`[on-demand] Isabella attempt ${attempt + 1} for: ${startItem.agent_name}`);
-      const checkItem = { ...startItem, raw_output: currentContent };
-      const { cleared, flags, correctionNotes } = await runIsabellaOnItem(checkItem, agentKnowledge, verifiedFacts);
-      isabellaFlags = flags;
-      isabellaNotes = correctionNotes;
+        if (cleared) {
+          console.log(`[on-demand] ✅ Isabella cleared: ${startItem.agent_name}`);
+          isabellaPassed = true;
+          break;
+        }
 
-      if (cleared) {
-        console.log(`[on-demand] ✅ Isabella cleared: ${startItem.agent_name}`);
-        isabellaPassed = true;
-        break;
+        if (attempt === 2) break;
+
+        complianceFlags.push(`${startItem.agent_name} — CORRECTION APPLIED (attempt ${attempt + 1}) — ${flags}`);
+        console.log(`[on-demand] 🔄 Correction applied for: ${startItem.agent_name}`);
+        const corrected = await runIsabellaCorrectionText(startItem, currentContent, correctionNotes);
+        if (corrected) currentContent = corrected;
       }
 
-      if (attempt === 2) break;
+      if (!isabellaPassed) {
+        await dbUpdate("chief_of_staff_queue", currentId, {
+          raw_output: currentContent,
+          isabella_flags: isabellaFlags,
+          correction_notes: isabellaNotes,
+          status: "rejected",
+          governance_cleared: false,
+        });
+        console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${startItem.agent_name} — ${isabellaFlags}`);
+        await releaseLock();
+        res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: startItem.agent_name, flags: isabellaFlags });
+        return;
+      }
 
-      complianceFlags.push(`${startItem.agent_name} — CORRECTION APPLIED (attempt ${attempt + 1}) — ${flags}`);
-      console.log(`[on-demand] 🔄 Correction applied for: ${startItem.agent_name}`);
-      const corrected = await runIsabellaCorrectionText(startItem, currentContent, correctionNotes);
-      if (corrected) currentContent = corrected;
-    }
-
-    if (!isabellaPassed) {
       await dbUpdate("chief_of_staff_queue", currentId, {
         raw_output: currentContent,
         isabella_flags: isabellaFlags,
-        correction_notes: isabellaNotes,
-        status: "rejected",
-        governance_cleared: false,
+        isabella_cleared_at: new Date().toISOString(),
+        status: "isabella_cleared",
       });
-      console.warn(`[on-demand] ⛔ Hard rejected by Isabella: ${startItem.agent_name} — ${isabellaFlags}`);
-      await releaseLock();
-      res.status(200).json({ success: false, reason: "hard_rejected_by_isabella", agent: startItem.agent_name, flags: isabellaFlags });
-      return;
     }
-
-    await dbUpdate("chief_of_staff_queue", currentId, {
-      raw_output: currentContent,
-      isabella_flags: isabellaFlags,
-      isabella_cleared_at: new Date().toISOString(),
-      status: "isabella_cleared",
-    });
 
     const clearedItem = await dbGet("chief_of_staff_queue", currentId);
     if (!clearedItem) { await releaseLock(); res.status(404).json({ error: "Cleared item not found" }); return; }
