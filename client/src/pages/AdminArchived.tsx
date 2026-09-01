@@ -81,7 +81,7 @@ export default function AdminArchived() {
       .from("approvals")
       .select("*")
       .eq("archived", true)
-      .in("status", ["ready_to_use", "read", "rejected"])
+      .in("status", ["ready_to_use", "read", "rejected", "needs_your_input"])
       .order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch archived:", error);
     else setApprovals((data as Approval[]) || []);
