@@ -1352,10 +1352,15 @@ export default function AdminApprovals() {
     const qs = getQS(approval.id);
     if (!qs.open) {
       let savedMessages: ConversationMessage[] = [];
-      if (approval.context) { try { savedMessages = JSON.parse(approval.context); } catch { savedMessages = []; } }
+      // Grant cards store the CSQ row id in `context` (grant-resume.ts needs
+      // it), so their saved conversation lives in `original_content` instead
+      // -- everywhere else still uses `context`, unchanged.
+      const savedRaw = approval.category === "grant_applications" ? approval.original_content : approval.context;
+      if (savedRaw) { try { savedMessages = JSON.parse(savedRaw); } catch { savedMessages = []; } }
       const autoAgent = (approval.category === "social" || approval.category === "email") ? { agent_id: approval.source?.replace('_social','').replace('_content','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "community_post" ? { agent_id: approval.source?.replace('_cc','') ?? 'dominique', agent_name: approval.agent_name, role: 'CC Agent' }
-        : approval.category === "daily_briefing" ? { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" } : null;
+        : approval.category === "daily_briefing" ? { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" }
+        : approval.category === "grant_applications" ? { agent_id:"kwame", agent_name: approval.agent_name, role: "Grant Writer" } : null;
       setQS(approval.id, { open:true, selectedAgent:autoAgent, messages: savedMessages });
     } else { setQS(approval.id, { open:false }); }
   };
@@ -1367,12 +1372,15 @@ export default function AdminApprovals() {
     const newMessages = [...qs.messages, { role:'user' as const, text:question }];
     setQS(approval.id, { messages:newMessages, input:"", loading:true });
     try {
-      const res = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages }) });
+      const isGrant = approval.category === "grant_applications";
+      const res = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: approval.output, conversation_history: qs.messages, csq_id: isGrant ? approval.context : undefined }) });
       const data = await res.json();
       const reply = data.response ?? "Unable to respond. Please try again.";
       const updatedMessages: ConversationMessage[] = [...newMessages, { role:'agent', agentName:qs.selectedAgent.agent_name, text:reply }];
       setQS(approval.id, { messages: updatedMessages, loading:false });
-      await supabase.from("approvals").update({ context: JSON.stringify(updatedMessages) }).eq("id", approval.id);
+      // Grant cards save the thread to original_content -- context on these
+      // cards holds the CSQ row id, not conversation history.
+      await supabase.from("approvals").update(isGrant ? { original_content: JSON.stringify(updatedMessages) } : { context: JSON.stringify(updatedMessages) }).eq("id", approval.id);
     } catch {
       setQS(approval.id, { messages: [...newMessages, { role:'agent', agentName:qs.selectedAgent?.agent_name, text:"Something went wrong. Please try again." }], loading:false });
     }
@@ -1598,7 +1606,7 @@ export default function AdminApprovals() {
               const isMulti         = isMultiPlatformCard(approval);
               const isReadyToUse  = READY_TO_USE_CATEGORIES.has(approval.category) || (isSocial && READY_TO_USE_PLATFORMS.has(approval.platform ?? ''));
               const currentDir    = leadDirection[approval.id] || "assessment_invite";
-              const hasConversation = !!approval.context && approval.context !== "null";
+              const hasConversation = approval.category === "grant_applications" ? !!approval.original_content && approval.original_content !== "null" : !!approval.context && approval.context !== "null";
               const currentMedia  = getMediaUrls(approval.id, approval);
               const activePlatformTab = getActivePlatformTab(approval.id);
               const activeContent = isMulti ? getActivePlatformContent(approval) : (approval.edited_output || approval.output);
@@ -1901,9 +1909,9 @@ export default function AdminApprovals() {
                   )}
 
                   {/* Ask a Question */}
-                  {qs.open && approval.status === "pending" && !isPostTrigger && (
+                  {qs.open && (approval.status === "pending" || (approval.category === "grant_applications" && approval.status === "needs_your_input")) && !isPostTrigger && (
                     <div style={{ margin:"0 1rem", padding:"0.875rem", background:"rgba(10,35,66,0.03)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:8, marginBottom:"0.5rem" }}>
-                      {isBriefing && approval.category !== "daily_briefing" && !isCCReply && !isCCPost && (
+                      {isBriefing && approval.category !== "daily_briefing" && approval.category !== "grant_applications" && !isCCReply && !isCCPost && (
                         <div style={{ marginBottom:"0.75rem" }}>
                           <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.4rem" }}>Who are you asking?</p>
                           <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.4rem" }}>
@@ -1916,7 +1924,7 @@ export default function AdminApprovals() {
                           </div>
                         </div>
                       )}
-                      {(approval.category === "social" || approval.category === "email" || approval.category === "community_post" || approval.category === "daily_briefing" || isCCReply) && qs.selectedAgent && (
+                      {(approval.category === "social" || approval.category === "email" || approval.category === "community_post" || approval.category === "daily_briefing" || approval.category === "grant_applications" || isCCReply) && qs.selectedAgent && (
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:"0.75rem" }}>Asking: {qs.selectedAgent.agent_name} · {qs.selectedAgent.role}</p>
                       )}
                       {qs.messages.length > 0 && (
@@ -2056,7 +2064,7 @@ export default function AdminApprovals() {
 
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
-                    {approval.status === "pending" && editingId !== approval.id && !isPostTrigger && (
+                    {(approval.status === "pending" || (approval.category === "grant_applications" && approval.status === "needs_your_input")) && editingId !== approval.id && !isPostTrigger && (
                       <button onClick={() => toggleQuestion(approval)}
                         style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:`1px solid ${qs.open ? "rgba(212,175,55,0.6)" : hasConversation ? "rgba(212,175,55,0.4)" : "rgba(10,35,66,0.2)"}`, background:qs.open ? "rgba(212,175,55,0.1)" : hasConversation ? "rgba(212,175,55,0.05)" : "transparent", color:qs.open ? "#D4AF37" : hasConversation ? "rgba(212,175,55,0.8)" : "rgba(10,35,66,0.4)", letterSpacing:"0.06em" }}>
                         {qs.open ? "✕ Close" : hasConversation ? "💬 Continue Conversation" : "? Ask a Question"}
