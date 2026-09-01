@@ -302,9 +302,13 @@ ${allSummary}`,
       // Agent outputs only — Raymond's pipeline-review notes feed the Daily Briefing, not these cards
       // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
       // also appear inside the RGS division roll-up. Same principle as Community Connection
-      // being excluded from division synthesis entirely.
+      // being excluded from division synthesis entirely. Kwame's grant_application_draft
+      // items are excluded the same way (Sept 1, 2026 fix) -- he gets his own standalone
+      // "Grant Application Drafts" card too, and was wrongly still being swept into this
+      // roll-up whenever the cron ran while a draft was mid-pipeline.
       const cardItems = divItems.filter(i =>
         i.category !== 'grants' &&
+        i.category !== 'grant_applications' &&
         !(SOCIAL_DIVISIONS.includes(division) && CLIENT_FACING_CATEGORIES.includes(i.category))
       );
       if (cardItems.length === 0) return; // whole division was grants-only — no card needed
