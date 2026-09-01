@@ -127,13 +127,16 @@ async function getGrantFactsByName(name: string): Promise<Record<string, unknown
   return rows?.[0] ?? null;
 }
 
-// One "Grant Application Draft" card per grant, not one per stuck attempt --
-// checks for an existing card in this category with a matching context (the
+// One "Grant Application Drafts" card per grant, not one per stuck attempt --
+// checks for an existing card in this category with a matching title (the
 // grant's clean name) so a retry updates that same card instead of piling up
-// a new one next to it every time DeAnna clicks the button again.
-async function findApprovalByContext(category: string, context: string): Promise<string | null> {
-  if (!context) return null;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/approvals?category=eq.${encodeURIComponent(category)}&context=eq.${encodeURIComponent(context)}&order=created_at.desc&limit=1`, {
+// a new one next to it every time DeAnna clicks the button again. Matches on
+// title, NOT context -- context on this card holds the CSQ row id, so
+// grant-resume.ts can go straight from the card to the right draft with no
+// separate lookup.
+async function findApprovalByTitle(category: string, title: string): Promise<string | null> {
+  if (!title) return null;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/approvals?category=eq.${encodeURIComponent(category)}&title=eq.${encodeURIComponent(title)}&order=created_at.desc&limit=1`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   });
   if (!res.ok) return null;
@@ -366,6 +369,62 @@ async function runKwameRevision(currentDraft: string, reviewerName: string, revi
     console.error(`[on-demand] Kwame revision error (from ${reviewerName}'s notes), keeping previous draft:`, error);
     return currentDraft;
   }
+}
+
+// ─── The shared Kwame ⇄ Chloe ⇄ Isabella review cycle (grant drafts) ─────────
+// One cycle = Chloe's R.E.A.L. check, then (if she passes) Isabella's
+// compliance check. Either one failing sends the draft back to Kwame for a
+// real revision in his own voice, then the WHOLE cycle restarts at Chloe.
+// Capped at maxCycles. Used both by the initial on-demand draft run below and
+// by api/grant-resume.ts, so DeAnna feeding Kwame new information gets
+// exactly the same review, not a second, different code path.
+async function runGrantReviewCycle(
+  startDraft: string,
+  agentKnowledge: string,
+  chloeCorrections: string,
+  kwameCorrections: string,
+  grantRow: Record<string, unknown> | null,
+  factsBlock: string,
+  verifiedFacts: string,
+  item: Record<string, unknown>,
+  maxCycles: number
+): Promise<{ cleared: boolean; finalDraft: string; lastSummary: string; lastNotes: string }> {
+  let currentDraft = startDraft;
+  let lastNotes = '';
+  let lastSummary = 'none';
+  let cycleCleared = false;
+
+  for (let cycle = 1; cycle <= maxCycles && !cycleCleared; cycle++) {
+    console.log(`[on-demand] Cycle ${cycle}/${maxCycles} — Chloe R.E.A.L. check for: ${item.agent_name}`);
+    const chloeResult = await runChloeOnItem(currentDraft, agentKnowledge, chloeCorrections, grantRow);
+
+    if (!chloeResult.hitsReal) {
+      lastNotes = chloeResult.notes;
+      lastSummary = chloeResult.summary || 'Needs another pass on R.E.A.L. before it is ready.';
+      await writeAgentCorrection('Kwame Asante', chloeResult.notes, 'chloe_real_review', 'grant_application_draft');
+      console.log(`[on-demand] Cycle ${cycle} — Chloe sent it back to Kwame`);
+      currentDraft = await runKwameRevision(currentDraft, 'Chloe Dubois', chloeResult.notes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
+      continue;
+    }
+
+    console.log(`[on-demand] Cycle ${cycle}/${maxCycles} — Isabella compliance check for: ${item.agent_name}`);
+    const isabellaResult = await runIsabellaOnItem({ ...item, raw_output: currentDraft }, agentKnowledge, verifiedFacts);
+
+    if (!isabellaResult.cleared) {
+      lastNotes = isabellaResult.correctionNotes;
+      lastSummary = isabellaResult.flags || 'Needs a compliance fix before it is ready.';
+      await writeAgentCorrection('Kwame Asante', isabellaResult.correctionNotes, 'isabella_compliance_review', 'grant_application_draft');
+      console.log(`[on-demand] Cycle ${cycle} — Isabella sent it back to Kwame`);
+      currentDraft = await runKwameRevision(currentDraft, 'Isabella Moreno', isabellaResult.correctionNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
+      continue;
+    }
+
+    cycleCleared = true;
+    lastSummary = 'none';
+    lastNotes = '';
+  }
+
+  return { cleared: cycleCleared, finalDraft: currentDraft, lastSummary, lastNotes };
 }
 
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
@@ -743,66 +802,41 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
       const factsBlock = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
       const cleanName = String(initialItem?.context ?? '') || String(item.context ?? '');
 
-      let currentDraft = String(item.raw_output ?? '');
-      let lastNotes = '';       // detailed, technical -- goes to Kwame's agent_corrections file
-      let lastSummary = 'none'; // one short plain-English sentence -- the only thing DeAnna ever sees
-      let cycleCleared = false;
-      const MAX_CYCLES = 2;
+      const cycleResult = await runGrantReviewCycle(
+        String(item.raw_output ?? ''), agentKnowledge, chloeCorrections, kwameCorrections,
+        grantRow, factsBlock, verifiedFacts, item, 2
+      );
 
-      for (let cycle = 1; cycle <= MAX_CYCLES && !cycleCleared; cycle++) {
-        console.log(`[on-demand] Cycle ${cycle}/${MAX_CYCLES} — Chloe R.E.A.L. check for: ${item.agent_name}`);
-        const chloeResult = await runChloeOnItem(currentDraft, agentKnowledge, chloeCorrections, grantRow);
-
-        if (!chloeResult.hitsReal) {
-          lastNotes = chloeResult.notes;
-          lastSummary = chloeResult.summary || 'Needs another pass on R.E.A.L. before it is ready.';
-          await writeAgentCorrection('Kwame Asante', chloeResult.notes, 'chloe_real_review', 'grant_application_draft');
-          console.log(`[on-demand] Cycle ${cycle} — Chloe sent it back to Kwame`);
-          currentDraft = await runKwameRevision(currentDraft, 'Chloe Dubois', chloeResult.notes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
-          continue;
-        }
-
-        console.log(`[on-demand] Cycle ${cycle}/${MAX_CYCLES} — Isabella compliance check for: ${item.agent_name}`);
-        const isabellaResult = await runIsabellaOnItem({ ...item, raw_output: currentDraft }, agentKnowledge, verifiedFacts);
-
-        if (!isabellaResult.cleared) {
-          lastNotes = isabellaResult.correctionNotes;
-          lastSummary = isabellaResult.flags || 'Needs a compliance fix before it is ready.';
-          await writeAgentCorrection('Kwame Asante', isabellaResult.correctionNotes, 'isabella_compliance_review', 'grant_application_draft');
-          console.log(`[on-demand] Cycle ${cycle} — Isabella sent it back to Kwame`);
-          currentDraft = await runKwameRevision(currentDraft, 'Isabella Moreno', isabellaResult.correctionNotes, factsBlock, kwameCorrections, grantRow, agentKnowledge);
-          continue;
-        }
-
-        cycleCleared = true;
-        lastSummary = 'none';
-        lastNotes = '';
-      }
-
-      if (!cycleCleared) {
+      if (!cycleResult.cleared) {
+        // Not rejected -- DeAnna made no decision here, the loop just ran out
+        // of automatic tries. needs_your_input is the accurate status: Kwame
+        // can't close this gap himself (it's real information only DeAnna
+        // has), so it's parked for her, not turned down.
         await dbUpdate("chief_of_staff_queue", currentId, {
-          raw_output: currentDraft,
-          isabella_flags: lastSummary,
-          correction_notes: lastNotes,
-          status: "rejected",
+          raw_output: cycleResult.finalDraft,
+          isabella_flags: cycleResult.lastSummary,
+          correction_notes: cycleResult.lastNotes,
+          status: "needs_your_input",
           governance_cleared: false,
         });
 
-        // One dedicated "Grant Application Draft" card for this grant, showing
-        // only the short summary -- never the review back-and-forth. A retry
-        // on the same grant updates this same card instead of stacking a new
-        // one next to it. This is Kwame's own card type (the one that appears
-        // when a draft clears), not Adaeze's "Grants" scouting card and not
-        // the shared division-wide Needs Attention block -- neither is the
-        // right home for this.
+        // One dedicated "Grant Application Drafts" card for this grant, showing
+        // only the short summary plus a way for DeAnna to actually supply the
+        // missing piece and send it back through the same review loop -- not
+        // just a dead end, and not a chat thread that goes nowhere. A retry
+        // updates this same card instead of stacking a new one. Matched by
+        // title (the grant's clean name) -- context on this card instead holds
+        // the CSQ row id, so grant-resume.ts can find the right draft directly
+        // from the card, with no separate lookup.
         const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
-        const stuckOutput = `Stuck after ${MAX_CYCLES} review cycles — ${lastSummary}`;
-        const existingCardId = await findApprovalByContext('grant_applications', cleanName);
+        const stuckOutput = `Stuck after 2 review cycles — ${cycleResult.lastSummary}`;
+        const existingCardId = await findApprovalByTitle('grant_applications', cleanName);
         if (existingCardId) {
           await dbUpdate("approvals", existingCardId, {
             output: stuckOutput,
-            status: "rejected",
+            status: "needs_your_input",
             task_brief: `${cleanName} — Needs Attention | ${today}`,
+            context: currentId,
             notify_deanna: true,
           });
         } else {
@@ -814,24 +848,26 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
             division: item.division,
             task_brief: `${cleanName} — Needs Attention | ${today}`,
             output: stuckOutput,
-            status: "rejected",
+            status: "needs_your_input",
             notify_deanna: true,
             priority: "high",
             category: "grant_applications",
             platform: null,
-            context: cleanName,
+            title: cleanName,
+            context: currentId,
           });
         }
 
-        console.warn(`[on-demand] ⛔ Unresolved after ${MAX_CYCLES} cycles: ${item.agent_name} — ${lastSummary}`);
+        console.warn(`[on-demand] ⏸ Needs DeAnna's input after 2 cycles: ${item.agent_name} — ${cycleResult.lastSummary}`);
         await releaseLock();
-        res.status(200).json({ success: false, reason: "unresolved_after_cycles", agent: item.agent_name, flags: lastSummary });
+        res.status(200).json({ success: false, reason: "needs_your_input", agent: item.agent_name, flags: cycleResult.lastSummary });
         return;
       }
 
       // Build the final wrapped draft (header + submission line) now that
       // both Chloe and Isabella have cleared it -- same shape
       // ghl-agent-trigger.ts used to build before it wrote to the queue.
+      const currentDraft = cycleResult.finalDraft;
       const method = grantRow?.submission_method === 'email' && grantRow?.submission_email ? 'email' : 'portal';
       const submissionLine = method === 'email'
         ? `**Submission (email):** [Click to open a pre-filled email to ${grantRow?.submission_email}](mailto:${encodeURIComponent(String(grantRow?.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(currentDraft)}) -- review before sending, nothing sends automatically.`
