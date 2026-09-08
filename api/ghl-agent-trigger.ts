@@ -810,6 +810,24 @@ function getThemeTodayKey(): string {
   return `${y}-${m}-${d}`;
 }
 
+// Sept 8, 2026 fix: WEEK_THEME_SUMMARIES is only ever keyed by Monday's date,
+// since Camila's cron only fires Mondays -- but a manual/on-demand trigger on
+// any other day of the week was looking itself up under getThemeTodayKey()
+// directly, missing the table entirely, and silently falling back to fully
+// freeform mode (no lock, no audience-only restriction). This resolves to
+// the Monday of whatever week "today" falls in, so the lock holds no matter
+// which day Camila actually runs on.
+function getThemeWeekMondayKey(): string {
+  const d = new Date(`${getThemeTodayKey()}T12:00:00Z`);
+  const dayOfWeek = d.getUTCDay(); // 0=Sun, 1=Mon, ... 6=Sat
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  d.setUTCDate(d.getUTCDate() - diffToMonday);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Pulls one framework document from the Social Media IP Content bucket and
 // extracts plain text via the existing extract-docx endpoint. Returns '' if
 // the file hasn't been uploaded yet (5C/5D/AI Sales Mastery docs are still
@@ -859,7 +877,7 @@ async function runCamila(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
   // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- Camila only runs
   // Mondays, so this is a direct lookup of that week's fixed breakdown.
-  const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeTodayKey()];
+  const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeWeekMondayKey()];
   const fixedWeekInstruction = fixedWeekBreakdown
     ? `\n\nTHIS WEEK'S FRAMEWORK ROTATION IS ALREADY CONFIRMED — do not choose your own rotation or a different framework. Build the day-by-day direction below around exactly this breakdown, adding your own audience framing on top of each day's confirmed focus. Do not invent a theme narrative, hook direction, or copy direction for Darius's posts — each day's post is written directly from DeAnna's own source material for that dimension, so your job here is audience targeting only, not rhetorical angle:\n${fixedWeekBreakdown}`
     : '';
