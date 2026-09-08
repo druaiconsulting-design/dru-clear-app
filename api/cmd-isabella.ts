@@ -161,7 +161,7 @@ ${agentKnowledge}
 ${VOICE_DNA}
 
 RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
-1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, never abbreviated
+1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, never abbreviated, in body copy and headlines. Hashtags are written without ™ or any other symbol, per platform convention (e.g. #DRUCLEAR, not #DRUCLEARtm) — this is the correct, compliant form for a hashtag, not a violation to flag.
 2. SERVICE CLASSES: Content stays within Classes 35, 41, 42
 3. VOICE: No banned words, hook-then-unpack structure honored wherever the content includes a hook or headline — see the VOICE rules above
 4. FACTUAL ACCURACY: No invented client results, dollar figures, percentages, testimonials, or case studies that were not explicitly given in the task or in DeAnna's verified facts — see the FACTUAL ACCURACY rule above
