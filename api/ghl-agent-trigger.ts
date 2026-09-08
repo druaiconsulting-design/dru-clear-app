@@ -747,6 +747,107 @@ async function runOmarRealtime(payload:any): Promise<{success:boolean;contact_id
   return {success:true,contact_id:contactId};
 }
 
+// ─── Weekly IP Theme Rotation (Sept 8 – Oct 4, 2026) ──────────────────────────
+// Fixed 4-week test cycling DeAnna's own frameworks through Camila's weekly
+// brief, which Darius and Nia already read automatically. The framework and
+// dimension assigned to each date below is NOT decided by any agent — it's a
+// hard-coded lookup so there is zero drift risk. DeAnna reviews results at
+// the end of Week 4 (Oct 4) to decide whether to keep repeating the pattern.
+// Outside this date window, everything falls back to normal existing behavior.
+type ThemeDay = { framework: string; file: string; dimension: string; synthesis: boolean };
+
+const WEEKLY_THEME_CALENDAR: Record<string, ThemeDay> = {
+  // Week 1 — DRU CLEAR™ (starts Tuesday since posting begins Sept 8; one synthesis day only)
+  '2026-09-08': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
+  '2026-09-09': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
+  '2026-09-10': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
+  '2026-09-11': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment', synthesis: false },
+  '2026-09-12': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Results', synthesis: false },
+  '2026-09-13': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 2 — 5C Cultural DNA™
+  '2026-09-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
+  '2026-09-15': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Connection', synthesis: false },
+  '2026-09-16': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Collaboration', synthesis: false },
+  '2026-09-17': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Coaching', synthesis: false },
+  '2026-09-18': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Culture Transformation', synthesis: false },
+  '2026-09-19': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-09-20': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 3 — 5D Leadership™
+  '2026-09-21': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Self', synthesis: false },
+  '2026-09-22': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'People', synthesis: false },
+  '2026-09-23': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Team', synthesis: false },
+  '2026-09-24': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Organization', synthesis: false },
+  '2026-09-25': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Visionary', synthesis: false },
+  '2026-09-26': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-09-27': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 4 — AI Sales Mastery™ (DISC)
+  '2026-09-28': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'D', synthesis: false },
+  '2026-09-29': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'I', synthesis: false },
+  '2026-09-30': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'S', synthesis: false },
+  '2026-10-01': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'C', synthesis: false },
+  '2026-10-02': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-03': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-04': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+};
+
+// Camila only ever runs on Monday, so her lookup is just the fixed day-by-day
+// breakdown for the week that starts that Monday — written out directly so
+// there's no date-math to get wrong for a 4-week feature.
+const WEEK_THEME_SUMMARIES: Record<string, string> = {
+  '2026-09-07': `Monday: (no post this week -- posting starts Tuesday)\nTuesday: DRU CLEAR™ — Clarity\nWednesday: DRU CLEAR™ — Leadership\nThursday: DRU CLEAR™ — Execution\nFriday: DRU CLEAR™ — Alignment\nSaturday: DRU CLEAR™ — Results\nSunday: DRU CLEAR™ — Synthesis (bring all 5 dimensions together)`,
+  '2026-09-14': `Monday: 5C Cultural DNA™ — Communication\nTuesday: 5C Cultural DNA™ — Connection\nWednesday: 5C Cultural DNA™ — Collaboration\nThursday: 5C Cultural DNA™ — Coaching\nFriday: 5C Cultural DNA™ — Culture Transformation\nSaturday: 5C Cultural DNA™ — Synthesis\nSunday: 5C Cultural DNA™ — Synthesis`,
+  '2026-09-21': `Monday: 5D Leadership™ — Self\nTuesday: 5D Leadership™ — People\nWednesday: 5D Leadership™ — Team\nThursday: 5D Leadership™ — Organization\nFriday: 5D Leadership™ — Visionary\nSaturday: 5D Leadership™ — Synthesis\nSunday: 5D Leadership™ — Synthesis`,
+  '2026-09-28': `Monday: AI Sales Mastery™ — D\nTuesday: AI Sales Mastery™ — I\nWednesday: AI Sales Mastery™ — S\nThursday: AI Sales Mastery™ — C\nFriday: AI Sales Mastery™ — Synthesis (how it all works together)\nSaturday: AI Sales Mastery™ — Synthesis\nSunday: AI Sales Mastery™ — Synthesis`,
+};
+
+// Today's date as YYYY-MM-DD in Central Time, matching every other date calc
+// in this file.
+function getThemeTodayKey(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year')!.value;
+  const m = parts.find(p => p.type === 'month')!.value;
+  const d = parts.find(p => p.type === 'day')!.value;
+  return `${y}-${m}-${d}`;
+}
+
+// Pulls one framework document from the Social Media IP Content bucket and
+// extracts plain text via the existing extract-docx endpoint. Returns '' if
+// the file hasn't been uploaded yet (5C/5D/AI Sales Mastery docs are still
+// pending as of this build) so nothing breaks — the prompt just runs without
+// depth material until DeAnna uploads it, same graceful-fallback pattern
+// used everywhere else in this file.
+async function getThemeSourceMaterial(filename: string): Promise<string> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return '';
+  try {
+    const fileRes = await fetch(`${url}/storage/v1/object/social-media-ip-content/${filename}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!fileRes.ok) return '';
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+    const extractRes = await fetch('https://app.druaiconsulting.com/api/extract-docx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: buffer.toString('base64'), filename }),
+    });
+    if (!extractRes.ok) return '';
+    const parsed = await extractRes.json() as { text?: string };
+    return parsed.text || '';
+  } catch { return ''; }
+}
+
+// Builds the "today's confirmed theme" instruction block shared by Darius
+// and Nia. Returns null outside the Sept 8 - Oct 4, 2026 window so behavior
+// falls back to normal once the 4-week test is over.
+async function getWeeklyThemeBlock(): Promise<string | null> {
+  const day = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
+  if (!day) return null;
+  const sourceText = await getThemeSourceMaterial(day.file);
+  const sourceBlock = sourceText
+    ? `\n\nSOURCE MATERIAL (DeAnna's own words, written from the EQ perspective) — ${day.synthesis ? 'use the closing/synthesis section of this document' : `use ONLY the section labeled "${day.dimension}", ignore the other sections`}:\n${sourceText}`
+    : '';
+  return `\n\nTODAY'S CONFIRMED CONTENT FOCUS: ${day.framework} — ${day.dimension}${day.synthesis ? ' (synthesis — bring the full framework together)' : ''}. Write from this material's own EQ-first perspective, then blend the AI angle on top of it — this applies to today's post whether it's a single dimension or the synthesis.${sourceBlock}`;
+}
+// ─── End Weekly IP Theme Rotation ──────────────────────────────────────────────
+
 // P2
 // FIXED: Camila now writes to CSQ like all other agents — full chain (Isabella → Governance → Command Layer → Twin)
 // PHASE 3: Reads ecosystem intelligence from Revenue, Client Delivery, and Analytics before generating
@@ -756,19 +857,26 @@ async function runCamila(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const positioning=await fetchBrandCopy('positioning');
   const agentKnowledge = await getAgentKnowledge();
+  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- Camila only runs
+  // Mondays, so this is a direct lookup of that week's fixed breakdown.
+  const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeTodayKey()];
+  const fixedWeekInstruction = fixedWeekBreakdown
+    ? `\n\nTHIS WEEK'S FRAMEWORK ROTATION IS ALREADY CONFIRMED — do not choose your own rotation or a different framework. Build the day-by-day direction below around exactly this breakdown, adding your own angle, hook direction, and audience framing on top of each day's confirmed focus:\n${fixedWeekBreakdown}`
+    : '';
   return await runAgentToCSQ(
     'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
     `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}." Today: ${today}.
 
 ECOSYSTEM INTELLIGENCE THIS WEEK — use these real signals to inform content themes, angles, and language. Do not invent scenarios when real ones are available:
 ${ecosystemIntel || 'No prior intelligence available — use framework rotation.'}
+${fixedWeekInstruction}
 
 Generate this week's FULL CONTENT STRATEGY BRIEF covering both Darius King (social posts) and Nia Robinson (thought leadership, articles, blog content). They must tell one cohesive story across all formats.
 
 ## WEEKLY THEME & POSITIONING
 - This week's overarching theme and positioning angle based on ecosystem signals
 - Core message that runs through ALL content this week
-- Framework rotation plan ensuring all 4 frameworks get coverage (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™)
+- Framework rotation plan ensuring all 4 frameworks get coverage (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — unless already confirmed above, in which case follow that exactly
 
 ## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)
 Day-by-day direction for Darius:
@@ -815,7 +923,9 @@ async function runDarius(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (yours and Nia Robinson's) — reference or build on this, don't repeat it:\n${themeLog}`
     : '';
-  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}`;
+  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- null outside that window.
+  const themeBlock = await getWeeklyThemeBlock();
+  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}${themeBlock ?? ''}`;
   const structuredOutput=await callAnthropic(
     `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
@@ -897,9 +1007,11 @@ async function runNia(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (Darius King's posts and your own) — reference or build on this where it fits naturally, don't repeat it:\n${themeLog}`
     : '';
+  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- null outside that window.
+  const themeBlock = await getWeeklyThemeBlock();
   const strategyContext = (camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
-    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext;
+    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext + (themeBlock ?? '');
   const intelContext = clientIntel
     ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
     : '\nNo prior intelligence — draw from framework-based scenarios.';
@@ -1686,17 +1798,26 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_yara'){
-    const urlY=process.env.VITE_SUPABASE_URL; const keyY=process.env.SUPABASE_SERVICE_ROLE_KEY; let topPost='';
-    if (urlY&&keyY){const mondayY=new Date();mondayY.setDate(mondayY.getDate()-mondayY.getDay()+1);const weekOfY=mondayY.toISOString().split('T')[0];const r=await fetch(`${urlY}/rest/v1/content_queue?week_of=eq.${weekOfY}&status=neq.queued&order=day_number.asc&limit=1`,{headers:{apikey:keyY,Authorization:`Bearer ${keyY}`}});if (r.ok){const q=await r.json();if (q.length>0) topPost=`${q[0].hook}\n\n${q[0].content}\n\n${q[0].hashtags}`;}}
-    const agentKnowledge=await getAgentKnowledge();
-    const yaraPrompt=`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT:\n${topPost}`:'Write original AI leadership content for a bilingual multi-platform campaign targeting English-speaking and LATAM executives.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level LATAM Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
+    // Fixed Sept 8, 2026: was reading content_queue, a table nothing has written
+    // to since June 2026 (same dead-table bug already fixed for Darius back in
+    // August) -- topPost was always empty and Yara silently fell back to generic
+    // disconnected content every weekend. Now reads the live content_theme_log,
+    // same source Darius and Nia actually publish to.
+    const topPost = await getContentThemeLog();
+    // GENIUS_MODE/agentKnowledge/VOICE_DNA removed from here -- runAgentToCSQ
+    // already prepends GENIUS_MODE + agentKnowledge automatically, so having
+    // them here too was sending that block to the model twice. VOICE_DNA is
+    // kept since runAgentToCSQ does not add that on its own.
+    const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write original AI leadership content for a bilingual multi-platform campaign targeting English-speaking and LATAM executives.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level LATAM Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
     const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt);
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ingrid'){
-    const urlI=process.env.VITE_SUPABASE_URL; const keyI=process.env.SUPABASE_SERVICE_ROLE_KEY; let weekContent='';
-    if (urlI&&keyI){const mondayI=new Date();mondayI.setDate(mondayI.getDate()-mondayI.getDay()+1);const weekOfI=mondayI.toISOString().split('T')[0];const r=await fetch(`${urlI}/rest/v1/content_queue?week_of=eq.${weekOfI}&order=day_number.asc`,{headers:{apikey:keyI,Authorization:`Bearer ${keyI}`}});if (r.ok){const posts=await r.json();weekContent=posts.map((p:any)=>`Day ${p.day_number} (${p.framework_covered}): ${p.hook}`).join('\n');}}
-    const agentKnowledge=await getAgentKnowledge();
-    const id=await runAgentToCSQ('ingrid','Ingrid Larsen','Content & Brand','weekly_press_release','press_release',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's content: ${weekContent||'AI leadership, DRU frameworks, executive AI adoption'}. Write AP-style press release. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`);
+    // Fixed Sept 8, 2026: same dead-table bug as Yara above -- now reads the
+    // live content_theme_log instead of the abandoned content_queue table.
+    const weekContent = await getContentThemeLog();
+    // Duplicate GENIUS_MODE/agentKnowledge removed here for the same reason as
+    // Yara above -- runAgentToCSQ already adds them; VOICE_DNA is kept.
+    const id=await runAgentToCSQ('ingrid','Ingrid Larsen','Content & Brand','weekly_press_release','press_release',`${VOICE_DNA}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's actual published content: ${weekContent||'AI leadership, DRU frameworks, executive AI adoption'}. Write AP-style press release. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`);
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p3_nia'){const id=await runNia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p3_luca'){const id=await runLuca();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
