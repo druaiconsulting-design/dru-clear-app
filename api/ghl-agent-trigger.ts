@@ -879,17 +879,17 @@ async function runCamila(): Promise<string|null> {
   // Mondays, so this is a direct lookup of that week's fixed breakdown.
   const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeWeekMondayKey()];
   const fixedWeekInstruction = fixedWeekBreakdown
-    ? `\n\nTHIS WEEK'S FRAMEWORK ROTATION IS ALREADY CONFIRMED — do not choose your own rotation or a different framework. Build the day-by-day direction below around exactly this breakdown, adding your own audience framing on top of each day's confirmed focus. Do not invent a theme narrative, hook direction, or copy direction for Darius's posts — each day's post is written directly from DeAnna's own source material for that dimension, so your job here is audience targeting only, not rhetorical angle:\n${fixedWeekBreakdown}`
+    ? `\n\nTHIS WEEK'S FRAMEWORK ROTATION IS ALREADY CONFIRMED. Build the day-by-day direction below around exactly this breakdown, adding your own audience framing on top of each day's confirmed focus. Each day's post is written directly from DeAnna's own source material for that dimension — your contribution for Darius's posts is audience targeting:\n${fixedWeekBreakdown}`
     : '';
   // While the fixed rotation is locked (through Oct 4, 2026), Darius's daily
-  // direction is audience angle only -- no hook direction/post type/copy
-  // direction, since those fields were how Camila's own invented theme
-  // narrative (e.g. "The Re-Entry Window") and "flip the frame" hook style
-  // were overriding the locked framework/dimension and its source material,
-  // producing negative/generic posts disconnected from DeAnna's own words.
-  // Outside the locked window, Camila regains full direction-setting.
+  // direction is audience angle only. Before this fix, Camila's own invented
+  // theme narrative (e.g. "The Re-Entry Window") and "flip the frame" hook
+  // style were overriding the locked framework/dimension and its source
+  // material, producing negative/generic posts disconnected from DeAnna's
+  // own words. Outside the locked window, Camila regains full
+  // direction-setting.
   const dariusDirectionBlock = fixedWeekBreakdown
-    ? `## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)\nDay-by-day direction for Darius:\n- Monday: audience angle only\n- Tuesday: audience angle only\n- Thursday: audience angle only\n- Friday: audience angle only\nDo not specify post type, hook direction, or copy direction — the confirmed framework rotation and DeAnna's own source material already determine those; your role here is naming who each day's post speaks to.\nCTA alignment: all posts drive to assessment.druaiconsulting.com`
+    ? `## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)\nDay-by-day direction for Darius:\n- Monday: audience angle\n- Tuesday: audience angle\n- Thursday: audience angle\n- Friday: audience angle\nName the audience each day's post speaks to. The confirmed framework rotation and DeAnna's own source material set the framework, dimension, and tone.\nCTA alignment: all posts drive to assessment.druaiconsulting.com`
     : `## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)\nDay-by-day direction for Darius:\n- Monday: post type, framework focus, hook direction, audience angle\n- Tuesday: post type, framework focus, hook direction, audience angle\n- Thursday: post type, framework focus, hook direction, audience angle\n- Friday: post type, framework focus, hook direction, audience angle\nCTA alignment: all posts drive to assessment.druaiconsulting.com`;
   return await runAgentToCSQ(
     'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
@@ -955,7 +955,7 @@ async function runDarius(): Promise<string|null> {
   // DeAnna's original build decision: EQ perspective first, AI angle blended
   // on top, all positive wording.
   const sourceGroundingRule = themeBlock
-    ? `\n\nSOURCE MATERIAL RULE: The SOURCE MATERIAL above is DeAnna's own writing — every claim, hook, and framing must come from what it actually says. Do not invent a "most people get this wrong" critique, a rebuttal, or any negative framing not present in the source. Write from the source's own positive, affirmative tone, then blend the AI angle on top of it — do not introduce outside scenarios, campaigns, or urgency framing (e.g. "the re-entry window") that aren't part of the source material or today's real published log.`
+    ? `\n\nSOURCE MATERIAL RULE: The SOURCE MATERIAL above is DeAnna's own writing. Write every claim, hook, and framing directly from what it actually says, in its own positive, affirmative tone, then blend the AI angle on top of it. Ground every scenario in the source material or today's real published log.`
     : '';
   const structuredOutput=await callAnthropic(
     `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}${sourceGroundingRule}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words, one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
