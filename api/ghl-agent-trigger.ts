@@ -757,12 +757,15 @@ async function runOmarRealtime(payload:any): Promise<{success:boolean;contact_id
 type ThemeDay = { framework: string; file: string; dimension: string; synthesis: boolean };
 
 const WEEKLY_THEME_CALENDAR: Record<string, ThemeDay> = {
-  // Week 1 — DRU CLEAR™ (starts Tuesday since posting begins Sept 8; one synthesis day only)
+  // Week 1 — DRU CLEAR™ (Sept 8-13, 2026). Tuesday Sept 8's post failed, so
+  // Sept 9, 2026: DeAnna shifted the remaining days forward one dimension —
+  // Wednesday now carries Clarity, Alignment and Results combine into one
+  // Saturday post, and Sunday's synthesis date stays where it was.
   '2026-09-08': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
-  '2026-09-09': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
-  '2026-09-10': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
-  '2026-09-11': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment', synthesis: false },
-  '2026-09-12': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Results', synthesis: false },
+  '2026-09-09': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
+  '2026-09-10': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
+  '2026-09-11': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
+  '2026-09-12': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment & Results', synthesis: false },
   '2026-09-13': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
   // Week 2 — 5C Cultural DNA™
   '2026-09-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
@@ -794,10 +797,10 @@ const WEEKLY_THEME_CALENDAR: Record<string, ThemeDay> = {
 // breakdown for the week that starts that Monday — written out directly so
 // there's no date-math to get wrong for a 4-week feature.
 const WEEK_THEME_SUMMARIES: Record<string, string> = {
-  '2026-09-07': `Monday: (no post this week -- posting starts Tuesday)\nTuesday: DRU CLEAR™ — Clarity\nWednesday: DRU CLEAR™ — Leadership\nThursday: DRU CLEAR™ — Execution\nFriday: DRU CLEAR™ — Alignment\nSaturday: DRU CLEAR™ — Results\nSunday: DRU CLEAR™ — Synthesis (bring all 5 dimensions together)`,
-  '2026-09-14': `Monday: 5C Cultural DNA™ — Communication\nTuesday: 5C Cultural DNA™ — Connection\nWednesday: 5C Cultural DNA™ — Collaboration\nThursday: 5C Cultural DNA™ — Coaching\nFriday: 5C Cultural DNA™ — Culture Transformation\nSaturday: 5C Cultural DNA™ — Synthesis\nSunday: 5C Cultural DNA™ — Synthesis`,
-  '2026-09-21': `Monday: 5D Leadership™ — Self\nTuesday: 5D Leadership™ — People\nWednesday: 5D Leadership™ — Team\nThursday: 5D Leadership™ — Organization\nFriday: 5D Leadership™ — Visionary\nSaturday: 5D Leadership™ — Synthesis\nSunday: 5D Leadership™ — Synthesis`,
-  '2026-09-28': `Monday: AI Sales Mastery™ — D\nTuesday: AI Sales Mastery™ — I\nWednesday: AI Sales Mastery™ — S\nThursday: AI Sales Mastery™ — C\nFriday: AI Sales Mastery™ — Synthesis (how it all works together)\nSaturday: AI Sales Mastery™ — Synthesis\nSunday: AI Sales Mastery™ — Synthesis`,
+  '2026-09-07': `Monday, Sep 7: (no post this week -- posting starts Wednesday, Sep 9)\nTuesday, Sep 8: (skipped -- that post didn't go out, so Clarity moves to Wednesday)\nWednesday, Sep 9: DRU CLEAR™ — Clarity\nThursday, Sep 10: DRU CLEAR™ — Leadership\nFriday, Sep 11: DRU CLEAR™ — Execution\nSaturday, Sep 12: DRU CLEAR™ — Alignment & Results (combined)\nSunday, Sep 13: DRU CLEAR™ — Synthesis (bring all 5 dimensions together)`,
+  '2026-09-14': `Monday, Sep 14: 5C Cultural DNA™ — Communication\nTuesday, Sep 15: 5C Cultural DNA™ — Connection\nWednesday, Sep 16: 5C Cultural DNA™ — Collaboration\nThursday, Sep 17: 5C Cultural DNA™ — Coaching\nFriday, Sep 18: 5C Cultural DNA™ — Culture Transformation\nSaturday, Sep 19: 5C Cultural DNA™ — Synthesis\nSunday, Sep 20: 5C Cultural DNA™ — Synthesis`,
+  '2026-09-21': `Monday, Sep 21: 5D Leadership™ — Self\nTuesday, Sep 22: 5D Leadership™ — People\nWednesday, Sep 23: 5D Leadership™ — Team\nThursday, Sep 24: 5D Leadership™ — Organization\nFriday, Sep 25: 5D Leadership™ — Visionary\nSaturday, Sep 26: 5D Leadership™ — Synthesis\nSunday, Sep 27: 5D Leadership™ — Synthesis`,
+  '2026-09-28': `Monday, Sep 28: AI Sales Mastery™ — D\nTuesday, Sep 29: AI Sales Mastery™ — I\nWednesday, Sep 30: AI Sales Mastery™ — S\nThursday, Oct 1: AI Sales Mastery™ — C\nFriday, Oct 2: AI Sales Mastery™ — Synthesis (how it all works together)\nSaturday, Oct 3: AI Sales Mastery™ — Synthesis\nSunday, Oct 4: AI Sales Mastery™ — Synthesis`,
 };
 
 // Today's date as YYYY-MM-DD in Central Time, matching every other date calc
@@ -859,8 +862,14 @@ async function getWeeklyThemeBlock(): Promise<string | null> {
   const day = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
   if (!day) return null;
   const sourceText = await getThemeSourceMaterial(day.file);
+  // A combined day (e.g. "Alignment & Results") names two dimensions, not one
+  // section header in the doc -- point to both of them by name so the pull
+  // still lands correctly instead of searching for a section that doesn't exist.
+  const dimensionSectionLabel = day.dimension.includes(' & ')
+    ? day.dimension.split(' & ').map(d => `"${d.trim()}"`).join(' and ')
+    : `"${day.dimension}"`;
   const sourceBlock = sourceText
-    ? `\n\nSOURCE MATERIAL (DeAnna's own words, written from the EQ perspective) — ${day.synthesis ? 'use the closing/synthesis section of this document' : `use ONLY the section labeled "${day.dimension}", ignore the other sections`}:\n${sourceText}`
+    ? `\n\nSOURCE MATERIAL (DeAnna's own words, written from the EQ perspective) — ${day.synthesis ? 'use the closing/synthesis section of this document' : `use ONLY the section(s) labeled ${dimensionSectionLabel}, ignore the other sections`}:\n${sourceText}`
     : '';
   return `\n\nTODAY'S CONFIRMED CONTENT FOCUS: ${day.framework} — ${day.dimension}${day.synthesis ? ' (synthesis — bring the full framework together)' : ''}. Write from this material's own EQ-first perspective, then blend the AI angle on top of it — this applies to today's post whether it's a single dimension or the synthesis.${sourceBlock}`;
 }
