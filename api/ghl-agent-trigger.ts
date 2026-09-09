@@ -11,6 +11,7 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
+import crypto from 'crypto';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -1369,6 +1370,129 @@ async function fetchMarketingData(): Promise<string> {
   }
 }
 
+// ─── SEO Data Fetch (Andre) ──────────────────────────────────────────────────
+// Pulls real Google Search Console + PageSpeed Insights data so Andre reports
+// only what Google's own tools actually measured — never an invented finding.
+// Domain property format confirmed against Search Console's own convention:
+// sc-domain:<domain> covers every subdomain under it in one property.
+const GSC_SITE_URL = 'sc-domain:druaiconsulting.com';
+let _gscTokenCache: { token: string; expiresAt: number } | null = null;
+
+async function getSearchConsoleToken(): Promise<string | null> {
+  if (_gscTokenCache && _gscTokenCache.expiresAt > Date.now()) return _gscTokenCache.token;
+  const raw = process.env.GOOGLE_SEARCH_CONSOLE_CREDENTIALS;
+  if (!raw) return null;
+  try {
+    const creds = JSON.parse(raw);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const b64url = (obj: object) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+    const unsigned = `${b64url({ alg: 'RS256', typ: 'JWT' })}.${b64url({
+      iss: creds.client_email,
+      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: nowSec,
+      exp: nowSec + 3600,
+    })}`;
+    const signer = crypto.createSign('RSA-SHA256');
+    signer.update(unsigned);
+    signer.end();
+    const signature = signer.sign(creds.private_key).toString('base64url');
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${unsigned}.${signature}` }),
+    });
+    if (!res.ok) { console.log(`[andre] Search Console token error ${res.status}`); return null; }
+    const data = await res.json();
+    _gscTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
+    return data.access_token;
+  } catch (e) {
+    console.log('[andre] Search Console auth failed', e);
+    return null;
+  }
+}
+
+async function fetchSeoData(): Promise<string> {
+  const lines: string[] = ['REAL SEO DATA — use only these numbers, never invent or estimate a finding not listed here:'];
+  const token = await getSearchConsoleToken();
+  if (token) {
+    try {
+      const end = new Date(); end.setDate(end.getDate() - 3); // GSC data typically lags 2-3 days
+      const start = new Date(end); start.setDate(start.getDate() - 28);
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
+      const saRes = await fetch(`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(GSC_SITE_URL)}/searchAnalytics/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ startDate: fmt(start), endDate: fmt(end), dimensions: ['query'], rowLimit: 10 }),
+      });
+      if (saRes.ok) {
+        const sa = await saRes.json();
+        const rows = sa.rows ?? [];
+        lines.push(rows.length === 0
+          ? 'Search queries (last 28 days): none recorded — zero organic search clicks or impressions.'
+          : `Top search queries (last 28 days): ${rows.slice(0, 5).map((r: any) => `"${r.keys[0]}" (clicks: ${r.clicks}, impressions: ${r.impressions}, avg position: ${r.position.toFixed(1)})`).join('; ')}`);
+      } else {
+        lines.push(`Search Console query data: unavailable (API error ${saRes.status}) — do not report search rankings or query data this run.`);
+      }
+    } catch {
+      lines.push('Search Console query data: fetch failed — do not report search rankings or query data this run.');
+    }
+    for (const url of ['https://assessment.druaiconsulting.com/', 'https://app.druaiconsulting.com/']) {
+      try {
+        const uiRes = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ inspectionUrl: url, siteUrl: GSC_SITE_URL }),
+        });
+        if (uiRes.ok) {
+          const ui = await uiRes.json();
+          const verdict = ui.inspectionResult?.indexStatusResult?.verdict ?? 'UNKNOWN';
+          const coverage = ui.inspectionResult?.indexStatusResult?.coverageState ?? 'unknown';
+          lines.push(`Index status for ${url}: ${verdict} (${coverage}).`);
+        } else {
+          lines.push(`Index status for ${url}: unavailable (API error ${uiRes.status}) — do not report a crawl/index finding for this URL.`);
+        }
+      } catch {
+        lines.push(`Index status for ${url}: fetch failed — do not report a crawl/index finding for this URL.`);
+      }
+    }
+  } else {
+    lines.push('Search Console: not connected this run (missing credentials or auth failure) — do not report search rankings, query data, or index/crawl status.');
+  }
+
+  const psiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
+  if (psiKey) {
+    for (const url of ['https://assessment.druaiconsulting.com/', 'https://app.druaiconsulting.com/']) {
+      try {
+        const psRes = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${psiKey}&strategy=mobile&category=performance`);
+        if (psRes.ok) {
+          const ps = await psRes.json();
+          const lcp = ps.lighthouseResult?.audits?.['largest-contentful-paint']?.displayValue ?? 'n/a';
+          const cls = ps.lighthouseResult?.audits?.['cumulative-layout-shift']?.displayValue ?? 'n/a';
+          const score = ps.lighthouseResult?.categories?.performance?.score;
+          lines.push(`Core Web Vitals (mobile) for ${url}: LCP ${lcp}, CLS ${cls}, performance score ${score != null ? Math.round(score * 100) : 'n/a'}/100.`);
+        } else {
+          lines.push(`Core Web Vitals for ${url}: unavailable (API error ${psRes.status}) — do not report a load-speed finding for this URL.`);
+        }
+      } catch {
+        lines.push(`Core Web Vitals for ${url}: fetch failed — do not report a load-speed finding for this URL.`);
+      }
+    }
+  } else {
+    lines.push('PageSpeed Insights: not connected this run (missing API key) — do not report Core Web Vitals, LCP, or CLS.');
+  }
+
+  return lines.join('\n');
+}
+
+// Fixed, confirmed-real product facts — the only course and diagnostic pricing
+// that actually exist. Prevents inventing tiers (e.g. a "Live Cohort") that
+// were never built.
+const REAL_PRICING_FACTS = `CONFIRMED REAL PRICING — the only course/diagnostic facts that exist; never reference any other tier, format, or price:
+- Course: "From Confusion to Confident with AI™" — $1,497, self-paced. This is the ONLY course and the ONLY price — no live cohort, no other format or tier exists.
+- Strategic Diagnostic: $3,497 (90-minute Zoom session, covers 5D Leadership™ + DRU CLEAR™)
+- Executive Diagnostic: $4,997 (120-minute Zoom session, covers all 4 frameworks, positioned as "Best Value")`;
+
 async function runLuca(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const marketingData = await fetchMarketingData();
@@ -1391,13 +1515,14 @@ async function runAndre(): Promise<string|null> {
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
   const focusType=dayOfWeek==='Tuesday'?'technical_seo':dayOfWeek==='Friday'?'weekly_search_recap':'daily_operational';
   const marketingData = await fetchMarketingData();
+  const seoData = await fetchSeoData();
   const agentKnowledge = await getAgentKnowledge();
   const focusInstructions:Record<string,string>={
     daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR™". Recommend organic defense strategy grounded in platform launch stage. Do not fabricate competitor threats — note if none are confirmed. **Organic Search** — Top 3 keyword clusters to target given the real UTM data above. One content gap for Nia grounded in actual traffic sources or assessment top gaps. **Today's SEO Action** — One immediately actionable move tied to real data.`,
     technical_seo:`**Site Health** — Core Web Vitals targets for assessment.druaiconsulting.com and app.druaiconsulting.com. One crawlability recommendation. **Schema** — Recommended schema markup for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,
     weekly_search_recap:`**Organic Search** — Benchmark targets appropriate for this launch stage. One keyword to prioritize based on real UTM sources above. **Paid Search** — Brand campaign recommendations. **Next Week's Priorities** — 3 actions ranked by impact for an early-stage platform.`
   };
-  return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
+  return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\n${seoData}\n\n${REAL_PRICING_FACTS}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
 }
 
 // Pulls real pipeline and revenue data from Supabase for Amara, Yuki, and Marcus.
