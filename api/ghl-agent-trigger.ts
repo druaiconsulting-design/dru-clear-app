@@ -1376,6 +1376,17 @@ async function fetchMarketingData(): Promise<string> {
 // Domain property format confirmed against Search Console's own convention:
 // sc-domain:<domain> covers every subdomain under it in one property.
 const GSC_SITE_URL = 'sc-domain:druaiconsulting.com';
+// The 5 public-facing sites Andre reports on — assessment, frameworks, courses
+// (non-member entry point) and confidence (the enrolled-student course platform,
+// same codebase as courses, different real-world use) and members. app.druaiconsulting.com
+// dropped — that's the internal admin repo, not a public site.
+const ANDRE_SITE_URLS = [
+  'https://assessment.druaiconsulting.com/',
+  'https://frameworks.druaiconsulting.com/',
+  'https://courses.druaiconsulting.com/',
+  'https://confidence.druaiconsulting.com/',
+  'https://members.druaiconsulting.com/',
+];
 let _gscTokenCache: { token: string; expiresAt: number } | null = null;
 
 async function getSearchConsoleToken(): Promise<string | null> {
@@ -1437,7 +1448,7 @@ async function fetchSeoData(): Promise<string> {
     } catch {
       lines.push('Search Console query data: fetch failed — do not report search rankings or query data this run.');
     }
-    for (const url of ['https://assessment.druaiconsulting.com/', 'https://app.druaiconsulting.com/']) {
+    for (const url of ANDRE_SITE_URLS) {
       try {
         const uiRes = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
           method: 'POST',
@@ -1462,7 +1473,7 @@ async function fetchSeoData(): Promise<string> {
 
   const psiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
   if (psiKey) {
-    for (const url of ['https://assessment.druaiconsulting.com/', 'https://app.druaiconsulting.com/']) {
+    for (const url of ANDRE_SITE_URLS) {
       try {
         const psRes = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${psiKey}&strategy=mobile&category=performance`);
         if (psRes.ok) {
@@ -1482,6 +1493,25 @@ async function fetchSeoData(): Promise<string> {
     lines.push('PageSpeed Insights: not connected this run (missing API key) — do not report Core Web Vitals, LCP, or CLS.');
   }
 
+  // Real check of whether schema markup already exists on each live page —
+  // reads the actual page source, so Andre reports what's really there
+  // instead of assuming a page has "zero schema markup."
+  for (const url of ANDRE_SITE_URLS) {
+    try {
+      const pageRes = await fetch(url);
+      if (pageRes.ok) {
+        const html = await pageRes.text();
+        const hasSchema = /<script[^>]*type=["']application\/ld\+json["'][^>]*>/i.test(html);
+        lines.push(`Schema markup on ${url}: ${hasSchema ? 'already present on the page.' : 'not currently on the page.'}`);
+      } else {
+        lines.push(`Schema markup on ${url}: page unavailable (HTTP ${pageRes.status}) — do not report a schema finding for this URL.`);
+      }
+    } catch {
+      lines.push(`Schema markup on ${url}: page fetch failed — do not report a schema finding for this URL.`);
+    }
+  }
+
+
   return lines.join('\n');
 }
 
@@ -1497,7 +1527,7 @@ async function runLuca(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const marketingData = await fetchMarketingData();
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('luca','Luca Romano','Marketing','digital_marketing_briefing','digital_marketing',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. All objectives point to assessment.druaiconsulting.com.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must appear verbatim in the data above. If it is not in the data, do not write it.\n2. Do not estimate, project, extrapolate, or use phrases like \"approximately,\" \"roughly,\" or \"based on typical benchmarks.\" Real numbers only.\n3. If assessments completed = 0 and all stats = 0, open with: \"Platform is pre-traffic. No funnel data to report yet.\" Then give one setup action we can take TODAY to start capturing real data.\n4. If there IS real data, open with a DATA SNAPSHOT block that quotes the exact numbers from above — no rounding, no reframing.\n5. Writing any number not found in the data above is a fabrication. DeAnna will compare your output to the raw data table.\n\nAfter your opening (data snapshot or pre-traffic statement), write:\n**Campaign Priority** — One platform to activate or optimize this week, grounded only in what the data shows about traffic source or funnel stage. If no data, recommend the single first campaign to run and why.\n**This Week\'s Action** — One specific move with clear rationale tied only to real numbers or acknowledged gaps.\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Luca.`,'normal',0,null,2000);
+  return await runAgentToCSQ('luca','Luca Romano','Marketing','digital_marketing_briefing','digital_marketing',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. All objectives point to assessment.druaiconsulting.com.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nDATA RULES — the real numbers guide everything you write:\n1. Every number comes directly from the data provided above, stated exactly as it appears there.\n2. State the real, precise figures plainly.\n3. If assessments completed = 0 and all stats = 0, open with: \"Platform is pre-traffic. No funnel data to report yet.\" Then give one setup action we can take TODAY to start capturing real data.\n4. If there IS real data, open with a DATA SNAPSHOT block that quotes the exact numbers from above.\n\nAfter your opening (data snapshot or pre-traffic statement), write:\n**Campaign Priority** — One platform to activate or optimize this week, grounded only in what the data shows about traffic source or funnel stage. If no data, recommend the single first campaign to run and why.\n**This Week\'s Action** — One specific move with clear rationale tied only to real numbers or acknowledged gaps.\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Luca.`,'normal',0,null,2000);
 }
 async function runHyunJi(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1508,7 +1538,7 @@ async function runHyunJi(): Promise<string|null> {
   const reportInstructions=reportType==='weekly_recap'
     ?`Weekly analytics recap using ONLY the real data provided above. What does the data actually show? What is the week-ahead priority based on real numbers? Set 3 KPI targets that make sense for this launch stage.`
     :`Daily analytics update using ONLY the real data provided above. What does the funnel actually show right now? Which single metric, if moved, would have the most impact on revenue? One insight about the assessment-to-diagnostic path grounded in real numbers.`;
-  return await runAgentToCSQ('hyunji','Hyun-Ji Kim','Marketing','analytics_roi_briefing','analytics_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must come directly from the data above, quoted exactly. If it is not in the data, do not write it.\n2. No estimates, no projections, no revenue calculations, no conversion rate math. Real numbers only.\n3. If assessments completed = 0 and all stats = 0, open with: \"Zero activity to report. Platform is pre-traffic.\" Then name the single metric we should focus on activating first and why.\n4. If there IS real data, your first section must be a DATA SNAPSHOT that mirrors the exact figures above before any analysis.\n5. Writing any number not found in the data above is a fabrication and a trust violation. DeAnna checks your output against the raw table.\n\nREPORT TYPE: ${reportType}\n${reportInstructions}\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Hyun-Ji.`,'normal',0,null,2000);
+  return await runAgentToCSQ('hyunji','Hyun-Ji Kim','Marketing','analytics_roi_briefing','analytics_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nDATA RULES — the real numbers guide everything you write:\n1. Every number comes directly from the data provided above, quoted exactly as it appears there.\n2. Analysis stays grounded in the real numbers actually provided.\n3. If assessments completed = 0 and all stats = 0, open with: \"Zero activity to report. Platform is pre-traffic.\" Then name the single metric we should focus on activating first and why.\n4. If there IS real data, the first section is a DATA SNAPSHOT that mirrors the exact figures above.\n\nREPORT TYPE: ${reportType}\n${reportInstructions}\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Hyun-Ji.`,'normal',0,null,2000);
 }
 async function runAndre(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1518,9 +1548,9 @@ async function runAndre(): Promise<string|null> {
   const seoData = await fetchSeoData();
   const agentKnowledge = await getAgentKnowledge();
   const focusInstructions:Record<string,string>={
-    daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR™". Recommend organic defense strategy grounded in platform launch stage. Do not fabricate competitor threats — note if none are confirmed. **Organic Search** — Top 3 keyword clusters to target given the real UTM data above. One content gap for Nia grounded in actual traffic sources or assessment top gaps. **Today's SEO Action** — One immediately actionable move tied to real data.`,
-    technical_seo:`**Site Health** — Core Web Vitals targets for assessment.druaiconsulting.com and app.druaiconsulting.com. One crawlability recommendation. **Schema** — Recommended schema markup for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,
-    weekly_search_recap:`**Organic Search** — Benchmark targets appropriate for this launch stage. One keyword to prioritize based on real UTM sources above. **Paid Search** — Brand campaign recommendations. **Next Week's Priorities** — 3 actions ranked by impact for an early-stage platform.`
+    daily_operational:`**Organic Search** — Name the top 3 keyword clusters to target given the real UTM data above. Ground one content gap for Nia in the actual traffic sources or assessment top gaps above. **Today's SEO Action** — Name one immediately actionable move tied to real data above.`,
+    technical_seo:`**Site Health** — Give the real Core Web Vitals for each site from the data above, explained in plain English: what the number means for a visitor and what to do about it. Where data came back unavailable for a site, say what to check manually. Give one crawlability recommendation, grounded in the real Search Console index status above. **Schema** — Using the real schema-markup check above and the real course/diagnostic pricing facts, explain in plain English what adding or fixing schema markup would do for each real product — written so a non-technical reader follows it easily. **This Week's Technical Priority** — Name the single highest-impact fix, explained in plain English.`,
+    weekly_search_recap:`**Organic Search** — State benchmark targets appropriate for this launch stage. Name one keyword to prioritize based on the real UTM sources above.`
   };
   return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\n${seoData}\n\n${REAL_PRICING_FACTS}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
 }
@@ -1587,7 +1617,7 @@ async function runYuki(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const pipelineData = await fetchLegalFinanceData();
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must come directly from the data above. If it is not in the data, do not write it.\n2. No revenue projections, no estimated earnings, no conversion math. Real reported figures only.\n3. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"Zero revenue to report this week. No financial figures to present.\" Then name the single financial tracking item to set up before the first sale lands.\n4. If there IS real revenue, report it exactly — by client name, amount paid, and stage.\n5. Writing any number not in the data above is a fabrication. DeAnna checks your output against the raw table.\n\nFormat: 150 words or fewer. Write in first person as Yuki.`,'normal',0,null,600);
+  return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nDATA RULES — the real numbers guide everything you write:\n1. Every number comes directly from the data above, stated exactly as reported.\n2. Real reported figures guide every statement.\n3. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"Zero revenue to report this week. No financial figures to present.\" Then name the single financial tracking item to set up before the first sale lands.\n4. If there IS real revenue, report it exactly — by client name, amount paid, and stage.\n\nFormat: 150 words or fewer. Write in first person as Yuki.`,'normal',0,null,600);
 }
 async function runMarcus(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1809,7 +1839,7 @@ async function runSimone(): Promise<string|null> {
   const moduleMap:Record<string,string>={Monday:'Module 1: AI Readiness (DRU CLEAR™ Foundation)',Tuesday:'Module 2: AI Strategy (DRU AI Transformation Pathway™ — Discover & Diagnose)',Wednesday:'Module 3: AI Design & Deploy (DRU AI Transformation Pathway™ — Design & Deploy)',Thursday:'Module 4: AI Leadership (5D Leadership™ + 5C Cultural DNA™)',Friday:'Module 5: AI Mastery (DRU AI Leadership Ecosystem™.)'};
   const todayModule=moduleMap[dayOfWeek]??'Module 1: AI Readiness (DRU CLEAR™ Foundation)';
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCOURSE: From Confusion to Confident with AI™. Tiers: Self-Paced $1,497, Live Cohort $7,997, Cohort Mastermind $12,997.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent completion rates, cohort data, learner feedback, or engagement metrics. The real numbers are above — use only those.\n2. If course lessons completed = 0, the course has not been completed by any student yet. Do not reference student outcomes.\n3. Course enrollments shows how many students exist. Calibrate your architecture decisions to that reality.\n4. You are building architecture — that is real, valuable work even before students arrive. But describe it as design in progress, not as complete or validated.\n\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check and one real-world application activity.\n**Today's Priority** — Single most important architecture decision or asset to produce today.\n\nFormat: 250 words or fewer. Write in first person as Simone.`,'normal',0,null,1500,'claude-sonnet-4-6');
+  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCOURSE: From Confusion to Confident with AI™ — $1,497, self-paced. This is the ONLY course and the ONLY price; no live cohort or other tier exists.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent completion rates, cohort data, learner feedback, or engagement metrics. The real numbers are above — use only those.\n2. If course lessons completed = 0, the course has not been completed by any student yet. Do not reference student outcomes.\n3. Course enrollments shows how many students exist. Calibrate your architecture decisions to that reality.\n4. You are building architecture — that is real, valuable work even before students arrive. But describe it as design in progress, not as complete or validated.\n\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check and one real-world application activity.\n**Today's Priority** — Single most important architecture decision or asset to produce today.\n\nFormat: 250 words or fewer. Write in first person as Simone.`,'normal',0,null,1500,'claude-sonnet-4-6');
 }
 async function runTheo(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
