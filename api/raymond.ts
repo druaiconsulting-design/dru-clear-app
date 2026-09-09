@@ -39,6 +39,7 @@ interface CSQItem {
   task: string; category: string; raw_output: string; priority: string;
   retry_count?: number; raymond_notes?: string; travis_notes?: string;
   priya_notes?: string; isabella_flags?: string; correction_notes?: string;
+  governance_notes?: string; governance_flags?: string;
   context?: string;
 }
 
@@ -226,9 +227,12 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
       // notes are often numbered lists ("1. ... 2. ..."), and splitting on ". " cut the
       // reason off right after the list number itself (e.g. just "1"). Truncating on
       // length instead always shows real, actionable text, regardless of her formatting.
-      const full = (f.correction_notes ?? f.isabella_flags ?? '').trim().replace(/\n+/g, ' ');
+      // A reject can also come from the Governance & Legal panel AFTER Isabella clears
+      // an item -- when that's the case her own fields read "cleared, no issue" and the
+      // real reason sits in governance_notes/governance_flags instead, so check those too.
+      const full = (f.correction_notes || (f.isabella_flags && f.isabella_flags !== 'none' ? f.isabella_flags : '') || f.governance_notes || f.governance_flags || '').trim().replace(/\n+/g, ' ');
       const brief = full.length > 140 ? `${full.slice(0, 140).trim()}...` : full;
-      flagData[f.division][f.agent_name] = { count: 1, reason: brief || 'flagged by Isabella' };
+      flagData[f.division][f.agent_name] = { count: 1, reason: brief || 'flagged for review' };
     } else {
       flagData[f.division][f.agent_name].count++;
     }
