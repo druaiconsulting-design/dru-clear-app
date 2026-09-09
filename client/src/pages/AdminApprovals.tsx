@@ -207,6 +207,15 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   ],
 };
 
+// Calendar date (America/Chicago) for a timestamp -- mirrors raymond.ts's own
+// day boundary, so a division card matches hard-rejects from its own day
+// rather than a raw UTC-midnight comparison.
+function chicagoDateString(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+}
+
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -545,15 +554,18 @@ export default function AdminApprovals() {
     setAgentPhotoByName(byName);
   };
 
-  // Hard-rejected items (Isabella's 3rd-strike kills) from the last 7 days --
-  // shown as their own addressable block at the bottom of each division's card (except Prospects).
+  // Hard-rejected items (Isabella's 3rd-strike kills) -- shown as their own
+  // addressable block at the bottom of each division's card (except Prospects).
+  // No date floor here: each card matches these against its own calendar day
+  // below (see chicagoDateString / divRejected), so a card from any date can
+  // find its own day's items. The table is small (agent_corrections keeps the
+  // permanent training record; this queue gets purged periodically), so an
+  // unfiltered fetch stays cheap.
   const fetchRejectedItems = async () => {
-    const since = new Date(); since.setDate(since.getDate() - 7);
     const { data, error } = await supabase
       .from("chief_of_staff_queue")
       .select("id, agent_id, agent_name, division, task, correction_notes, isabella_flags, context, created_at")
       .eq("status", "rejected")
-      .gte("created_at", since.toISOString())
       .order("created_at", { ascending: false });
     if (error) { console.error("[rejected items]", error); return; }
     setRejectedItems((data as RejectedItem[]) || []);
@@ -1991,8 +2003,25 @@ export default function AdminApprovals() {
                       Serena, Elena, and Chloe's unrelated daily rejects, and an
                       earlier pass here dumped that entire backlog onto every grant
                       item's card. */}
-                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && rejectedItems.filter(r => r.division === approval.division).length > 0 && (() => {
-                    const divRejected = rejectedItems.filter(r => r.division === approval.division);
+                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && (() => {
+                    // Same-day match: a card only ever shows hard-rejects from its own
+                    // calendar day, so the Aug 24 card and the Sept 9 card each show
+                    // their own day's items instead of today's whole backlog stamped
+                    // onto every card. Within that day, keep only the most recent
+                    // hard-reject per agent -- one clean entry, not a stack of retries.
+                    const cardDay = chicagoDateString(new Date(approval.created_at));
+                    const sameDayDivision = rejectedItems.filter(r =>
+                      r.division === approval.division && chicagoDateString(new Date(r.created_at)) === cardDay
+                    );
+                    const latestByAgent = new Map<string, RejectedItem>();
+                    for (const item of sameDayDivision) {
+                      const existing = latestByAgent.get(item.agent_name);
+                      if (!existing || new Date(item.created_at) > new Date(existing.created_at)) {
+                        latestByAgent.set(item.agent_name, item);
+                      }
+                    }
+                    const divRejected = Array.from(latestByAgent.values());
+                    if (divRejected.length === 0) return null;
                     return (
                       <div style={{ padding:"0 1rem 1rem" }}>
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.6rem" }}>Needs Attention</p>
