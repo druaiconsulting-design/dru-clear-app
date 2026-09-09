@@ -53,7 +53,22 @@ interface QuestionState {
 interface RejectedItem {
   id: string; agent_id: string; agent_name: string; division: string;
   task: string; correction_notes: string | null; isabella_flags: string | null;
+  governance_notes: string | null; governance_flags: string | null;
   context: string | null; created_at: string;
+}
+
+// A hard-reject can come from Isabella (trademark/voice/factual/framework) or
+// from the Governance & Legal panel that reviews items AFTER Isabella clears
+// them (legal/factual risk). When Governance is the one that blocked it,
+// Isabella's own fields correctly read "cleared, no issue" -- her real note
+// lives in governance_notes/governance_flags instead. Check both, in the
+// order whichever one actually did the rejecting wrote something.
+function getRejectionReason(item: RejectedItem): string {
+  if (item.correction_notes) return item.correction_notes;
+  if (item.isabella_flags && item.isabella_flags !== 'none') return item.isabella_flags;
+  if (item.governance_notes) return item.governance_notes;
+  if (item.governance_flags) return item.governance_flags;
+  return 'Rejected -- no detail recorded.';
 }
 
 interface MediaState { video_url: string; image_url: string; instagram_video_url: string; facebook_reel_url: string; }
@@ -564,7 +579,7 @@ export default function AdminApprovals() {
   const fetchRejectedItems = async () => {
     const { data, error } = await supabase
       .from("chief_of_staff_queue")
-      .select("id, agent_id, agent_name, division, task, correction_notes, isabella_flags, context, created_at")
+      .select("id, agent_id, agent_name, division, task, correction_notes, isabella_flags, governance_notes, governance_flags, context, created_at")
       .eq("status", "rejected")
       .order("created_at", { ascending: false });
     if (error) { console.error("[rejected items]", error); return; }
@@ -1446,7 +1461,7 @@ export default function AdminApprovals() {
     const newMessages = [...qs.messages, { role:'user' as const, text:question }];
     setRejectedQS(item.id, { messages:newMessages, input:"", loading:true });
     try {
-      const cardOutput = `WHAT YOU WROTE: (see task: ${item.task})\n\nWHY IT WAS REJECTED: ${item.correction_notes ?? item.isabella_flags ?? 'Not specified.'}`;
+      const cardOutput = `WHAT YOU WROTE: (see task: ${item.task})\n\nWHY IT WAS REJECTED: ${getRejectionReason(item)}`;
       const res = await fetch("/api/ask-agent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ agent_id: qs.selectedAgent.agent_id, agent_name: qs.selectedAgent.agent_name, agent_role: qs.selectedAgent.role, question, card_output: cardOutput, conversation_history: qs.messages, csq_id: item.id }) });
       const data = await res.json();
       const reply = data.response ?? "Unable to respond. Please try again.";
@@ -2036,7 +2051,7 @@ export default function AdminApprovals() {
                                   <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", fontWeight:700, color:"#0A2342" }}>{item.agent_name}</span>
                                   <span style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.4)" }}>· {item.task}</span>
                                 </div>
-                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.65)", lineHeight:1.5, margin:"0 0 0.5rem" }}>{item.correction_notes ?? item.isabella_flags ?? "Rejected -- no detail recorded."}</p>
+                                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.65)", lineHeight:1.5, margin:"0 0 0.5rem" }}>{getRejectionReason(item)}</p>
                                 {rqs.messages.length > 0 && (
                                   <div style={{ marginBottom:"0.5rem", display:"flex", flexDirection:"column" as const, gap:"0.4rem", maxHeight:220, overflowY:"auto" as const }}>
                                     {rqs.messages.map((msg, i) => (
