@@ -11,9 +11,7 @@
 
 export const config = { maxDuration: 60 };
 
-import { VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
-
-const GENIUS_MODE = `You operate in Genius Mode — think and respond at the level of a top 0.1% expert in your field. Apply deep logic, strategic frameworks, creative synthesis, and second-order thinking to every output. Make every sentence earn its place with real specificity and depth.`;
+import { GENIUS_MODE, VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
 
 const BRAND_COPY_FALLBACK: Record<string,string> = {
   positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
