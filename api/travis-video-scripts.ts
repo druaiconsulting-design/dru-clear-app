@@ -26,7 +26,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
 
-import { GENIUS_MODE } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, DIRECT_RESPONSE_PHILOSOPHY } from './_lib/agentKnowledge.js';
 
 const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
 
@@ -352,7 +352,7 @@ async function runDariusVideoScript(): Promise<{ approvalId: string | null; resu
   const brandMarks = await fetchBrandMarks();
   const positioning = await fetchBrandCopy('positioning');
 
-  const buildPrompt = (feedback = '') => `${GENIUS_MODE}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nPositioning: "${positioning}." Every script stops the scroll in the first 3 seconds.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase or invent:\n${FRAMEWORK_KNOWLEDGE}\n${feedback ? `\nISABELLA COMPLIANCE FEEDBACK — fix these issues before rewriting:\n${feedback}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw.\nFormat: scroll-stopping hook (first 3 seconds — create a feeling), sharp insight from one DRU framework, clear CTA to assessment.druaiconsulting.com.\nEnergy: punchy, high-energy, never stiff. This is Darius — make it hit.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Darius direction: energy level, pacing, wardrobe vibe, any visual note","linkedin_caption":"60-90 word LinkedIn caption for when this video posts","facebook_caption":"60-90 word Facebook caption","instagram_caption":"50-70 word Instagram caption with 5-7 hashtags"}`;
+  const buildPrompt = (feedback = '') => `${GENIUS_MODE}\n\n${DIRECT_RESPONSE_PHILOSOPHY}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nPositioning: "${positioning}." Every script stops the scroll in the first 3 seconds.\nTRADEMARK RULES: Only use frameworks with ™. APPROVED: ${brandMarks}\nSERVICE CLASS RULES: Classes 35, 41, 42 only.\n\nFRAMEWORK REFERENCE — use exact definitions, never paraphrase or invent:\n${FRAMEWORK_KNOWLEDGE}\n${feedback ? `\nISABELLA COMPLIANCE FEEDBACK — fix these issues before rewriting:\n${feedback}\n` : ''}\nToday: ${today}\n\nWrite a 60-second avatar video script for DeAnna R. Upshaw.\nFormat: scroll-stopping hook (first 3 seconds — create a feeling), sharp insight from one DRU framework, clear CTA to assessment.druaiconsulting.com.\nEnergy: punchy, high-energy, never stiff. This is Darius — make it hit.\n\nReturn ONLY valid JSON — no markdown fences, no preamble:\n{"script":"full word-for-word script DeAnna speaks to camera","treatment":"Darius direction: energy level, pacing, wardrobe vibe, any visual note","linkedin_caption":"60-90 word LinkedIn caption for when this video posts","facebook_caption":"60-90 word Facebook caption","instagram_caption":"50-70 word Instagram caption with 5-7 hashtags"}`;
 
   return runWithIsabellaGate(
     'darius', 'Darius King', 'Content & Brand',
