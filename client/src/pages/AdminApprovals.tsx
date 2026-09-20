@@ -1618,6 +1618,7 @@ export default function AdminApprovals() {
               const origCol       = getOriginalColumn(approval);
               const draftHead     = getDraftHeading(approval);
               const isBriefing    = approval.category !== "social" && approval.category !== "email" && approval.category !== "community_post";
+              const isAwaitingYou = approval.category === "grant_applications" && approval.status === "needs_your_input";
               const qs            = getQS(approval.id);
               const divAgents     = DIVISION_AGENTS[approval.division] ?? [];
               const isLead        = approval.category === "lead_intelligence";
@@ -1639,7 +1640,7 @@ export default function AdminApprovals() {
               const activeContent = isMulti ? getActivePlatformContent(approval) : (approval.edited_output || approval.output);
 
               return (
-                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.35)" : isCCPost ? "rgba(45,90,142,0.35)" : isKnowledge ? "rgba(10,35,66,0.12)" : approval.status === "pending" ? "rgba(212,175,55,0.25)" : "rgba(10,35,66,0.08)"}`, background: approval.status !== "pending" ? "rgba(10,35,66,0.02)" : isPostTrigger ? "rgba(194,24,91,0.03)" : isCCPost ? "rgba(45,90,142,0.03)" : isKnowledge ? "rgba(10,35,66,0.02)" : "#FFFFFF", opacity:approval.status !== "pending" ? 0.7 : 1 }}>
+                <div key={approval.id} style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${isPostTrigger ? "rgba(194,24,91,0.35)" : isCCPost ? "rgba(45,90,142,0.35)" : isKnowledge ? "rgba(10,35,66,0.12)" : (approval.status === "pending" || isAwaitingYou) ? "rgba(212,175,55,0.25)" : "rgba(10,35,66,0.08)"}`, background: (approval.status !== "pending" && !isAwaitingYou) ? "rgba(10,35,66,0.02)" : isPostTrigger ? "rgba(194,24,91,0.03)" : isCCPost ? "rgba(45,90,142,0.03)" : isKnowledge ? "rgba(10,35,66,0.02)" : "#FFFFFF", opacity:(approval.status !== "pending" && !isAwaitingYou) ? 0.7 : 1 }}>
 
                   {/* Card Header */}
                   <div style={{ background:"#071A2E", padding:"0.65rem 1rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap" as const, gap:"0.5rem" }}>
