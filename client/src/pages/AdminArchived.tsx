@@ -75,6 +75,7 @@ export default function AdminArchived() {
   const [archivedOpen, setArchivedOpen]   = useState(false);
   const [rejectedOpen, setRejectedOpen]   = useState(false);
   const [grantsOpen, setGrantsOpen]       = useState(false);
+  const [readyToUseOpen, setReadyToUseOpen] = useState(false);
 
   const fetchArchived = async () => {
     const { data, error } = await supabase
@@ -275,35 +276,6 @@ export default function AdminArchived() {
           </div>
         </div>
 
-        {/* Stat — Ready to Use only */}
-        <div style={{ marginBottom:"1.5rem" }}>
-          <div style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.1)", borderRadius:10, padding:"0.875rem 1rem", display:"inline-block", minWidth:160 }}>
-            <p style={{ fontFamily:"'Playfair Display', serif", color:"#D4AF37", fontSize:"1.75rem", fontWeight:700, margin:0 }}>{readyToUse.length}</p>
-            <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(10,35,66,0.45)", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, margin:"4px 0 0" }}>Ready to Use</p>
-          </div>
-        </div>
-
-        {/* Filter Pills — Ready to Use items only */}
-        <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" as const }}>
-          {[
-            { key:"client_delivery",  label:"Client Delivery",  count: readyToUse.filter(a => a.category === "client_delivery" || (a.category === "content_review" && a.division === "Client Delivery")).length },
-            { key:"customer_support", label:"Customer Support", count: readyToUse.filter(a => a.category === "customer_support").length },
-            { key:"marketing",        label:"Marketing",        count: readyToUse.filter(a => a.category === "marketing" || (a.category === "content_review" && a.division === "Marketing")).length },
-            { key:"content_brand",    label:"Content & Brand",  count: readyToUse.filter(a => a.category === "content_brand").length },
-            { key:"grants",           label:"Grants",           count: readyToUse.filter(a => a.category === "grants").length },
-            { key:"social_media",     label:"Social Media",     count: readyToUse.filter(a => a.category === "social" && SOCIAL_MEDIA_PLATFORMS.has(a.platform ?? '')).length },
-            { key:"design",           label:"Design",           count: readyToUse.filter(a => a.platform === "Design").length },
-            { key:"copy",             label:"Copy",             count: readyToUse.filter(a => a.platform === "Copy").length },
-            { key:"course",           label:"Course",           count: readyToUse.filter(a => a.platform === "Course").length },
-            { key:"video",            label:"Video",            count: readyToUse.filter(a => a.platform === "Video").length },
-            { key:"proposal",         label:"Proposal",         count: readyToUse.filter(a => a.platform === "Proposal").length },
-          ].filter(pill => pill.count > 0).map(pill => (
-            <button key={pill.key} onClick={() => setActiveFilter(prev => prev === pill.key ? "all" : pill.key)} style={tabStyle(activeFilter === pill.key)}>
-              {pill.label} ({pill.count})
-            </button>
-          ))}
-        </div>
-
         {loading && (
           <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.4)", fontFamily:"'Montserrat', sans-serif", fontSize:"0.75rem" }}>
             LOADING ARCHIVE...
@@ -349,15 +321,49 @@ export default function AdminArchived() {
           </div>
         )}
 
-        {/* Ready to Use items */}
-        {!loading && (
-          <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginBottom:"2rem" }}>
-            {filtered.length === 0 ? (
-              <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>
-                {activeFilter === "all" ? "No items ready to use" : `No items in ${CATEGORY_LABELS[activeFilter] ?? activeFilter}`}
+        {/* Ready to Use section — collapsible, matches Grant/Archived/Rejected pattern */}
+        {!loading && readyToUse.length > 0 && (
+          <div style={{ marginBottom:"1.25rem" }}>
+            <button
+              onClick={() => setReadyToUseOpen(prev => !prev)}
+              style={{ width:"100%", background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#8A6E1A" }}>
+                Ready to Use ({readyToUse.length})
+              </span>
+              <span style={{ color:"rgba(212,175,55,0.6)", fontSize:"0.75rem" }}>{readyToUseOpen ? "▲" : "▼"}</span>
+            </button>
+            {readyToUseOpen && (
+              <div style={{ marginTop:"0.75rem" }}>
+                {/* Filter Pills — Ready to Use items only */}
+                <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem", flexWrap:"wrap" as const }}>
+                  {[
+                    { key:"client_delivery",  label:"Client Delivery",  count: readyToUse.filter(a => a.category === "client_delivery" || (a.category === "content_review" && a.division === "Client Delivery")).length },
+                    { key:"customer_support", label:"Customer Support", count: readyToUse.filter(a => a.category === "customer_support").length },
+                    { key:"marketing",        label:"Marketing",        count: readyToUse.filter(a => a.category === "marketing" || (a.category === "content_review" && a.division === "Marketing")).length },
+                    { key:"content_brand",    label:"Content & Brand",  count: readyToUse.filter(a => a.category === "content_brand").length },
+                    { key:"grants",           label:"Grants",           count: readyToUse.filter(a => a.category === "grants").length },
+                    { key:"social_media",     label:"Social Media",     count: readyToUse.filter(a => a.category === "social" && SOCIAL_MEDIA_PLATFORMS.has(a.platform ?? '')).length },
+                    { key:"design",           label:"Design",           count: readyToUse.filter(a => a.platform === "Design").length },
+                    { key:"copy",             label:"Copy",             count: readyToUse.filter(a => a.platform === "Copy").length },
+                    { key:"course",           label:"Course",           count: readyToUse.filter(a => a.platform === "Course").length },
+                    { key:"video",            label:"Video",            count: readyToUse.filter(a => a.platform === "Video").length },
+                    { key:"proposal",         label:"Proposal",         count: readyToUse.filter(a => a.platform === "Proposal").length },
+                  ].filter(pill => pill.count > 0).map(pill => (
+                    <button key={pill.key} onClick={() => setActiveFilter(prev => prev === pill.key ? "all" : pill.key)} style={tabStyle(activeFilter === pill.key)}>
+                      {pill.label} ({pill.count})
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem" }}>
+                  {filtered.length === 0 ? (
+                    <div style={{ textAlign:"center" as const, padding:"3rem", color:"rgba(10,35,66,0.3)", fontFamily:"'Inter', sans-serif", fontSize:"0.85rem" }}>
+                      {activeFilter === "all" ? "No items ready to use" : `No items in ${CATEGORY_LABELS[activeFilter] ?? activeFilter}`}
+                    </div>
+                  ) : (
+                    filtered.map(approval => renderCard(approval))
+                  )}
+                </div>
               </div>
-            ) : (
-              filtered.map(approval => renderCard(approval))
             )}
           </div>
         )}
@@ -369,7 +375,7 @@ export default function AdminArchived() {
               onClick={() => setRejectedOpen(prev => !prev)}
               style={{ width:"100%", background:"rgba(194,24,91,0.04)", border:"1px solid rgba(194,24,91,0.15)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
               <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"rgba(194,24,91,0.6)" }}>
-                Rejected ({rejectedItems.length})
+                Corrective Feedback ({rejectedItems.length})
               </span>
               <span style={{ color:"rgba(194,24,91,0.4)", fontSize:"0.75rem" }}>{rejectedOpen ? "▲" : "▼"}</span>
             </button>
