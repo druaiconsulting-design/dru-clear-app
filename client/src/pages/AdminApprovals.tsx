@@ -1994,7 +1994,7 @@ export default function AdminApprovals() {
                       <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.4rem", justifyContent:"flex-end" }}>
                         <button onClick={handleRejectCancel} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.2)", background:"transparent", color:"rgba(10,35,66,0.5)", letterSpacing:"0.06em" }}>Cancel</button>
                         <button onClick={() => handleReject(approval.id)} disabled={saving === approval.id || !correctionNote.trim()} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#C2185B", color:"#FAFAF8", letterSpacing:"0.06em", opacity:(saving === approval.id || !correctionNote.trim()) ? 0.5 : 1 }}>
-                          {saving === approval.id ? "..." : "Confirm Reject"}
+                          {saving === approval.id ? "..." : "Confirm Corrective Feedback"}
                         </button>
                       </div>
                     </div>
@@ -2130,7 +2130,7 @@ export default function AdminApprovals() {
                       )}
                       {!isKnowledge && approval.status === "pending" && editingId !== approval.id && rejectingId !== approval.id && !isPostTrigger && (
                         <>
-                          <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Reject</button>
+                          <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Corrective Feedback</button>
                           <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
                           </button>
