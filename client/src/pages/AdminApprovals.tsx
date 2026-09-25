@@ -1062,22 +1062,27 @@ export default function AdminApprovals() {
       const cleanContent = stripUpsellSignal(content);
       const postIdMatch = (approval.task_brief || '').match(/post_id:([a-zA-Z0-9-]+)/);
       const postId = postIdMatch?.[1];
-      const lines = cleanContent.split('\n').filter((l: string) => l.trim());
-      const title = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
+      // Title is always the first non-blank line (DeAnna's own edits to that
+      // line included) — pulled off here and never left in the saved body,
+      // so the card header doesn't repeat itself as the post's first line.
+      const rawLines = cleanContent.split('\n');
+      const titleLineIdx = rawLines.findIndex((l: string) => l.trim().length > 0);
+      const title = rawLines[titleLineIdx]?.trim().replace(/^#+\s*/, '').slice(0, 120) || `${approval.agent_name} Post` || 'Community Post';
+      const postBody = rawLines.slice(titleLineIdx + 1).join('\n').replace(/^\n+/, '').trim();
       // Fallback inserts must route to the correct division — never assume Community
       // Connection / navigator tier just because the original post_id write failed.
       const isAC = approval.division === 'Accelerator Circle';
       const fallbackFields = { tier_required: isAC ? 'accelerator' : 'navigator' };
       if (postId) {
         // UPDATE only — no select (RLS was silently blocking return of updated rows, causing false fallthrough to INSERT)
-        const { error: updateError } = await supabase.from('community_posts').update({ is_active: true, content: cleanContent, published_at: new Date().toISOString() }).eq('id', postId);
+        const { error: updateError } = await supabase.from('community_posts').update({ is_active: true, title, content: postBody, published_at: new Date().toISOString() }).eq('id', postId);
         if (!updateError) return true;
         // UPDATE errored — try INSERT as true fallback (new record)
-        const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
+        const { error: insertError } = await supabase.from('community_posts').insert({ id: postId, title, content: postBody, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
         if (!insertError || (insertError as any).code === '23505') return true; // 23505 = duplicate key = UPDATE already worked
         return false;
       }
-      const { error: insertError } = await supabase.from('community_posts').insert({ title, content: cleanContent, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
+      const { error: insertError } = await supabase.from('community_posts').insert({ title, content: postBody, agent_name: approval.agent_name, post_type: 'agent', is_active: true, ...fallbackFields, published_at: new Date().toISOString() });
       if (insertError) return false;
       return true;
     } catch (err) { console.error('[community_post]', err); return false; }
@@ -1086,11 +1091,13 @@ export default function AdminApprovals() {
   // Yara — post English to both CC + ACC communities, Spanish stored in content_es
   const postYaraToCommunity = async (approval: Approval): Promise<boolean> => {
     try {
-      const content   = approval.linkedin_content || approval.output;
-      const contentEs = approval.spanish_content || null;
-      const lines     = content.split('\n').filter((l: string) => l.trim());
-      const title     = lines[0]?.replace(/^#+\s*/, '').slice(0, 120) || 'Yara Mansour Post';
-      const base = { title, content, content_es: contentEs, agent_name: 'Yara Mansour', post_type: 'agent', is_active: true, published_at: new Date().toISOString() };
+      const content     = approval.linkedin_content || approval.output;
+      const contentEs   = approval.spanish_content || null;
+      const rawLines    = content.split('\n');
+      const titleLineIdx = rawLines.findIndex((l: string) => l.trim().length > 0);
+      const title       = rawLines[titleLineIdx]?.trim().replace(/^#+\s*/, '').slice(0, 120) || 'Yara Mansour Post';
+      const postBody    = rawLines.slice(titleLineIdx + 1).join('\n').replace(/^\n+/, '').trim();
+      const base = { title, content: postBody, content_es: contentEs, agent_name: 'Yara Mansour', post_type: 'agent', is_active: true, published_at: new Date().toISOString() };
       const { error: ccErr }  = await supabase.from('community_posts').insert({ ...base, tier_required: 'navigator' });
       const { error: accErr } = await supabase.from('community_posts').insert({ ...base, tier_required: 'accelerator' });
       return !ccErr && !accErr;
