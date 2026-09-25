@@ -10,7 +10,7 @@ import { randomUUID } from 'crypto';
 const SUPABASE_URL          = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const ANTHROPIC_API_KEY     = process.env.ANTHROPIC_API_KEY!;
-const GHL_WEBHOOK_SECRET    = process.env.GHL_WEBHOOK_SECRET!;
+const CRON_SECRET           = process.env.CRON_SECRET!;
 
 export const config = { maxDuration: 60 };
 
@@ -26,7 +26,7 @@ async function logModelUsage(model: string, inputTokens: number, outputTokens: n
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Auth: only pg_cron (with secret header) may call this
   const secret = req.headers['x-cron-secret'];
-  if (secret !== GHL_WEBHOOK_SECRET) {
+  if (secret !== CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -87,9 +87,14 @@ Rules:
       return res.status(500).json({ error: 'No content generated from Anthropic' });
     }
 
-    // Extract title from first non-empty line
-    const lines = content.split('\n').map((l: string) => l.trim()).filter(Boolean);
-    const title = lines[0]?.slice(0, 120) ?? 'Weekly Leadership Challenge';
+    // Extract title from the first non-empty line, then drop that line (and
+    // any blank line right after it) from the body — otherwise the card
+    // shows the title once as the header and again as the first line of
+    // the post itself.
+    const rawLines = content.split('\n');
+    const titleLineIdx = rawLines.findIndex((l: string) => l.trim().length > 0);
+    const title = rawLines[titleLineIdx]?.trim().slice(0, 120) ?? 'Weekly Leadership Challenge';
+    const postBody = rawLines.slice(titleLineIdx + 1).join('\n').replace(/^\n+/, '').trim();
 
     const postId = randomUUID();
     const now    = new Date().toISOString();
@@ -107,7 +112,7 @@ Rules:
       body: JSON.stringify({
         id:           postId,
         title:        title,
-        content:      content,
+        content:      postBody,
         agent_name:   'Zoe Beaumont',
         post_type:    'agent',
         is_active:    false,           // activated when DeAnna approves
