@@ -395,7 +395,7 @@ ${allSummary}`,
           await writeApproval({
             source: `${item.agent_id}_social`, trigger_type: item.task,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
-            task_brief: `Social — ${item.agent_name} | ${today}`,
+            task_brief: item.context ? `${item.context} — Social — ${item.agent_name} | ${today}` : `Social — ${item.agent_name} | ${today}`,
             output: multiPlatform.linkedin_content,
             linkedin_content: multiPlatform.linkedin_content,
             facebook_content: multiPlatform.facebook_content,
@@ -429,7 +429,7 @@ ${allSummary}`,
           await writeApproval({
             source: `${item.agent_id}_social`, trigger_type: item.task,
             agent_name: item.agent_name, agent_role: item.division, division: item.division,
-            task_brief: `${platformLabel} — ${item.agent_name} | ${today}`,
+            task_brief: item.context ? `${item.context} — ${platformLabel} — ${item.agent_name} | ${today}` : `${platformLabel} — ${item.agent_name} | ${today}`,
             output: postContent, original_content: internalNotes || null,
             status: 'pending', notify_deanna: false,
             // "Emails" is its own category, separate from social media — Aug 2026 fix, category
