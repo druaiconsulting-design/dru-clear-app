@@ -131,7 +131,7 @@ function getPlatformLabel(category: string): string {
     twitter_post: 'X', tiktok_post: 'TikTok', youtube_post: 'YouTube', social_post: 'Social',
     content_creation: 'Content', press_release: 'Press', design_brief: 'Design',
     localization: 'Localization', copywriting: 'Copy', email_marketing: 'Email', outreach: 'Outreach',
-    linkedin_article: 'LinkedIn', newsletter_nonmember: 'Email', newsletter_freetier: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
+    linkedin_article: 'LinkedIn Article', newsletter_nonmember: 'Email', newsletter_freetier: 'Email', newsletter_navigator: 'Email', newsletter_accelerator: 'Email',
   };
   return map[category] ?? 'Social';
 }
