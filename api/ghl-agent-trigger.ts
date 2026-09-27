@@ -578,12 +578,12 @@ async function writeContentThemeLog(agentId:string, agentName:string, format:str
   } catch(err){ console.error('[content_theme_log] write failed:', err); }
 }
 
-async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500,model='claude-haiku-4-5-20251001'): Promise<string|null> {
+async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500,model='claude-haiku-4-5-20251001',context?:string): Promise<string|null> {
   try {
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections(agentName);
     const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}${agentCorrections}`,maxTokens,model);
-    return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{})});
+    return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{}),...(context?{context}:{})});
   } catch(error){console.error(`[${agentId}] Error:`,error);return null;}
 }
 
@@ -748,60 +748,94 @@ async function runOmarRealtime(payload:any): Promise<{success:boolean;contact_id
   return {success:true,contact_id:contactId};
 }
 
-// ─── Weekly IP Theme Rotation (Sept 8 – Oct 4, 2026) ──────────────────────────
-// Fixed 4-week test cycling DeAnna's own frameworks through Camila's weekly
-// brief, which Darius and Nia already read automatically. The framework and
-// dimension assigned to each date below is NOT decided by any agent — it's a
-// hard-coded lookup so there is zero drift risk. DeAnna reviews results at
-// the end of Week 4 (Oct 4) to decide whether to keep repeating the pattern.
-// Outside this date window, everything falls back to normal existing behavior.
+// ─── Weekly IP Theme Rotation (Sept 28 – Nov 22, 2026) ─────────────────────────
+// Restarted Sept 27, 2026 with a new order and doubled length: DRU CLEAR™ →
+// 5D Leadership™ → 5C Cultural DNA™ → AI Sales Mastery™, run for 2 full
+// cycles (8 weeks). The framework and dimension assigned to each date below
+// is NOT decided by any agent — it's a hard-coded lookup so there is zero
+// drift risk. Outside this date window, everything falls back to normal
+// existing behavior.
 type ThemeDay = { framework: string; file: string; dimension: string; synthesis: boolean };
 
 const WEEKLY_THEME_CALENDAR: Record<string, ThemeDay> = {
-  // Week 1 — DRU CLEAR™ (Sept 8-13, 2026). Tuesday Sept 8's post failed, so
-  // Sept 9, 2026: DeAnna shifted the remaining days forward one dimension —
-  // Wednesday now carries Clarity, Alignment and Results combine into one
-  // Saturday post, and Sunday's synthesis date stays where it was.
-  '2026-09-08': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
-  '2026-09-09': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
-  '2026-09-10': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
-  '2026-09-11': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
-  '2026-09-12': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment & Results', synthesis: false },
-  '2026-09-13': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
-  // Week 2 — 5C Cultural DNA™
-  '2026-09-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
-  '2026-09-15': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Connection', synthesis: false },
-  '2026-09-16': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Collaboration', synthesis: false },
-  '2026-09-17': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Coaching', synthesis: false },
-  '2026-09-18': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Culture Transformation', synthesis: false },
-  '2026-09-19': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
-  '2026-09-20': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
-  // Week 3 — 5D Leadership™
-  '2026-09-21': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Self', synthesis: false },
-  '2026-09-22': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'People', synthesis: false },
-  '2026-09-23': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Team', synthesis: false },
-  '2026-09-24': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Organization', synthesis: false },
-  '2026-09-25': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Visionary', synthesis: false },
-  '2026-09-26': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
-  '2026-09-27': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 1 — DRU CLEAR™
+  '2026-09-28': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
+  '2026-09-29': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
+  '2026-09-30': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
+  '2026-10-01': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment', synthesis: false },
+  '2026-10-02': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Results', synthesis: false },
+  '2026-10-03': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-04': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 2 — 5D Leadership™
+  '2026-10-05': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Self', synthesis: false },
+  '2026-10-06': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'People', synthesis: false },
+  '2026-10-07': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Team', synthesis: false },
+  '2026-10-08': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Organization', synthesis: false },
+  '2026-10-09': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Visionary', synthesis: false },
+  '2026-10-10': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-11': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 3 — 5C Cultural DNA™
+  '2026-10-12': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
+  '2026-10-13': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Connection', synthesis: false },
+  '2026-10-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Collaboration', synthesis: false },
+  '2026-10-15': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Coaching', synthesis: false },
+  '2026-10-16': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Culture Transformation', synthesis: false },
+  '2026-10-17': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-18': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
   // Week 4 — AI Sales Mastery™ (DISC)
-  '2026-09-28': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'D', synthesis: false },
-  '2026-09-29': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'I', synthesis: false },
-  '2026-09-30': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'S', synthesis: false },
-  '2026-10-01': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'C', synthesis: false },
-  '2026-10-02': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
-  '2026-10-03': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
-  '2026-10-04': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-19': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'D', synthesis: false },
+  '2026-10-20': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'I', synthesis: false },
+  '2026-10-21': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'S', synthesis: false },
+  '2026-10-22': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'C', synthesis: false },
+  '2026-10-23': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-24': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-10-25': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 5 — DRU CLEAR™
+  '2026-10-26': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Clarity', synthesis: false },
+  '2026-10-27': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Leadership', synthesis: false },
+  '2026-10-28': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Execution', synthesis: false },
+  '2026-10-29': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment', synthesis: false },
+  '2026-10-30': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Results', synthesis: false },
+  '2026-10-31': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-11-01': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 6 — 5D Leadership™
+  '2026-11-02': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Self', synthesis: false },
+  '2026-11-03': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'People', synthesis: false },
+  '2026-11-04': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Team', synthesis: false },
+  '2026-11-05': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Organization', synthesis: false },
+  '2026-11-06': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Visionary', synthesis: false },
+  '2026-11-07': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-11-08': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 7 — 5C Cultural DNA™
+  '2026-11-09': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
+  '2026-11-10': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Connection', synthesis: false },
+  '2026-11-11': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Collaboration', synthesis: false },
+  '2026-11-12': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Coaching', synthesis: false },
+  '2026-11-13': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Culture Transformation', synthesis: false },
+  '2026-11-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-11-15': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  // Week 8 — AI Sales Mastery™
+  '2026-11-16': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'D', synthesis: false },
+  '2026-11-17': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'I', synthesis: false },
+  '2026-11-18': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'S', synthesis: false },
+  '2026-11-19': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'C', synthesis: false },
+  '2026-11-20': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-11-21': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-11-22': { framework: 'AI Sales Mastery™', file: 'ai-sales-mastery.docx', dimension: 'Synthesis', synthesis: true },
 };
 
 // Camila only ever runs on Monday, so her lookup is just the fixed day-by-day
 // breakdown for the week that starts that Monday — written out directly so
-// there's no date-math to get wrong for a 4-week feature.
+// there's no date-math to get wrong for an 8-week feature.
 const WEEK_THEME_SUMMARIES: Record<string, string> = {
-  '2026-09-07': `Monday, Sep 7: (no post this week -- posting starts Wednesday, Sep 9)\nTuesday, Sep 8: (skipped -- that post didn't go out, so Clarity moves to Wednesday)\nWednesday, Sep 9: DRU CLEAR™ — Clarity\nThursday, Sep 10: DRU CLEAR™ — Leadership\nFriday, Sep 11: DRU CLEAR™ — Execution\nSaturday, Sep 12: DRU CLEAR™ — Alignment & Results (combined)\nSunday, Sep 13: DRU CLEAR™ — Synthesis (bring all 5 dimensions together)`,
-  '2026-09-14': `Monday, Sep 14: 5C Cultural DNA™ — Communication\nTuesday, Sep 15: 5C Cultural DNA™ — Connection\nWednesday, Sep 16: 5C Cultural DNA™ — Collaboration\nThursday, Sep 17: 5C Cultural DNA™ — Coaching\nFriday, Sep 18: 5C Cultural DNA™ — Culture Transformation\nSaturday, Sep 19: 5C Cultural DNA™ — Synthesis\nSunday, Sep 20: 5C Cultural DNA™ — Synthesis`,
-  '2026-09-21': `Monday, Sep 21: 5D Leadership™ — Self\nTuesday, Sep 22: 5D Leadership™ — People\nWednesday, Sep 23: 5D Leadership™ — Team\nThursday, Sep 24: 5D Leadership™ — Organization\nFriday, Sep 25: 5D Leadership™ — Visionary\nSaturday, Sep 26: 5D Leadership™ — Synthesis\nSunday, Sep 27: 5D Leadership™ — Synthesis`,
-  '2026-09-28': `Monday, Sep 28: AI Sales Mastery™ — D\nTuesday, Sep 29: AI Sales Mastery™ — I\nWednesday, Sep 30: AI Sales Mastery™ — S\nThursday, Oct 1: AI Sales Mastery™ — C\nFriday, Oct 2: AI Sales Mastery™ — Synthesis (how it all works together)\nSaturday, Oct 3: AI Sales Mastery™ — Synthesis\nSunday, Oct 4: AI Sales Mastery™ — Synthesis`,
+  '2026-09-28': `Monday, Sep 28: DRU CLEAR™ — Clarity\nTuesday, Sep 29: DRU CLEAR™ — Leadership\nWednesday, Sep 30: DRU CLEAR™ — Execution\nThursday, Oct 1: DRU CLEAR™ — Alignment\nFriday, Oct 2: DRU CLEAR™ — Results\nSaturday, Oct 3: DRU CLEAR™ — Synthesis\nSunday, Oct 4: DRU CLEAR™ — Synthesis`,
+  '2026-10-05': `Monday, Oct 5: 5D Leadership™ — Self\nTuesday, Oct 6: 5D Leadership™ — People\nWednesday, Oct 7: 5D Leadership™ — Team\nThursday, Oct 8: 5D Leadership™ — Organization\nFriday, Oct 9: 5D Leadership™ — Visionary\nSaturday, Oct 10: 5D Leadership™ — Synthesis\nSunday, Oct 11: 5D Leadership™ — Synthesis`,
+  '2026-10-12': `Monday, Oct 12: 5C Cultural DNA™ — Communication\nTuesday, Oct 13: 5C Cultural DNA™ — Connection\nWednesday, Oct 14: 5C Cultural DNA™ — Collaboration\nThursday, Oct 15: 5C Cultural DNA™ — Coaching\nFriday, Oct 16: 5C Cultural DNA™ — Culture Transformation\nSaturday, Oct 17: 5C Cultural DNA™ — Synthesis\nSunday, Oct 18: 5C Cultural DNA™ — Synthesis`,
+  '2026-10-19': `Monday, Oct 19: AI Sales Mastery™ — D\nTuesday, Oct 20: AI Sales Mastery™ — I\nWednesday, Oct 21: AI Sales Mastery™ — S\nThursday, Oct 22: AI Sales Mastery™ — C\nFriday, Oct 23: AI Sales Mastery™ — Synthesis\nSaturday, Oct 24: AI Sales Mastery™ — Synthesis\nSunday, Oct 25: AI Sales Mastery™ — Synthesis`,
+  '2026-10-26': `Monday, Oct 26: DRU CLEAR™ — Clarity\nTuesday, Oct 27: DRU CLEAR™ — Leadership\nWednesday, Oct 28: DRU CLEAR™ — Execution\nThursday, Oct 29: DRU CLEAR™ — Alignment\nFriday, Oct 30: DRU CLEAR™ — Results\nSaturday, Oct 31: DRU CLEAR™ — Synthesis\nSunday, Nov 1: DRU CLEAR™ — Synthesis`,
+  '2026-11-02': `Monday, Nov 2: 5D Leadership™ — Self\nTuesday, Nov 3: 5D Leadership™ — People\nWednesday, Nov 4: 5D Leadership™ — Team\nThursday, Nov 5: 5D Leadership™ — Organization\nFriday, Nov 6: 5D Leadership™ — Visionary\nSaturday, Nov 7: 5D Leadership™ — Synthesis\nSunday, Nov 8: 5D Leadership™ — Synthesis`,
+  '2026-11-09': `Monday, Nov 9: 5C Cultural DNA™ — Communication\nTuesday, Nov 10: 5C Cultural DNA™ — Connection\nWednesday, Nov 11: 5C Cultural DNA™ — Collaboration\nThursday, Nov 12: 5C Cultural DNA™ — Coaching\nFriday, Nov 13: 5C Cultural DNA™ — Culture Transformation\nSaturday, Nov 14: 5C Cultural DNA™ — Synthesis\nSunday, Nov 15: 5C Cultural DNA™ — Synthesis`,
+  '2026-11-16': `Monday, Nov 16: AI Sales Mastery™ — D\nTuesday, Nov 17: AI Sales Mastery™ — I\nWednesday, Nov 18: AI Sales Mastery™ — S\nThursday, Nov 19: AI Sales Mastery™ — C\nFriday, Nov 20: AI Sales Mastery™ — Synthesis\nSaturday, Nov 21: AI Sales Mastery™ — Synthesis\nSunday, Nov 22: AI Sales Mastery™ — Synthesis`,
 };
 
 // Today's date as YYYY-MM-DD in Central Time, matching every other date calc
@@ -857,8 +891,8 @@ async function getThemeSourceMaterial(filename: string): Promise<string> {
 }
 
 // Builds the "today's confirmed theme" instruction block shared by Darius
-// and Nia. Returns null outside the Sept 8 - Oct 4, 2026 window so behavior
-// falls back to normal once the 4-week test is over.
+// and Nia. Returns null outside the Sept 28 - Nov 22, 2026 window so behavior
+// falls back to normal once the 2-cycle test is over.
 async function getWeeklyThemeBlock(): Promise<string | null> {
   const day = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
   if (!day) return null;
@@ -885,7 +919,7 @@ async function runCamila(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const positioning=await fetchBrandCopy('positioning');
   const agentKnowledge = await getAgentKnowledge();
-  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- fixedWeekBreakdown
+  // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- fixedWeekBreakdown
   // resolves to the Monday of whatever week "today" falls in, so this holds
   // whether Camila fires on her normal Monday cron or an off-cycle manual
   // trigger mid-week. todayThemeDay gives the exact day's calendar entry,
@@ -895,7 +929,7 @@ async function runCamila(): Promise<string|null> {
   const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
 
   if (fixedWeekBreakdown) {
-    // LOCKED ROTATION (Sept 8 - Oct 4, 2026). Sept 9, 2026 rewrite: the
+    // LOCKED ROTATION (Sept 28 - Nov 22, 2026). Sept 27, 2026 rewrite: the
     // framework, day-by-day dimension breakdown, and DeAnna's own EQ source
     // material now arrive as fact, the same way they already do for Darius
     // and Nia (getThemeSourceMaterial) -- previously Camila never pulled the
@@ -1009,8 +1043,9 @@ async function runDarius(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (yours and Nia Robinson's) — reference or build on this, don't repeat it:\n${themeLog}`
     : '';
-  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- null outside that window.
+  // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
   const themeBlock = await getWeeklyThemeBlock();
+  const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
   const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}${themeBlock ?? ''}`;
   // When a source doc is present (locked rotation weeks), require Darius to
   // write from that material's own tone rather than inventing a rebuttal/
@@ -1025,7 +1060,7 @@ async function runDarius(): Promise<string|null> {
     `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Viral Scripter for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}${sourceGroundingRule}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words — a direct question about the reader's own specific situation, not a statement claiming what they do, feel, or struggle with — one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com. Make it relatable by opening with a direct question about the reader's own specific situation — 'Where is your team...', 'What happens when you...' — not a statement claiming what they do, feel, or struggle with.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com. Make it punchy with a direct question about the reader's own specific situation — not a statement claiming what they do, feel, or struggle with.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
-  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
+  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0,...(todayThemeDay?{context:`${todayThemeDay.framework} — ${todayThemeDay.dimension}`}:{})});
   // Log this piece to the shared content theme log so Nia (and tomorrow's Darius) can see
   // exactly what went out today, not just the abstract weekly plan.
   try {
@@ -1044,7 +1079,7 @@ async function runRavi(): Promise<string|null> {
   const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // Read today's Darius post from CSQ — align design brief with the actual copy
-  let dariusContent=''; let dariusHook='';
+  let dariusContent=''; let dariusHook=''; let dariusContext='';
   if (url&&key){
     const r=await fetch(`${url}/rest/v1/chief_of_staff_queue?agent_id=eq.darius&created_at=gte.${todayDate}T00:00:00&order=created_at.desc&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
     if (r.ok){
@@ -1056,6 +1091,7 @@ async function runRavi(): Promise<string|null> {
           dariusHook=parsed.hook||'';
         } catch { dariusContent=data[0].raw_output.slice(0,600); }
       }
+      dariusContext=data?.[0]?.context||'';
     }
   }
 
@@ -1067,7 +1103,7 @@ async function runRavi(): Promise<string|null> {
   return await runAgentToCSQ(
     'ravi','Ravi Gupta','Content & Brand','generate_design_brief','design_brief',
     `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Today: ${today}. CTA destination: assessment.druaiconsulting.com.\n\n${postContext}\n\nGenerate a complete LinkedIn visual design brief (1200×627px) where the visual DIRECTLY SUPPORTS and VISUALLY REINFORCES today\'s post. The image and copy must tell the same story — not separate concepts.\n\nInclude:\n- STRATEGIC INTENT (aligned to today\'s post theme and audience)\n- VISUAL CONCEPT (concept name + metaphor that matches the post message)\n- LAYOUT ARCHITECTURE (canvas 1200×627px, bifurcated left/right, bottom CTA strip)\n- COLOR PALETTE with application logic (Navy #0A2342, Gold #D4AF37, Magenta #C2185B)\n- IMAGE DIRECTION (left hemisphere: problem/chaos state matching post theme; right hemisphere: clarity/solution state)\n- TYPOGRAPHY HIERARCHY (headline pulled from or inspired by today\'s hook; subheadline; body copy; CTA button)\n- AI IMAGE GENERATION PROMPTS (left hemisphere, right hemisphere, combined scene — ready to paste into Creator Studio)\n- DESIGN SPECIFICATIONS (PNG 1200×627px @ 300DPI, RGB, optimized <500KB)`,
-    'normal',0,null,2500
+    'normal',0,null,2500,'claude-haiku-4-5-20251001',dariusContext||undefined
   );
 }
 
@@ -1102,7 +1138,7 @@ async function runNia(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (Darius King's posts and your own) — reference or build on this where it fits naturally, don't repeat it:\n${themeLog}`
     : '';
-  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- null outside that window.
+  // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
   const themeBlock = await getWeeklyThemeBlock();
   const strategyContext = (camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
@@ -2053,12 +2089,14 @@ Write the complete article. This is the full PDF content — not a summary or ou
     // disconnected content every weekend. Now reads the live content_theme_log,
     // same source Darius and Nia actually publish to.
     const topPost = await getContentThemeLog();
+    // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
+    const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
     // GENIUS_MODE/agentKnowledge/VOICE_DNA removed from here -- runAgentToCSQ
     // already prepends GENIUS_MODE + agentKnowledge automatically, so having
     // them here too was sending that block to the model twice. VOICE_DNA is
     // kept since runAgentToCSQ does not add that on its own.
     const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write original AI leadership content for a bilingual multi-platform campaign targeting English-speaking and LATAM executives.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level LATAM Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
-    const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt);
+    const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt,'normal',0,null,1500,'claude-haiku-4-5-20251001',todayThemeDay?`${todayThemeDay.framework} — ${todayThemeDay.dimension}`:undefined);
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ingrid'){
     // Fixed Sept 8, 2026: same dead-table bug as Yara above -- now reads the
