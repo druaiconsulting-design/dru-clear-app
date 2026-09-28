@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { GAP_MESSAGES, STRENGTH_MESSAGES, TIER_MESSAGES, BADGE_URLS } from '../DruClearAssessment/constants';
+import { GAP_MESSAGES, STRENGTH_MESSAGES, TIER_MESSAGES, BADGE_URLS } from '../pages/DruClearAssessment/constants';
 
 // ── Brand colors — same palette used everywhere else ──────────────────────────
 const NAVY = '#0A2342';
