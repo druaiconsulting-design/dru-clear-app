@@ -39,6 +39,54 @@ function detectStage(signals: string[]): string | null {
   return null;
 }
 
+// ── Diagnostic tier detection (Strategic vs Executive) ────────────────────────
+// ADDED Sep 28, 2026 — only relevant when the event maps to the Design stage,
+// since both diagnostics land there today (see the Aug 18 note above). Executive
+// is checked first so an Executive purchase can never be misread as Strategic.
+// This is Part 1 of the SD/ED pre-session automation: it only detects the tier
+// and logs their assessment data for now. Nothing downstream (question selection,
+// the pre-session email) is built yet -- that comes after the form exists.
+function detectDiagnosticTier(signals: string[]): 'executive' | 'strategic' | null {
+  const combined = signals.join(' ');
+  if (/executive/i.test(combined)) return 'executive';
+  if (/strategic/i.test(combined)) return 'strategic';
+  return null;
+}
+
+// Pulls this client's most recent free-assessment submission (tier badge + all 5
+// pillar scores + top_gaps already live in the `submissions` table, keyed by email)
+// and logs it alongside the diagnostic they just bought. This is a checkpoint, not
+// a feature -- it proves the connection between "purchase happened" and "we know
+// their real results" before anything gets built on top of it.
+async function logDiagnosticSubmission(email: string, diagnosticTier: string | null): Promise<void> {
+  const { data: submission, error } = await supabase
+    .from('submissions')
+    .select('tier, clarity_score, leadership_score, execution_score, alignment_score, results_score, top_gaps, created_at')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[ghl-purchase-webhook] Submissions lookup error for ${email}:`, error);
+    return;
+  }
+
+  if (!submission) {
+    // Honest edge case: someone paid without ever taking the free assessment.
+    // Logged plainly, never blocks the webhook.
+    console.log(`[ghl-purchase-webhook] DIAGNOSTIC PURCHASE, NO ASSESSMENT ON FILE: ${email} bought ${diagnosticTier ?? 'unknown tier'} without ever taking the free assessment`);
+    return;
+  }
+
+  console.log(
+    `[ghl-purchase-webhook] DIAGNOSTIC PURCHASE: ${email} | Bought: ${diagnosticTier ?? 'unknown tier'} | ` +
+    `Badge: ${submission.tier} | Clarity: ${submission.clarity_score} | Leadership: ${submission.leadership_score} | ` +
+    `Execution: ${submission.execution_score} | Alignment: ${submission.alignment_score} | Results: ${submission.results_score} | ` +
+    `Top gaps: ${submission.top_gaps}`
+  );
+}
+
 // =============================================================================
 // GHL PURCHASE WEBHOOK
 // Maps GHL product/tag signals to profiles.pathway_stage
@@ -203,6 +251,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const newStage = detectStage(signals);
     if (!newStage) {
       return res.status(200).json({ ok: true, message: 'No stage mapped from payload', signals });
+    }
+
+    // Diagnostic purchase enrichment -- ADDED Sep 28, 2026. Logs only, for now. This is
+    // the checkpoint step: trigger a real test purchase and confirm this line shows the
+    // right tier, badge, and pillar scores in the Vercel logs before building anything
+    // that depends on it (question selection, the pre-session email, the webhook that
+    // sends it -- all still to come, in that order).
+    if (newStage === 'Design') {
+      const diagnosticTier = detectDiagnosticTier(signals);
+      await logDiagnosticSubmission(email, diagnosticTier);
     }
 
     // Look up profile by email
