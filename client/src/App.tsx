@@ -12,6 +12,7 @@ import BundlePricing from "./pages/BundlePricing";
 import TermsPage from "./pages/TermsPage";
 import ThankYouED from "./pages/ThankYouED";
 import ThankYouSD from "./pages/ThankYouSD";
+import PreSessionQuestionnaire from "./PreSessionQuestionnaire";
 import { ThankYouDruClear, ThankYou5D, ThankYou5C, ThankYouAISales } from "./pages/ThankYouFrameworks";
 import ThankYouFullEcosystem from "./pages/ThankYouFullEcosystem";
 import Resources from "./pages/Resources";
@@ -207,6 +208,10 @@ function Router() {
   if (path === "/thank-you-sd" || path === "/thank-you-sd/") {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouSD />;
+  }
+  if (path === "/prep" || path === "/prep/") {
+    setTitle("Your Pre-Session Questionnaire · DRU CLEAR™");
+    return <PreSessionQuestionnaire />;
   }
   if (path === "/thank-you-dru-clear" || path === "/thank-you-dru-clear/") {
     setTitle("Thank You · DRU CLEAR™");
