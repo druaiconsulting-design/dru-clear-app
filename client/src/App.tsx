@@ -25,6 +25,7 @@ import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminArchived from "./pages/AdminArchived";
 import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
+import AdminDiagnostics from "./pages/AdminDiagnostics";
 import AdminSprints from "./pages/AdminSprints";
 import AdminLab from "./pages/AdminLab";
 import AdminWeekly from "./pages/AdminWeekly";
@@ -259,6 +260,11 @@ function Router() {
     setTitle("Member Intelligence · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminMemberIntelligence />;
+  }
+  if (path === "/admin-diagnostics" || path === "/admin-diagnostics/") {
+    setTitle("Diagnostics · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminDiagnostics />;
   }
   if (path === "/admin-sprints" || path === "/admin-sprints/") {
     setTitle("Build Roadmap · DRU CLEAR™");
