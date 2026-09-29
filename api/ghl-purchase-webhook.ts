@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 
 // Supabase admin client — service role bypasses RLS
 const supabase = createClient(
@@ -187,6 +188,85 @@ async function syncPathwayTag(email: string, newStage: string): Promise<void> {
   }
 }
 
+// ADDED Sep 29, 2026 — Part 2 of the SD/ED pre-session automation. Generates the
+// purchaser's private code, creates their empty answer rows for the right question
+// set, and writes the finished link into GHL's "Prep Link" custom field (key:
+// prep_link) on their contact -- the field the Welcome Email merges in as
+// {{contact.prep_link}}. Safe to fire more than once for the same person: if a
+// link already exists for this exact email + tier, it reuses that one instead of
+// creating a second, conflicting set of answer rows.
+async function provisionPrepLink(email: string, diagnosticTier: 'strategic' | 'executive', apiKey: string): Promise<void> {
+  const { data: existing, error: existingError } = await supabase
+    .from('diagnostic_responses')
+    .select('access_token')
+    .eq('email', email)
+    .eq('diagnostic_tier', diagnosticTier)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error(`[ghl-purchase-webhook] Prep link lookup error for ${email}:`, existingError);
+    return;
+  }
+
+  let token = existing?.access_token;
+
+  if (token) {
+    console.log(`[ghl-purchase-webhook] Prep link already on file for ${email} (${diagnosticTier}) -- reusing it`);
+  } else {
+    token = randomUUID();
+
+    // Strategic gets the "both" questions (CLEAR + 5D Leadership, 20 total).
+    // Executive gets those plus the "executive"-only ones (5C + AI Sales Mastery, 30 total).
+    const tierFilter = diagnosticTier === 'executive' ? ['both', 'executive'] : ['both'];
+    const { data: questions, error: questionsError } = await supabase
+      .from('diagnostic_questions')
+      .select('id')
+      .in('tier', tierFilter);
+
+    if (questionsError || !questions || questions.length === 0) {
+      console.error(`[ghl-purchase-webhook] Could not load questions for ${diagnosticTier}:`, questionsError);
+      return;
+    }
+
+    const rows = questions.map((q) => ({
+      email,
+      diagnostic_tier: diagnosticTier,
+      question_id: q.id,
+      access_token: token,
+    }));
+
+    const { error: insertError } = await supabase.from('diagnostic_responses').insert(rows);
+    if (insertError) {
+      console.error(`[ghl-purchase-webhook] Could not create response rows for ${email}:`, insertError);
+      return;
+    }
+
+    console.log(`[ghl-purchase-webhook] Created ${rows.length} response rows for ${email} (${diagnosticTier})`);
+  }
+
+  const prepLink = `https://assessment.druaiconsulting.com/prep?prep=${token}`;
+
+  const contactId = await findContactIdByEmail(email, apiKey);
+  if (!contactId) {
+    console.error(`[ghl-purchase-webhook] No GHL contact found for ${email} -- prep link created but not written to GHL`);
+    return;
+  }
+
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    body: JSON.stringify({ customFields: [{ key: 'prep_link', field_value: prepLink }] }),
+  });
+
+  if (!res.ok) {
+    console.error(`[ghl-purchase-webhook] Failed to write Prep Link field for ${email}: ${res.status} ${await res.text()}`);
+    return;
+  }
+
+  console.log(`[ghl-purchase-webhook] Prep Link field set for ${email}: ${prepLink}`);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -261,6 +341,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (newStage === 'Design') {
       const diagnosticTier = detectDiagnosticTier(signals);
       await logDiagnosticSubmission(email, diagnosticTier);
+
+      if (diagnosticTier) {
+        const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
+        if (!apiKey) {
+          console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATIONS_KEY not set — prep link not created');
+        } else {
+          await provisionPrepLink(email, diagnosticTier, apiKey);
+        }
+      } else {
+        console.error(`[ghl-purchase-webhook] Design-stage purchase for ${email} but tier unclear (not strategic or executive) — prep link not created`);
+      }
     }
 
     // Look up profile by email
