@@ -150,7 +150,12 @@ async function findContactIdByEmail(email: string, apiKey: string): Promise<stri
     return null;
   }
   const data = await res.json();
-  return data.contacts?.[0]?.id ?? null;
+  // FIXED Sep 29, 2026 -- GHL's real upsert response wraps the contact as a single
+  // object under the key "contact" (confirmed against GHL's own API docs and
+  // example code), not a "contacts" array. This was checking the wrong key, so
+  // every call here was silently coming back empty even when the contact existed.
+  // Old key kept as a fallback in case GHL ever responds differently.
+  return data.contact?.id ?? data.contacts?.[0]?.id ?? null;
 }
 
 async function addTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
