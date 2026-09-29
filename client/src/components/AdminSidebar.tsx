@@ -24,6 +24,7 @@ const SECTIONS: Section[] = [
       { icon: '💰', label: 'Profit Pulse',    path: '/admin' },
       { icon: '🏛️', label: 'Dashboard',        path: '/admin-approvals' },
       { icon: '👥', label: 'Members',          path: '/admin-member-intelligence' },
+      { icon: '📝', label: 'Diagnostics',      path: '/admin-diagnostics' },
     ],
   },
   {
