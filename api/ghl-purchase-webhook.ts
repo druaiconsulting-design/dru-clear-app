@@ -27,6 +27,11 @@ const STAGE_RANK: Record<string, number> = {
 //      for ordering purposes but this webhook never sets it directly anymore.
 const KEYWORD_MAP: Array<{ pattern: RegExp; stage: string }> = [
   { pattern: /dominate|advisory[\s-]?retainer/i, stage: 'Dominate' },
+  // ADDED Sep 29, 2026 — every one of the diagnostic workflow titles starts with
+  // "DRU CLEAR™", the same word the line below uses to catch someone buying a
+  // single framework on its own. Checked first, by the exact price instead of a
+  // word, so a diagnostic purchase can never be caught by that broader pattern.
+  { pattern: /\$3,497|\$4,997/, stage: 'Design' },
   { pattern: /deploy|bundle|all[\s-]?in|complete[\s-]?package|full[\s-]?ecosystem|dru[\s-]?clear|5d[\s-]?leadership|5c[\s-]?cultural|ai[\s-]?sales[\s-]?mastery|90[\s-]?day|transformation[\s-]?session/i, stage: 'Deploy' },
   { pattern: /design|diagnos|diagnostic|deep[\s-]?dive/i, stage: 'Design' },
   { pattern: /discover|assess|scorecard|ai[\s-]?readiness|free[\s-]?result/i, stage: 'Discover' },
@@ -49,8 +54,12 @@ function detectStage(signals: string[]): string | null {
 // the pre-session email) is built yet -- that comes after the form exists.
 function detectDiagnosticTier(signals: string[]): 'executive' | 'strategic' | null {
   const combined = signals.join(' ');
-  if (/executive/i.test(combined)) return 'executive';
-  if (/strategic/i.test(combined)) return 'strategic';
+  // Checks the price alongside the word, since the actual signal GHL sends here is
+  // just the workflow title ("DRU CLEAR™ SD Purchase - $3,497") -- never the word
+  // "strategic" or "executive" outright. $4,997 checked first, same reasoning as
+  // the word check below it: an Executive purchase can never be misread as Strategic.
+  if (/executive/i.test(combined) || combined.includes('$4,997')) return 'executive';
+  if (/strategic/i.test(combined) || combined.includes('$3,497')) return 'strategic';
   return null;
 }
 
