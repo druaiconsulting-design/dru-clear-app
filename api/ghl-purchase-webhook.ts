@@ -204,12 +204,14 @@ async function syncPathwayTag(email: string, newStage: string): Promise<void> {
 
 // ADDED Sep 29, 2026 — Part 2 of the SD/ED pre-session automation. Generates the
 // purchaser's private code, creates their empty answer rows for the right question
-// set, and writes the finished link into GHL's "Prep Link" custom field (key:
-// prep_link) on their contact -- the field the Welcome Email merges in as
-// {{contact.prep_link}}. Safe to fire more than once for the same person: if a
+// set, and writes the finished link into the matching GHL custom field on their
+// contact: "SD Pre-Session Link" (key: sd_presession_link) for Strategic or
+// "ED Pre-Session Link" (key: ed_presession_link) for Executive. The Welcome Email
+// merges it in as {{contact.sd_presession_link}} or {{contact.ed_presession_link}}.
+// The field for the other tier stays empty. Safe to fire more than once for the same person: if a
 // link already exists for this exact email + tier, it reuses that one instead of
 // creating a second, conflicting set of answer rows.
-async function provisionPrepLink(email: string, diagnosticTier: 'strategic' | 'executive', apiKey: string): Promise<void> {
+async function provisionPreSessionLink(email: string, diagnosticTier: 'strategic' | 'executive', apiKey: string): Promise<void> {
   const { data: existing, error: existingError } = await supabase
     .from('diagnostic_responses')
     .select('access_token')
@@ -219,14 +221,14 @@ async function provisionPrepLink(email: string, diagnosticTier: 'strategic' | 'e
     .maybeSingle();
 
   if (existingError) {
-    console.error(`[ghl-purchase-webhook] Prep link lookup error for ${email}:`, existingError);
+    console.error(`[ghl-purchase-webhook] Pre-session link lookup error for ${email}:`, existingError);
     return;
   }
 
   let token = existing?.access_token;
 
   if (token) {
-    console.log(`[ghl-purchase-webhook] Prep link already on file for ${email} (${diagnosticTier}) -- reusing it`);
+    console.log(`[ghl-purchase-webhook] Pre-session link already on file for ${email} (${diagnosticTier}) -- reusing it`);
   } else {
     token = randomUUID();
 
@@ -259,26 +261,29 @@ async function provisionPrepLink(email: string, diagnosticTier: 'strategic' | 'e
     console.log(`[ghl-purchase-webhook] Created ${rows.length} response rows for ${email} (${diagnosticTier})`);
   }
 
-  const prepLink = `https://assessment.druaiconsulting.com/prep?prep=${token}`;
+  // Strategic and Executive each get their own link parameter and their own GHL field.
+  const linkParam = diagnosticTier === 'executive' ? 'ed-pre-session' : 'sd-pre-session';
+  const linkFieldKey = diagnosticTier === 'executive' ? 'ed_presession_link' : 'sd_presession_link';
+  const preSessionLink = `https://assessment.druaiconsulting.com/pre-session?${linkParam}=${token}`;
 
   const contactId = await findContactIdByEmail(email, apiKey);
   if (!contactId) {
-    console.error(`[ghl-purchase-webhook] No GHL contact found for ${email} -- prep link created but not written to GHL`);
+    console.error(`[ghl-purchase-webhook] No GHL contact found for ${email} -- pre-session link created but not written to GHL`);
     return;
   }
 
   const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ customFields: [{ key: 'prep_link', field_value: prepLink }] }),
+    body: JSON.stringify({ customFields: [{ key: linkFieldKey, field_value: preSessionLink }] }),
   });
 
   if (!res.ok) {
-    console.error(`[ghl-purchase-webhook] Failed to write Prep Link field for ${email}: ${res.status} ${await res.text()}`);
+    console.error(`[ghl-purchase-webhook] Failed to write ${linkFieldKey} field for ${email}: ${res.status} ${await res.text()}`);
     return;
   }
 
-  console.log(`[ghl-purchase-webhook] Prep Link field set for ${email}: ${prepLink}`);
+  console.log(`[ghl-purchase-webhook] ${linkFieldKey} field set for ${email}: ${preSessionLink}`);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -359,12 +364,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (diagnosticTier) {
         const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
         if (!apiKey) {
-          console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATIONS_KEY not set — prep link not created');
+          console.error('[ghl-purchase-webhook] GHL_PRIVATE_INTEGRATIONS_KEY not set — pre-session link not created');
         } else {
-          await provisionPrepLink(email, diagnosticTier, apiKey);
+          await provisionPreSessionLink(email, diagnosticTier, apiKey);
         }
       } else {
-        console.error(`[ghl-purchase-webhook] Design-stage purchase for ${email} but tier unclear (not strategic or executive) — prep link not created`);
+        console.error(`[ghl-purchase-webhook] Design-stage purchase for ${email} but tier unclear (not strategic or executive) — pre-session link not created`);
       }
     }
 
