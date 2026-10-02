@@ -69,10 +69,6 @@ function FrameworkThankYouPage({
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
 
         {/* Calendar */}
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: "1rem" }}>
-          Book Your 60-Min Intake Session
-        </p>
-
         <iframe
           src={CALENDAR_INTAKE_URL}
           title="Book Your 60-Min Intake Session"
