@@ -1,13 +1,11 @@
-import NavBar from "../components/NavBar";
-
 const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
 
 const NEXT_STEPS = [
-  "DeAnna will personally contact you within 24 hours to arrange your 45-minute intake session",
-  "You'll receive a confirmation email with your Zoom link once scheduled",
-  "Review your scorecard results — they become the foundation of your 3-month roadmap",
-  "Come prepared with your top organizational priorities and vision",
-  "Your transformation officially begins at your intake session",
+  "DeAnna will connect with you within 24 hours of this confirmation.",
+  "You'll receive a confirmation email with your Zoom link and your pre-session link once scheduled",
+  "You'll receive your full Executive AI Alignment Report after you submit your pre-session",
+  "Review your Executive AI Alignment Report before our session",
+  "Prepare your top organizational priorities and vision",
 ];
 
 const FRAMEWORKS = [
@@ -20,8 +18,6 @@ const FRAMEWORKS = [
 export default function ThankYouFullEcosystem() {
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/frameworks" />
-
       <main style={{ flex: 1, padding: "2.5rem 1.5rem 3rem", maxWidth: 520, margin: "0 auto", width: "100%" }}>
 
         {/* Logo */}
@@ -41,7 +37,7 @@ export default function ThankYouFullEcosystem() {
         {/* Badge */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
           <span style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", padding: "3px 16px", borderRadius: 20, textTransform: "uppercase" }}>
-            Full Ecosystem — All 4 · Best Value
+            The Full DRU AI Leadership Ecosystem™
           </span>
         </div>
 
@@ -49,10 +45,6 @@ export default function ThankYouFullEcosystem() {
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.85rem", fontWeight: 700, color: "#D4AF37", marginBottom: "0.5rem", lineHeight: 1.2, textAlign: "center" }}>
           Thank You. Payment Confirmed.
         </h1>
-
-        <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "1rem", color: "#FFFFFF", textAlign: "center", marginBottom: "0.5rem", fontWeight: 500 }}>
-          The Full DRU AI Leadership Ecosystem™
-        </p>
 
         <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.65rem", letterSpacing: "0.08em", textAlign: "center", marginBottom: "1.75rem" }}>
           3 months · 4 sessions/month · 90 min · 12 sessions total
@@ -86,7 +78,7 @@ export default function ThankYouFullEcosystem() {
           <div>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>DeAnna's Personal Commitment</p>
             <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.85)", fontSize: "0.8rem", lineHeight: 1.7, margin: 0 }}>
-              You have made a significant commitment to your transformation. DeAnna will personally contact you within 24 hours to arrange your 45-minute intake session and commence designing your future pathway.
+              You have made a significant commitment to your transformation. We are on this journey together, and our vision is to design your future pathway. We look forward to partnering with you and adding value.
             </p>
           </div>
         </div>
@@ -113,9 +105,9 @@ export default function ThankYouFullEcosystem() {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
             {[
-              { month: "Month 1", focus: "Foundation — DRU CLEAR™ activation and ecosystem alignment" },
-              { month: "Month 2", focus: "Depth — Deep dive into your two highest-priority frameworks" },
-              { month: "Month 3", focus: "Integration — Full ecosystem activation and domination strategy" },
+              { month: "Month 1", focus: "Foundation: DRU CLEAR™ activation and ecosystem alignment" },
+              { month: "Month 2", focus: "Depth: Deep dive into your two highest-priority frameworks" },
+              { month: "Month 3", focus: "Integration: Full ecosystem activation and domination strategy" },
             ].map((m, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
                 <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em", whiteSpace: "nowrap", marginTop: 1, minWidth: 60 }}>{m.month}</span>
@@ -147,7 +139,6 @@ export default function ThankYouFullEcosystem() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.6rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Total Investment</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 600, margin: 0 }}>Full Ecosystem — All 4</p>
             </div>
             <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>$26,000</p>
           </div>
@@ -155,8 +146,8 @@ export default function ThankYouFullEcosystem() {
             {[
               { label: "Sessions", value: "12 total · 4/month · 90 min each" },
               { label: "Duration", value: "3 months · Virtual via Zoom" },
-              { label: "Signing Payment", value: "$13,000 — paid today" },
-              { label: "Final Payment", value: "$13,000 — due at completion" },
+              { label: "Signing Payment", value: "$13,000, paid today" },
+              { label: "Final Payment", value: "$13,000, due at completion" },
             ].map((row, i) => (
               <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "0.5px solid rgba(212,175,55,0.08)", paddingTop: "0.35rem" }}>
                 <span style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>{row.label}</span>
@@ -168,7 +159,7 @@ export default function ThankYouFullEcosystem() {
 
         {/* Warm closing */}
         <p style={{ fontFamily: "'Playfair Display', serif", color: "rgba(230,230,230,0.65)", fontSize: "0.88rem", lineHeight: 1.75, textAlign: "center", fontStyle: "italic", marginBottom: "1.75rem" }}>
-          This is not just an investment in frameworks —<br />it is an investment in the future of your organization.
+          This is not just an investment in frameworks.<br />It is an investment in the future of your organization.
         </p>
 
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.1)", marginBottom: "1.5rem" }} />
