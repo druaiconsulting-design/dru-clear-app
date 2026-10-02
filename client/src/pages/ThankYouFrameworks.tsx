@@ -1,5 +1,5 @@
 const CALENDAR_INTAKE_URL = "https://link.druaiconsulting.com/widget/bookings/leadership-development-booking4nsv37v8bzsi8oevdx?embed=1";
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
+const LOGO_SRC = "/new-dru-clear-transparent-logo.png";
 
 interface FrameworkThankYouProps {
   badgeLabel: string;
@@ -34,7 +34,7 @@ function FrameworkThankYouPage({
 
         {/* Logo */}
         <div style={{ marginBottom: "1.75rem" }}>
-          <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
+          <img src={LOGO_SRC} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
         </div>
 
         {/* Gold checkmark */}
