@@ -1,4 +1,4 @@
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
+const LOGO_SRC = "/new-dru-clear-transparent-logo.png";
 
 const NEXT_STEPS = [
   "DeAnna will connect with you within 24 hours of this confirmation.",
@@ -22,7 +22,7 @@ export default function ThankYouFullEcosystem() {
 
         {/* Logo */}
         <div style={{ marginBottom: "1.75rem" }}>
-          <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
+          <img src={LOGO_SRC} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
         </div>
 
         {/* Gold checkmark */}
