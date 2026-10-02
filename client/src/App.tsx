@@ -210,7 +210,7 @@ function Router() {
     setTitle("Thank You · DRU CLEAR™");
     return <ThankYouSD />;
   }
-  if (path === "/prep" || path === "/prep/") {
+  if (path === "/pre-session" || path === "/pre-session/") {
     setTitle("Your Pre-Session Questionnaire · DRU CLEAR™");
     return <PreSessionQuestionnaire />;
   }
