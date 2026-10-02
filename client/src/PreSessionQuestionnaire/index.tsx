@@ -135,7 +135,7 @@ export default function PreSessionQuestionnaire() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('prep');
+    const token = params.get('sd-pre-session') || params.get('ed-pre-session');
     if (!token) {
       setNotFound(true);
       setLoading(false);
