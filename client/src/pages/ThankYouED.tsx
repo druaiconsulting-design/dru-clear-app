@@ -1,26 +1,21 @@
-import NavBar from "../components/NavBar";
-
 const CALENDAR_EXECUTIVE_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation8yxwmy?embed=1";
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
+const LOGO_SRC = "/new-dru-clear-transparent-logo.png";
 
 const NEXT_STEPS = [
-  "Book your 120-min executive briefing using the calendar below",
-  "You'll receive a confirmation email with your Zoom link",
-  "Review your scorecard results before the call",
-  "You'll receive a brief pre-session questionnaire to maximize our time together",
-  "Receive your Executive AI Alignment Report within 48 hours after your session",
+  "Book your 120-min executive strategy session using the calendar above",
+  "You'll receive a confirmation email with your Zoom link and your pre-session link once your appointment is booked",
+  "You'll receive your full Executive AI Alignment Report after you submit your pre-session",
+  "Review your Executive AI Alignment Report before our session",
 ];
 
 export default function ThankYouED() {
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/frameworks" />
-
       <main style={{ flex: 1, padding: "2.5rem 1.5rem 3rem", maxWidth: 520, margin: "0 auto", width: "100%" }}>
 
         {/* Logo */}
         <div style={{ marginBottom: "1.75rem" }}>
-          <img src={LOGO_CDN} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
+          <img src={LOGO_SRC} alt="DRU CLEAR™" style={{ height: 120, width: "auto", objectFit: "contain" }} />
         </div>
 
         {/* Gold checkmark */}
@@ -35,7 +30,7 @@ export default function ThankYouED() {
         {/* Badge */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
           <span style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", padding: "3px 16px", borderRadius: 20, textTransform: "uppercase" }}>
-            Executive Diagnostic — Best Value
+            Executive Diagnostic · Best Value
           </span>
         </div>
 
@@ -46,7 +41,26 @@ export default function ThankYouED() {
 
         {/* Warm message */}
         <p style={{ fontFamily: "'Inter', sans-serif", color: "#E6E6E6", fontSize: "0.85rem", lineHeight: 1.75, maxWidth: 400, margin: "0 auto 1.75rem", textAlign: "center" }}>
-          You are one step closer towards your vision. Book your 120-minute executive briefing below and we'll begin to design your future.
+          You are one step closer towards your vision. Book your 120-minute executive strategy session below and we'll begin to design your future.
+        </p>
+
+        <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
+
+        {/* Calendar */}
+        <iframe
+          src={CALENDAR_EXECUTIVE_URL}
+          title="Book Your Executive Diagnostic Session"
+          style={{ width: "100%", minHeight: 600, border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, background: "#FFFFFF", marginBottom: "0.75rem", display: "block" }}
+        />
+
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", textAlign: "center", marginBottom: "2rem", lineHeight: 1.6 }}>
+          Having trouble?{" "}
+          <button
+            onClick={() => { window.location.href = CALENDAR_EXECUTIVE_URL; }}
+            style={{ background: "none", border: "none", color: "#D4AF37", textDecoration: "underline", cursor: "pointer", fontSize: "0.65rem", fontFamily: "'Inter', sans-serif", padding: 0 }}
+          >
+            Open booking page
+          </button>
         </p>
 
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
@@ -71,29 +85,6 @@ export default function ThankYouED() {
           We look forward to partnering with you and adding value.
         </p>
 
-        <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
-
-        {/* Calendar */}
-        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: "1rem" }}>
-          Book Your 120-Min Executive Briefing
-        </p>
-
-        <iframe
-          src={CALENDAR_EXECUTIVE_URL}
-          title="Book Your Executive Diagnostic Session"
-          style={{ width: "100%", minHeight: 600, border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, background: "#FFFFFF", marginBottom: "0.75rem", display: "block" }}
-        />
-
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", textAlign: "center", marginBottom: "2rem", lineHeight: 1.6 }}>
-          Having trouble?{" "}
-          <button
-            onClick={() => { window.location.href = CALENDAR_EXECUTIVE_URL; }}
-            style={{ background: "none", border: "none", color: "#D4AF37", textDecoration: "underline", cursor: "pointer", fontSize: "0.65rem", fontFamily: "'Inter', sans-serif", padding: 0 }}
-          >
-            Open booking page
-          </button>
-        </p>
-
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.1)", marginBottom: "1.5rem" }} />
 
         <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", textAlign: "center", lineHeight: 1.6 }}>
@@ -111,4 +102,3 @@ export default function ThankYouED() {
     </div>
   );
 }
-
