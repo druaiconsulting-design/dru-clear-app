@@ -390,7 +390,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Only advance — never downgrade
-    const currentRank = STAGE_RANK[profile.pathway_stage ?? ''] ?? 0;
+    // Supabase stores stage names in lowercase (profiles_pathway_stage_check), while STAGE_RANK
+    // uses capitalized names -- so match the stored stage without regard to capitalization.
+    const currentStageKey = Object.keys(STAGE_RANK).find(
+      (k) => k.toLowerCase() === (profile.pathway_stage ?? '').toLowerCase()
+    );
+    const currentRank = currentStageKey ? STAGE_RANK[currentStageKey] : 0;
     const newRank     = STAGE_RANK[newStage] ?? 0;
 
     if (newRank <= currentRank) {
@@ -411,7 +416,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Update
-    const updateFields: Record<string, unknown> = { pathway_stage: newStage, updated_at: new Date().toISOString() };
+    // Saved in lowercase: Supabase only accepts discover, diagnose, design, deploy, dominate.
+    const updateFields: Record<string, unknown> = { pathway_stage: newStage.toLowerCase(), updated_at: new Date().toISOString() };
     if (ghlContactId && !profile.ghl_contact_id) updateFields.ghl_contact_id = ghlContactId;
     if (amountPaid > 0) {
       const { data: currentAmount } = await supabase.from('profiles').select('amount_paid').eq('id', profile.id).maybeSingle();
