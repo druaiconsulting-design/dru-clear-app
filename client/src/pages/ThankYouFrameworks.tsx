@@ -1,5 +1,4 @@
-import NavBar from "../components/NavBar";
-
+const CALENDAR_INTAKE_URL = "https://link.druaiconsulting.com/widget/bookings/leadership-development-booking4nsv37v8bzsi8oevdx?embed=1";
 const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
 
 interface FrameworkThankYouProps {
@@ -22,17 +21,15 @@ function FrameworkThankYouPage({
   price,
 }: FrameworkThankYouProps) {
   const nextSteps = [
-    "DeAnna will reach out within 24 hours to schedule your intake session",
+    "DeAnna will connect with you within 24 hours of this confirmation.",
     "You'll receive a confirmation email with your Zoom link once scheduled",
     "Review your scorecard results before your first session",
-    "Come prepared with your top priorities — we'll build from there",
+    "Prepare your top priorities. We'll build from there",
     `Your ${sessionCount} sessions will be scheduled to fit your pace and calendar`,
   ];
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0A2342", display: "flex", flexDirection: "column" }}>
-      <NavBar active="/frameworks" />
-
       <main style={{ flex: 1, padding: "2.5rem 1.5rem 3rem", maxWidth: 520, margin: "0 auto", width: "100%" }}>
 
         {/* Logo */}
@@ -71,7 +68,30 @@ function FrameworkThankYouPage({
 
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
 
-        {/* DeAnna's Personal Commitment — on top */}
+        {/* Calendar */}
+        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: "1rem" }}>
+          Book Your 60-Min Intake Session
+        </p>
+
+        <iframe
+          src={CALENDAR_INTAKE_URL}
+          title="Book Your 60-Min Intake Session"
+          style={{ width: "100%", minHeight: 600, border: "1px solid rgba(212,175,55,0.2)", borderRadius: 10, background: "#FFFFFF", marginBottom: "0.75rem", display: "block" }}
+        />
+
+        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.65rem", textAlign: "center", marginBottom: "2rem", lineHeight: 1.6 }}>
+          Having trouble?{" "}
+          <button
+            onClick={() => { window.location.href = CALENDAR_INTAKE_URL; }}
+            style={{ background: "none", border: "none", color: "#D4AF37", textDecoration: "underline", cursor: "pointer", fontSize: "0.65rem", fontFamily: "'Inter', sans-serif", padding: 0 }}
+          >
+            Open booking page
+          </button>
+        </p>
+
+        <div style={{ height: "0.5px", background: "rgba(212,175,55,0.25)", marginBottom: "1.75rem" }} />
+
+        {/* DeAnna's Personal Commitment, on top */}
         <div style={{ background: "rgba(194,24,91,0.08)", border: "1px solid rgba(194,24,91,0.3)", borderRadius: 10, padding: "1.1rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
           <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(194,24,91,0.15)", border: "1px solid rgba(194,24,91,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -82,7 +102,7 @@ function FrameworkThankYouPage({
           <div>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>DeAnna's Personal Commitment</p>
             <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.85)", fontSize: "0.8rem", lineHeight: 1.7, margin: 0 }}>
-              You have made a significant commitment to your transformation. DeAnna will personally contact you within 24 hours to arrange your 45-minute intake session and commence designing your future pathway.
+              You have made a significant commitment to your transformation. We are on this journey together, and our vision is to design your future pathway. We look forward to partnering with you and adding value.
             </p>
           </div>
         </div>
@@ -111,11 +131,6 @@ function FrameworkThankYouPage({
           </div>
           <p style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>{price}</p>
         </div>
-
-        {/* Warm closing */}
-        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.55)", fontSize: "0.78rem", lineHeight: 1.7, textAlign: "center", fontStyle: "italic", marginBottom: "1.75rem" }}>
-          We look forward to partnering with you and adding value.
-        </p>
 
         <div style={{ height: "0.5px", background: "rgba(212,175,55,0.1)", marginBottom: "1.5rem" }} />
 
