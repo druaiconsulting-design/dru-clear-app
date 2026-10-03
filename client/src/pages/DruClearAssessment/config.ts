@@ -16,8 +16,8 @@ export const PAYMENT_EXECUTIVE_URL = "https://link.druaiconsulting.com/payment-l
 export const CALENDAR_STRATEGIC_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation";
 export const CALENDAR_EXECUTIVE_URL = "https://link.druaiconsulting.com/widget/bookings/dru-clear-ai-readiness-consultation8yxwmy";
 
-export const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
-export const HEADSHOT_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
+export const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
+export const HEADSHOT_CDN = "/deanna-avatar.jpg";
 
 // ── Expiry ────────────────────────────────────────────────────────────────────
 
