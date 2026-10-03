@@ -251,11 +251,11 @@ Use these as the basis for your automated email receipts. Trigger on `event = sc
 
 ## OG Badge Image URLs (for GHL email or social use)
 
-| Tier | CDN URL |
+| Tier | Image URL |
 |---|---|
-| EMERGING | `https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-emerging_6233aed6.png` |
-| DEVELOPING | `https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-developing_226a8643.png` |
-| ADVANCING | `https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-advancing_d5ded127.png` |
-| LEADING | `https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/og-badge-leading_3fa87f71.png` |
+| EMERGING | `https://assessment.druaiconsulting.com/badge-emerging.png` |
+| DEVELOPING | `https://assessment.druaiconsulting.com/badge-developing.png` |
+| ADVANCING | `https://assessment.druaiconsulting.com/badge-advancing.png` |
+| LEADING | `https://assessment.druaiconsulting.com/badge-leading.png` |
 
 These URLs can be embedded directly in GHL emails as `<img>` tags or used as social preview images.
