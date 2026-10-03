@@ -46,7 +46,7 @@ export default function AdminLogin() {
     <div style={{ minHeight: "100dvh", background: "#071a30", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
 
       <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png" alt="DRU CLEAR" style={{ height: 120, width: "auto", margin: "0 auto" }} />
+        <img src="/new-dru-clear-transparent-logo.png" alt="DRU CLEAR" style={{ height: 120, width: "auto", margin: "0 auto" }} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 360 }}>
