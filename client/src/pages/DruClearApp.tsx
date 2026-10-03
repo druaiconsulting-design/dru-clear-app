@@ -251,10 +251,10 @@ const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = {
 };
 
 const BADGE_URLS: Record<string, string> = {
-  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/kOtwAuULsXPXkaGB.png",
-  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/fWXAJkZaBbdHEhOn.png",
-  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/amcdeQtIckHTNLhd.png",
-  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/BcciWNCYnCPbYcGB.png",
+  EMERGING: "/badge-emerging.png",
+  DEVELOPING: "/badge-developing.png",
+  ADVANCING: "/badge-advancing.png",
+  LEADING: "/badge-leading.png",
 };
 
 function buildBookingUrl(lead: LeadData): string {
@@ -272,8 +272,8 @@ function buildBookingUrl(lead: LeadData): string {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
-const HEADSHOT_CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/deanna-headshot_31437bb8.jpg";
+const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
+const HEADSHOT_CDN = "/deanna-avatar.jpg";
 
 function DruLogo({ height = 64, className = "" }: { height?: number; className?: string }) {
   return (
@@ -1609,7 +1609,7 @@ export default function DruClearApp() {
 
       {showInstallBanner && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)", borderTop: "1px solid rgba(212,175,55,0.4)", padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}>
-          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
+          <img src="/icon-192x192.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Add to Home Screen</div>
             <div style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.7rem", letterSpacing: "0.02em" }}>Save this app for instant access to your {positioning} transformation</div>
@@ -1622,7 +1622,7 @@ export default function DruClearApp() {
       {showManualBanner && browserInstallInfo && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "linear-gradient(135deg, #0A1628 0%, #0D1F3C 100%)", borderTop: "1px solid rgba(212,175,55,0.4)", padding: "1rem 1.25rem 1.5rem", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663512997684/3v5s3xyNxqpHhQbaaqucFJ/dru-android-192_87c8fd3a.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
+            <img src="/icon-192x192.png" alt="DRU CLEAR™" style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.04em", marginBottom: 2 }}>Save this app for instant access to your {positioning} Transformation</div>
               <div style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: "0.65rem", letterSpacing: "0.02em" }}>{browserInstallInfo.label}</div>
