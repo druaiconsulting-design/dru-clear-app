@@ -29,10 +29,10 @@ export const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = 
 };
 
 export const BADGE_URLS: Record<string, string> = {
-  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/kOtwAuULsXPXkaGB.png",
-  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/fWXAJkZaBbdHEhOn.png",
-  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/amcdeQtIckHTNLhd.png",
-  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/BcciWNCYnCPbYcGB.png",
+  EMERGING: "/badge-emerging.png",
+  DEVELOPING: "/badge-developing.png",
+  ADVANCING: "/badge-advancing.png",
+  LEADING: "/badge-leading.png",
 };
 
 export const BENCHMARK_PERCENTILES: Record<string, number> = {
