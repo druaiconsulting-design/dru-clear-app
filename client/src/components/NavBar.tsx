@@ -117,7 +117,7 @@ export default function NavBar({ active }: { active?: string }) {
       {/* ── Logo ── */}
       <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
         <img
-          src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
+          src="/new-dru-clear-transparent-logo.png"
           alt="DRU CLEAR™"
           style={{ height: 120, width: "auto" }}
         />
