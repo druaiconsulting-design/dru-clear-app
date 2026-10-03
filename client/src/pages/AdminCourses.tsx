@@ -37,11 +37,22 @@ export default function AdminCourses() {
     const [mods, less, enroll] = await Promise.all([
       supabase.from("course_modules").select("*").eq("course_id", "confusion_to_confident").order("module_number"),
       supabase.from("course_lessons").select("*").order("lesson_number"),
-      supabase.from("course_enrollments").select("*, profiles(first_name, last_name, email)").eq("course_id", "confusion_to_confident").order("enrolled_at", { ascending: false }),
+      supabase.from("course_enrollments").select("*").eq("course_id", "confusion_to_confident").order("enrolled_at", { ascending: false }),
     ]);
     setModules((mods.data as Module[]) || []);
     setLessons((less.data as Lesson[]) || []);
-    setEnrollments((enroll.data as Enrollment[]) || []);
+    const enrollRows = (enroll.data as any[]) || [];
+    let enrollWithPeople: any[] = enrollRows;
+    if (enrollRows.length > 0) {
+      const { data: people } = await supabase
+        .rpc("admin_member_profiles")
+        .select("id, first_name, last_name, email")
+        .in("id", enrollRows.map((e: any) => e.user_id));
+      const byId: Record<string, any> = {};
+      ((people as any[] | null) || []).forEach((p: any) => { byId[p.id] = p; });
+      enrollWithPeople = enrollRows.map((e: any) => ({ ...e, profiles: byId[e.user_id] || null }));
+    }
+    setEnrollments(enrollWithPeople as Enrollment[]);
   };
 
   useEffect(() => { fetchAll(); }, []);
