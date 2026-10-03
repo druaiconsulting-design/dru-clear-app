@@ -41,7 +41,7 @@ export default function AdminMemberIntelligence() {
 
   const fetchMembers = async () => {
     const { data } = await supabase
-      .from('profiles')
+      .rpc('admin_member_profiles')
       .select('id, first_name, last_name, email, tier, community_level, pathway_stage, clarity_points, photo_url')
       .in('tier', ['navigator', 'accelerator'])
       .order('clarity_points', { ascending: false });
