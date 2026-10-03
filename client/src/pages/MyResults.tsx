@@ -36,10 +36,10 @@ const TIER_ONE_LINERS: Record<string, { text: string; color: string }> = {
 };
 
 const BADGE_URLS: Record<string, string> = {
-  EMERGING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/kOtwAuULsXPXkaGB.png",
-  DEVELOPING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/fWXAJkZaBbdHEhOn.png",
-  ADVANCING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/amcdeQtIckHTNLhd.png",
-  LEADING: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/BcciWNCYnCPbYcGB.png",
+  EMERGING: "/badge-emerging.png",
+  DEVELOPING: "/badge-developing.png",
+  ADVANCING: "/badge-advancing.png",
+  LEADING: "/badge-leading.png",
 };
 
 const BENCHMARK_PERCENTILES: Record<string, number> = {
@@ -49,7 +49,7 @@ const BENCHMARK_PERCENTILES: Record<string, number> = {
   LEADING: 93,
 };
 
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
+const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
