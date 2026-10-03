@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-const LOGO_CDN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/NJTJspnSktvZQJaw.png";
+const LOGO_CDN = "/new-dru-clear-transparent-logo.png";
 const MEMBERS_PORTAL = "https://members.druaiconsulting.com";
 
 // Detect whether this is a new member creating their password for the first time
