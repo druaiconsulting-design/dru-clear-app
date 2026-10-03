@@ -17,7 +17,7 @@ export default function TermsPage() {
         {/* Brand logo */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <img
-            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663512997684/PPrwKSVlySJjkhTX.png"
+            src="/new-dru-clear-transparent-logo.png"
             alt="DRU CLEAR™"
             style={{ height: 120, width: "auto", display: "inline-block" }}
           />
