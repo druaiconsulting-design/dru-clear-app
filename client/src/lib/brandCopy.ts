@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 
 const BRAND_COPY_FALLBACK: Record<string, string> = {
-  positioning: "EQ Meets AI: People-Centered Leadership, AI-Powered Insight",
+  positioning: "Emotional Intelligence (EQ) Meets AI\nPeople-Centered Leadership, AI-Powered Insight",
 };
 
 export function useBrandCopy(key: string): string {

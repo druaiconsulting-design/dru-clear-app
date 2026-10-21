@@ -11,19 +11,7 @@
 
 export const config = { maxDuration: 60 };
 
-import { GENIUS_MODE, VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
-
-const BRAND_COPY_FALLBACK: Record<string,string> = {
-  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
-};
-async function fetchBrandCopy(key: string): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL; const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const fallback = BRAND_COPY_FALLBACK[key] || '';
-  if (!url||!svcKey) return fallback;
-  const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`,{headers:{apikey:svcKey,Authorization:`Bearer ${svcKey}`}});
-  if (!res.ok) return fallback;
-  const data = await res.json(); return (data as {value:string}[])[0]?.value || fallback;
-}
+import { GENIUS_MODE, VOICE_DNA, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
 
 interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 

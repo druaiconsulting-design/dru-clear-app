@@ -10,7 +10,7 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
-import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -494,17 +494,6 @@ async function fetchBrandMarks(): Promise<string> {
   const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
   if (!res.ok) return '';
   const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
-}
-const BRAND_COPY_FALLBACK: Record<string,string> = {
-  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
-};
-async function fetchBrandCopy(key: string): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL; const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const fallback = BRAND_COPY_FALLBACK[key] || '';
-  if (!url||!svcKey) return fallback;
-  const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`,{headers:{apikey:svcKey,Authorization:`Bearer ${svcKey}`}});
-  if (!res.ok) return fallback;
-  const data = await res.json(); return (data as {value:string}[])[0]?.value || fallback;
 }
 async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1077,9 +1066,12 @@ async function runRavi(): Promise<string|null> {
 // were leaking strategic-rationale text into sendable content.
 const INTERNAL_NOTES_INSTRUCTION = `\nIf you want to explain your reasoning, strategic intent, or why you made a particular choice, put ONLY that explanation after a line containing exactly:\n===INTERNAL NOTES===\nEverything after that exact line is kept private for DeAnna and is NEVER sent or posted. Only use it if you actually have something worth explaining — most of the time you won't need it. Never put real content that should be sent/posted after this marker.`;
 
-// EQ Meets AI brand line (Aug 2026) — added to all 4 newsletter editions per DeAnna's
+// Brand theme line (Aug 2026) — added to all 4 newsletter editions per DeAnna's
 // confirmation. Not added to LinkedIn posts/articles — newsletter-only per this build.
-const EQ_BRAND_LINE = `\nBRAND THEME: Work "EQ Meets AI: People-Centered Leadership, AI-Powered Insight" naturally into this newsletter — it's DRU AI Consulting's core positioning line.`;
+// The wording comes from the brand_copy table through the shared reader in agentKnowledge.ts.
+function buildBrandTheme(kind: 'newsletter' | 'email', line: string): string {
+  return `\nBRAND THEME: Work the brand line below naturally into this ${kind} — it is DRU AI Consulting's core positioning line.\n${line}`;
+}
 
 // P3
 // NIA ROBINSON — Content Strategist
@@ -1088,6 +1080,7 @@ const EQ_BRAND_LINE = `\nBRAND THEME: Work "EQ Meets AI: People-Centered Leaders
 // Reads Camila's weekly brief for strategic alignment before writing anything
 async function runNia(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
+  const EQ_BRAND_LINE = buildBrandTheme('newsletter', await fetchBrandCopy('positioning'));
   const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
   const camilaBrief  = await getCrossRead(['camila']);
   const themeLog     = await getContentThemeLog();
@@ -1289,7 +1282,7 @@ async function promoteDeployToDominate(): Promise<number> {
 async function runJaylen(): Promise<{ sequence_emails_generated: number; dominate_promotions: number; weekly_emails_generated: number }> {
   const agentKnowledge = await getAgentKnowledge();
   const jaylenPrefix = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n`;
-  const brandLine = `\nBRAND THEME: Work "EQ Meets AI: People-Centered Leadership, AI-Powered Insight" naturally into this email — it's DRU AI Consulting's core positioning line.`;
+  const brandLine = buildBrandTheme('email', await fetchBrandCopy('positioning'));
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
   // ── 1. Non-member sequence — one card per due stage, not per contact ─────────

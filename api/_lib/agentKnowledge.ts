@@ -23,7 +23,7 @@ Behavior Settings:
 • When relevant, show frameworks, models, or structured breakdowns.
 • Communicate with confidence, clarity, and style, like a world-class strategist or advisor.`;
 
-export const VOICE_DNA = `VOICE — write as DeAnna R. Upshaw. Dead prose: one idea per sentence, active voice, present tense, contractions allowed, always the real number ("$4,997," "240+ clients," "25+ years") instead of a rounded one. Hook-then-unpack, sentence by sentence: line one is the hook — a punch line under 8 words, standing alone. Line two is exactly one sentence, 25-35 words, that unpacks the hook. Count the words in that second sentence before moving on. Everything after that follows the post's own length and structure. Write to leaders and organizations broadly, keeping the reader general and real rather than an invented persona with a specific age, job, or worry. Anchor words: Insight and CLEAR — weave them in as the throughline of what she delivers, not just a tagline (e.g. "Insight is what happens when EQ meets AI," "a CLEAR vision").
+export const VOICE_DNA = `VOICE — write as DeAnna R. Upshaw. Dead prose: one idea per sentence, active voice, present tense, contractions allowed, always the real number ("$4,997," "240+ clients," "25+ years") instead of a rounded one. Hook-then-unpack, sentence by sentence: line one is the hook — a punch line under 8 words, standing alone. Line two is exactly one sentence, 25-35 words, that unpacks the hook. Count the words in that second sentence before moving on. Everything after that follows the post's own length and structure. Write to leaders and organizations broadly, keeping the reader general and real rather than an invented persona with a specific age, job, or worry. Anchor words: Insight and CLEAR — weave them in as the throughline of what she delivers, not just a tagline (e.g. "Insight is what happens when Emotional Intelligence (EQ) meets AI," "a CLEAR vision").
 STYLE: Write complete, standalone declarative sentences, each committing to one clear idea and joined to the next by a period or comma. Choose plain, direct, ordinary words over corporate phrasing (say "grow" instead of "leverage," name the real result instead of "game-changer" or "cutting-edge") and state every claim with full confidence and a specific number, the real one, not a hedge. Speak to the reader's own reality directly — second person or plain declarative fact, grounded in the source material or facts given in this prompt. Attribute every claim to what the material actually says, not to a generalized group like "most leaders," "most organizations," or "most people."
 FACTUAL ACCURACY: Ground every specific client result, dollar figure, percentage, testimonial, or case study only in what's explicitly given in this prompt. Write in principles and outcomes generally when no specific data point is provided.
 HOOK/QUESTION RULE: Make every hook, headline, and question open-ended and declarative. Use DeAnna's real brand phrases directly: CLEAR, Insight, People-Centered Leadership, AI-Powered Insight, Leadership Clarity, AI Mastery, Measurable Results.
@@ -271,6 +271,35 @@ export async function getAgentCorrections(agentName: string, task?: string, limi
   }
 }
 
+// ── Brand lines: the shared reader for the brand_copy table ─────────────────
+// Every agent file imports fetchBrandCopy from here. The brand wording lives in
+// the brand_copy Supabase table, so a brand change is a single edit there. The
+// only backup copy sits in this file, in long form, for when the table cannot
+// be reached.
+const BRAND_COPY_FALLBACK: Record<string, string> = {
+  positioning: 'Emotional Intelligence (EQ) Meets AI\nPeople-Centered Leadership, AI-Powered Insight',
+  assessment_hook: 'The Assessment Where\nEmotional Intelligence (EQ) Meets AI',
+};
+
+export async function fetchBrandCopy(key: string): Promise<string> {
+  const fallback = BRAND_COPY_FALLBACK[key] || '';
+  try {
+    const url = process.env.VITE_SUPABASE_URL;
+    const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !svcKey) return fallback;
+    const res = await fetch(
+      `${url}/rest/v1/brand_copy?key=eq.${encodeURIComponent(key)}&select=value`,
+      { headers: { apikey: svcKey, Authorization: `Bearer ${svcKey}` } }
+    );
+    if (!res.ok) return fallback;
+    const data = await res.json() as { value: string }[];
+    return data[0]?.value || fallback;
+  } catch (err) {
+    console.error(`[brandCopy] fetch error for ${key}:`, err);
+    return fallback;
+  }
+}
+
 /**
  * Fetches current protected IP marks from Supabase brand_marks table
  * and returns a complete formatted knowledge block for agent prompt injection.
@@ -304,6 +333,8 @@ export async function getAgentKnowledge(): Promise<string> {
   }
 
   const tmList = tmMarks.map(m => `  - ${m}`).join('\n');
+  const positioningLine = await fetchBrandCopy('positioning');
+  const assessmentHook = await fetchBrandCopy('assessment_hook');
 
   return `
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -327,6 +358,17 @@ RULES:
 
 ## BRAND VOCABULARY — NOT TRADEMARKS, WRITE PLAIN
 These are DeAnna's real brand phrases and should be used freely and naturally in writing, always plain, with no ™: CLEAR, Insight, People-Centered Leadership, AI-Powered Insight, Leadership Clarity, AI Mastery, Measurable Results. If a phrase isn't in the approved list above verbatim, write it plain — either brand vocabulary or an ordinary word.
+
+---
+
+## BRAND LINES — CURRENT WORDING
+Write the brand line on two lines, exactly as shown, wherever it appears:
+${positioningLine}
+
+Write the assessment hook on two lines, exactly as shown:
+${assessmentHook}
+
+The tagline sits on the second line every time. These Brand Lines are the current wording and take precedence over any other version of the brand line that appears elsewhere in your instructions.
 
 ---
 

@@ -26,7 +26,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
 
-import { GENIUS_MODE, DIRECT_RESPONSE_PHILOSOPHY } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, DIRECT_RESPONSE_PHILOSOPHY, fetchBrandCopy } from './_lib/agentKnowledge.js';
 
 const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
 
@@ -154,23 +154,6 @@ async function fetchBrandMarks(): Promise<string> {
     }
   } catch { /* fall through */ }
   return FALLBACK_TM_MARKS.join(', ');
-}
-
-// ── Brand copy (positioning, hooks, tagline) ────────────────────────────────
-const BRAND_COPY_FALLBACK: Record<string,string> = {
-  positioning: 'EQ Meets AI: People-Centered Leadership, AI-Powered Insight',
-};
-async function fetchBrandCopy(key: string): Promise<string> {
-  const fallback = BRAND_COPY_FALLBACK[key] || '';
-  try {
-    const { url, headers } = sbHeaders();
-    const res = await fetch(`${url}/rest/v1/brand_copy?key=eq.${key}&select=value`, { headers });
-    if (res.ok) {
-      const data: { value: string }[] = await res.json();
-      if (data[0]?.value) return data[0].value;
-    }
-  } catch { /* fall through */ }
-  return fallback;
 }
 
 // ── Write approved script to approvals table ──────────────────────────────────
