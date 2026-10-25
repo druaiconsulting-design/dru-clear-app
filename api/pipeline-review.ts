@@ -1,8 +1,9 @@
 // api/pipeline-review.ts
-// Pipeline Review — runs daily at 18:20 UTC via dru-pipeline-review-daily
-// Picks up governance_cleared items from CSQ — Raymond reviews each and marks pipeline_approved for synthesis
-// Raymond reviews each governance_cleared item in a single API call, adds strategic notes,
-// and marks items pipeline_approved for Raymond's synthesis run at 19:00 UTC.
+// Pipeline Review — runs daily via dru-pipeline-review-daily
+// Picks up governance_cleared items from CSQ. Raymond reads each agent's work, lists any REAL new issue
+// that needs DeAnna (agent's own words, copied by code, never re-raised), and marks the item
+// pipeline_approved for Raymond's synthesis run (api/raymond.ts), which builds the
+// Business Outlook Corrections card from the new issues.
 // FIX: extractJSON replaces greedy regex that was causing SyntaxError on complex content
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -78,41 +79,108 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
   });
 }
 
-async function runPipelineReview(): Promise<{ reviewed: number }> {
+// ── Issues that need DeAnna (Business Outlook Corrections) ──────────────────────
+// Raymond reads each agent's finished work and picks out REAL issues that need DeAnna.
+// He never writes or rewrites the issue: he only points at the numbered paragraphs of the
+// agent's own work, and the text is copied from the agent's own output by code -- so the
+// issue DeAnna reads is the agent's own words, word for word, nothing shortened.
+// Each issue is stored once in attention_items (permanent list, same pattern as grants).
+// A later run never re-raises an issue that is already on the list, in any wording.
+
+interface PastIssue { issue_text: string }
+
+function stripAudit(raw: string): string {
+  let out = raw;
+  const cutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED', '===INTERNAL NOTES==='];
+  for (const c of cutoffs) { const i = out.indexOf(c); if (i !== -1) out = out.slice(0, i); }
+  // Formatting marks only (**bold**, # headers) -- the words themselves are untouched.
+  return out.replace(/\*\*(.*?)\*\*/g, '$1').replace(/^#{1,6}\s*/gm, '').trim();
+}
+
+function issueTokens(text: string): Set<string> {
+  return new Set(text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 3));
+}
+function sameIssue(a: string, b: string): boolean {
+  const ta = issueTokens(a); const tb = issueTokens(b);
+  if (ta.size === 0 || tb.size === 0) return false;
+  let shared = 0; for (const t of ta) if (tb.has(t)) shared++;
+  return shared / Math.min(ta.size, tb.size) >= 0.6;
+}
+
+// Items the owner has said never to bring to her.
+const EXCLUDED = /route (this |it |these )?to aaliyah|review (this|the|my) draft|trademark (symbol|check)|™[^.\n]{0,40}\bchecks?\b|\bchecks?\b[^.\n]{0,40}™/i;
+
+async function getPastIssues(agentName: string): Promise<PastIssue[]> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+  const res = await fetch(`${url}/rest/v1/attention_items?agent_name=eq.${encodeURIComponent(agentName)}&select=issue_text&order=created_at.desc&limit=100`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  return res.ok ? await res.json() : [];
+}
+
+async function saveIssue(item: CSQItem, issueText: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const res = await fetch(`${url}/rest/v1/attention_items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
+    body: JSON.stringify({ agent_id: item.agent_id, agent_name: item.agent_name, division: item.division, task: item.task, csq_id: item.id, issue_text: issueText }),
+  });
+  if (!res.ok) console.error(`[pipeline-review] attention_items write failed: ${await res.text()}`);
+}
+
+async function runPipelineReview(): Promise<{ reviewed: number; new_issues: number }> {
   const items = await getCSQItems('governance_cleared');
-  console.log(`[pipeline-review] Reviewing ${items.length} governance-cleared items (Raymond solo — one call per item)...`);
-  if (items.length === 0) return { reviewed: 0 };
+  console.log(`[pipeline-review] Reviewing ${items.length} governance-cleared items (Raymond solo -- one call per item)...`);
+  if (items.length === 0) return { reviewed: 0, new_issues: 0 };
+  let newIssues = 0;
 
   for (const item of items) {
     try {
+      const paragraphs = stripAudit(item.raw_output ?? '').split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 0).slice(0, 60);
+      const numbered = paragraphs.map((p, i) => `[${i + 1}] ${p}`).join('\n\n').slice(0, 20000);
+      const past = await getPastIssues(item.agent_name);
+      const pastList = past.slice(0, 30).map(p => `- ${p.issue_text.slice(0, 200).replace(/\s+/g, ' ')}`).join('\n') || '(none yet)';
+
       const rawRaymond = await callAnthropic(
-        `${GENIUS_MODE}\nYou are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting. You run the pipeline review step — a single consolidated review of all governance-cleared agent output. Content cleared by Isabella and Governance.\nAGENT: ${item.agent_name} (${item.division}) | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nYour single review covers three responsibilities:\n1. STRATEGIC PRIORITY — assess priority and routing action, with one strategic sentence for the daily briefing.\n2. PACKAGING — one sentence on how this fits today's briefing.\n3. DEANNA FLAG — anything time-sensitive or requiring DeAnna's personal action today. If nothing, use an empty string.\nNOTE: If content contains "UPSELL SIGNAL:" flag priority as 'high' and note to route to Aaliyah Foster in Revenue, Growth & Sales.\nOutput ONLY this JSON: {"priority":"normal","action":"route_to_daily_briefing","notes":"one strategic sentence for the daily briefing","package_notes":"one sentence on how this fits today's briefing","deanna_action":"time-sensitive item needing DeAnna today, or empty string"}`,
+        `${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Read ${item.agent_name}'s finished work (${item.division} | task: ${item.task}) and find REAL issues that need DeAnna R. Upshaw personally -- a decision only she can make, a problem the business has to act on, a risk, a conflict, something blocked.\n\nThe work is split into numbered paragraphs. You do NOT write or reword anything. You only point at the paragraph numbers where the agent states the issue, and include every paragraph the issue needs so it is complete.\n\nNEVER raise any of these:\n- "please review this draft" or any ordinary request to look over the agent's own work\n- anything about routing to Aaliyah or upsell routing\n- trademark symbol (TM) or "checks" items\n- routine status, summaries, or work that simply needs no action from DeAnna\n- an issue that is already on the list below, even if the wording differs\n\nISSUES ALREADY RAISED FOR THIS AGENT (never raise again):\n${pastList}\n\nTHE WORK:\n${numbered}\n\nIf there is no real new issue, return an empty list. Output ONLY this JSON: {"priority":"normal","issues":[[3],[7,8]]}  -- "issues" is a list of issues, each issue a list of paragraph numbers. "priority" is normal, high, or critical (critical only for a true blocker).`,
         600
       );
 
       const raymond = JSON.parse(extractJSON(rawRaymond));
+      const raisedThisRun: string[] = [];
+      const issues: unknown[] = Array.isArray(raymond?.issues) ? raymond.issues : [];
+      for (const group of issues) {
+        const nums = (Array.isArray(group) ? group : [group]).map(n => Number(n)).filter(n => Number.isInteger(n) && n >= 1 && n <= paragraphs.length);
+        if (nums.length === 0) continue;
+        const text = [...new Set(nums)].sort((a, b) => a - b).map(n => paragraphs[n - 1]).join('\n\n');
+        if (EXCLUDED.test(text)) continue;
+        if (past.some(p => sameIssue(p.issue_text, text)) || raisedThisRun.some(t => sameIssue(t, text))) continue;
+        await saveIssue(item, text);
+        raisedThisRun.push(text);
+        newIssues++;
+      }
 
+      const priority = ['normal', 'high', 'critical'].includes(raymond?.priority) ? raymond.priority : 'normal';
       await updateCSQ(item.id, {
         raymond_reviewed: true,
-        raymond_notes: raymond?.notes ?? '',
-        raymond_priority: raymond?.priority ?? 'normal',
-        raymond_action: raymond?.action ?? 'route_to_daily_briefing',
-        // Columns retained for downstream compatibility — both authored by Raymond post-restructure:
-        travis_notes: raymond?.package_notes ?? '',
-        priya_notes: raymond?.deanna_action ?? '',
+        raymond_notes: '',
+        raymond_priority: priority,
+        raymond_action: raisedThisRun.length > 0 ? 'needs_deanna' : 'no_issue',
+        travis_notes: '',
+        priya_notes: '',
         pipeline_approved_at: new Date().toISOString(),
         status: 'pipeline_approved',
-        priority: raymond?.priority ?? 'normal',
+        priority,
       });
 
-      console.log(`[pipeline-review] Approved: ${item.agent_name}`);
+      console.log(`[pipeline-review] Approved: ${item.agent_name} (${raisedThisRun.length} new issue${raisedThisRun.length === 1 ? '' : 's'})`);
     } catch (error) {
-      console.error(`[executive_leadership] Failed item ${item.id}:`, error);
+      console.error(`[pipeline-review] Failed item ${item.id}:`, error);
     }
   }
 
-  console.log(`[pipeline-review] ${items.length} items pipeline-approved`);
-  return { reviewed: items.length };
+  console.log(`[pipeline-review] ${items.length} items pipeline-approved, ${newIssues} new issues`);
+  return { reviewed: items.length, new_issues: newIssues };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

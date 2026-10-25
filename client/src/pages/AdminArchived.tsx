@@ -28,7 +28,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  daily_briefing:"Daily Briefing", revenue_growth:"Revenue & Growth",
+  daily_briefing:"Daily Briefing", business_outlook_corrections:"Business Outlook Corrections", revenue_growth:"Revenue & Growth",
   content_brand:"Content & Brand", marketing:"Marketing",
   legal_finance:"Legal & Finance", ai_governance:"AI Governance",
   hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
@@ -59,6 +59,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.division && DIVISION_COLORS[approval.division]) return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   if (approval.category === "grants") return { text: "Grants", color: "#8A6E1A" };
   if (approval.category === "daily_briefing") return { text: "Daily Briefing", color: "#D4AF37" };
+  if (approval.category === "business_outlook_corrections") return { text: "Business Outlook Corrections", color: "#D4AF37" };
   return { text: approval.category, color: "#0A2342" };
 }
 

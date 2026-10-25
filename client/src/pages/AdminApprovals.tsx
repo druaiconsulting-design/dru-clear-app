@@ -92,7 +92,7 @@ const PDF_CATEGORIES = new Set([
 const APPROVAL_CATEGORIES = new Set([
   "social", "email", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
-  "travis_video_production", "video_script",
+  "travis_video_production", "video_script", "business_outlook_corrections",
 ]);
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -135,7 +135,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  daily_briefing:"Daily Briefing", revenue_growth:"Revenue, Growth & Sales",
+  daily_briefing:"Daily Briefing", business_outlook_corrections:"Business Outlook Corrections", revenue_growth:"Revenue, Growth & Sales",
   division_briefing:"Revenue, Growth & Sales", content_brand:"Content & Brand",
   marketing:"Marketing", legal_finance:"Legal & Finance", ai_governance:"AI Governance",
   hr:"HR", client_delivery:"Client Delivery", customer_support:"Customer Support",
@@ -150,7 +150,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_ORDER = [
-  "daily_briefing","revenue_growth","content_brand","marketing",
+  "business_outlook_corrections","daily_briefing","revenue_growth","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","customer_support",
   "community_connection","community_post","social","proposals_press","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
@@ -428,6 +428,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "travis_video_production")     return { text: "🎬 Travis Video",    color: "#1A5276" };
   if (approval.category === "video_script")                return { text: "📝 Video Script",    color: "#1A5276" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
+  if (approval.category === "business_outlook_corrections") return { text: "Business Outlook Corrections", color: "#D4AF37" };
   if (approval.category === "grants")                       return { text: "Grants",             color: "#8A6E1A" };
   if (approval.category === "grant_applications")            return { text: "Grant Application Drafts", color: "#8A6E1A" };
   if (approval.category === "revenue_growth" || approval.category === "division_briefing")
@@ -435,6 +436,154 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.division && DIVISION_COLORS[approval.division])
     return { text: approval.division, color: DIVISION_COLORS[approval.division] };
   return { text: CATEGORY_LABELS[approval.category] ?? approval.category, color: "#0A2342" };
+}
+
+// ── Business Outlook Corrections card body ─────────────────────────────────
+// One block per issue: agent photo, agent name, the agent's own words (complete, nothing
+// shortened -- copied by code in api/pipeline-review.ts), an Ask box that goes straight to
+// that agent, and a Corrective Feedback box that is saved in THAT agent's own training notes
+// (agent_corrections, under the agent's real name). Threads and feedback are saved back into
+// the card (approvals.original_content) so they are still there when she returns.
+interface CorrectionIssue {
+  id: string; agent_id: string | null; agent_name: string; division: string | null;
+  task: string | null; csq_id: string | null; issue_text: string;
+  thread?: ConversationMessage[]; feedback?: { text: string; at: string }[];
+}
+
+function CorrectionsBody({ approval, photos, pending }: { approval: Approval; photos: Record<string, string>; pending: boolean }) {
+  const [issues, setIssues] = useState<CorrectionIssue[]>(() => {
+    try { const parsed = JSON.parse(approval.original_content || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+  });
+  const [askInput, setAskInput]       = useState<Record<string, string>>({});
+  const [askLoading, setAskLoading]   = useState<Record<string, boolean>>({});
+  const [fbInput, setFbInput]         = useState<Record<string, string>>({});
+  const [fbSaving, setFbSaving]       = useState<Record<string, boolean>>({});
+  const [fbError, setFbError]         = useState<Record<string, string>>({});
+
+  const persist = async (next: CorrectionIssue[]) => {
+    setIssues(next);
+    await supabase.from("approvals").update({ original_content: JSON.stringify(next) }).eq("id", approval.id);
+  };
+  const patchIssue = (list: CorrectionIssue[], id: string, patch: Partial<CorrectionIssue>) => list.map(i => i.id === id ? { ...i, ...patch } : i);
+
+  const roleFor = (issue: CorrectionIssue) => {
+    const roster = DIVISION_AGENTS[issue.division ?? ""] ?? [];
+    return roster.find(a => a.agent_name === issue.agent_name)?.role ?? issue.agent_name;
+  };
+
+  const ask = async (issue: CorrectionIssue) => {
+    const question = (askInput[issue.id] ?? "").trim();
+    if (!question || askLoading[issue.id]) return;
+    const history = issue.thread ?? [];
+    const withQuestion = [...history, { role: "user" as const, text: question }];
+    setAskInput(p => ({ ...p, [issue.id]: "" }));
+    setAskLoading(p => ({ ...p, [issue.id]: true }));
+    setIssues(prev => patchIssue(prev, issue.id, { thread: withQuestion }));
+    let reply = "Something went wrong. Please try again.";
+    try {
+      const res = await fetch("/api/ask-agent", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_id: issue.agent_id, agent_name: issue.agent_name, agent_role: roleFor(issue), question, card_output: issue.issue_text, conversation_history: history, csq_id: issue.csq_id ?? undefined }) });
+      const data = await res.json();
+      if (res.ok && data.response) reply = data.response;
+    } catch { /* keep the fallback message */ }
+    const finished = patchIssue(issues, issue.id, { thread: [...withQuestion, { role: "agent" as const, agentName: issue.agent_name, text: reply }] });
+    setAskLoading(p => ({ ...p, [issue.id]: false }));
+    await persist(finished);
+  };
+
+  const sendFeedback = async (issue: CorrectionIssue) => {
+    const note = (fbInput[issue.id] ?? "").trim();
+    if (!note || fbSaving[issue.id]) return;
+    setFbSaving(p => ({ ...p, [issue.id]: true }));
+    setFbError(p => ({ ...p, [issue.id]: "" }));
+    const row: Record<string, unknown> = { agent_name: issue.agent_name, correction_note: note, approval_id: approval.id, source: "reject" };
+    if (issue.task) row.task = issue.task;
+    if (issue.csq_id) row.csq_id = issue.csq_id;
+    const { error } = await supabase.from("agent_corrections").insert(row);
+    if (error) {
+      setFbError(p => ({ ...p, [issue.id]: `Could not save: ${error.message}` }));
+      setFbSaving(p => ({ ...p, [issue.id]: false }));
+      return;
+    }
+    setFbInput(p => ({ ...p, [issue.id]: "" }));
+    await persist(patchIssue(issues, issue.id, { feedback: [...(issue.feedback ?? []), { text: note, at: new Date().toISOString() }] }));
+    setFbSaving(p => ({ ...p, [issue.id]: false }));
+  };
+
+  if (issues.length === 0) {
+    return <div style={{ padding:"1rem" }}><p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", color:"rgba(10,35,66,0.5)", whiteSpace:"pre-wrap" as const, margin:0 }}>{approval.output}</p></div>;
+  }
+
+  return (
+    <div style={{ padding:"1rem", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
+      {issues.map(issue => {
+        const photo = photos[issue.agent_name];
+        const thread = issue.thread ?? [];
+        return (
+          <div key={issue.id} style={{ border:"1px solid rgba(212,175,55,0.35)", borderRadius:10, padding:"0.85rem 1rem", background:"#FFFFFF" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", marginBottom:"0.6rem" }}>
+              {photo && <img src={photo} alt={issue.agent_name} style={{ width:48, height:48, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.5)", flexShrink:0 }} />}
+              <div>
+                <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.78rem", fontWeight:700, color:"#0A2342", margin:0 }}>{issue.agent_name}</p>
+                {(issue.division || issue.task) && <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:"rgba(10,35,66,0.45)", margin:0 }}>{[issue.division, issue.task?.replace(/_/g, " ")].filter(Boolean).join(" · ")}</p>}
+              </div>
+            </div>
+
+            <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.78rem", color:"#0A2342", lineHeight:1.7, whiteSpace:"pre-wrap" as const, margin:"0 0 0.85rem" }}>{issue.issue_text}</p>
+
+            {thread.length > 0 && (
+              <div style={{ marginBottom:"0.6rem", display:"flex", flexDirection:"column" as const, gap:"0.4rem", maxHeight:320, overflowY:"auto" as const }}>
+                {thread.map((msg, i) => (
+                  <div key={i} style={{ padding:"0.45rem 0.65rem", borderRadius:8, background:msg.role === "user" ? "rgba(212,175,55,0.08)" : "rgba(10,35,66,0.03)", border:`1px solid ${msg.role === "user" ? "rgba(212,175,55,0.2)" : "rgba(10,35,66,0.1)"}` }}>
+                    <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, letterSpacing:"0.08em", color:msg.role === "user" ? "#D4AF37" : "rgba(10,35,66,0.45)", margin:"0 0 0.2rem", textTransform:"uppercase" as const }}>{msg.role === "user" ? "You" : msg.agentName}</p>
+                    <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.74rem", color:"#0A2342", lineHeight:1.6, whiteSpace:"pre-wrap" as const, margin:0 }}>{msg.text}</p>
+                  </div>
+                ))}
+                {askLoading[issue.id] && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, color:"rgba(212,175,55,0.7)", margin:0, letterSpacing:"0.08em" }}>{issue.agent_name} is responding...</p>}
+              </div>
+            )}
+
+            {pending && (
+              <>
+                <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.9)", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, margin:"0 0 0.3rem" }}>Ask {issue.agent_name}</p>
+                <div style={{ display:"flex", gap:"0.4rem", marginBottom:"0.75rem" }}>
+                  <input type="text" value={askInput[issue.id] ?? ""} onChange={e => setAskInput(p => ({ ...p, [issue.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(issue); } }}
+                    placeholder={`Ask ${issue.agent_name} a question...`} disabled={askLoading[issue.id]}
+                    style={{ flex:1, background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.5rem 0.75rem", outline:"none", opacity:askLoading[issue.id] ? 0.6 : 1 }} />
+                  <button onClick={() => ask(issue)} disabled={askLoading[issue.id] || !(askInput[issue.id] ?? "").trim()}
+                    style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.5rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(askLoading[issue.id] || !(askInput[issue.id] ?? "").trim()) ? 0.5 : 1 }}>Send</button>
+                </div>
+
+                <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#C2185B", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, margin:"0 0 0.3rem" }}>Corrective Feedback — saved in {issue.agent_name}'s training notes</p>
+                <textarea value={fbInput[issue.id] ?? ""} onChange={e => setFbInput(p => ({ ...p, [issue.id]: e.target.value }))}
+                  placeholder={`What should ${issue.agent_name} do differently? (this trains the agent)`} rows={2} disabled={fbSaving[issue.id]}
+                  style={{ width:"100%", fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", padding:"0.5rem", borderRadius:6, border:"1px solid rgba(194,24,91,0.4)", resize:"vertical" as const, boxSizing:"border-box" as const, background:"#FFFFFF", color:"#0A2342" }} />
+                <div style={{ display:"flex", justifyContent:"flex-end", marginTop:"0.4rem" }}>
+                  <button onClick={() => sendFeedback(issue)} disabled={fbSaving[issue.id] || !(fbInput[issue.id] ?? "").trim()}
+                    style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.4rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#C2185B", color:"#FAFAF8", letterSpacing:"0.06em", opacity:(fbSaving[issue.id] || !(fbInput[issue.id] ?? "").trim()) ? 0.5 : 1 }}>
+                    {fbSaving[issue.id] ? "Saving..." : `Send to ${issue.agent_name}`}
+                  </button>
+                </div>
+                {fbError[issue.id] && <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.65rem", color:"#C2185B", margin:"0.3rem 0 0" }}>{fbError[issue.id]}</p>}
+              </>
+            )}
+
+            {(issue.feedback ?? []).length > 0 && (
+              <div style={{ marginTop:"0.6rem", display:"flex", flexDirection:"column" as const, gap:"0.3rem" }}>
+                {(issue.feedback ?? []).map((f, i) => (
+                  <div key={i} style={{ padding:"0.4rem 0.6rem", borderRadius:6, background:"rgba(194,24,91,0.04)", border:"1px solid rgba(194,24,91,0.2)" }}>
+                    <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, letterSpacing:"0.08em", color:"#C2185B", margin:"0 0 0.15rem", textTransform:"uppercase" as const }}>✓ Saved to {issue.agent_name}'s training notes</p>
+                    <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.72rem", color:"#0A2342", lineHeight:1.5, whiteSpace:"pre-wrap" as const, margin:0 }}>{f.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AdminApprovals() {
@@ -1220,6 +1369,8 @@ export default function AdminApprovals() {
     const media = getMediaUrls(id, approval);
 
     const updatePayload: Record<string, any> = { status: "approved" };
+    // Business Outlook Corrections: Approve means she is done with the card -- it goes to Archived.
+    if (approval.category === "business_outlook_corrections") updatePayload.archived = true;
     if (approval.category === "social") {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
@@ -1229,6 +1380,11 @@ export default function AdminApprovals() {
 
     const { error } = await supabase.from("approvals").update(updatePayload).eq("id", id);
     if (error) { setSaving(null); return; }
+    if (approval.category === "business_outlook_corrections") {
+      setApprovals(prev => prev.filter(a => a.id !== id));
+      setSaving(null);
+      return;
+    }
 
     const content = approval.edited_output || approval.output;
     if (approval.category === "email") {
@@ -1722,6 +1878,7 @@ export default function AdminApprovals() {
               const isCCPost      = approval.category === "community_post";
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = READ_CATEGORIES.has(approval.category);
+              const isCorrections = approval.category === "business_outlook_corrections";
               const isSocial        = approval.category === "social" || approval.category === "email";
               const isTravisVideo   = approval.category === "travis_video_production";
               const isVideoScript   = approval.category === "video_script";
@@ -1747,7 +1904,7 @@ export default function AdminApprovals() {
                       {isMulti && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", color:"rgba(255,255,255,0.8)" }}>3 Platforms</span>}
                       {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge Vault</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
-                      <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
+                      <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isCorrections ? "Raymond Holloway · Issues needing your attention" : isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
@@ -1798,7 +1955,8 @@ export default function AdminApprovals() {
                   )}
 
                   {/* Card Body */}
-                  <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
+                  {isCorrections && <CorrectionsBody key={approval.id} approval={approval} photos={agentPhotoByName} pending={approval.status === "pending"} />}
+                  {!isCorrections && <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
@@ -1910,7 +2068,7 @@ export default function AdminApprovals() {
                         <div>{renderDraft(isCCPost ? stripUpsellSignal(activeContent) : activeContent)}</div>
                       )}
                     </div>
-                  </div>
+                  </div>}
 
                   {/* Platform Toggles — multi-platform pending cards */}
                   {isMulti && approval.status === "pending" && editingId !== approval.id && (
@@ -2113,7 +2271,7 @@ export default function AdminApprovals() {
                       Serena, Elena, and Chloe's unrelated daily rejects, and an
                       earlier pass here dumped that entire backlog onto every grant
                       item's card. */}
-                  {isBriefing && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && (() => {
+                  {isBriefing && !isCorrections && approval.category !== "prospects" && approval.category !== "grants" && approval.category !== "grant_applications" && (() => {
                     // Same-day match: a card only ever shows hard-rejects from its own
                     // calendar day, so the Aug 24 card and the Sept 9 card each show
                     // their own day's items instead of today's whole backlog stamped
@@ -2203,7 +2361,7 @@ export default function AdminApprovals() {
 
                   {/* Action Buttons */}
                   <div style={{ padding:"0 1rem 1rem", display:"flex", gap:"0.5rem", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const }}>
-                    {(approval.status === "pending" || (approval.category === "grant_applications" && approval.status === "needs_your_input")) && editingId !== approval.id && !isPostTrigger && (
+                    {(approval.status === "pending" || (approval.category === "grant_applications" && approval.status === "needs_your_input")) && editingId !== approval.id && !isPostTrigger && !isCorrections && (
                       <button onClick={() => toggleQuestion(approval)}
                         style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.4rem 0.875rem", borderRadius:6, cursor:"pointer", border:`1px solid ${qs.open ? "rgba(212,175,55,0.6)" : hasConversation ? "rgba(212,175,55,0.4)" : "rgba(10,35,66,0.2)"}`, background:qs.open ? "rgba(212,175,55,0.1)" : hasConversation ? "rgba(212,175,55,0.05)" : "transparent", color:qs.open ? "#D4AF37" : hasConversation ? "rgba(212,175,55,0.8)" : "rgba(10,35,66,0.4)", letterSpacing:"0.06em" }}>
                         {qs.open ? "✕ Close" : hasConversation ? "💬 Continue Conversation" : "? Ask a Question"}
@@ -2224,10 +2382,10 @@ export default function AdminApprovals() {
                       )}
                       {!isKnowledge && approval.status === "pending" && editingId !== approval.id && rejectingId !== approval.id && !isPostTrigger && (
                         <>
-                          <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Corrective Feedback</button>
-                          <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
+                          {!isCorrections && <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Corrective Feedback</button>}
+                          {!isCorrections && <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
-                          </button>
+                          </button>}
                           {/* Ready to Use — reusable deliverables (Client Delivery, Customer Support, Marketing, Content & Brand,
                               Grants, plus individual folders: Ravi/Chloe/Kwame via platform tag, Theo/Jordan/Simone/Amelia/Nia via content_review) */}
                           {isReadyToUse ? (
@@ -2290,7 +2448,7 @@ export default function AdminApprovals() {
                       {approval.status !== "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em" }}>Archive</button>
                       )}
-                      {(approval.output || approval.edited_output) && editingId !== approval.id && (
+                      {(approval.output || approval.edited_output) && editingId !== approval.id && !isCorrections && (
                         <button onClick={() => downloadPDF(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>↓ PDF</button>
                       )}
                       {(approval.output || approval.edited_output) && editingId !== approval.id && approval.category === "acc_weekly_pdf" && (

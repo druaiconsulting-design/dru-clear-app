@@ -1,19 +1,22 @@
 // api/raymond.ts
 // Daily Synthesis — Raymond Holloway, Master Orchestrator and Chief of Staff
 // Runs daily at 19:00 UTC via pg_cron job dru-raymond-synthesis-daily (formerly dru-twin-synthesis-daily → cmd-twin.ts)
-// Picks up pipeline_approved items, produces division cards + the Daily Briefing
+// Picks up pipeline_approved items, produces division cards + the Business Outlook Corrections card
 // Fires ONE GHL notification to DeAnna when complete
 //
-// VOICE RULES (July 2026 rewiring):
-//   - Daily Briefing = Raymond's voice, reporting to DeAnna. Informational only — Executive Summary +
-//     Tomorrow's Priorities. No decisions, no questions, no asks of any kind.
-//     Raymond NEVER invents decisions, preferences, or commitments on DeAnna's behalf.
+// CARDS (Oct 2026 rewiring):
+//   - Business Outlook Corrections = one card, built ONLY from NEW issues Raymond's pipeline review
+//     (api/pipeline-review.ts) added to attention_items that day. Each issue is the agent's own
+//     words, copied word for word -- Raymond writes nothing here. No new issues = no card.
+//     The old Daily Briefing (one-sentence summaries, "do not ask DeAnna") is gone.
 //   - Division cards = the agents' own actual work, lightly formatted by Raymond.
 //     Raymond removes metadata preambles but NEVER summarizes, compresses, or rewrites deliverables.
 //     No "Done:" prefix. The work speaks for itself.
-//   - "Needs Attention" section: last 24 hours ONLY (date-filtered). One brief line per agent
-//     showing a truncated slice of the actual reason — so DeAnna can see who needs support
-//     without opening the queue. Flagged agents also get a ⚠️ inline on their card block.
+//   - "Needs Attention" section (inside division cards): last 24 hours ONLY (date-filtered). One brief
+//     line per agent showing a truncated slice of the actual reason for Isabella's rejected work.
+//     Flagged agents also get a warning mark inline on their card block.
+//   - SMS: goes out every day division cards are waiting; names Business Outlook Corrections too on
+//     days that card exists.
 //
 // PHASE 2: Detects Darius multi-platform JSON → populates linkedin_content, facebook_content, instagram_caption
 // The AI Twin no longer runs daily synthesis — she is the face of all video content and retains on-demand chat (twin.ts).
@@ -50,30 +53,6 @@ interface MultiPlatformPost {
   spanish_content?: string;
   hook?: string;
   content_type?: string;
-}
-
-// Logs every real API call's actual token usage and cost to Supabase so spend
-// is visible in the Intelligence Hub instead of estimated by hand.
-async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return;
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
-  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
-  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'raymond', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
-}
-
-async function callSonnet(prompt: string, maxTokens = 2000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!res.ok) throw new Error(`Synthesis error ${res.status}`);
-  const data = await res.json();
-  await logModelUsage('claude-sonnet-4-6', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
-  return data.content?.[0]?.text ?? '';
 }
 
 // sinceIso: optional created_at lower bound — used to keep compliance flags to the
@@ -190,16 +169,6 @@ function cleanForCard(rawText: string): string {
   return paragraphs.filter(p => p.length > 0).join('\n\n');
 }
 
-// Returns the YYYY-MM-DD calendar date string in America/Chicago for a given Date.
-// Used to compare calendar days in DeAnna's local timezone rather than raw UTC midnight,
-// which previously caused late-night UTC writes (e.g. 00:22 UTC) to be miscounted as
-// "today" even though they were still "yesterday evening" in Chicago.
-function chicagoDateString(d: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(d);
-}
-
 async function runRaymondSynthesis(): Promise<{ cards_created: number; items_synthesized: number }> {
   const items = await getCSQItems('pipeline_approved');
   console.log(`[raymond] Synthesizing ${items.length} pipeline-approved items...`);
@@ -240,70 +209,12 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
 
   const triggeredAt = new Date().toISOString();
   const approvalMap: Record<string, string> = {};
-  let dailyBriefingApprovalId: string | null = null;
-  // Raymond-authored pipeline-review fields: raymond_notes = strategic note, priya_notes column = his DeAnna flag
-  const allSummary = items.map(i => `${i.agent_name} (${i.division}): ${i.raw_output.slice(0, 150)}... Raymond: ${i.raymond_notes ?? ''}${i.priya_notes ? ` | Needs DeAnna: ${i.priya_notes}` : ''}`).join('\n');
-
-  const sbUrl = process.env.VITE_SUPABASE_URL;
-  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  // Daily Briefing — Raymond's voice (deduplicated per Chicago calendar day)
-  const dailyBriefingPromise = (async () => {
-    if (sbUrl && sbKey) {
-      // Look back 30 hours (covers any Chicago/UTC offset) and compare Chicago calendar
-      // dates directly, instead of comparing raw UTC timestamps against UTC midnight.
-      const lookbackStart = new Date(Date.now() - 30 * 60 * 60 * 1000);
-      const chk = await fetch(`${sbUrl}/rest/v1/approvals?category=eq.daily_briefing&created_at=gte.${lookbackStart.toISOString()}&order=created_at.desc`, {
-        headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` },
-      });
-      if (chk.ok) {
-        const ex = await chk.json();
-        const todayChicago = chicagoDateString(new Date());
-        const alreadyExists = Array.isArray(ex) && ex.some((row: { created_at: string }) => chicagoDateString(new Date(row.created_at)) === todayChicago);
-        if (alreadyExists) {
-          console.log('[raymond] Daily briefing already exists for today (America/Chicago) — skipping duplicate');
-          return;
-        }
-      }
-    }
-    await callSonnet(
-      `You are Raymond Holloway, Master Orchestrator and Chief of Staff for DRU AI Consulting, delivering DeAnna R. Upshaw's daily briefing. Today: ${today}.
-HARD RULES:
-- You report to DeAnna — you never speak as her, and you NEVER invent decisions, preferences, or commitments on her behalf.
-- This is an informational overview ONLY. Do NOT ask DeAnna for decisions, approvals, or actions of any kind. Do NOT include a "Decisions Needed" section. Do NOT phrase anything as a question directed at her.
-- Be tight. Every sentence earns its place.
-
-Write the Daily Briefing card with ONLY these two sections:
-
-## Daily Briefing — ${today}
-
-**Executive Summary**
-3-4 sentences ("Your team has...") — what was accomplished today across all divisions.
-
-**Tomorrow's Priorities**
-3-5 specific bullets of what the team is positioned to execute tomorrow.
-
-TODAY'S TEAM WORK:
-${allSummary}`,
-      1000
-    ).then(async synthesis => {
-      const id = await writeApproval({
-        source: 'raymond_synthesis', trigger_type: 'cron_raymond_synthesis',
-        agent_name: 'Raymond Holloway', agent_role: 'Master Orchestrator and Chief of Staff',
-        task_brief: `Daily Briefing — ${today}`, output: synthesis, status: 'pending',
-        notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
-        category: 'daily_briefing', platform: null,
-      });
-      if (id) { dailyBriefingApprovalId = id; }
-      console.log(`[raymond] Daily Briefing card written — Raymond Holloway`);
-    }).catch(err => { console.error('[raymond] Daily Briefing synthesis failed:', err); });
-  })();
 
   // Division cards — each agent's actual work, lightly formatted
   const divisionSynthesisPromises = Object.entries(byDivision)
     .filter(([division]) => division !== 'Community Connection' && division !== 'Content & Brand')
     .map(async ([division, divItems]) => {
-      // Agent outputs only — Raymond's pipeline-review notes feed the Daily Briefing, not these cards
+      // Agent outputs only
       // Exclude grants items — Adaeze gets her own standalone Grants card, so she must not
       // also appear inside the RGS division roll-up. Same principle as Community Connection
       // being excluded from division synthesis entirely. Kwame's grant_application_draft
@@ -348,18 +259,58 @@ ${allSummary}`,
       } catch (err) { console.error(`[raymond] ${division} synthesis failed:`, err); }
     });
 
-  await Promise.all([dailyBriefingPromise, ...divisionSynthesisPromises]);
+  await Promise.all(divisionSynthesisPromises);
 
-  // GHL notification — one per day
-  // Only HIGH ALERT for genuinely critical items — not routine high-priority work.
+  // Business Outlook Corrections -- one card from every issue not yet shown to DeAnna.
+  // Issues are written once by pipeline-review.ts and attached to a card exactly once, so an
+  // issue never comes back the next day. No new issues = no card.
+  let correctionsApprovalId: string | null = null;
+  try {
+    const sbUrl = process.env.VITE_SUPABASE_URL;
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (sbUrl && sbKey) {
+      const r = await fetch(`${sbUrl}/rest/v1/attention_items?approval_id=is.null&order=created_at.asc`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } });
+      const open: Array<{ id: string; agent_id: string | null; agent_name: string; division: string | null; task: string | null; csq_id: string | null; issue_text: string }> = r.ok ? await r.json() : [];
+      if (open.length > 0) {
+        const issues = open.map(o => ({ id: o.id, agent_id: o.agent_id, agent_name: o.agent_name, division: o.division, task: o.task, csq_id: o.csq_id, issue_text: o.issue_text, thread: [], feedback: [] }));
+        const plain = open.map(o => `${o.agent_name}\n\n${o.issue_text}`).join('\n\n---\n\n');
+        const id = await writeApproval({
+          source: 'raymond_synthesis', trigger_type: 'cron_raymond_synthesis',
+          agent_name: 'Raymond Holloway', agent_role: 'Master Orchestrator and Chief of Staff',
+          task_brief: `Business Outlook Corrections — ${today}`,
+          output: plain, original_content: JSON.stringify(issues), status: 'pending',
+          notify_deanna: true, priority: items.some(i => i.priority === 'critical') ? 'high' : 'normal',
+          category: 'business_outlook_corrections', platform: null,
+        });
+        if (id) {
+          correctionsApprovalId = id;
+          const ids = open.map(o => o.id).join(',');
+          await fetch(`${sbUrl}/rest/v1/attention_items?id=in.(${ids})`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', apikey: sbKey, Authorization: `Bearer ${sbKey}` },
+            body: JSON.stringify({ approval_id: id }),
+          });
+          console.log(`[raymond] Business Outlook Corrections card written -- ${open.length} issue${open.length === 1 ? '' : 's'}`);
+        }
+      } else {
+        console.log('[raymond] No new issues -- no Business Outlook Corrections card today');
+      }
+    }
+  } catch (err) { console.error('[raymond] Business Outlook Corrections failed:', err); }
+
+  // GHL notification (SMS + email) -- one per day, goes out every day division cards are waiting.
+  // Names Business Outlook Corrections only on days that card exists.
+  // Only HIGH ALERT for genuinely critical items -- not routine high-priority work.
   // Agents self-flag most work as 'high' daily, which previously triggered HIGH ALERT every run
   // and blocked DeAnna's standard SMS notification. 'critical' is reserved for true blockers.
   const hasHighPriority = items.some(i => i.priority === 'critical');
-  if (dailyBriefingApprovalId) {
-    const divisionCount = Object.keys(approvalMap).length;
+  const divisionCount = Object.keys(approvalMap).length;
+  if (divisionCount > 0 || correctionsApprovalId) {
+    const divisionPart = divisionCount > 0 ? `${divisionCount} division card${divisionCount === 1 ? '' : 's'}` : '';
+    const waiting = [divisionPart, correctionsApprovalId ? 'Business Outlook Corrections' : ''].filter(Boolean).join(' + ');
     const label = hasHighPriority
-      ? `🚨 HIGH ALERT — Intelligence Hub ready. ${divisionCount} division cards + 1 Daily Briefing. Action required.`
-      : `Intelligence Hub is ready. ${divisionCount} division cards + 1 Daily Briefing waiting for review.`;
+      ? `🚨 HIGH ALERT — Intelligence Hub ready. ${waiting}. Action required.`
+      : `Intelligence Hub is ready. ${waiting} waiting for review.`;
     const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
     if (webhookUrl) {
       try {
@@ -369,8 +320,8 @@ ${allSummary}`,
           body: JSON.stringify({
             email: 'druaiconsulting@gmail.com', phone: '+19796186671',
             first_name: 'DeAnna', last_name: 'Upshaw',
-            agent_name: 'Raymond Holloway', task: 'Daily Briefing',
-            approval_id: dailyBriefingApprovalId, summary: label, triggered_at: triggeredAt,
+            agent_name: 'Raymond Holloway', task: 'Intelligence Hub',
+            approval_id: correctionsApprovalId ?? Object.values(approvalMap)[0], summary: label, triggered_at: triggeredAt,
             review_url: 'https://app.druaiconsulting.com/admin-approvals',
             sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
             email_subject: `DRU AI Consulting — ${hasHighPriority ? '🚨 High Alert — ' : ''}Intelligence Hub Ready`,
@@ -555,9 +506,9 @@ ${allSummary}`,
     });
   }
 
-  const cardsCreated = Object.keys(approvalMap).length;
-  console.log(`[raymond] Synthesis complete — ${cardsCreated + 1} division cards written`);
-  return { cards_created: cardsCreated + 1, items_synthesized: items.length };
+  const cardsCreated = Object.keys(approvalMap).length + (correctionsApprovalId ? 1 : 0);
+  console.log(`[raymond] Synthesis complete — ${cardsCreated} cards written`);
+  return { cards_created: cardsCreated, items_synthesized: items.length };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
