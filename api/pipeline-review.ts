@@ -1,7 +1,8 @@
 // api/pipeline-review.ts
 // Pipeline Review — runs daily via dru-pipeline-review-daily
-// Picks up governance_cleared items from CSQ. Raymond reads each agent's work, lists any REAL new issue
-// that needs DeAnna (agent's own words, copied by code, never re-raised), and marks the item
+// Picks up governance_cleared items from CSQ. Raymond reads each agent's work and lists EVERY issue the
+// agent states (no importance filter -- DeAnna decides what matters; only her named exclusions stay off;
+// agent's own words, copied by code, never re-raised), and marks the item
 // pipeline_approved for Raymond's synthesis run (api/raymond.ts), which builds the
 // Business Outlook Corrections card from the new issues.
 // FIX: extractJSON replaces greedy regex that was causing SyntaxError on complex content
@@ -80,7 +81,7 @@ async function updateCSQ(id: string, updates: Record<string, unknown>): Promise<
 }
 
 // ── Issues that need DeAnna (Business Outlook Corrections) ──────────────────────
-// Raymond reads each agent's finished work and picks out REAL issues that need DeAnna.
+// Raymond reads each agent's finished work and lists every issue the agent states. He does not judge importance.
 // He never writes or rewrites the issue: he only points at the numbered paragraphs of the
 // agent's own work, and the text is copied from the agent's own output by code -- so the
 // issue DeAnna reads is the agent's own words, word for word, nothing shortened.
@@ -142,8 +143,8 @@ async function runPipelineReview(): Promise<{ reviewed: number; new_issues: numb
       const pastList = past.slice(0, 30).map(p => `- ${p.issue_text.slice(0, 200).replace(/\s+/g, ' ')}`).join('\n') || '(none yet)';
 
       const rawRaymond = await callAnthropic(
-        `${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. Read ${item.agent_name}'s finished work (${item.division} | task: ${item.task}) and find REAL issues that need DeAnna R. Upshaw personally -- a decision only she can make, a problem the business has to act on, a risk, a conflict, something blocked.\n\nThe work is split into numbered paragraphs. You do NOT write or reword anything. You only point at the paragraph numbers where the agent states the issue, and include every paragraph the issue needs so it is complete.\n\nNEVER raise any of these:\n- "please review this draft" or any ordinary request to look over the agent's own work\n- anything about routing to Aaliyah or upsell routing\n- trademark symbol (TM) or "checks" items\n- routine status, summaries, or work that simply needs no action from DeAnna\n- an issue that is already on the list below, even if the wording differs\n\nISSUES ALREADY RAISED FOR THIS AGENT (never raise again):\n${pastList}\n\nTHE WORK:\n${numbered}\n\nIf there is no real new issue, return an empty list. Output ONLY this JSON: {"priority":"normal","issues":[[3],[7,8]]}  -- "issues" is a list of issues, each issue a list of paragraph numbers. "priority" is normal, high, or critical (critical only for a true blocker).`,
-        600
+        `${GENIUS_MODE}\nYou are Raymond Holloway, Chief of Staff for DRU AI Consulting. DeAnna R. Upshaw decides what matters to her, so every issue goes to her and you rank or filter none of them. Read ${item.agent_name}'s finished work (${item.division} | task: ${item.task}) and list every place the agent states a problem, a risk, a conflict, something blocked, a decision needed, or a question for DeAnna -- whatever its size.\n\nThe work is split into numbered paragraphs. You write and reword nothing. You point at the paragraph numbers where the agent states each issue, and include every paragraph the issue needs so it reads complete.\n\nThese items stay off the list, because DeAnna has asked to leave them out:\n- "please review this draft" and other ordinary requests to look over the agent's own work\n- anything about routing to Aaliyah or upsell routing\n- trademark symbol (TM) or "checks" items\n- an issue that is already on the list below, even if the wording differs\n\nISSUES ALREADY RAISED FOR THIS AGENT:\n${pastList}\n\nTHE WORK:\n${numbered}\n\nIf the agent states no new issue, return an empty list. Output ONLY this JSON: {"priority":"normal","issues":[[3],[7,8]]}  -- "issues" is a list of issues, each issue a list of paragraph numbers. "priority" is normal, high, or critical (critical for a true blocker).`,
+        1000
       );
 
       const raymond = JSON.parse(extractJSON(rawRaymond));
