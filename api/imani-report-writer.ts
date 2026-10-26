@@ -112,11 +112,19 @@ async function gatherClientData(token: string, fr: any) {
       company: assessment?.company ?? null, role: assessment?.role ?? null,
     },
     free_assessment: assessment,
-    calculator: fr.numbers,
+    calculator: withoutNextLevelFigures(fr.numbers),
     presession_answers: presession,
     number_boxes: (numRes.data ?? []).map((n: any) => ({ field: n.field_key, item: n.item_index, value: Number(n.value) })),
     typed_names: (txtRes.data ?? []).map((t: any) => ({ field: t.field_key, item: t.item_index, value: t.value })),
   };
+}
+
+// The calculator's next_badge block carries the points figures for the next achievement level.
+// Imani receives the name of the next level only; her wording for it is built from actions.
+function withoutNextLevelFigures(numbers: any): any {
+  if (!numbers || typeof numbers !== 'object') return numbers;
+  const { next_badge, ...rest } = numbers;
+  return next_badge?.badge ? { ...rest, next_achievement_level: next_badge.badge } : rest;
 }
 
 // ── One request to Sonnet 5.5 for a batch of spots ───────────────────────────
@@ -176,7 +184,11 @@ function checkWording(entries: Entry[], clientData: unknown): { spot_key: string
   const warnings: { spot_key: string; warning: string }[] = [];
   const norm = (s: string) => s.replace(/[$,]/g, '').replace(/\.0+$/, '');
   const allowed = new Set<string>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '30', '60', '90', '15', '75', '12']);
-  for (const m of JSON.stringify(clientData).matchAll(/\d[\d,]*(\.\d+)?/g)) allowed.add(norm(m[0]));
+  const dataText = JSON.stringify(clientData);
+  for (const m of dataText.matchAll(/\d[\d,]*(\.\d+)?/g)) allowed.add(norm(m[0]));
+  // A number the client's questions spell out in words ("eighteen months") may appear as digits.
+  const numberWords: Record<string, string> = { eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17', eighteen: '18', nineteen: '19', twenty: '20', thirty: '30', forty: '40', fifty: '50', sixty: '60', ninety: '90' };
+  for (const [word, digits] of Object.entries(numberWords)) if (new RegExp('\\b' + word + '\\b', 'i').test(dataText)) allowed.add(digits);
   for (const e of entries) {
     if (!e.text) continue;
     for (const m of e.text.matchAll(/\$?\d[\d,]*(\.\d+)?/g)) {
