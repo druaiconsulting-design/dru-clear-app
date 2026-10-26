@@ -17,9 +17,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { IMANI_VOICE_GUIDE } from './_lib/imaniVoiceGuide';
-import { IMANI_JOB_DESCRIPTION, IMANI_OUTPUT_FORMAT, JOB_DESCRIPTION_VERSION } from './_lib/imaniJobDescription';
-import { getAgentCorrections } from './_lib/agentKnowledge';
+import { IMANI_VOICE_GUIDE } from './_lib/imaniVoiceGuide.js';
+import { IMANI_JOB_DESCRIPTION, IMANI_OUTPUT_FORMAT, JOB_DESCRIPTION_VERSION } from './_lib/imaniJobDescription.js';
+import { getAgentCorrections } from './_lib/agentKnowledge.js';
 
 export const config = { maxDuration: 300 };
 
