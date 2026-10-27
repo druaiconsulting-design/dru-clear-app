@@ -93,7 +93,7 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
   if (page === 8 && n.leadership) {
     const total = Number(n.leadership.leaders_total) || 0;
     const filled = Number(n.leadership.leaders_who_can) || 0;
-    body.push(<rect key="cover" x={120} y={404} width={630} height={40} fill={CREAM} />);
+    body.push(<rect key="cover" x={118} y={402} width={532} height={68} fill={CREAM} />);
     const pitch = Math.min(51.5, 600 / Math.max(total, 1));
     const sc = Math.min(1, pitch / 40);
     for (let i = 0; i < total; i++) {
@@ -117,6 +117,15 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
       body.push(<rect key={"sa" + i} x={x - 2} y={420} width={185} height={378} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
       body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={162} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
     });
+  }
+
+  // Page 9: the pre-session asks one obstacle question, so there is one "Blocked by" tile and the "Awaiting" tile moves up beside it
+  if (page === 9) {
+    body.push(<rect key="obs" x={237} y={456} width={134} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+    body.push(<rect key="rgc" x={118} y={502} width={510} height={58} fill={CREAM} />);
+    body.push(<rect key="rg" x={126} y={508} width={491} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+    body.push(<rect key="t3c" x={380} y={398} width={274} height={116} fill={CREAM} />);
+    body.push(<rect key="t3" x={388.5} y={410.5} width={100} height={91} rx={3} fill="#FFFFFF" stroke={PINK} strokeWidth={3} strokeDasharray="9 6" />);
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed
