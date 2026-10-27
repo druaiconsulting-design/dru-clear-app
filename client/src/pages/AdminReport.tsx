@@ -67,7 +67,7 @@ function lockedValues(r: ReportData): Record<string, string> {
   for (const p of PILLAR_ROWS) {
     const row = n.pillars?.[p];
     if (!row) continue;
-    v[PAGE4_ROWS[p][0]] = String(row.score); v[PAGE4_ROWS[p][1]] = String(row.label);
+    v[PAGE4_ROWS[p][0]] = `Score ${row.score}`; v[PAGE4_ROWS[p][1]] = String(row.label);
     v[PILLAR_PAGE[p][0]] = String(row.score); v[PILLAR_PAGE[p][1]] = String(row.label);
   }
   (n.ranked_gaps ?? []).forEach((g: any) => {
@@ -105,8 +105,9 @@ function lockedValues(r: ReportData): Record<string, string> {
   const badge: string = n.badge ?? "";
   if (TIER_BANDS[badge]) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${TIER_SUB[badge]} · ${TIER_BANDS[badge]}`;
   if (TIER_MESSAGES[badge]) v["record_017"] = TIER_MESSAGES[badge];
-  const gaps = (n.ranked_gaps ?? []) as { pillar: string }[];
-  if (gaps.length >= 2) v["record_015"] = `${gaps[0].pillar} · ${gaps[1].pillar}`;
+  const gaps = (n.ranked_gaps ?? []) as { pillar: string; score?: number }[];
+  const lowest = PILLAR_ROWS.filter(p => n.pillars?.[p] && Number(n.pillars[p].score) === Math.min(...PILLAR_ROWS.filter(q => n.pillars?.[q]).map(q => Number(n.pillars[q].score))));
+  if (lowest.length) v["record_015"] = gaps.length ? gaps.filter(g => lowest.includes(g.pillar)).map(g => g.pillar).join(" · ") || lowest.join(" · ") : lowest.join(" · ");
   if (badge && badge !== "LEADING" && n.next_badge?.badge) {
     v["calc_018"] = `Your results place your organization at ${badge} with ${n.scaled_percent}%. The next achievement is ${n.next_badge.badge}.`;
   }
@@ -130,12 +131,12 @@ function lockedValues(r: ReportData): Record<string, string> {
 const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
 
 // Heading words for boxes that have no heading above them, taken from the slot map
-const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean }[] = [
-  { p: 1, x: 26.4, y: 63.75, w: 47, text: "Client name" },
-  { p: 1, x: 35.8, y: 67.7, w: 28, text: "Report date" },
-  { p: 4, x: 11.04, y: 14.4, w: 15, text: "Overall score out of 100", dark: true },
-  { p: 4, x: 26.92, y: 14.4, w: 40, text: "Tier name, sub-name and band", dark: true },
-  { p: 4, x: 72.4, y: 14.4, w: 20, text: "Lowest pillars", dark: true },
+const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean; right?: boolean }[] = [
+  { p: 1, x: 26.4, y: 62.95, w: 47, text: "Client name" },
+  { p: 1, x: 10, y: 69.15, w: 25, text: "Report date", right: true },
+  { p: 4, x: 11.04, y: 14.45, w: 15, text: "Score 0-100", dark: true },
+  { p: 4, x: 26.92, y: 14.45, w: 40, text: "Tier, sub-name and band", dark: true },
+  { p: 4, x: 72.4, y: 14.45, w: 20, text: "Lowest pillars", dark: true },
 ];
 
 // Fields whose place on the page is now drawn from the client's numbers by SdReportArt.
@@ -169,6 +170,7 @@ function geometryFor(f: Field): Field {
     const top = ROW6_TOP + r.row * ROW6_H + 18;
     return { ...f, x: (c.x / 1275) * 100, w: (c.w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
   }
+  if (f.n === "record_013" || f.n === "record_014" || f.n === "record_015") return { ...f, y: 16.5, h: 2.3, s: 1.5 };
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
   if (f.n === "sd_0096_L1" || f.n === "sd_0097_L1") return { ...f, x: f.x - (156 / 1275) * 100 };
   if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
@@ -365,7 +367,7 @@ export default function AdminReport() {
             {p > 1 && <div className="hdrname">{clientName}</div>}
             <SdReportArt page={p} report={report} />
             {BOX_HEADS.filter(h => h.p === p).map(h => (
-              <div key={h.text} className={"boxhead" + (h.dark ? " dk" : "")} style={{ left: h.x + "%", top: h.y + "%", width: h.w + "%" }}>{h.text}</div>
+              <div key={h.text} className={"boxhead" + (h.dark ? " dk" : "")} style={{ left: h.x + "%", top: h.y + "%", width: h.w + "%", textAlign: h.right ? "right" : "left" }}>{h.text}</div>
             ))}
             {(byPage[p] ?? []).map(f0 => {
               if (DRAWN_BY_ART.has(f0.n)) return null;
@@ -408,7 +410,7 @@ const css = `
 .nav button:hover{background:#234577}
 main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:center;gap:22px}
 .pg{position:relative;width:min(100%,860px);aspect-ratio:612/792;container-type:inline-size;background-color:#FAFAF8;background-size:100% 100%;background-repeat:no-repeat;box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.18);scroll-margin-top:150px}
-.boxhead{position:absolute;height:1.4%;font:600 .92cqw/1.3 Poppins,sans-serif;color:#51607A;white-space:nowrap;overflow:hidden;letter-spacing:.01em}.boxhead.dk{color:#D4AF37}
+.boxhead{position:absolute;height:1.7%;font:700 1.5cqw/1.2 Poppins,sans-serif;color:#51607A;white-space:nowrap;overflow:hidden;letter-spacing:.01em}.boxhead.dk{color:#D4AF37}
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
 .f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
