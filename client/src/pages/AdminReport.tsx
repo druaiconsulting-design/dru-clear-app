@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "../lib/supabase";
 import FIELDS from "../data/sdReportFields.json";
+import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 
 // Review page for one client's Strategic AI Insight Report.
 // Only Imani's spots are editable. Calculator figures, the Gap names, fixed wording and the client's
@@ -16,6 +17,8 @@ type ReportData = {
   access_token: string; status: string; email: string; tier: string; sent_at: string | null;
   numbers: any; insight: any; first_name: string | null; last_name: string | null; company: string | null;
   edits: Record<string, string>; spots: Spot[];
+  client_texts: { field: string; item: number; value: string }[];
+  client_answers: { framework: string; pillar: string; order: number; answer: string }[];
 };
 
 const PAGE_COUNT = 16;
@@ -33,6 +36,10 @@ const PILLAR_PAGE: Record<string, [string, string]> = {
 const GAP_CELLS = ["agent_019", "agent_022", "agent_025", "agent_028", "agent_031"];
 const GAP_CELLS_P16 = ["calc_163", "calc_164", "calc_165", "calc_166", "calc_167"];
 
+const TIERS: Record<string, { sub: string; band: string }> = {
+  EMERGING: { sub: "Explorer", band: "0 to 40" }, DEVELOPING: { sub: "Adapter", band: "41 to 60" },
+  ADVANCING: { sub: "Implementer", band: "61 to 80" }, LEADING: { sub: "Builder", band: "81 to 100" },
+};
 const money = (n: number) => "$" + Number(n).toLocaleString("en-US");
 
 function longDate(iso: string | undefined): string {
@@ -87,7 +94,99 @@ function lockedValues(r: ReportData): Record<string, string> {
     (n.results.initiatives ?? []).slice(0, 3).forEach((it: any, i: number) => { v[cells[i]] = money(it.value); });
     v["calc_120"] = money(n.results.total_value);
   }
+  // Tier line, lowest pillars and the next-achievement sentence
+  const badge: string = n.badge ?? "";
+  const tierInfo = TIERS[badge];
+  if (tierInfo) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${tierInfo.sub} · ${tierInfo.band}`;
+  const gaps = (n.ranked_gaps ?? []) as { pillar: string }[];
+  if (gaps.length >= 2) v["record_015"] = `${gaps[0].pillar} · ${gaps[1].pillar}`;
+  if (badge && badge !== "LEADING" && n.next_badge?.badge) {
+    v["calc_018"] = `Your results place your organization at ${badge} with ${n.scaled_percent}%. The next achievement is ${n.next_badge.badge}.`;
+  }
+  if (n.leadership) {
+    v["calc_061"] = `x 4 quarters of the year: ${n.leadership.postponed_decisions_x4} · ${n.leadership.delayed_initiatives_x4} · ${n.leadership.missed_cycles_x4}`;
+  }
+  // The client's own typed words
+  const pilot = (r.client_texts ?? []).find(t => t.field === "execution_pilot_name")?.value ?? "";
+  if (pilot) v["answer_080"] = pilot;
+  const ans = (fw: string, pillar: string, order: number) =>
+    (r.client_answers ?? []).find(a => a.framework === fw && a.pillar === pillar && a.order === order)?.answer ?? "";
+  const objective = ans("CLEAR", "Alignment", 1);
+  if (objective) v["answer_099"] = objective;
+  const obstacle = ans("CLEAR", "Execution", 1);
+  if (obstacle) v["answer_075"] = obstacle;
   return v;
+}
+
+
+// Fields whose place on the page is now drawn from the client's numbers by SdReportArt.
+const DRAWN_BY_ART = new Set<string>([
+  "record_036", "record_051", "record_069", "record_088", "record_108",
+  "record_141", "record_142", "record_143", "record_144", "record_145",
+  "align_dept1_name", "align_dept1_hours", "align_dept2_name", "align_dept2_hours", "align_dept3_name", "align_dept3_hours",
+  "align_dept4_name", "align_dept4_hours", "align_dept_total",
+  "answer_115", "answer_117", "answer_119", "calc_120", "sd_res_label1", "sd_res_label2", "sd_res_label3",
+]);
+
+// Page 6 rows grow with Imani's wording, so the cells are laid out again here.
+const PAGE6_ROWS: Record<string, { col: number; row: number }> = {};
+["agent_019", "agent_022", "agent_025", "agent_028", "agent_031"].forEach((k, i) => { PAGE6_ROWS[k] = { col: 0, row: i }; });
+["answer_020", "answer_023", "answer_026", "answer_029", "answer_032"].forEach((k, i) => { PAGE6_ROWS[k] = { col: 1, row: i }; });
+["agent_021", "agent_024", "agent_027", "agent_030", "agent_033"].forEach((k, i) => { PAGE6_ROWS[k] = { col: 2, row: i }; });
+const PAGE6_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
+
+function geometryFor(f: Field): Field {
+  const r = PAGE6_ROWS[f.n];
+  if (r) {
+    const c = PAGE6_COLS[r.col];
+    const top = ROW6_TOP + r.row * ROW6_H + 18;
+    return { ...f, x: (c.x / 1275) * 100, w: (c.w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
+  }
+  if (f.n === "sd_0054") return { ...f, y: (212 / 1650) * 100, h: (58 / 1650) * 100, ml: true };
+  return f;
+}
+
+// One text box. Wording longer than its space shrinks to fit (down to 55%) and is flagged when it still does not fit.
+function FitField({ f, value, p, editable, imani, onChange, onBlur }: {
+  f: Field; value: string; p: number; editable: boolean; imani: boolean; onChange: (v: string) => void; onBlur: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+  const fit = () => {
+    const el = ref.current;
+    if (!el || !imani) return;
+    let lo = 0.55, hi = 1, best = lo, fits = false;
+    const overflows = () => (f.ml ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1);
+    el.style.setProperty("--k", "1");
+    if (!overflows()) { setOver(false); return; }
+    for (let i = 0; i < 9; i++) {
+      const mid = (lo + hi) / 2;
+      el.style.setProperty("--k", String(mid));
+      if (overflows()) hi = mid; else { best = mid; lo = mid; fits = true; }
+    }
+    el.style.setProperty("--k", String(fits ? best : 0.55));
+    setOver(!fits);
+  };
+  useLayoutEffect(() => { fit(); });
+  useEffect(() => {
+    const host = ref.current?.parentElement;
+    if (!host || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, []);
+  const style: CSSProperties = {
+    ["--x" as any]: f.x, ["--y" as any]: f.y, ["--w" as any]: f.w, ["--h" as any]: f.h, ["--s" as any]: f.s,
+    ["--c" as any]: f.c, ["--ff" as any]: `"${f.f}"`, ["--fw" as any]: f.wt, ["--fs" as any]: f.it ? "italic" : "normal",
+  };
+  const common = {
+    ref, style, spellCheck: false, autoComplete: "off" as const, "aria-label": `Page ${p} ${f.n}`,
+    className: "f" + (imani ? " edit" : "") + (over ? " over" : ""),
+    title: over ? "This wording is longer than the space on the page. Shorten it to fit." : undefined,
+  };
+  return f.ml
+    ? <textarea {...common} value={value} readOnly={!editable} onChange={e => onChange(e.target.value)} onBlur={onBlur} />
+    : <input type="text" {...common} value={value} readOnly={!editable} onChange={e => onChange(e.target.value)} onBlur={onBlur} />;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -228,27 +327,22 @@ export default function AdminReport() {
           <section key={p} id={"rp" + p} className="pg" aria-label={"Page " + p}
             style={{ backgroundImage: `url("/report-pages/p-${String(p).padStart(2, "0")}.png")` }}>
             {p > 1 && <div className="hdrname">{clientName}</div>}
-            {(byPage[p] ?? []).map(f => {
+            <SdReportArt page={p} report={report} />
+            {(byPage[p] ?? []).map(f0 => {
+              if (DRAWN_BY_ART.has(f0.n)) return null;
+              const f = geometryFor(f0);
               const isImani = editableKeys.has(f.n);
               const isLockedCell = f.n in locked;
               const isFixed = f.n.startsWith("sd_");
-              // Imani's spots and locked figures show their content; every other template slot stays empty.
+              // Imani's spots, locked figures and fixed wording show their content; every other template slot stays empty.
               if (!isFixed && !isImani && !isLockedCell) return null;
-              // Gap names are Imani-table spots that the calculator fills.
-              const value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
-              const style: CSSProperties = {
-                ["--x" as any]: f.x, ["--y" as any]: f.y, ["--w" as any]: f.w, ["--h" as any]: f.h, ["--s" as any]: f.s,
-                ["--c" as any]: f.c, ["--ff" as any]: `"${f.f}"`, ["--fw" as any]: f.wt, ["--fs" as any]: f.it ? "italic" : "normal",
-              };
-              const common = { className: "f" + (isImani ? " edit" : ""), style, spellCheck: false, autoComplete: "off" as const, "aria-label": `Page ${p} ${f.n}` };
-              if (isImani && canEdit) {
-                return f.ml
-                  ? <textarea key={f.n} {...common} value={value} onChange={e => onEdit(f.n, e.target.value)} onBlur={() => flush(f.n, valueFor(f.n))} />
-                  : <input key={f.n} type="text" {...common} value={value} onChange={e => onEdit(f.n, e.target.value)} onBlur={() => flush(f.n, valueFor(f.n))} />;
-              }
-              return f.ml
-                ? <textarea key={f.n} {...common} value={value} readOnly />
-                : <input key={f.n} type="text" {...common} value={value} readOnly />;
+              let value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
+              if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
+              return (
+                <FitField key={f.n} f={f} value={value} p={p}
+                  editable={isImani && canEdit} imani={isImani}
+                  onChange={v => onEdit(f.n, v)} onBlur={() => flush(f.n, valueFor(f.n))} />
+              );
             })}
           </section>
         ))}
@@ -276,9 +370,10 @@ const css = `
 main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:center;gap:22px}
 .pg{position:relative;width:min(100%,860px);aspect-ratio:612/792;container-type:inline-size;background-color:#FAFAF8;background-size:100% 100%;background-repeat:no-repeat;box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.18);scroll-margin-top:150px}
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
-.f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
+.f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
 .f[readonly]{cursor:default}
+.f.over{box-shadow:inset 0 0 0 2px #E53935 !important}
 .f.edit:not([readonly]):hover{box-shadow:inset 0 0 0 1px rgba(194,24,91,.55)}
 .f.edit:not([readonly]):focus{box-shadow:inset 0 0 0 2px #C2185B;background:rgba(255,255,255,.88)}
 `;
