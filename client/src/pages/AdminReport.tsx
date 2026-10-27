@@ -462,7 +462,6 @@ export default function AdminReport() {
               if (!isFixed && !isImani && !isLockedCell) return null;
               if (TILE_WORDS.has(f.n) && !isLockedCell) return null;
               let value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
-              if (f.n === "sd_0012") value = value.replace("scores from 3 to 15", "scores from 1 to 15");
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
               return (
                 <FitField key={f.n} f={f} value={value} p={p}
