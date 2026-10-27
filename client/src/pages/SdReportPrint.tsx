@@ -95,7 +95,6 @@ export default function SdReportPrint() {
               if (!isFixed && !isImani && !isLockedCell) return null;
               if (TILE_WORDS.has(f.n) && !isLockedCell) return null;
               let value = isImani ? textFor(f.n) : isLockedCell ? locked[f.n] : f.d;
-              if (f.n === "sd_0012") value = value.replace("scores from 3 to 15", "scores from 1 to 15");
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
               if (!value) return null;
               // The review copy colours slots by type (pink, gold, green). The client copy reads in one ink: navy, with GAP in magenta like its bar.

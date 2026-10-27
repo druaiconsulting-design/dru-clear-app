@@ -79,13 +79,13 @@ export default function SdReportArt({ page, report, clean = false }: { page: num
     const ys = [402, 450, 498, 546, 594];
     ["Clarity", "Leadership", "Execution", "Alignment", "Results"].forEach((p, i) => {
       const sc = score(p);
-      const w = (Math.max(sc - 1, 0) / 14) * 507;
+      const w = (Math.max(sc - 3, 0) / 12) * 507;
       body.push(<rect key={"t" + i} x={264} y={ys[i]} width={507} height={31} rx={6} fill={TRACK} />);
       if (w > 0) body.push(<rect key={"f" + i} x={264} y={ys[i]} width={Math.max(w, 6)} height={31} rx={6} fill={pillarColor(sc)} />);
     });
-    body.push(<text key="a1" x={264} y={656} fontFamily={FONT} fontSize={13} fill="#7A7A7A">1</text>);
+    body.push(<text key="a1" x={264} y={656} fontFamily={FONT} fontSize={13} fill="#7A7A7A">3</text>);
     body.push(<text key="a15" x={791} y={656} textAnchor="end" fontFamily={FONT} fontSize={13} fill="#7A7A7A">15</text>);
-    body.push(<line key="gl" x1={662.3} y1={382} x2={662.3} y2={634} stroke={GOLD} strokeOpacity={0.65} strokeWidth={2} strokeDasharray="7 5" />);
+    body.push(<line key="gl" x1={644.25} y1={382} x2={644.25} y2={634} stroke={GOLD} strokeOpacity={0.65} strokeWidth={2} strokeDasharray="7 5" />);
   }
 
   // Pillar pages: the score ring
