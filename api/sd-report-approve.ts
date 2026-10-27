@@ -97,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { data: report, error: rErr } = await sb.rpc('sd_report_core', { p_token: token });
     if (rErr || !report) throw new Error(rErr?.message || 'The report data could not be read.');
-    const email = String(report.email || '').trim();
+    const email = String(report.send_to || report.email || '').trim();
     if (!email) throw new Error('This client has no email address on file.');
 
     let path: string | null = claim.report_file_path;

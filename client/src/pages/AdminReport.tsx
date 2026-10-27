@@ -15,7 +15,7 @@ export type Field = {
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
 export type ReportData = {
   access_token: string; status: string; email: string; tier: string; sent_at: string | null;
-  approved_at?: string | null; send_error?: string | null; send_attempts?: number; has_pdf?: boolean;
+  approved_at?: string | null; send_error?: string | null; send_attempts?: number; has_pdf?: boolean; send_to?: string;
   numbers: any; insight: any; first_name: string | null; last_name: string | null; company: string | null;
   edits: Record<string, string>; spots: Spot[];
   client_texts: { field: string; item: number; value: string }[];
@@ -347,7 +347,7 @@ export default function AdminReport() {
     return () => window.removeEventListener("beforeunload", h);
   });
 
-  const clientEmail = report?.email ?? "";
+  const clientEmail = report?.send_to ?? report?.email ?? "";
 
   // Saves any wording still waiting, locks the report, builds the PDF and sends the email (all on the server).
   const sendReport = async () => {
