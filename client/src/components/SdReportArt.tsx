@@ -51,7 +51,12 @@ function Ring({ cx, cy, score }: { cx: number; cy: number; score: number }) {
   );
 }
 
-export default function SdReportArt({ page, report }: { page: number; report: ArtReport }) {
+export default function SdReportArt({ page, report, clean = false }: { page: number; report: ArtReport; clean?: boolean }) {
+  // The review page draws dashed marker boxes where wording goes. The client copy draws none of them.
+  // keep = a light plate that stays (on a dark band or a gold tile), drawn solid.
+  const mk = (fill: string, stroke: string, dash: string, sw = 1, keep = false) =>
+    clean ? (keep ? { fill, stroke: "none" } : { fill: "none", stroke: "none" }) : { fill, stroke, strokeWidth: sw, strokeDasharray: dash };
+  const PAGES = clean ? "/report-pages-clean/" : "/report-pages/";
   const n = report.numbers ?? {};
   const pillars = n.pillars ?? {};
   const score = (p: string): number => Number(pillars[p]?.score ?? 0);
@@ -119,7 +124,7 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
   if (page === 4) {
     body.push(<rect key="bn" x={98} y={236} width={1078} height={78} fill={NAVY} />);
     [[136, 146], [338, 524], [918, 221]].forEach(([x, w], i) => {
-      body.push(<rect key={"bx" + i} x={x} y={268} width={w} height={42} rx={5} fill="#E4E9F2" stroke="#3B4F69" strokeWidth={1.5} strokeDasharray="5 3" />);
+      body.push(<rect key={"bx" + i} x={x} y={268} width={w} height={42} rx={5} {...mk("#E4E9F2", "#3B4F69", "5 3", 1.5, true)} />);
     });
   }
 
@@ -128,7 +133,7 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     [15.4508, 31.2563, 46.1907, 62.4318, 77.8018].forEach((pct, i) => {
       const fy = (pct / 100) * 1650;
       body.push(<rect key={"lc" + i} x={897} y={fy - 9} width={270} height={40} fill="#FFFFFF" />);
-      body.push(<rect key={"ln" + i} x={779} y={fy - 10} width={382} height={48} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+      body.push(<rect key={"ln" + i} x={779} y={fy - 10} width={382} height={48} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
     });
   }
 
@@ -136,19 +141,19 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
   if (page === 15) {
     [107, 327, 547, 767, 987].forEach((x, i) => {
       body.push(<rect key={"sc" + i} x={x - 6} y={414} width={193} height={570} fill={CREAM_PG15} />);
-      body.push(<rect key={"sa" + i} x={x - 2} y={420} width={185} height={378} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
-      body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={162} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+      body.push(<rect key={"sa" + i} x={x - 2} y={420} width={185} height={378} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
+      body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={162} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
     });
   }
 
   // Page 9: the tile section is taller so every heading and answer has room. Everything below it moves down by 124.
   if (page === 9) {
     const hasStage = (report.client_answers ?? []).some(a => a.framework === "CLEAR" && a.pillar === "Execution" && a.order === 3 && a.answer);
-    const box = (key: string, x: number, y: number, w: number, h: number) =>
-      <rect key={key} x={x} y={y} width={w} height={h} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />;
+    const box = (key: string, x: number, y: number, w: number, h: number, keep = false) =>
+      <rect key={key} x={x} y={y} width={w} height={h} rx={5} {...mk("#FBF1CF", "#D9B84A", "5 3", 1, keep)} />;
     body.push(
       <svg key="slice" x={0} y={683} width={1275} height={742} viewBox="0 559 1275 742">
-        <image href="/report-pages/p-09.png" x={0} y={0} width={1275} height={1650} />
+        <image href={PAGES + "p-09.png"} x={0} y={0} width={1275} height={1650} />
       </svg>
     );
     body.push(<rect key="ext" x={101} y={556} width={1079} height={128} fill={CREAM} />);
@@ -158,10 +163,10 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     body.push(<rect key="oldtiles" x={101} y={398} width={560} height={160} fill={CREAM} />);
     body.push(<rect key="t1" x={126} y={409} width={130} height={131} fill={NAVY} />);
     body.push(<rect key="t2" x={268} y={409} width={180} height={131} fill={GOLD_TILE} />);
-    body.push(box("a2", 278, 460, 160, 70));
+    body.push(box("a2", 278, 460, 160, 70, true));
     if (hasStage) {
       body.push(<rect key="t3" x={460} y={409} width={180} height={131} fill={GOLD_TILE} />);
-      body.push(box("a3", 470, 466, 160, 64));
+      body.push(box("a3", 470, 466, 160, 64, true));
     }
     body.push(box("rg", 126, 560, 582, 112));
   }
@@ -169,8 +174,8 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
   // Page 10: the objective and the agent line sit in two boxes of the same size
   if (page === 10) {
     body.push(<rect key="oc" x={655} y={388} width={510} height={92} fill={CREAM} />);
-    body.push(<rect key="ob" x={663} y={394} width={492} height={84} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-    body.push(<rect key="ag" x={663} y={492} width={492} height={84} rx={5} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+    body.push(<rect key="ob" x={663} y={394} width={492} height={84} rx={5} {...mk("#FBF1CF", "#D9B84A", "5 3")} />);
+    body.push(<rect key="ag" x={663} y={492} width={492} height={84} rx={5} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed
@@ -181,13 +186,13 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     const h = Math.max(pitch - 14, 20);
     deps.forEach((d, i) => {
       const y = 410 + i * pitch;
-      body.push(<rect key={"n" + i} x={126} y={y} width={261} height={h} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+      body.push(<rect key={"n" + i} x={126} y={y} width={261} height={h} rx={5} {...mk("#FBF1CF", "#D9B84A", "5 3")} />);
       body.push(<text key={"nt" + i} x={138} y={y + h / 2 + 5} fontFamily={FONT} fontSize={15} fill="#7A5C00">{d.department}</text>);
-      body.push(<rect key={"h" + i} x={406} y={y} width={121} height={h} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+      body.push(<rect key={"h" + i} x={406} y={y} width={121} height={h} rx={5} {...mk("#FBF1CF", "#D9B84A", "5 3")} />);
       body.push(<text key={"ht" + i} x={418} y={y + h / 2 + 5} fontFamily={FONT} fontSize={15} fill="#7A5C00">{d.hours}</text>);
     });
     const ty = 410 + deps.length * pitch + 4;
-    body.push(<rect key="tb" x={126} y={ty} width={401} height={h} rx={5} fill="#E2F2E6" stroke="#5BAA6E" strokeDasharray="5 3" />);
+    body.push(<rect key="tb" x={126} y={ty} width={401} height={h} rx={5} {...mk("#E2F2E6", "#5BAA6E", "5 3")} />);
     body.push(<text key="tt" x={138} y={ty + h / 2 + 5} fontFamily={FONT} fontSize={15} fill="#2E7D46">{n.alignment.total_hours} hours in total</text>);
   }
 
@@ -209,7 +214,7 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
       body.push(<text key={"v" + i} x={inside ? 308 : 300 + w + 8} y={y + h / 2 + 5} fontFamily={FONT} fontWeight={700} fontSize={Math.min(14, h * 0.65)} fill={inside ? "#FFFFFF" : NAVY}>{label}</text>);
     });
     const ty = 405 + inits.length * pitch + 8;
-    body.push(<rect key="tb" x={126} y={ty} width={475} height={30} rx={5} fill="#E2F2E6" stroke="#5BAA6E" strokeDasharray="5 3" />);
+    body.push(<rect key="tb" x={126} y={ty} width={475} height={30} rx={5} {...mk("#E2F2E6", "#5BAA6E", "5 3")} />);
     body.push(<text key="tt" x={138} y={ty + 20} fontFamily={FONT} fontSize={15} fill="#2E7D46">{money(n.results.total_value)} in total</text>);
   }
 
@@ -233,9 +238,9 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
       const y = ROW6_TOP + i * ROW6_H;
       body.push(<rect key={"r" + i} x={93} y={y} width={1089} height={ROW6_H} fill={i % 2 === 0 ? "#FFFFFF" : CREAM} />);
       body.push(<text key={"nr" + i} x={108} y={y + 34} fontFamily={FONT} fontWeight={700} fontSize={17} fill={NAVY}>{i + 1}</text>);
-      body.push(<rect key={"g" + i} x={152} y={y + 14} width={200} height={ROW6_H - 28} rx={6} fill="#E2F2E6" stroke="#5BAA6E" strokeDasharray="5 3" />);
-      body.push(<rect key={"e" + i} x={385} y={y + 14} width={335} height={ROW6_H - 28} rx={6} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-      body.push(<rect key={"w" + i} x={752} y={y + 14} width={415} height={ROW6_H - 28} rx={6} fill="#FCE3EC" stroke={MAGENTA} strokeDasharray="5 3" />);
+      body.push(<rect key={"g" + i} x={152} y={y + 14} width={200} height={ROW6_H - 28} rx={6} {...mk("#E2F2E6", "#5BAA6E", "5 3")} />);
+      body.push(<rect key={"e" + i} x={385} y={y + 14} width={335} height={ROW6_H - 28} rx={6} {...mk("#FBF1CF", "#D9B84A", "5 3")} />);
+      body.push(<rect key={"w" + i} x={752} y={y + 14} width={415} height={ROW6_H - 28} rx={6} {...mk("#FCE3EC", MAGENTA, "5 3")} />);
     }
     body.push(<line key="l1" x1={367} y1={ROW6_TOP} x2={367} y2={ROW6_TOP + 5 * ROW6_H} stroke="#E5E0D0" />);
     body.push(<line key="l2" x1={737} y1={ROW6_TOP} x2={737} y2={ROW6_TOP + 5 * ROW6_H} stroke="#E5E0D0" />);
