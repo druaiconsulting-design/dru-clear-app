@@ -20,8 +20,7 @@
       "maxDuration": 30
     },
     "api/sd-report-approve.ts": {
-      "maxDuration": 300,
-      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+      "maxDuration": 300
     }
   },
   "rewrites": [
