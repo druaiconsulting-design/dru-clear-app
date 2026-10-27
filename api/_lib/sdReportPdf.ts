@@ -36,7 +36,11 @@ export async function buildSdReportPdf(data: unknown): Promise<{ pdf: Buffer; ov
     if (pages !== 16) throw new Error(`The report page drew ${pages} pages instead of 16.`);
     const overLength = await page.evaluate(() => document.querySelectorAll('.f.over').length);
     const pdf = await page.pdf({ width: '8.5in', height: '11in', printBackground: true, preferCSSPageSize: true });
-    return { pdf: Buffer.from(pdf), overLength };
+    const buf = Buffer.from(pdf);
+    // The PDF must hold all 16 pages. A short PDF is never stored or sent.
+    const made = (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    if (made !== 16) throw new Error(`The PDF came out with ${made} pages instead of 16, so it was not sent.`);
+    return { pdf: buf, overLength };
   } finally {
     await browser.close();
   }
