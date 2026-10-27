@@ -10,7 +10,7 @@ const PAGE_BG = "#FAFAF8";
 const CREAM = "#F5EFE0";
 const FONT = "Poppins, 'Segoe UI', sans-serif";
 
-export type ArtReport = { numbers: any; first_name?: string | null };
+export type ArtReport = { numbers: any; first_name?: string | null; client_answers?: { framework: string; pillar: string; order: number; answer: string }[] };
 
 const pillarColor = (score: number) => (score >= 12 ? NAVY : MAGENTA);
 const money = (n: number) => "$" + Number(n).toLocaleString("en-US");
@@ -101,6 +101,17 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     }
   }
 
+  // Page 1: the legend of slot types is for the working copy only
+  if (page === 1) {
+    body.push(<rect key="lg" x={150} y={1408} width={975} height={110} fill={PAGE_BG} />);
+  }
+
+  // Pages 2 to 16: the footer carries the copyright line and the page number
+  if (page >= 2) {
+    body.push(<rect key="ft" x={200} y={1604} width={875} height={40} fill={NAVY} />);
+    body.push(<text key="ftt" x={637.5} y={1628} textAnchor="middle" fontFamily={FONT} fontSize={13} fill="#FFFFFF">{`© 2026 DRU AI Consulting · Confidential | Page ${page} / 16`}</text>);
+  }
+
   // Page 4: the banner is redrawn so its heading words are large enough to read
   if (page === 4) {
     body.push(<rect key="bn" x={98} y={236} width={1078} height={78} fill={NAVY} />);
@@ -133,7 +144,8 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     body.push(<rect key="rgc" x={118} y={502} width={510} height={58} fill={CREAM} />);
     body.push(<rect key="rg" x={126} y={508} width={491} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
     body.push(<rect key="t3c" x={380} y={398} width={274} height={116} fill={CREAM} />);
-    body.push(<rect key="t3" x={388.5} y={410.5} width={100} height={91} rx={3} fill="#FFFFFF" stroke={PINK} strokeWidth={3} strokeDasharray="9 6" />);
+    if ((report.client_answers ?? []).some(a => a.framework === "CLEAR" && a.pillar === "Execution" && a.order === 3 && a.answer))
+      body.push(<rect key="t3" x={388.5} y={410.5} width={100} height={91} rx={3} fill="#FFFFFF" stroke={PINK} strokeWidth={3} strokeDasharray="9 6" />);
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed

@@ -9,7 +9,7 @@ import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 // own responses are shown locked. Each edit is saved as it is typed, beside Imani's original wording.
 
 type Field = {
-  n: string; p: number; x: number; y: number; w: number; h: number; s: number;
+  n: string; p: number; x: number; y: number; w: number; h: number; s: number; ctr?: boolean;
   c: string; f: string; wt: number; it: boolean; ml: boolean; d: string;
 };
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
@@ -114,6 +114,11 @@ function lockedValues(r: ReportData): Record<string, string> {
   if (n.leadership) {
     v["calc_061"] = `x 4 quarters of the year: ${n.leadership.postponed_decisions_x4} · ${n.leadership.delayed_initiatives_x4} · ${n.leadership.missed_cycles_x4}`;
   }
+  // Execution tiles: the number of regions reached and the stage where the last three attempts stopped
+  if (n.execution?.regions_reached != null) {
+    v["sd_0093_L1"] = String(n.execution.regions_reached);
+    v["sd_0093_L2"] = Number(n.execution.regions_reached) === 1 ? "region" : "regions";
+  }
   // The client's own typed words
   const pilot = (r.client_texts ?? []).find(t => t.field === "execution_pilot_name")?.value ?? "";
   if (pilot) v["answer_080"] = pilot;
@@ -123,11 +128,16 @@ function lockedValues(r: ReportData): Record<string, string> {
   if (objective) v["answer_099"] = objective;
   const obstacle = ans("CLEAR", "Execution", 1);
   if (obstacle) v["answer_075"] = obstacle;
+  const stage = ans("CLEAR", "Execution", 3);
+  if (stage) { v["sd_0096_L1"] = "Last three attempts stopped at"; v["sd_0097_L1"] = stage; }
   return v;
 }
 
 
 // The word printed under each badge picture
+// Tile words that show only when the pre-session feeds them
+const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0096_L1", "sd_0097_L1"]);
+
 const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
 
 // Heading words for boxes that have no heading above them, taken from the slot map
@@ -172,7 +182,11 @@ function geometryFor(f: Field): Field {
   }
   if (f.n === "record_013" || f.n === "record_014" || f.n === "record_015") return { ...f, y: 16.5, h: 2.3, s: 1.5 };
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
-  if (f.n === "sd_0096_L1" || f.n === "sd_0097_L1") return { ...f, x: f.x - (156 / 1275) * 100 };
+  if (f.n === "sd_0093_L1") return { ...f, x: 9.95, w: 7.3, y: 26.95, h: 2.2, s: 1.9, wt: 700, ctr: true, ml: false };
+  if (f.n === "sd_0093_L2") return { ...f, x: 9.95, w: 7.3, y: 28.85, h: 1.4, s: 1.0, ctr: true, ml: false };
+  if (f.n === "sd_0096_L1") return { ...f, x: 30.7, w: 7.4, y: 25.25, h: 3.4, s: 0.95, ctr: true, ml: true };
+  if (f.n === "sd_0097_L1") return { ...f, x: 30.7, w: 7.4, y: 28.55, h: 1.7, s: 1.2, wt: 700, ctr: true, ml: false };
+  if (f.n === "sd_0003_L1") return { ...f, x: 27, w: 46, ml: false };
   if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
   if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
   if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
@@ -219,7 +233,7 @@ function FitField({ f, value, p, editable, imani, fitText, onChange, onBlur }: {
   };
   const common = {
     ref, style, spellCheck: false, autoComplete: "off" as const, "aria-label": `Page ${p} ${f.n}`,
-    className: "f" + (imani ? " edit" : "") + (over ? " over" : ""),
+    className: "f" + (imani ? " edit" : "") + (over ? " over" : "") + (f.ctr ? " ctr" : ""),
     title: over ? "This wording is longer than the space on the page. Shorten it to fit." : undefined,
   };
   return f.ml
@@ -377,6 +391,7 @@ export default function AdminReport() {
               const isFixed = f.n.startsWith("sd_");
               // Imani's spots, locked figures and fixed wording show their content; every other template slot stays empty.
               if (!isFixed && !isImani && !isLockedCell) return null;
+              if (TILE_WORDS.has(f.n) && !isLockedCell) return null;
               let value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
               return (
@@ -414,7 +429,7 @@ main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:cente
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
 .f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
-.f[readonly]{cursor:default}
+.f.ctr{text-align:center}.f[readonly]{cursor:default}
 .f.over{box-shadow:inset 0 0 0 2px #E53935 !important}
 .f.edit:not([readonly]):hover{box-shadow:inset 0 0 0 1px rgba(194,24,91,.55)}
 .f.edit:not([readonly]):focus{box-shadow:inset 0 0 0 2px #C2185B;background:rgba(255,255,255,.88)}
