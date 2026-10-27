@@ -30,6 +30,7 @@ function Person({ cx, top, scale, filled }: { cx: number; top: number; scale: nu
   );
 }
 
+const GOLD_TILE = "#D4AF37";
 const PINK_FILL = "#FCE3EC", PINK = "#C2185B", CREAM_PG15 = "#F5EFE0";
 
 function Ring({ cx, cy, score }: { cx: number; cy: number; score: number }) {
@@ -140,20 +141,36 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     });
   }
 
-  // Page 9: three tiles at most. "Blocked by" and "Last three attempts stopped at" are each a heading over an answer box; a tile with no answer is not drawn
+  // Page 9: the tile section is taller so every heading and answer has room. Everything below it moves down by 124.
   if (page === 9) {
     const hasStage = (report.client_answers ?? []).some(a => a.framework === "CLEAR" && a.pillar === "Execution" && a.order === 3 && a.answer);
-    body.push(<rect key="obs" x={237} y={456} width={134} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-    body.push(<rect key="rgc" x={118} y={502} width={510} height={58} fill={CREAM} />);
-    body.push(<rect key="rg" x={126} y={508} width={491} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-    body.push(<rect key="t4c" x={538} y={398} width={116} height={116} fill={CREAM} />);
-    if (hasStage) body.push(<rect key="stg" x={392} y={456} width={134} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-    else body.push(<rect key="t3c" x={380} y={398} width={160} height={116} fill={CREAM} />);
+    const box = (key: string, x: number, y: number, w: number, h: number) =>
+      <rect key={key} x={x} y={y} width={w} height={h} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />;
+    body.push(
+      <svg key="slice" x={0} y={683} width={1275} height={742} viewBox="0 559 1275 742">
+        <image href="/report-pages/p-09.png" x={0} y={0} width={1275} height={1650} />
+      </svg>
+    );
+    body.push(<rect key="ext" x={101} y={556} width={1079} height={128} fill={CREAM} />);
+    body.push(<rect key="extl" x={93} y={556} width={8} height={128} fill="#C2185B" />);
+    body.push(<rect key="extr1" x={1180} y={556} width={1} height={128} fill="#EEEADC" />);
+    body.push(<rect key="extr2" x={1181} y={556} width={1} height={128} fill="#E6DFCA" />);
+    body.push(<rect key="oldtiles" x={101} y={398} width={560} height={160} fill={CREAM} />);
+    body.push(<rect key="t1" x={126} y={409} width={130} height={131} fill={NAVY} />);
+    body.push(<rect key="t2" x={268} y={409} width={180} height={131} fill={GOLD_TILE} />);
+    body.push(box("a2", 278, 460, 160, 70));
+    if (hasStage) {
+      body.push(<rect key="t3" x={460} y={409} width={180} height={131} fill={GOLD_TILE} />);
+      body.push(box("a3", 470, 466, 160, 64));
+    }
+    body.push(box("rg", 126, 560, 582, 112));
   }
 
-  // Page 10: the agent line under the business objective gets a roomier box
+  // Page 10: the objective and the agent line sit in two boxes of the same size
   if (page === 10) {
-    body.push(<rect key="ag" x={663} y={437} width={492} height={98} rx={5} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+    body.push(<rect key="oc" x={655} y={388} width={510} height={92} fill={CREAM} />);
+    body.push(<rect key="ob" x={663} y={394} width={492} height={84} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+    body.push(<rect key="ag" x={663} y={492} width={492} height={84} rx={5} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed
