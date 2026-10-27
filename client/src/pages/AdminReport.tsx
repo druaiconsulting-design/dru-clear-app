@@ -182,18 +182,26 @@ function geometryFor(f: Field): Field {
   }
   if (f.n === "record_013" || f.n === "record_014" || f.n === "record_015") return { ...f, y: 16.5, h: 2.3, s: 1.5 };
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
+  // Page 9: everything below the tile section moves down 124 to give the tiles room
+  if (f.p === 9 && f.y >= 33.8) return { ...f, y: f.y + 7.515 };
+  const T9: Record<string, Partial<Field>> = {
+    sd_0092_L1: { x: 9.88, w: 10.2, y: 25.55, h: 2.3, s: 1.6, ctr: true },
+    sd_0093_L1: { x: 9.88, w: 10.2, y: 28.0, h: 3.1, s: 2.6, wt: 700, ctr: true, ml: false },
+    sd_0093_L2: { x: 9.88, w: 10.2, y: 30.7, h: 1.6, s: 1.2, ctr: true, ml: false },
+    sd_0094_L1: { x: 21.0, w: 14.1, y: 25.55, h: 2.3, s: 1.6, ctr: true },
+    answer_075: { x: 21.8, w: 12.6, y: 27.95, h: 3.9, s: 1.2, ml: true },
+    sd_0095_L1: { x: 36.08, w: 14.1, y: 25.2, h: 3.4, s: 1.35, ctr: true, ml: true },
+    answer_076: { x: 36.9, w: 12.6, y: 28.4, h: 3.5, s: 1.3, ml: true },
+    answer_077: { x: 10.3, w: 44.4, y: 34.2, h: 6.2, s: 1.5, ml: true },
+    answer_099: { y: 25.2, h: 3.4, s: 1.4, ml: true },
+    agent_100: { y: 30.6, h: 3.7, s: 1.3, ml: true },
+  };
+  if (T9[f.n]) return { ...f, ...T9[f.n] };
   if (f.n === "sd_0048") return { ...f, x: f.x + 1.41 };
-  if (f.n === "sd_0093_L1") return { ...f, x: 9.95, w: 7.3, y: 26.95, h: 2.2, s: 1.9, wt: 700, ctr: true, ml: false };
-  if (f.n === "sd_0093_L2") return { ...f, x: 9.95, w: 7.3, y: 28.85, h: 1.4, s: 1.0, ctr: true, ml: false };
-  if (f.n === "sd_0095_L1") return { ...f, x: 30.5, w: 11.1, y: 25.3, h: 2.5, s: 1.02, ctr: true, ml: true };
-  if (f.n === "answer_076") return { ...f, y: 27.95, h: 2.8, ml: true };
-  if (f.n === "agent_100") return { ...f, y: 26.7, h: 5.2, s: 1.24, ml: true };
   if (f.n === "sd_0003_L1") return { ...f, x: 27, w: 46, ml: false };
   if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
   if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
   if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
-  if (f.n === "answer_075") return { ...f, y: 27.95, h: 2.8, ml: true };
-  if (f.n === "answer_077") return { ...f, y: 30.95, h: 2.4, ml: true };
   if (CAPTION2.has(f.n)) return { ...f, y: 14.65, h: 2.1, ml: true };
   if (f.n === "sd_0054") return { ...f, y: (212 / 1650) * 100, h: (58 / 1650) * 100, ml: true };
   return f;
