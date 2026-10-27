@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
+import SdReportCard from "../components/SdReportCard";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -14,7 +15,7 @@ interface Approval {
   id: string; created_at: string; agent_name: string; agent_role: string;
   division: string; task_brief: string; output: string; edited_output: string | null;
   status: ApprovalStatus; priority: Priority; category: string;
-  platform: string | null; source: string; archived: boolean;
+  platform: string | null; source: string; archived: boolean; context: string | null;
 }
 
 const DIVISION_COLORS: Record<string, string> = {
@@ -77,20 +78,31 @@ export default function AdminArchived() {
   const [rejectedOpen, setRejectedOpen]   = useState(false);
   const [grantsOpen, setGrantsOpen]       = useState(false);
   const [readyToUseOpen, setReadyToUseOpen] = useState(false);
+  const [reportsOpen, setReportsOpen]     = useState(false);
+  const [agentPhotoByName, setAgentPhotoByName] = useState<Record<string, string>>({});
 
   const fetchArchived = async () => {
     const { data, error } = await supabase
       .from("approvals")
       .select("*")
       .eq("archived", true)
-      .in("status", ["ready_to_use", "read", "rejected", "needs_your_input"])
+      .or("status.in.(ready_to_use,read,rejected,needs_your_input),category.eq.sd_report")
       .order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch archived:", error);
     else setApprovals((data as Approval[]) || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchArchived(); }, []);
+  // Agent photos come live from the agents table (same source the active queue uses).
+  const fetchAgentPhotos = async () => {
+    const { data, error } = await supabase.from("agents").select("name, photo_url");
+    if (error || !data) return;
+    const byName: Record<string, string> = {};
+    data.forEach((a: any) => { if (a.photo_url && a.name) byName[a.name] = a.photo_url; });
+    setAgentPhotoByName(byName);
+  };
+
+  useEffect(() => { fetchArchived(); fetchAgentPhotos(); }, []);
 
   // Grant Application Drafts get their own bucket by category, not status --
   // Sept 1, 2026 fix. A grant card can carry a status this page never knew
@@ -98,10 +110,14 @@ export default function AdminArchived() {
   // archived. Grouping by category instead means any grant card, whatever its
   // status, always has a real, findable home. Excluded from readItems/
   // rejectedItems below so a grant card never shows twice.
-  const readyToUse    = approvals.filter(a => a.status === "ready_to_use");
-  const readItems     = approvals.filter(a => a.status === "read" && a.category !== "grant_applications");
-  const rejectedItems = approvals.filter(a => a.status === "rejected" && a.category !== "grant_applications");
+  // SD/ED Reports get their own banner by category too (Oct 27, 2026): a sent
+  // report's card is archived by the database the moment its status becomes
+  // "sent", and it is excluded from the other lists so it never shows twice.
+  const readyToUse    = approvals.filter(a => a.status === "ready_to_use" && a.category !== "sd_report");
+  const readItems     = approvals.filter(a => a.status === "read" && a.category !== "grant_applications" && a.category !== "sd_report");
+  const rejectedItems = approvals.filter(a => a.status === "rejected" && a.category !== "grant_applications" && a.category !== "sd_report");
   const grantItems    = approvals.filter(a => a.category === "grant_applications");
+  const reportItems   = approvals.filter(a => a.category === "sd_report");
 
   // Restoring a grant card must not drop it into generic "pending" -- that
   // status belongs to the old whole-division question picker (built long
@@ -298,6 +314,37 @@ export default function AdminArchived() {
             {grantsOpen && (
               <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
                 {grantItems.map(approval => renderCard(approval))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SD/ED Reports — sent reports, own section by category. The report
+            itself is locked once approved, so each card opens the locked report
+            and offers Restore to Queue like every other archived item. */}
+        {!loading && reportItems.length > 0 && (
+          <div style={{ marginBottom:"1.25rem" }}>
+            <button
+              onClick={() => setReportsOpen(prev => !prev)}
+              style={{ width:"100%", background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#8A6E1A" }}>
+                SD/ED Reports ({reportItems.length})
+              </span>
+              <span style={{ color:"rgba(212,175,55,0.6)", fontSize:"0.75rem" }}>{reportsOpen ? "▲" : "▼"}</span>
+            </button>
+            {reportsOpen && (
+              <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
+                {reportItems.map(approval => (
+                  <div key={approval.id}>
+                    <SdReportCard approval={approval} photo={agentPhotoByName[approval.agent_name]} />
+                    <div style={{ display:"flex", justifyContent:"flex-end", marginTop:"0.4rem" }}>
+                      <button onClick={() => handleRestore(approval.id, approval.category)} disabled={restoring === approval.id}
+                        style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em", opacity:restoring === approval.id ? 0.5 : 1 }}>
+                        {restoring === approval.id ? "Restoring..." : "Restore to Queue"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
