@@ -8,21 +8,22 @@ import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 // Only Imani's spots are editable. Calculator figures, the Gap names, fixed wording and the client's
 // own responses are shown locked. Each edit is saved as it is typed, beside Imani's original wording.
 
-type Field = {
+export type Field = {
   n: string; p: number; x: number; y: number; w: number; h: number; s: number; ctr?: boolean;
   c: string; f: string; wt: number; it: boolean; ml: boolean; d: string;
 };
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
-type ReportData = {
+export type ReportData = {
   access_token: string; status: string; email: string; tier: string; sent_at: string | null;
+  approved_at?: string | null; send_error?: string | null; send_attempts?: number;
   numbers: any; insight: any; first_name: string | null; last_name: string | null; company: string | null;
   edits: Record<string, string>; spots: Spot[];
   client_texts: { field: string; item: number; value: string }[];
   client_answers: { framework: string; pillar: string; order: number; answer: string }[];
 };
 
-const PAGE_COUNT = 16;
-const ALL_FIELDS = FIELDS as unknown as Field[];
+export const PAGE_COUNT = 16;
+export const ALL_FIELDS = FIELDS as unknown as Field[];
 const PILLAR_ROWS = ["Clarity", "Leadership", "Execution", "Alignment", "Results"];
 // page 4 rows (score, label) in page order, then one score/label pair per pillar page
 const PAGE4_ROWS: Record<string, [string, string]> = {
@@ -57,7 +58,7 @@ function longDate(iso: string | undefined): string {
 }
 
 // Figures and names that come from the calculator and the client's own answers. Locked on this page.
-function lockedValues(r: ReportData): Record<string, string> {
+export function lockedValues(r: ReportData): Record<string, string> {
   const v: Record<string, string> = {};
   const n = r.numbers ?? {};
   v["record_001"] = [r.first_name, r.last_name].filter(Boolean).join(" ");
@@ -136,12 +137,12 @@ function lockedValues(r: ReportData): Record<string, string> {
 
 // The word printed under each badge picture
 // Tile words that show only when the pre-session feeds them
-const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0095_L1"]);
+export const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0095_L1"]);
 
 const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
 
 // Heading words for boxes that have no heading above them, taken from the slot map
-const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean; right?: boolean }[] = [
+export const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean; right?: boolean }[] = [
   { p: 1, x: 26.4, y: 62.95, w: 47, text: "Client name" },
   { p: 1, x: 10, y: 69.15, w: 25, text: "Report date", right: true },
   { p: 4, x: 11.04, y: 14.45, w: 15, text: "Score 0-100", dark: true },
@@ -150,7 +151,7 @@ const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dar
 ];
 
 // Fields whose place on the page is now drawn from the client's numbers by SdReportArt.
-const DRAWN_BY_ART = new Set<string>([
+export const DRAWN_BY_ART = new Set<string>([
   "record_036", "record_051", "record_069", "record_088", "record_108",
   "record_141", "record_142", "record_143", "record_144", "record_145",
   "align_dept1_name", "align_dept1_hours", "align_dept2_name", "align_dept2_hours", "align_dept3_name", "align_dept3_hours",
@@ -173,7 +174,7 @@ const LAW12 = new Set<string>(["agent_126", "agent_129", "agent_132", "agent_135
 const ACTIONS15 = new Set<string>(["agent_153", "agent_155", "agent_157", "agent_159", "agent_161"]);
 const CHECK15 = new Set<string>(["agent_154", "agent_156", "agent_158", "agent_160", "agent_162"]);
 
-function geometryFor(f: Field): Field {
+export function geometryFor(f: Field): Field {
   const r = PAGE6_ROWS[f.n];
   if (r) {
     const c = PAGE6_COLS[r.col];
@@ -208,8 +209,8 @@ function geometryFor(f: Field): Field {
 }
 
 // One text box. Wording longer than its space shrinks to fit (down to 55%) and is flagged when it still does not fit.
-function FitField({ f, value, p, editable, imani, fitText, onChange, onBlur }: {
-  f: Field; value: string; p: number; editable: boolean; imani: boolean; fitText: boolean; onChange: (v: string) => void; onBlur: () => void;
+export function FitField({ f, value, p, editable, imani, fitText, color, onChange, onBlur }: {
+  f: Field; value: string; p: number; editable: boolean; imani: boolean; fitText: boolean; color?: string; onChange: (v: string) => void; onBlur: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -239,7 +240,7 @@ function FitField({ f, value, p, editable, imani, fitText, onChange, onBlur }: {
   }, []);
   const style: CSSProperties = {
     ["--x" as any]: f.x, ["--y" as any]: f.y, ["--w" as any]: f.w, ["--h" as any]: f.h, ["--s" as any]: f.s,
-    ["--c" as any]: f.c, ["--ff" as any]: `"${f.f}"`, ["--fw" as any]: f.wt, ["--fs" as any]: f.it ? "italic" : "normal",
+    ["--c" as any]: color ?? f.c, ["--ff" as any]: `"${f.f}"`, ["--fw" as any]: f.wt, ["--fs" as any]: f.it ? "italic" : "normal",
   };
   const common = {
     ref, style, spellCheck: false, autoComplete: "off" as const, "aria-label": `Page ${p} ${f.n}`,
@@ -265,6 +266,9 @@ export default function AdminReport() {
   const lastSaved = useRef<Record<string, string>>({});
   const inFlight = useRef(0);
   const chains = useRef<Record<string, Promise<unknown>>>({});
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -297,7 +301,11 @@ export default function AdminReport() {
     report.spots.forEach(sp => { if (sp.writer === "imani" && (!sp.leading_only || leading)) s.add(sp.spot_key); });
     return s;
   }, [report]);
-  const canEdit = !!report && report.status === "insight_written";
+  const canEdit = !!report && report.status === "insight_written" && !busy;
+  const isSent = !!report && (report.status === "sent" || !!report.sent_at);
+  // Approve is on while the report is waiting for review, or approved but not yet sent (a retry).
+  const canApprove = !!report && !isSent && !busy && ["insight_written", "approved", "report_built"].includes(report.status);
+  const isRetry = !!report && report.status !== "insight_written";
 
   const originalFor = (key: string) => report?.insight?.entries?.[key]?.text ?? "";
   const valueFor = (key: string) => (key in drafts ? drafts[key] : (report?.edits?.[key] ?? originalFor(key)));
@@ -339,6 +347,36 @@ export default function AdminReport() {
     return () => window.removeEventListener("beforeunload", h);
   });
 
+  const clientEmail = report?.email ?? "";
+
+  // Saves any wording still waiting, locks the report, builds the PDF and sends the email (all on the server).
+  const sendReport = async () => {
+    setConfirming(false);
+    setSendError(null);
+    setBusy(true);
+    try {
+      Object.keys(timers.current).forEach(k => flush(k, drafts[k] ?? valueFor(k)));
+      await Promise.all(Object.values(chains.current));
+      if (saveState === "error") throw new Error("Your last edit did not save. Fix that first, then send.");
+      const { data: sess } = await supabase.auth.getSession();
+      const jwt = sess.session?.access_token;
+      if (!jwt) throw new Error("You are signed out. Sign in again, then send.");
+      const resp = await fetch("/api/sd-report-approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ token }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body?.error || `The send failed (${resp.status}).`);
+    } catch (e) {
+      setSendError((e as Error).message);
+    }
+    // Show the report as the database now holds it: sent, or approved and waiting for a retry.
+    const { data } = await supabase.rpc("admin_sd_report", { p_token: token });
+    if (data) setReport(data as ReportData);
+    setBusy(false);
+  };
+
   const byPage = useMemo(() => {
     const m: Record<number, Field[]> = {};
     ALL_FIELDS.forEach(f => { (m[f.p] = m[f.p] || []).push(f); });
@@ -356,7 +394,8 @@ export default function AdminReport() {
     </div></div>
   );
 
-  const statusText = saveState === "saving" ? "Saving" : saveState === "error" ? "Not saved" : saveState === "saved" ? "Saved" : canEdit ? "Edits save as you type" : "Locked";
+  const statusText = busy ? "Building the PDF and sending" : isSent ? "Sent" : saveState === "saving" ? "Saving" : saveState === "error" ? "Not saved" : saveState === "saved" ? "Saved" : canEdit ? "Edits save as you type" : report.status === "approved" || report.status === "report_built" ? "Approved, not sent" : "Locked";
+  const shownError = sendError ?? (!isSent ? report.send_error ?? null : null);
 
   return (
     <div style={shell}>
@@ -374,9 +413,14 @@ export default function AdminReport() {
           </span>
         </div>
         <span className="status" data-state={saveState}>{statusText}</span>
-        <button className="approve" type="button" disabled title="Switches on in the next step">Approve</button>
+        <button className="approve" type="button" disabled={!canApprove || (!isRetry && (saveState === "saving" || saveState === "error"))}
+          onClick={() => setConfirming(true)}
+          title={isSent ? "This report has been sent" : canApprove ? "" : "Not available"}>
+          {isSent ? "Sent" : busy ? "Sending…" : isRetry ? "Retry send" : "Approve"}
+        </button>
         <a className="back" href="/admin-approvals">Back to approvals</a>
         {saveError && <div className="err">Could not save: {saveError}</div>}
+        {shownError && <div className="err">Not sent. {shownError} The report is still unsent. Use Retry send to try again.</div>}
         <nav className="nav">
           {Array.from({ length: PAGE_COUNT }, (_, i) => i + 1).map(p => (
             <button key={p} type="button" aria-label={`Go to page ${p}`}
@@ -414,13 +458,25 @@ export default function AdminReport() {
           </section>
         ))}
       </main>
+      {confirming && (
+        <div className="veil" role="dialog" aria-modal="true" aria-label="Send this report">
+          <div className="dlg">
+            <p className="dq">Send this report to {clientName || "this client"} at {clientEmail}?</p>
+            <p className="dn">Once you confirm, the report locks and cannot be edited.</p>
+            <div className="dbtn">
+              <button type="button" className="no" onClick={() => setConfirming(false)}>Cancel</button>
+              <button type="button" className="yes" onClick={sendReport}>Send report</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const shell: CSSProperties = { minHeight: "100vh", background: "#E7E4DC", fontFamily: '"Poppins","Segoe UI",system-ui,sans-serif' };
 
-const css = `
+export const css = `
 .bar{position:sticky;top:0;z-index:20;background:#0A2342;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;border-bottom:2px solid #D4AF37;color:#FAFAF8}
 .ttl{min-width:0;flex:1 1 260px}
 .ttl b{display:block;font:700 13px/1.2 Poppins,sans-serif;letter-spacing:.08em;text-transform:uppercase}
@@ -428,7 +484,15 @@ const css = `
 .status{font:700 11.5px/1 Poppins,sans-serif;letter-spacing:.04em;padding:6px 10px;border-radius:99px;background:#16335A;color:#8FD3A5;white-space:nowrap}
 .status[data-state="saving"],.status[data-state="idle"]{color:#F2C46B}
 .status[data-state="error"]{color:#FF8A8A}
-.approve{font:700 12px/1 Poppins,sans-serif;padding:8px 16px;border-radius:6px;border:0;background:#D4AF37;color:#0A2342;cursor:not-allowed;opacity:.4}
+.approve{font:700 12px/1 Poppins,sans-serif;padding:8px 16px;border-radius:6px;border:0;background:#D4AF37;color:#0A2342;cursor:pointer}
+.approve:disabled{cursor:not-allowed;opacity:.4}
+.veil{position:fixed;inset:0;z-index:50;background:rgba(10,35,66,.62);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:#FAFAF8;border-top:4px solid #D4AF37;border-radius:8px;padding:22px 24px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.35);font-family:Poppins,sans-serif;color:#0A2342}
+.dq{font:700 16px/1.4 Poppins,sans-serif;margin:0 0 6px}
+.dn{font:400 12.5px/1.5 Poppins,sans-serif;margin:0 0 18px;color:#51607A}
+.dbtn{display:flex;gap:10px;justify-content:flex-end}
+.dbtn button{font:700 12px/1 Poppins,sans-serif;padding:10px 18px;border-radius:6px;border:0;cursor:pointer}
+.dbtn .no{background:#E7E4DC;color:#0A2342}.dbtn .yes{background:#0A2342;color:#D4AF37}
 .back{font:700 11px/1 Poppins,sans-serif;color:#B9C2D0;text-decoration:underline}
 .err{flex:1 1 100%;font:400 12px Poppins,sans-serif;color:#FF8A8A}
 .nav{display:flex;flex-wrap:wrap;gap:4px;flex:1 1 100%}

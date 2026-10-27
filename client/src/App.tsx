@@ -23,6 +23,7 @@ import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminReport from "./pages/AdminReport";
+import SdReportPrint from "./pages/SdReportPrint";
 import AdminArchived from "./pages/AdminArchived";
 import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
 import AdminDiagnostics from "./pages/AdminDiagnostics";
@@ -188,6 +189,11 @@ function Router() {
   if (path === "/bundle-pricing" || path === "/bundle-pricing/") {
     setTitle("Bundle Pricing · DRU CLEAR™");
     return <BundlePricing />;
+  }
+  // The client copy of the Strategic AI Insight Report. The PDF builder opens this page and hands it the report's data; it shows nothing otherwise.
+  if (path === "/sd-report-print" || path === "/sd-report-print/") {
+    setTitle("Strategic AI Insight Report");
+    return <SdReportPrint />;
   }
   if (path === "/terms" || path === "/terms/") {
     setTitle("Terms of Engagement · DRU CLEAR™");

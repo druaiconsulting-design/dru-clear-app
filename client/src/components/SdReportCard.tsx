@@ -39,7 +39,7 @@ export default function SdReportCard({ approval, photo }: Props) {
 
   const label = { fontFamily: "'Montserrat', sans-serif", color: "rgba(212,175,55,0.8)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: "0.25rem" };
   const value = { fontFamily: "'Inter', sans-serif", color: "#0A2342", fontSize: "0.85rem", margin: 0 };
-  const statusText = info?.status === "sent" ? "Sent to client" : info?.status === "insight_written" ? "Ready for your review" : info?.status ?? "";
+  const statusText = info?.status === "sent" ? "Sent to client" : info?.status === "insight_written" ? "Ready for your review" : info?.status === "approved" || info?.status === "report_built" ? "Approved, not yet sent" : info?.status ?? "";
 
   return (
     <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(212,175,55,0.25)", background: "#FFFFFF" }}>
