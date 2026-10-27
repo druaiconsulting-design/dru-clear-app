@@ -103,7 +103,7 @@ function lockedValues(r: ReportData): Record<string, string> {
   }
   // Tier line, lowest pillars and the next-achievement sentence
   const badge: string = n.badge ?? "";
-  if (TIER_BANDS[badge]) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${TIER_BANDS[badge]}`;
+  if (TIER_BANDS[badge]) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${TIER_SUB[badge]} · ${TIER_BANDS[badge]}`;
   if (TIER_MESSAGES[badge]) v["record_017"] = TIER_MESSAGES[badge];
   const gaps = (n.ranked_gaps ?? []) as { pillar: string }[];
   if (gaps.length >= 2) v["record_015"] = `${gaps[0].pillar} · ${gaps[1].pillar}`;
@@ -126,13 +126,25 @@ function lockedValues(r: ReportData): Record<string, string> {
 }
 
 
+// The word printed under each badge picture
+const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
+
+// Heading words for boxes that have no heading above them, taken from the slot map
+const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean }[] = [
+  { p: 1, x: 26.4, y: 63.75, w: 47, text: "Client name" },
+  { p: 1, x: 35.8, y: 67.7, w: 28, text: "Report date" },
+  { p: 4, x: 11.04, y: 14.4, w: 15, text: "Overall score out of 100", dark: true },
+  { p: 4, x: 26.92, y: 14.4, w: 40, text: "Tier name, sub-name and band", dark: true },
+  { p: 4, x: 72.4, y: 14.4, w: 20, text: "Lowest pillars", dark: true },
+];
+
 // Fields whose place on the page is now drawn from the client's numbers by SdReportArt.
 const DRAWN_BY_ART = new Set<string>([
   "record_036", "record_051", "record_069", "record_088", "record_108",
   "record_141", "record_142", "record_143", "record_144", "record_145",
   "align_dept1_name", "align_dept1_hours", "align_dept2_name", "align_dept2_hours", "align_dept3_name", "align_dept3_hours",
   "align_dept4_name", "align_dept4_hours", "align_dept_total",
-  "answer_115", "answer_117", "answer_119", "calc_120", "sd_res_label1", "sd_res_label2", "sd_res_label3",
+  "sd_0095_L1", "answer_076", "answer_115", "answer_117", "answer_119", "calc_120", "sd_res_label1", "sd_res_label2", "sd_res_label3",
 ]);
 
 // Page 6 rows grow with Imani's wording, so the cells are laid out again here.
@@ -143,7 +155,7 @@ const PAGE6_ROWS: Record<string, { col: number; row: number }> = {};
 const PAGE6_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
 
 // Captions and the regions line may run to two lines, so they get the room for it.
-const CAPTION2 = new Set<string>(["answer_035", "answer_050", "answer_068", "answer_087", "answer_107", "answer_077"]);
+const CAPTION2 = new Set<string>(["answer_035", "answer_050", "answer_068", "answer_087", "answer_107"]);
 
 // Page 12 law statements and the page 15 stage checkpoints are sentences, so they get two or three lines.
 const LAW12 = new Set<string>(["agent_126", "agent_129", "agent_132", "agent_135", "agent_138"]);
@@ -158,23 +170,27 @@ function geometryFor(f: Field): Field {
     return { ...f, x: (c.x / 1275) * 100, w: (c.w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
   }
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
+  if (f.n === "sd_0096_L1" || f.n === "sd_0097_L1") return { ...f, x: f.x - (156 / 1275) * 100 };
   if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
   if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
   if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
-  if (CAPTION2.has(f.n)) return { ...f, h: 2.2, ml: true };
+  if (f.n === "answer_075") return { ...f, y: 27.95, h: 2.8, ml: true };
+  if (f.n === "answer_077") return { ...f, y: 30.95, h: 2.4, ml: true };
+  if (CAPTION2.has(f.n)) return { ...f, y: 14.65, h: 2.1, ml: true };
   if (f.n === "sd_0054") return { ...f, y: (212 / 1650) * 100, h: (58 / 1650) * 100, ml: true };
   return f;
 }
 
 // One text box. Wording longer than its space shrinks to fit (down to 55%) and is flagged when it still does not fit.
-function FitField({ f, value, p, editable, imani, onChange, onBlur }: {
-  f: Field; value: string; p: number; editable: boolean; imani: boolean; onChange: (v: string) => void; onBlur: () => void;
+function FitField({ f, value, p, editable, imani, fitText, onChange, onBlur }: {
+  f: Field; value: string; p: number; editable: boolean; imani: boolean; fitText: boolean; onChange: (v: string) => void; onBlur: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const fit_ = fitText;
   const fit = () => {
     const el = ref.current;
-    if (!el || !imani) return;
+    if (!el || !fit_) return;
     let lo = 0.55, hi = 1, best = lo, fits = false;
     const overflows = () => (f.ml ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1);
     el.style.setProperty("--k", "1");
@@ -348,6 +364,9 @@ export default function AdminReport() {
             style={{ backgroundImage: `url("/report-pages/p-${String(p).padStart(2, "0")}.png")` }}>
             {p > 1 && <div className="hdrname">{clientName}</div>}
             <SdReportArt page={p} report={report} />
+            {BOX_HEADS.filter(h => h.p === p).map(h => (
+              <div key={h.text} className={"boxhead" + (h.dark ? " dk" : "")} style={{ left: h.x + "%", top: h.y + "%", width: h.w + "%" }}>{h.text}</div>
+            ))}
             {(byPage[p] ?? []).map(f0 => {
               if (DRAWN_BY_ART.has(f0.n)) return null;
               const f = geometryFor(f0);
@@ -360,7 +379,7 @@ export default function AdminReport() {
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
               return (
                 <FitField key={f.n} f={f} value={value} p={p}
-                  editable={isImani && canEdit} imani={isImani}
+                  editable={isImani && canEdit} imani={isImani} fitText={isImani || isLockedCell}
                   onChange={v => onEdit(f.n, v)} onBlur={() => flush(f.n, valueFor(f.n))} />
               );
             })}
@@ -389,6 +408,7 @@ const css = `
 .nav button:hover{background:#234577}
 main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:center;gap:22px}
 .pg{position:relative;width:min(100%,860px);aspect-ratio:612/792;container-type:inline-size;background-color:#FAFAF8;background-size:100% 100%;background-repeat:no-repeat;box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.18);scroll-margin-top:150px}
+.boxhead{position:absolute;height:1.4%;font:600 .92cqw/1.3 Poppins,sans-serif;color:#51607A;white-space:nowrap;overflow:hidden;letter-spacing:.01em}.boxhead.dk{color:#D4AF37}
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
 .f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
