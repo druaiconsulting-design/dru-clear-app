@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph as DocxParagraph, TextRun, ImageRun, Table as DocxTable, TableRow, TableCell, WidthType, ShadingType, BorderStyle, AlignmentType, convertInchesToTwip } from "docx";
 import { createClient } from "@supabase/supabase-js";
 import AdminLayout from "../components/AdminLayout";
+import SdReportCard from "../components/SdReportCard";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -92,7 +93,7 @@ const PDF_CATEGORIES = new Set([
 const APPROVAL_CATEGORIES = new Set([
   "social", "email", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
   "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
-  "travis_video_production", "video_script", "business_outlook_corrections",
+  "travis_video_production", "video_script", "business_outlook_corrections", "sd_report",
 ]);
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -147,11 +148,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants", grant_applications:"Grant Application Drafts",
   travis_video_production:"Travis Video Production",
   video_script:"Video Script",
+  sd_report:"Client Delivery · SD Report",
 };
 
 const CATEGORY_ORDER = [
   "business_outlook_corrections","daily_briefing","revenue_growth","content_brand","marketing",
-  "legal_finance","ai_governance","hr","client_delivery","customer_support",
+  "legal_finance","ai_governance","hr","client_delivery","sd_report","customer_support",
   "community_connection","community_post","social","proposals_press","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
@@ -1864,6 +1866,7 @@ export default function AdminApprovals() {
         {!loading && (
           <div style={{ display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
             {filtered.map(approval => {
+              if (approval.category === "sd_report") return <SdReportCard key={approval.id} approval={approval} photo={agentPhotoByName[approval.agent_name]} />;
               const badge         = getBadgeInfo(approval);
               const origCol       = getOriginalColumn(approval);
               const draftHead     = getDraftHeading(approval);
