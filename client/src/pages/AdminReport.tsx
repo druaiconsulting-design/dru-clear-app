@@ -15,7 +15,7 @@ export type Field = {
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
 export type ReportData = {
   access_token: string; status: string; email: string; tier: string; sent_at: string | null;
-  approved_at?: string | null; send_error?: string | null; send_attempts?: number;
+  approved_at?: string | null; send_error?: string | null; send_attempts?: number; has_pdf?: boolean;
   numbers: any; insight: any; first_name: string | null; last_name: string | null; company: string | null;
   edits: Record<string, string>; spots: Spot[];
   client_texts: { field: string; item: number; value: string }[];
@@ -377,6 +377,20 @@ export default function AdminReport() {
     setBusy(false);
   };
 
+  const viewPdf = async () => {
+    const w = window.open("", "_blank");
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const r = await fetch(`/api/sd-report-pdf?token=${encodeURIComponent(token)}`, { headers: { Authorization: `Bearer ${sess.session?.access_token ?? ""}` } });
+      const b = await r.json();
+      if (!r.ok || !b.url) throw new Error(b.error || "The PDF could not be opened.");
+      if (w) w.location.href = b.url; else window.location.href = b.url;
+    } catch (e) {
+      if (w) w.close();
+      setSendError((e as Error).message);
+    }
+  };
+
   const byPage = useMemo(() => {
     const m: Record<number, Field[]> = {};
     ALL_FIELDS.forEach(f => { (m[f.p] = m[f.p] || []).push(f); });
@@ -413,6 +427,7 @@ export default function AdminReport() {
           </span>
         </div>
         <span className="status" data-state={saveState}>{statusText}</span>
+        {report.has_pdf && <button className="viewpdf" type="button" onClick={viewPdf}>View PDF</button>}
         <button className="approve" type="button" disabled={!canApprove || (!isRetry && (saveState === "saving" || saveState === "error"))}
           onClick={() => setConfirming(true)}
           title={isSent ? "This report has been sent" : canApprove ? "" : "Not available"}>
@@ -485,6 +500,7 @@ export const css = `
 .status[data-state="saving"],.status[data-state="idle"]{color:#F2C46B}
 .status[data-state="error"]{color:#FF8A8A}
 .approve{font:700 12px/1 Poppins,sans-serif;padding:8px 16px;border-radius:6px;border:0;background:#D4AF37;color:#0A2342;cursor:pointer}
+.viewpdf{font:700 12px/1 Poppins,sans-serif;padding:8px 14px;border-radius:6px;border:1px solid #D4AF37;background:transparent;color:#D4AF37;cursor:pointer}
 .approve:disabled{cursor:not-allowed;opacity:.4}
 .veil{position:fixed;inset:0;z-index:50;background:rgba(10,35,66,.62);display:flex;align-items:center;justify-content:center;padding:16px}
 .dlg{background:#FAFAF8;border-top:4px solid #D4AF37;border-radius:8px;padding:22px 24px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.35);font-family:Poppins,sans-serif;color:#0A2342}
