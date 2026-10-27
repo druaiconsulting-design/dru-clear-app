@@ -36,9 +36,16 @@ const PILLAR_PAGE: Record<string, [string, string]> = {
 const GAP_CELLS = ["agent_019", "agent_022", "agent_025", "agent_028", "agent_031"];
 const GAP_CELLS_P16 = ["calc_163", "calc_164", "calc_165", "calc_166", "calc_167"];
 
-const TIERS: Record<string, { sub: string; band: string }> = {
-  EMERGING: { sub: "Explorer", band: "0 to 40" }, DEVELOPING: { sub: "Adapter", band: "41 to 60" },
-  ADVANCING: { sub: "Implementer", band: "61 to 80" }, LEADING: { sub: "Builder", band: "81 to 100" },
+// Score bands are the free assessment's own (scaled percent): up to 40, 41 to 60, 61 to 80, 81 to 100.
+const TIER_BANDS: Record<string, string> = {
+  EMERGING: "0 to 40", DEVELOPING: "41 to 60", ADVANCING: "61 to 80", LEADING: "81 to 100",
+};
+// The fixed achievement message for each tier: the wording the free assessment already carries for that tier.
+const TIER_MESSAGES: Record<string, string> = {
+  EMERGING: "Your organization is in the early stages of AI readiness. Without a structured approach, you risk wasting resources on disconnected initiatives. The DRU CLEAR\u2122 Alignment Diagnostic will pinpoint exactly where to start for maximum impact.",
+  DEVELOPING: "You've begun the AI conversation, but critical gaps in Clarity and Alignment are slowing your momentum. A full diagnostic will reveal the specific friction points and give you a clear path forward.",
+  ADVANCING: "Your organization is making meaningful progress. However, one or two CLEAR pillars are underperforming and limiting your full potential. A diagnostic will identify exactly what's holding you back.",
+  LEADING: "You're operating ahead of most organizations in AI readiness. The question now is sustainability and scale. An AI Leadership Advisory engagement will help you maintain your competitive edge and dominate your industry.",
 };
 const money = (n: number) => "$" + Number(n).toLocaleString("en-US");
 
@@ -96,8 +103,8 @@ function lockedValues(r: ReportData): Record<string, string> {
   }
   // Tier line, lowest pillars and the next-achievement sentence
   const badge: string = n.badge ?? "";
-  const tierInfo = TIERS[badge];
-  if (tierInfo) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${tierInfo.sub} · ${tierInfo.band}`;
+  if (TIER_BANDS[badge]) v["record_014"] = `${badge.charAt(0) + badge.slice(1).toLowerCase()} · ${TIER_BANDS[badge]}`;
+  if (TIER_MESSAGES[badge]) v["record_017"] = TIER_MESSAGES[badge];
   const gaps = (n.ranked_gaps ?? []) as { pillar: string }[];
   if (gaps.length >= 2) v["record_015"] = `${gaps[0].pillar} · ${gaps[1].pillar}`;
   if (badge && badge !== "LEADING" && n.next_badge?.badge) {
@@ -135,6 +142,14 @@ const PAGE6_ROWS: Record<string, { col: number; row: number }> = {};
 ["agent_021", "agent_024", "agent_027", "agent_030", "agent_033"].forEach((k, i) => { PAGE6_ROWS[k] = { col: 2, row: i }; });
 const PAGE6_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
 
+// Captions and the regions line may run to two lines, so they get the room for it.
+const CAPTION2 = new Set<string>(["answer_035", "answer_050", "answer_068", "answer_087", "answer_107", "answer_077"]);
+
+// Page 12 law statements and the page 15 stage checkpoints are sentences, so they get two or three lines.
+const LAW12 = new Set<string>(["agent_126", "agent_129", "agent_132", "agent_135", "agent_138"]);
+const ACTIONS15 = new Set<string>(["agent_153", "agent_155", "agent_157", "agent_159", "agent_161"]);
+const CHECK15 = new Set<string>(["agent_154", "agent_156", "agent_158", "agent_160", "agent_162"]);
+
 function geometryFor(f: Field): Field {
   const r = PAGE6_ROWS[f.n];
   if (r) {
@@ -142,6 +157,11 @@ function geometryFor(f: Field): Field {
     const top = ROW6_TOP + r.row * ROW6_H + 18;
     return { ...f, x: (c.x / 1275) * 100, w: (c.w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
   }
+  if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
+  if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
+  if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
+  if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
+  if (CAPTION2.has(f.n)) return { ...f, h: 2.2, ml: true };
   if (f.n === "sd_0054") return { ...f, y: (212 / 1650) * 100, h: (58 / 1650) * 100, ml: true };
   return f;
 }

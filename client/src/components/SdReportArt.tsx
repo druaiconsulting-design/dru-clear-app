@@ -30,6 +30,8 @@ function Person({ cx, top, scale, filled }: { cx: number; top: number; scale: nu
   );
 }
 
+const PINK_FILL = "#FCE3EC", PINK = "#C2185B", CREAM_PG15 = "#F5EFE0";
+
 function Ring({ cx, cy, score }: { cx: number; cy: number; score: number }) {
   const R = 63.5, C = 2 * Math.PI * R;
   const frac = Math.max(0, Math.min(1, score / 15));
@@ -44,7 +46,6 @@ function Ring({ cx, cy, score }: { cx: number; cy: number; score: number }) {
         strokeDasharray={`${frac * C} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} />
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={GOLD} strokeWidth={4.5} />
       <text x={cx} y={cy + 8} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={36} fill={NAVY}>{score}</text>
-      <text x={cx} y={cy + 30} textAnchor="middle" fontFamily={FONT} fontSize={13} fill="#6B7280">of 15</text>
     </g>
   );
 }
@@ -98,6 +99,24 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     for (let i = 0; i < total; i++) {
       body.push(<Person key={"p" + i} cx={146 + i * pitch} top={412} scale={sc} filled={i < filled} />);
     }
+  }
+
+  // Page 12: the law statement is a sentence, so its box is drawn wider than the baked one
+  if (page === 12) {
+    [15.4508, 31.2563, 46.1907, 62.4318, 77.8018].forEach((pct, i) => {
+      const fy = (pct / 100) * 1650;
+      body.push(<rect key={"lc" + i} x={897} y={fy - 9} width={270} height={40} fill="#FFFFFF" />);
+      body.push(<rect key={"ln" + i} x={779} y={fy - 10} width={382} height={48} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+    });
+  }
+
+  // Page 15: each stage has an actions box and a checkpoint box, drawn at the sizes the wording needs
+  if (page === 15) {
+    [107, 327, 547, 767, 987].forEach((x, i) => {
+      body.push(<rect key={"sc" + i} x={x - 6} y={414} width={193} height={570} fill={CREAM_PG15} />);
+      body.push(<rect key={"sa" + i} x={x - 2} y={420} width={185} height={378} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+      body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={162} rx={6} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
+    });
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed
