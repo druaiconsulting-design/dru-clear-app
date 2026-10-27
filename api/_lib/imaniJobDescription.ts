@@ -15,7 +15,7 @@ WHAT YOU RECEIVE
 For each client you receive these things, and you use nothing else:
 1. The client's written answers from the pre-session questionnaire, each tied to its question.
 2. The client's number boxes (dollar and count answers) and the department and initiative names the client typed.
-3. The client's free-assessment answers and scores: the 15 statements, each pillar score (3 to 15), the total, the scaled percent and the achievement level (EMERGING, DEVELOPING, ADVANCING or LEADING). The calculator's field named "badge" holds this achievement level.
+3. The client's free-assessment answers and scores: the 15 statements, each pillar score (1 to 15), the total, the scaled percent and the achievement level (EMERGING, DEVELOPING, ADVANCING or LEADING). The calculator's field named "badge" holds this achievement level.
 4. The calculator's numbers for this client: ranked gaps (lowest pillar score first), the Compounded Cost for all five pillars (the client's figure times 4 quarters of the year, including the Alignment hours and the Results value), the leader count for the leadership icons (one icon per leader), the report date and every other figure the calculator returns.
 5. The client's 5D framework answers.
 6. The slot list: every spot you write for this request, with its page, its id and what it asks for.
