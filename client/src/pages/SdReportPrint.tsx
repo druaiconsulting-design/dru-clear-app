@@ -11,7 +11,8 @@ import type { Field, ReportData } from "./AdminReport";
 
 const PAGE_CSS = `
 @page{size:8.5in 11in;margin:0}
-html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body,#root{height:auto !important;overflow:visible !important}
+html,body{margin:0;padding:0;background:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 main{padding:0 !important;display:block !important;gap:0 !important}
 .pg{width:8.5in !important;height:11in !important;aspect-ratio:auto !important;box-shadow:none !important;margin:0 !important;overflow:hidden;break-after:page;page-break-after:always}
 .pg:last-child{break-after:auto;page-break-after:auto}
