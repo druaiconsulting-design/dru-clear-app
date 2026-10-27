@@ -129,14 +129,14 @@ function lockedValues(r: ReportData): Record<string, string> {
   const obstacle = ans("CLEAR", "Execution", 1);
   if (obstacle) v["answer_075"] = obstacle;
   const stage = ans("CLEAR", "Execution", 3);
-  if (stage) { v["sd_0096_L1"] = "Last three attempts stopped at"; v["sd_0097_L1"] = stage; }
+  if (stage) { v["sd_0095_L1"] = "Last three attempts stopped at"; v["answer_076"] = stage; }
   return v;
 }
 
 
 // The word printed under each badge picture
 // Tile words that show only when the pre-session feeds them
-const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0096_L1", "sd_0097_L1"]);
+const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0095_L1"]);
 
 const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
 
@@ -155,7 +155,7 @@ const DRAWN_BY_ART = new Set<string>([
   "record_141", "record_142", "record_143", "record_144", "record_145",
   "align_dept1_name", "align_dept1_hours", "align_dept2_name", "align_dept2_hours", "align_dept3_name", "align_dept3_hours",
   "align_dept4_name", "align_dept4_hours", "align_dept_total",
-  "sd_0095_L1", "answer_076", "answer_115", "answer_117", "answer_119", "calc_120", "sd_res_label1", "sd_res_label2", "sd_res_label3",
+  "sd_0096_L1", "sd_0097_L1", "answer_115", "answer_117", "answer_119", "calc_120", "sd_res_label1", "sd_res_label2", "sd_res_label3",
 ]);
 
 // Page 6 rows grow with Imani's wording, so the cells are laid out again here.
@@ -182,10 +182,12 @@ function geometryFor(f: Field): Field {
   }
   if (f.n === "record_013" || f.n === "record_014" || f.n === "record_015") return { ...f, y: 16.5, h: 2.3, s: 1.5 };
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
+  if (f.n === "sd_0048") return { ...f, x: f.x + 1.41 };
   if (f.n === "sd_0093_L1") return { ...f, x: 9.95, w: 7.3, y: 26.95, h: 2.2, s: 1.9, wt: 700, ctr: true, ml: false };
   if (f.n === "sd_0093_L2") return { ...f, x: 9.95, w: 7.3, y: 28.85, h: 1.4, s: 1.0, ctr: true, ml: false };
-  if (f.n === "sd_0096_L1") return { ...f, x: 30.7, w: 7.4, y: 25.25, h: 3.4, s: 0.95, ctr: true, ml: true };
-  if (f.n === "sd_0097_L1") return { ...f, x: 30.7, w: 7.4, y: 28.55, h: 1.7, s: 1.2, wt: 700, ctr: true, ml: false };
+  if (f.n === "sd_0095_L1") return { ...f, x: 30.5, w: 11.1, y: 25.3, h: 2.5, s: 1.02, ctr: true, ml: true };
+  if (f.n === "answer_076") return { ...f, y: 27.95, h: 2.8, ml: true };
+  if (f.n === "agent_100") return { ...f, y: 26.7, h: 5.2, s: 1.24, ml: true };
   if (f.n === "sd_0003_L1") return { ...f, x: 27, w: 46, ml: false };
   if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
   if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
@@ -393,6 +395,7 @@ export default function AdminReport() {
               if (!isFixed && !isImani && !isLockedCell) return null;
               if (TILE_WORDS.has(f.n) && !isLockedCell) return null;
               let value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
+              if (f.n === "sd_0012") value = value.replace("scores from 3 to 15", "scores from 1 to 15");
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
               return (
                 <FitField key={f.n} f={f} value={value} p={p}

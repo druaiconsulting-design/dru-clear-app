@@ -67,17 +67,19 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     }
   }
 
-  // Page 4: five pillar bars, lowest-to-highest scale 3 to 15 with the gap line at 12
+  // Page 4: five pillar bars, scale 1 to 15 with the gap line at 12
   if (page === 4 && Object.keys(pillars).length) {
-    body.push(<rect key="cover" x={256} y={396} width={522} height={236} fill={PAGE_BG} />);
+    body.push(<rect key="cover" x={256} y={380} width={548} height={280} fill={PAGE_BG} />);
     const ys = [402, 450, 498, 546, 594];
     ["Clarity", "Leadership", "Execution", "Alignment", "Results"].forEach((p, i) => {
       const sc = score(p);
-      const w = (Math.max(sc - 3, 0) / 12) * 507;
+      const w = (Math.max(sc - 1, 0) / 14) * 507;
       body.push(<rect key={"t" + i} x={264} y={ys[i]} width={507} height={31} rx={6} fill={TRACK} />);
       if (w > 0) body.push(<rect key={"f" + i} x={264} y={ys[i]} width={Math.max(w, 6)} height={31} rx={6} fill={pillarColor(sc)} />);
     });
-    body.push(<line key="gl" x1={644} y1={382} x2={644} y2={632} stroke={GOLD} strokeOpacity={0.65} strokeWidth={2} strokeDasharray="7 5" />);
+    body.push(<text key="a1" x={264} y={656} fontFamily={FONT} fontSize={13} fill="#7A7A7A">1</text>);
+    body.push(<text key="a15" x={791} y={656} textAnchor="end" fontFamily={FONT} fontSize={13} fill="#7A7A7A">15</text>);
+    body.push(<line key="gl" x1={662.3} y1={382} x2={662.3} y2={634} stroke={GOLD} strokeOpacity={0.65} strokeWidth={2} strokeDasharray="7 5" />);
   }
 
   // Pillar pages: the score ring
@@ -138,14 +140,20 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     });
   }
 
-  // Page 9: the pre-session asks one obstacle question, so there is one "Blocked by" tile and the "Awaiting" tile moves up beside it
+  // Page 9: three tiles at most. "Blocked by" and "Last three attempts stopped at" are each a heading over an answer box; a tile with no answer is not drawn
   if (page === 9) {
+    const hasStage = (report.client_answers ?? []).some(a => a.framework === "CLEAR" && a.pillar === "Execution" && a.order === 3 && a.answer);
     body.push(<rect key="obs" x={237} y={456} width={134} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
     body.push(<rect key="rgc" x={118} y={502} width={510} height={58} fill={CREAM} />);
     body.push(<rect key="rg" x={126} y={508} width={491} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
-    body.push(<rect key="t3c" x={380} y={398} width={274} height={116} fill={CREAM} />);
-    if ((report.client_answers ?? []).some(a => a.framework === "CLEAR" && a.pillar === "Execution" && a.order === 3 && a.answer))
-      body.push(<rect key="t3" x={388.5} y={410.5} width={100} height={91} rx={3} fill="#FFFFFF" stroke={PINK} strokeWidth={3} strokeDasharray="9 6" />);
+    body.push(<rect key="t4c" x={538} y={398} width={116} height={116} fill={CREAM} />);
+    if (hasStage) body.push(<rect key="stg" x={392} y={456} width={134} height={46} rx={5} fill="#FBF1CF" stroke="#D9B84A" strokeDasharray="5 3" />);
+    else body.push(<rect key="t3c" x={380} y={398} width={160} height={116} fill={CREAM} />);
+  }
+
+  // Page 10: the agent line under the business objective gets a roomier box
+  if (page === 10) {
+    body.push(<rect key="ag" x={663} y={437} width={492} height={98} rx={5} fill={PINK_FILL} stroke={PINK} strokeWidth={2} strokeDasharray="7 5" />);
   }
 
   // Page 10: the departments and their hours, as many rows as the client typed
