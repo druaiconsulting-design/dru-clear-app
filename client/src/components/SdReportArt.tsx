@@ -101,6 +101,14 @@ export default function SdReportArt({ page, report }: { page: number; report: Ar
     }
   }
 
+  // Page 4: the banner is redrawn so its heading words are large enough to read
+  if (page === 4) {
+    body.push(<rect key="bn" x={98} y={236} width={1078} height={78} fill={NAVY} />);
+    [[136, 146], [338, 524], [918, 221]].forEach(([x, w], i) => {
+      body.push(<rect key={"bx" + i} x={x} y={268} width={w} height={42} rx={5} fill="#E4E9F2" stroke="#3B4F69" strokeWidth={1.5} strokeDasharray="5 3" />);
+    });
+  }
+
   // Page 12: the law statement is a sentence, so its box is drawn wider than the baked one
   if (page === 12) {
     [15.4508, 31.2563, 46.1907, 62.4318, 77.8018].forEach((pct, i) => {
