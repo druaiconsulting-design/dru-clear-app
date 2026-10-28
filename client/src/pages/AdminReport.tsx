@@ -167,7 +167,7 @@ const PAGE6_ROWS: Record<string, { col: number; row: number }> = {};
 const PAGE6_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
 
 // Captions and the regions line may run to two lines, so they get the room for it.
-const CAPTION2 = new Set<string>(["answer_035", "answer_050", "answer_068", "answer_087", "answer_107"]);
+const CAPTION2 = new Set<string>(["answer_068"]);
 
 // Page 12 law statements and the page 15 stage checkpoints are sentences, so they get two or three lines.
 const LAW12 = new Set<string>(["agent_126", "agent_129", "agent_132", "agent_135", "agent_138"]);
