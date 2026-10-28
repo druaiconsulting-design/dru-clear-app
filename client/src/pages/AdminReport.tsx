@@ -77,8 +77,8 @@ export function lockedValues(r: ReportData): Record<string, string> {
   });
 
   if (n.clarity) {
-    v["answer_042"] = `${money(n.clarity.dollars)} and ${n.clarity.weeks} weeks`;
-    v["calc_043"] = `${money(n.clarity.dollars_x4)} and ${n.clarity.weeks_x4} weeks`;
+    v["answer_042"] = `${money(n.clarity.dollars)} in ${n.clarity.weeks} weeks`;
+    v["calc_043"] = `${money(n.clarity.dollars_x4)} in ${n.clarity.weeks_x4} weeks`;
   }
   if (n.leadership) {
     v["answer_057"] = String(n.leadership.postponed_decisions);
