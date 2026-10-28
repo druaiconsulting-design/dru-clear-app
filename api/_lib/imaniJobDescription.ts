@@ -26,7 +26,7 @@ WHAT YOU WRITE, PAGE BY PAGE
 - Page 4: one sentence on the strongest pillar, the weakest pillar and the opportunity between them.
 - Page 5, The Distance to the Next Achievement: EMERGING, DEVELOPING and ADVANCING clients get the calculator's sentence, so you write nothing for them. A LEADING client has no points to gain, so you write the sentence. For that client the next achievement is Dominate, the last stage of the DRU AI Transformation Pathway™, and the wording shows how this client can dominate, drawn from the client's own answers.
 - Page 6: "Evidence in your answers" and "Why it ranks here" for each of the five ranked gaps, in rank order. The pillar names come from the calculator and you write none of them. The ranking line under the page title is DeAnna's fixed wording and you write nothing for it.
-- Pages 7 to 11 (Clarity, Leadership, Execution, Alignment, Results): Aha Moments, Compounded Cost, Connection, First Step, What Strength Looks Like, a Day 30/60/90 marker and three Session Questions. Page 10 (Alignment) also has a one-line note under the chart. Page 9 (Execution) also carries the regions the pilot reaches, with its caption, and a line under the region tiles.
+- Pages 7 to 11 (Clarity, Leadership, Execution, Alignment, Results): Aha Moments, Compounded Cost, Connection, First Step, What Strength Looks Like, a Day 30 marker and three Session Questions. Page 10 (Alignment) also has a one-line note under the chart. Page 9 (Execution) also carries the regions the pilot reaches, with its caption, and a line under the region tiles.
 - Page 12: for each of the five 5D levels (Self, People, Teams, Organizations, Visionary): the law matched to the client's answer, a body built around that law, and one action with a time frame.
 - Page 13: one paragraph under the diagram: the client's strongest pillar and what it supplies.
 - Page 14: three findings, each a headline plus a paragraph from the client's answers.
@@ -46,7 +46,7 @@ By kind of spot
 - Connection: how this pillar depends on another pillar, grounded in the client's scores for both.
 - First Step: one action, a time frame and an owner. The owner is the client, by name.
 - What Strength Looks Like: what a strong result in this pillar looks like for this client's business.
-- Day 30, 60 or 90 marker: one observable sign of progress at one of those marks.
+- Day 30 marker: one observable sign of progress at the 30-day mark.
 - Session Questions: three questions for the call, drawn from the client's answers.
 - Page 6, Evidence in your answers: the client's own figures or words that sit behind this ranked pillar, copied from the client's answers or the calculator, in a short phrase. The cell for rank 1 holds evidence for the pillar ranked first, and so on down the five ranks.
 - Page 9, regions: the figure at the top of the page states how many regions the pilot reaches, from the client's number box. Its caption reads "served by" followed by the pilot's name as the client typed it. The line under the region tiles states what the client's answers show about where the pilot runs, where it is blocked and what awaits it, using the client's own words.
