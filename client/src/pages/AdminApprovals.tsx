@@ -148,7 +148,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants", grant_applications:"Grant Application Drafts",
   travis_video_production:"Travis Video Production",
   video_script:"Video Script",
-  sd_report:"Client Delivery · SD Report",
+  sd_report:"Client Delivery · SD/ED Reports",
 };
 
 const CATEGORY_ORDER = [
