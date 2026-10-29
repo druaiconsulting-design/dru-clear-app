@@ -57,12 +57,20 @@ export function longDate(iso: string | undefined): string {
   return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "long", day: "numeric" });
 }
 
+// The cover date: the day of the week and the date, for example "Thursday, October 29, 2026".
+export function weekdayDate(iso: string | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+
 // Figures and names that come from the calculator and the client's own answers. Locked on this page.
 export function lockedValues(r: ReportData): Record<string, string> {
   const v: Record<string, string> = {};
   const n = r.numbers ?? {};
   v["record_001"] = [r.first_name, r.last_name].filter(Boolean).join(" ");
-  v["calc_002"] = longDate(n.report_date);
+  v["calc_002"] = weekdayDate(n.report_date);
   if (n.scaled_percent != null) v["record_013"] = String(n.scaled_percent);
 
   for (const p of PILLAR_ROWS) {
@@ -143,8 +151,6 @@ export const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPI
 
 // Heading words for boxes that have no heading above them, taken from the slot map
 export const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean; right?: boolean }[] = [
-  { p: 1, x: 26.4, y: 62.95, w: 47, text: "Client name" },
-  { p: 1, x: 10, y: 69.15, w: 25, text: "Report date", right: true },
   { p: 4, x: 11.04, y: 14.45, w: 15, text: "Score 0-100", dark: true },
   { p: 4, x: 26.92, y: 14.45, w: 40, text: "Tier, sub-name and band", dark: true },
   { p: 4, x: 72.4, y: 14.45, w: 20, text: "Lowest pillars", dark: true },
@@ -181,6 +187,9 @@ export function geometryFor(f: Field): Field {
     const top = ROW6_TOP + r.row * ROW6_H + 18;
     return { ...f, x: (c.x / 1275) * 100, w: (c.w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
   }
+  // Cover: the client's name and the day and date, centered across the page
+  if (f.n === "record_001") return { ...f, x: 10, w: 80, y: 65.0, h: 2.9, s: 2.2, ctr: true };
+  if (f.n === "calc_002") return { ...f, x: 10, w: 80, y: 69.0, h: 2.1, s: 1.7, ctr: true };
   if (f.n === "record_013" || f.n === "record_014" || f.n === "record_015") return { ...f, y: 16.5, h: 2.3, s: 1.5 };
   if (f.n === "sd_0078_L1") return { ...f, x: 52.6, w: 12.6, ml: false };
   // Page 9: everything below the tile section moves down 124 to give the tiles room
