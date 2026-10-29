@@ -66,7 +66,7 @@ begin
   for r in
     select access_token from finished_reports
      where status = 'numbers_worked_out'
-       and diagnostic_tier = 'strategic'
+       and diagnostic_tier in ('strategic', 'executive')
        and submitted_at < now() - interval '5 minutes'
        and coalesce(writer_attempts, 0) < 3
        and (writer_started_at is null or writer_started_at < now() - interval '15 minutes')
