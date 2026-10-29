@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import EdReportArt from "../components/EdReportArt";
 import { FitField, css } from "./AdminReport";
 import type { Field, ReportData } from "./AdminReport";
-import { ED_DRAWN_BY_ART, ED_FIELDS, ED_PAGE_COUNT, edFieldValue, edLockedValues } from "./AdminEdReport";
+import { ED_BOX_HEADS, ED_DRAWN_BY_ART, ED_FIELDS, ED_PAGE_COUNT, edFieldValue, edLockedValues } from "./AdminEdReport";
 
 // The client's copy of the Executive AI Alignment Report: 21 pages, final wording only.
 // No marker boxes, no slot labels, no edit bar. The PDF builder opens this page, hands it the report's data
@@ -82,6 +82,9 @@ export default function EdReportPrint() {
             style={{ backgroundImage: `url("/ed-report-pages-clean/p-${String(p).padStart(2, "0")}.png")` }}>
             {p > 1 && <div className="hdrname">{clientName}</div>}
             <EdReportArt page={p} report={report} clean />
+            {ED_BOX_HEADS.filter(h => h.p === p).map(h => (
+              <div key={h.text} className={"boxhead" + (h.dark ? " dk" : "")} style={{ left: h.x + "%", top: h.y + "%", width: h.w + "%" }}>{h.text}</div>
+            ))}
             {(byPage[p] ?? []).map(f => {
               if (ED_DRAWN_BY_ART.has(f.n)) return null;
               const isImani = imaniKeys.has(f.n);

@@ -120,7 +120,7 @@ By kind of spot
 - Page 5: built from the strongest and weakest pillar scores.
 - Page 7, Evidence in your answers: the client's own figures or words that sit behind this ranked pillar, copied from the client's answers or the calculator, in a short phrase. The cell for rank 1 holds evidence for the pillar ranked first, and so on down the five ranks.
 - Page 7, Why it ranks here: one short reason this pillar holds its rank, from the client's pillar score and answers.
-- Page 10, regions: the figure states how many regions the pilot reaches, from the client's number box, in the form "X of Y regions." Its caption reads "served by" followed by the pilot's name as the client typed it. The line under the region tiles states what the client's answers show about where the pilot runs, where it is blocked and what awaits it, using the client's own words.
+- Page 10, regions: the figure states how many regions the pilot reaches, from the client's number box, as the number alone (for example "3"). Its caption reads "served by" followed by the pilot's name as the client typed it. The line under the region tiles states what the client's answers show about where the pilot runs, where it is blocked and what awaits it, using the client's own words.
 - Page 11, note under the chart: one line on what the hours by department show, from the client's own figures.
 - Page 13, 5D levels: match one law to the client's answer for that level, build the body around that law, then give one action with a time frame.
 - Page 14, 5C pillars: the body rests on the client's answer to that pillar's pre-session question. The action carries a time frame.
