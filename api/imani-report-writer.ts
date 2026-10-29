@@ -1,6 +1,7 @@
 // api/imani-report-writer.ts
 // Imani Whitfield, SD/ED Report Writer (Client Delivery division, Sonnet 5.5).
-// Writes the client-specific wording for the Strategic AI Insight Report (SD).
+// Writes the client-specific wording for the Strategic AI Insight Report (SD) and the Executive AI
+// Alignment Report (ED). The client's tier picks the job description and the spot list.
 //
 // Starts when the database tells this route a client's numbers are worked out
 // (finished_reports.status = 'numbers_worked_out'), which happens right after the client hits
@@ -18,7 +19,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { IMANI_VOICE_GUIDE } from './_lib/imaniVoiceGuide.js';
-import { IMANI_JOB_DESCRIPTION, IMANI_OUTPUT_FORMAT, JOB_DESCRIPTION_VERSION } from './_lib/imaniJobDescription.js';
+import {
+  IMANI_JOB_DESCRIPTION, IMANI_ED_JOB_DESCRIPTION, IMANI_OUTPUT_FORMAT, JOB_DESCRIPTION_VERSION, ED_JOB_DESCRIPTION_VERSION,
+} from './_lib/imaniJobDescription.js';
 import { getAgentCorrections } from './_lib/agentKnowledge.js';
 
 export const config = { maxDuration: 300 };
@@ -180,10 +183,13 @@ async function writeBatch(system: string, clientData: unknown, spots: Spot[], us
 }
 
 // ── Checks that run after the writing, logged as warnings for DeAnna's review ─
-function checkWording(entries: Entry[], clientData: unknown): { spot_key: string; warning: string }[] {
+function checkWording(entries: Entry[], clientData: unknown, spots: Spot[]): { spot_key: string; warning: string }[] {
   const warnings: { spot_key: string; warning: string }[] = [];
   const norm = (s: string) => s.replace(/[$,]/g, '').replace(/\.0+$/, '');
-  const allowed = new Set<string>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '30', '60', '90', '15', '75', '12']);
+  const allowed = new Set<string>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '30', '60', '90', '15', '75', '12', '14', '31', '61', '76']);
+  // The ED spots carry their word count in the label ("up to 50 words").
+  const limitOf = new Map<string, number>();
+  for (const sp of spots) { const m = /up to (\d+) words/.exec(sp.label); if (m) limitOf.set(sp.spot_key, Number(m[1])); }
   const dataText = JSON.stringify(clientData);
   for (const m of dataText.matchAll(/\d[\d,]*(\.\d+)?/g)) allowed.add(norm(m[0]));
   // A number the client's questions spell out in words ("eighteen months") may appear as digits.
@@ -195,6 +201,9 @@ function checkWording(entries: Entry[], clientData: unknown): { spot_key: string
       const n = norm(m[0]);
       if (n && !allowed.has(n)) warnings.push({ spot_key: e.spot_key, warning: `Figure ${m[0]} does not appear in the calculator numbers or the client's answers` });
     }
+    const limit = limitOf.get(e.spot_key);
+    const words = e.text.trim().split(/\s+/).length;
+    if (limit && words > limit) warnings.push({ spot_key: e.spot_key, warning: `Wording runs ${words} words and this box holds up to ${limit}` });
     if (/[—–]/.test(e.text)) warnings.push({ spot_key: e.spot_key, warning: 'Wording contains a dash that DeAnna\'s voice guide does not use' });
     if (/\bbadge\b/i.test(e.text)) warnings.push({ spot_key: e.spot_key, warning: 'Wording says "badge" where client-facing wording says "achievement"' });
   }
@@ -216,7 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const started = Date.now();
   const usage: Usage = { input: 0, output: 0 };
-  const base = { access_token: token, model: MODEL, job_description_version: JOB_DESCRIPTION_VERSION };
+  let base = { access_token: token, model: MODEL, job_description_version: JOB_DESCRIPTION_VERSION };
 
   // 1. Read the client's row and claim the run lock.
   const { data: fr, error: frErr } = await supabase.from('finished_reports').select('*').eq('access_token', token).maybeSingle();
@@ -230,10 +239,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ skipped: 'attempt limit reached' });
     return;
   }
-  if (fr.diagnostic_tier !== 'strategic') {
-    res.status(200).json({ skipped: 'ED report writing starts after DeAnna reviews the ED report' });
+  if (fr.diagnostic_tier !== 'strategic' && fr.diagnostic_tier !== 'executive') {
+    res.status(200).json({ skipped: `tier ${fr.diagnostic_tier} has no report writer` });
     return;
   }
+  const isEd = fr.diagnostic_tier === 'executive';
+  base = { ...base, job_description_version: isEd ? ED_JOB_DESCRIPTION_VERSION : JOB_DESCRIPTION_VERSION };
 
   const lockCutoff = new Date(Date.now() - LOCK_MINUTES * 60_000).toISOString();
   const { data: claimed, error: claimErr } = await supabase
@@ -253,16 +264,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!fr.numbers || !fr.numbers.badge) throw new StepError('read calculator numbers', 'The calculator numbers are missing for this client');
     const isLeading = fr.numbers.badge === 'LEADING';
 
-    const { data: spotRows, error: spotErr } = await supabase.from('report_spots').select('*').eq('report_type', 'SD').eq('writer', 'imani').order('sort_order');
+    const { data: spotRows, error: spotErr } = await supabase.from('report_spots').select('*').eq('report_type', isEd ? 'ED' : 'SD').eq('writer', 'imani').order('sort_order');
     if (spotErr) throw new StepError('read spot list', spotErr.message);
     const spots = ((spotRows ?? []) as Spot[]).filter(s => !s.leading_only || isLeading);
     if (spots.length === 0) throw new StepError('read spot list', 'The spot list is empty');
 
     const corrections = await getAgentCorrections(AGENT_NAME, CORRECTIONS_TASK, 10);
-    const system = [IMANI_JOB_DESCRIPTION, IMANI_VOICE_GUIDE, IMANI_OUTPUT_FORMAT].join('\n\n====\n\n') + corrections;
+    const system = [isEd ? IMANI_ED_JOB_DESCRIPTION : IMANI_JOB_DESCRIPTION, IMANI_VOICE_GUIDE, IMANI_OUTPUT_FORMAT].join('\n\n====\n\n') + corrections;
 
-    // 3. Write in parallel batches: the summary pages, each pillar page, the 5D page and the Pathway page.
-    const batchOf = (s: Spot) => ([4, 5, 6, 13, 14].includes(s.page) ? 'summary' : String(s.page));
+    // 3. Write in parallel batches. SD: the summary pages, then each remaining page. ED: the summary pages,
+    // each pillar page, the three reflection pages together, and pages 16, 18, 19 and 20 together so page 19
+    // is written with the page 18 recommendations in the same request.
+    const batchOf = (s: Spot) => {
+      if (isEd) {
+        if ([3, 5, 6, 7].includes(s.page)) return 'summary';
+        if ([13, 14, 15].includes(s.page)) return 'reflections';
+        if ([16, 18, 19, 20].includes(s.page)) return 'closing';
+        return String(s.page);
+      }
+      return [4, 5, 6, 13, 14].includes(s.page) ? 'summary' : String(s.page);
+    };
     const batches = new Map<string, Spot[]>();
     for (const s of spots) batches.set(batchOf(s), [...(batches.get(batchOf(s)) ?? []), s]);
     const results = await Promise.all(Array.from(batches.values()).map(b => writeBatch(system, clientData, b, usage)));
@@ -271,7 +292,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 4. Check, save and move the status.
     const filled = entries.filter(e => e.text);
     const empty = entries.filter(e => !e.text);
-    const warnings = checkWording(entries, clientData);
+    const warnings = checkWording(entries, clientData, spots);
     const emptyReasons = empty.map(e => ({ spot_key: e.spot_key, reason: e.reason || 'No reason given' }));
 
     const insight = {
