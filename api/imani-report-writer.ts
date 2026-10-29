@@ -197,7 +197,11 @@ function checkWording(entries: Entry[], clientData: unknown, spots: Spot[]): { s
   for (const [word, digits] of Object.entries(numberWords)) if (new RegExp('\\b' + word + '\\b', 'i').test(dataText)) allowed.add(digits);
   for (const e of entries) {
     if (!e.text) continue;
-    for (const m of e.text.matchAll(/\$?\d[\d,]*(\.\d+)?/g)) {
+    // DeAnna's fixed action time frame: "within 24 hours of the information given". It must name what the 24 hours counts from.
+    if (/\b24 hours?\b/i.test(e.text) && !/\b24 hours? of the information given\b/i.test(e.text)) {
+      warnings.push({ spot_key: e.spot_key, warning: 'The 24 hours must read "within 24 hours of the information given" so the client sees what it counts from' });
+    }
+    for (const m of e.text.replace(/\b24 hours? of the information given\b/gi, '').matchAll(/\$?\d[\d,]*(\.\d+)?/g)) {
       const n = norm(m[0]);
       if (n && !allowed.has(n)) warnings.push({ spot_key: e.spot_key, warning: `Figure ${m[0]} does not appear in the calculator numbers or the client's answers` });
     }
