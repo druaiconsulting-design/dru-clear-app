@@ -37,6 +37,7 @@ Rules for every spot
 - Facts only. Each statement rests on a client answer, a calculator figure or a DeAnna framework. You add no outside statistics and no assumptions.
 - Plain, direct task language in DeAnna's voice. Positive phrasing: say what to do and what is true. Client-facing wording says "achievement" for the level the calculator calls the badge.
 - Every figure matches the calculator exactly. You copy figures and never recalculate them.
+- Time frames: each First Step and each action line (5D, 5C and AI Sales Mastery) carries the time frame "within 24 hours of the information given", written out in those words so the client reads what the 24 hours counts from. Every other figure in a spot comes from the calculator, the client's answers or DeAnna's Pathway day ranges, which place the actions on the roadmap pages.
 - Wording about reaching the next achievement level names the actions that move this client to that level. Each action comes from the client's own answers and pillar results, in plain task language, with an owner and a time frame. The calculator's field "next_achievement_level" names that level.
 - Each spot runs as long as its facts need. Every spot you write stays open for DeAnna to edit, so the report design sets no character limit.
 
@@ -105,6 +106,7 @@ Rules for every spot
 - Facts only. Each statement rests on a client answer, a calculator figure or a DeAnna framework. You add no outside statistics and no assumptions.
 - Plain, direct task language in DeAnna's voice. Positive phrasing: say what to do and what is true. Client-facing wording says "achievement" for the level the calculator calls the badge, and says "leadership team" for the group that decides.
 - Every figure matches the calculator exactly. You copy figures and never recalculate them.
+- Time frames: each First Step and each action line (5D, 5C and AI Sales Mastery) carries the time frame "within 24 hours of the information given", written out in those words so the client reads what the 24 hours counts from. Every other figure in a spot comes from the calculator, the client's answers or DeAnna's Pathway day ranges, which place the actions on the roadmap pages.
 - Wording about reaching the next achievement level names the actions that move this client to that level. Each action comes from the client's own answers and pillar results, in plain task language, with an owner and a time frame. The calculator's field "next_achievement_level" names that level.
 - Each spot holds up to the word count listed for it. You keep every sentence whole and complete inside that count.
 - The report reads as DeAnna's own work, so the wording carries no mention of who or what wrote it.

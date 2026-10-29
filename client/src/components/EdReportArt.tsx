@@ -76,6 +76,50 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
     }
   }
 
+  // Pillar pages 8 to 12: the Signal to Monitor card and its neighbour grow downward, and each circle on the track is labelled with its day
+  if (page >= 8 && page <= 12) {
+    const E = 18, NB = 1335 + E, FILL = "#F6F0E3", EDGE = "#E8E0CF";
+    [[92, 653, GOLD, 93], [679, 1182, MAGENTA, 680]].forEach(([x0, x1, bar, bx], i) => {
+      const r = 10;
+      const d = `M${x0 + 1},1333 V${NB - r} Q${x0 + 1},${NB} ${x0 + 1 + r},${NB} H${x1 - 1 - r} Q${x1 - 1},${NB} ${x1 - 1},${NB - r} V1333`;
+      body.push(<path key={"sg" + i} d={d + " Z"} fill={FILL} stroke="none" />);
+      body.push(<rect key={"sc" + i} x={x0 + 1} y={1318} width={12} height={20} fill={FILL} />);
+      body.push(<rect key={"sd" + i} x={x1 - 13} y={1318} width={12} height={20} fill={FILL} />);
+      body.push(<path key={"se" + i} d={d} fill="none" stroke={EDGE} strokeWidth={2} />);
+      body.push(<rect key={"sb" + i} x={bx} y={1318} width={8} height={NB - 1318 - 1} fill={bar as string} />);
+    });
+    [[760, "Day 30"], [930, "Day 60"], [1100, "Day 90"]].forEach(([cx, t]) => (
+      body.push(<text key={"dl" + cx} x={cx as number} y={1347} textAnchor="middle" fontFamily={FONT} fontSize={11.5} fontWeight={600} fill={MAGENTA}>{t}</text>)
+    ));
+  }
+
+  // Page 14: each of the five cards grows downward to hold a longer action line
+  if (page === 14) {
+    const E = 26, LINE = "#E6DFCA", BEIGE = "#EEEADC";
+    const cards: { side: "L" | "R"; top: number; bot: number }[] = [
+      { side: "L", top: 299, bot: 573 }, { side: "R", top: 517, bot: 765 }, { side: "L", top: 749, bot: 1023 },
+      { side: "R", top: 974, bot: 1248 }, { side: "L", top: 1207, bot: 1481 },
+    ];
+    cards.forEach((c, i) => {
+      const nb = c.bot + E, x0 = c.side === "L" ? 93 : 729, x1 = c.side === "L" ? 546 : 1182;
+      const barX = c.side === "L" ? 540 : 729, barC = c.side === "L" ? MAGENTA : GOLD;
+      const inX = c.side === "L" ? 95 : 735, inX2 = c.side === "L" ? 540 : 1180;
+      body.push(<rect key={"k14w" + i} x={inX} y={c.bot - 4} width={inX2 - inX} height={nb - c.bot + 4} fill="#FFFFFF" />);
+      body.push(<rect key={"k14b" + i} x={barX} y={c.bot - 4} width={6} height={nb - c.bot + 4} fill={barC} />);
+      body.push(<rect key={"k14p" + i} x={c.side === "L" ? 93 : 1180} y={c.bot - 4} width={2} height={nb - c.bot + 4} fill={c.side === "L" ? LINE : BEIGE} />);
+      body.push(<rect key={"k14l" + i} x={x0} y={nb - 1} width={x1 - x0} height={2} fill={LINE} />);
+    });
+  }
+
+  // Page 15: the three cards in the bottom row grow downward to hold a longer action line
+  if (page === 15) {
+    const EXT = 52, BOT = 1328 + EXT;
+    [[93, 351], [462, 351], [831, 351]].forEach(([x, w], i) => {
+      body.push(<rect key={"cg" + i} x={x + 2} y={1324} width={w - 4} height={BOT - 1324} fill="#FFFFFF" />);
+      body.push(<path key={"cb" + i} d={`M${x + 0.5},1324 V${BOT} H${x + w - 0.5} V1324`} fill="none" stroke="#E6DFCA" strokeWidth={1} />);
+    });
+  }
+
   // Page 5: the three boxes in the dark band sit lower, so each has a heading above it (as on the Strategic report)
   if (page === 5) {
     body.push(<rect key="bandcover" x={118} y={244} width={1040} height={66} fill={NAVY} />);

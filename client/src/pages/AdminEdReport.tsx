@@ -15,6 +15,17 @@ export const ED_PAGE_COUNT = 21;
 // so its label and answer get room for two lines.
 const GEOMETRY: Record<string, Partial<Field>> = {
   pl3_s3a: { x: 77.098, w: 12.1569, y: 27.3, h: 2.8, s: 1.15, ml: true },
+  // Action boxes on pages 14 and 15 get more room so the action and its 24-hour meaning both fit
+  agent_278: { h: 3.9, w: 25 },
+  agent_280: { h: 3.9, w: 25 },
+  agent_282: { h: 3.9, w: 25 },
+  agent_284: { h: 3.9, w: 25 },
+  agent_286: { h: 3.9, w: 25 },
+  agent_288: { h: 3.9 },
+  agent_290: { h: 3.9 },
+  agent_292: { h: 5.4, w: 16.8 },
+  agent_294: { h: 5.4, w: 16.8 },
+  agent_296: { h: 5.4, w: 16.8 },
   record_188: { y: 16.5 },
   record_189: { y: 16.5 },
   record_190: { y: 16.8 },
