@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { supabase } from "../lib/supabase";
 import FIELDS from "../data/edReportFields.json";
 import EdReportArt from "../components/EdReportArt";
-import { FitField, css, longDate, money, TIER_BANDS, TIER_MESSAGES, TIER_SUB } from "./AdminReport";
+import { FitField, css, weekdayDate, money, TIER_BANDS, TIER_MESSAGES, TIER_SUB } from "./AdminReport";
 import type { Field, ReportData } from "./AdminReport";
 
 // Review page for one client's Executive AI Alignment Report (21 pages).
@@ -14,6 +14,9 @@ export const ED_PAGE_COUNT = 21;
 // The third Execution tile reads "Last three attempts stopped at" with the client's stage, as on the Strategic report,
 // so its label and answer get room for two lines.
 const GEOMETRY: Record<string, Partial<Field>> = {
+  // Cover: the client's name and the day and date, centered across the page (same as the Strategic cover)
+  record_168: { x: 10, w: 80, y: 65.0, h: 2.9, s: 2.2, ctr: true },
+  calc_169: { x: 10, w: 80, y: 69.0, h: 2.1, s: 1.7, ctr: true },
   pl3_s3a: { x: 77.098, w: 12.1569, y: 27.3, h: 2.8, s: 1.15, ml: true },
   // Action boxes on pages 14 and 15 get more room so the action and its 24-hour meaning both fit
   agent_278: { h: 3.9, w: 24 },
@@ -58,7 +61,7 @@ export function edLockedValues(r: ReportData): Record<string, string> {
   const v: Record<string, string> = {};
   const n = r.numbers ?? {};
   v["record_168"] = [r.first_name, r.last_name].filter(Boolean).join(" ");
-  v["calc_169"] = longDate(n.report_date);
+  v["calc_169"] = weekdayDate(n.report_date);
   if (n.scaled_percent != null) v["record_188"] = String(n.scaled_percent);
 
   for (const p of PILLAR_ROWS) {
