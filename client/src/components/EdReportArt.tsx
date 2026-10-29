@@ -120,11 +120,31 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
     });
   }
 
+  // Review copy only: the pink placeholder boxes behind the action lines on pages 14 and 15 follow the larger action boxes
+  if (!clean && (page === 14 || page === 15)) {
+    const BOXES: { p: number; old: number[]; now: number[] }[] = [
+    { p: 14, old: [200, 507, 520, 557], now: [200, 507, 533, 586] },
+    { p: 14, old: [840, 699, 1160, 749], now: [840, 699, 1173, 778] },
+    { p: 14, old: [200, 957, 520, 1007], now: [200, 957, 533, 1036] },
+    { p: 14, old: [840, 1182, 1160, 1232], now: [840, 1182, 1173, 1261] },
+    { p: 14, old: [200, 1415, 520, 1464], now: [200, 1415, 533, 1494] },
+    { p: 15, old: [203, 538, 605, 596], now: [203, 537, 605, 612] },
+    { p: 15, old: [756, 538, 1158, 596], now: [757, 537, 1158, 612] },
+    { p: 15, old: [202, 1252, 420, 1310], now: [202, 1251, 433, 1355] },
+    { p: 15, old: [571, 1227, 789, 1285], now: [571, 1226, 802, 1330] },
+    { p: 15, old: [940, 1227, 1158, 1285], now: [940, 1226, 1171, 1330] },
+    ];
+    BOXES.filter(b => b.p === page).forEach((b, i) => {
+      body.push(<rect key={"po" + i} x={b.old[0] - 3} y={b.old[1] - 3} width={b.old[2] - b.old[0] + 7} height={b.old[3] - b.old[1] + 7} fill="#FFFFFF" />);
+      body.push(<rect key={"pn" + i} x={b.now[0]} y={b.now[1]} width={b.now[2] - b.now[0]} height={b.now[3] - b.now[1]} rx={6} fill="#FCE3EC" stroke={MAGENTA} strokeWidth={2} strokeDasharray="7 4" />);
+    });
+  }
+
   // Page 5: the three boxes in the dark band sit lower, so each has a heading above it (as on the Strategic report)
   if (page === 5) {
     body.push(<rect key="bandcover" x={118} y={244} width={1040} height={66} fill={NAVY} />);
     [[126, 166], [328, 544], [908, 241]].forEach(([x, w], i) => (
-      body.push(<rect key={"bx" + i} x={x} y={264} width={w} height={50} rx={5} fill="#FAF6EA" />)
+      body.push(<rect key={"bx" + i} x={x} y={264} width={w} height={50} rx={5} fill={clean ? "#FAF6EA" : "#E4E9F2"} stroke={clean ? undefined : NAVY} strokeWidth={clean ? undefined : 2} strokeDasharray={clean ? undefined : "5 5"} />)
     ));
   }
 
