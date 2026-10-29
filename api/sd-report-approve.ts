@@ -1,8 +1,9 @@
 // api/sd-report-approve.ts
-// Step 8 of the SD client journey: DeAnna approves a client's Strategic AI Insight Report.
+// Step 8 of the SD/ED client journey: DeAnna approves a client's Strategic AI Insight Report (16 pages) or
+// Executive AI Alignment Report (21 pages).
 // One call does the whole job, in this order, and stops at the first failure:
 //   1. claim the send (locks the report; a second click or second tab cannot send twice)
-//   2. build the client's 16-page PDF from the report page and store it privately (skipped on a retry: the stored PDF is reused)
+//   2. build the client's PDF from the report page and store it privately (skipped on a retry: the stored PDF is reused)
 //   3. email it to the client through DeAnna's GHL account with the PDF attached
 //   4. record the sent time
 // If anything fails, the report stays unsent, the error is saved on the report, and the same call can be made again.
@@ -23,13 +24,21 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 const GHL_VERSION = '2021-07-28';
 const BUCKET = 'sd-reports';
 
-const SUBJECT = 'Your Strategic AI Insight Report is ready';
+type Tier = 'strategic' | 'executive';
+const REPORT: Record<Tier, { name: string; file: string; subject: string }> = {
+  strategic: { name: 'Strategic AI Insight Report', file: 'Strategic-AI-Insight-Report.pdf', subject: 'Your Strategic AI Insight Report is ready' },
+  executive: { name: 'Executive AI Alignment Report', file: 'Executive-AI-Alignment-Report.pdf', subject: 'Your Executive AI Alignment Report is ready' },
+};
 
-function emailBody(firstName: string): { html: string; text: string } {
+// The Executive email wording is a draft until DeAnna approves it. While this is false, an Executive report cannot be
+// sent: the call stops before anything is locked, built or emailed. Set it to true once she has approved the wording below.
+const ED_EMAIL_APPROVED = false;
+
+function emailBody(firstName: string, tier: Tier): { html: string; text: string } {
   const hello = firstName ? `Hello ${firstName},` : 'Hello,';
   const paras = [
     hello,
-    'Your Strategic AI Insight Report is attached. All figures are based on your responses.',
+    `Your ${REPORT[tier].name} is attached. All figures are based on your responses.`,
     'Begin with your five pillars, ranked from lowest to highest. The lowest score identifies the area where work should begin.',
     'We will collaborate during our call.',
   ];
@@ -54,12 +63,12 @@ async function findContactIdByEmail(email: string, apiKey: string): Promise<stri
   return id;
 }
 
-async function sendEmail(contactId: string, firstName: string, pdfUrl: string, apiKey: string): Promise<string | null> {
-  const { html } = emailBody(firstName);
+async function sendEmail(contactId: string, firstName: string, tier: Tier, pdfUrl: string, apiKey: string): Promise<string | null> {
+  const { html } = emailBody(firstName, tier);
   const res = await fetch(`${GHL_API_BASE}/conversations/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ type: 'Email', contactId, subject: SUBJECT, html, attachments: [pdfUrl] }),
+    body: JSON.stringify({ type: 'Email', contactId, subject: REPORT[tier].subject, html, attachments: [pdfUrl] }),
   });
   const bodyText = await res.text();
   if (!res.ok) throw new Error(`GHL did not send the email (${res.status}): ${bodyText.slice(0, 400)}`);
@@ -85,6 +94,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
   if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY is not set.' }); return; }
 
+  // Which report this is decides the PDF and the email. Checked first so a blocked send locks nothing.
+  const { data: tierRow, error: tierErr } = await sb.from('finished_reports').select('diagnostic_tier').eq('access_token', token).maybeSingle();
+  if (tierErr) { res.status(500).json({ error: tierErr.message }); return; }
+  if (!tierRow) { res.status(404).json({ error: 'This report was not found.' }); return; }
+  const tier: Tier = tierRow.diagnostic_tier === 'executive' ? 'executive' : 'strategic';
+  if (tier === 'executive' && !ED_EMAIL_APPROVED) {
+    res.status(409).json({ error: 'The Executive report email wording has not been approved yet, so this report cannot be sent.' });
+    return;
+  }
+
   const { data: claim, error: claimErr } = await sb.rpc('claim_sd_report_send', { p_token: token });
   if (claimErr) { res.status(500).json({ error: claimErr.message }); return; }
   if (!claim) { res.status(404).json({ error: 'This report was not found.' }); return; }
@@ -103,20 +122,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let path: string | null = claim.report_file_path;
     let overLength = 0;
     if (!path) {
-      const built = await buildSdReportPdf(report);
+      const built = await buildSdReportPdf(report, tier);
       overLength = built.overLength;
-      path = `reports/${token}/Strategic-AI-Insight-Report.pdf`;
+      path = `reports/${token}/${REPORT[tier].file}`;
       const { error: upErr } = await sb.storage.from(BUCKET).upload(path, built.pdf, { contentType: 'application/pdf', upsert: true });
       if (upErr) throw new Error(`The PDF could not be stored: ${upErr.message}`);
       const { error: pErr } = await sb.from('finished_reports').update({ report_file_path: path, status: 'report_built', updated_at: new Date().toISOString() }).eq('access_token', token);
       if (pErr) throw new Error(`The PDF path could not be saved: ${pErr.message}`);
     }
 
-    const { data: signed, error: sErr } = await sb.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 7, { download: 'Strategic-AI-Insight-Report.pdf' });
+    const { data: signed, error: sErr } = await sb.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 7, { download: REPORT[tier].file });
     if (sErr || !signed?.signedUrl) throw new Error(`The PDF link could not be made: ${sErr?.message ?? 'no link'}`);
 
     const contactId = await findContactIdByEmail(email, apiKey);
-    const messageId = await sendEmail(contactId, String(report.first_name || '').trim(), signed.signedUrl, apiKey);
+    const messageId = await sendEmail(contactId, String(report.first_name || '').trim(), tier, signed.signedUrl, apiKey);
 
     const { error: doneErr } = await sb.from('finished_reports').update({
       status: 'sent', sent_at: new Date().toISOString(), send_error: null, send_started_at: null,

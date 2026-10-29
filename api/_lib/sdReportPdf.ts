@@ -1,7 +1,7 @@
 // api/_lib/sdReportPdf.ts
-// Builds the client's 16-page Strategic AI Insight Report PDF.
-// It opens the app's client-copy page (/sd-report-print) in a headless browser, hands the page the report's data,
-// waits for the page to finish fitting its wording, and prints it to US Letter.
+// Builds the client's report PDF: the 16-page Strategic AI Insight Report or the 21-page Executive AI Alignment Report.
+// It opens the app's client-copy page (/sd-report-print or /ed-report-print) in a headless browser, hands the page the
+// report's data, waits for the page to finish fitting its wording, and prints it to US Letter.
 
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
@@ -19,7 +19,14 @@ async function chromiumPath(): Promise<string> {
   }
 }
 
-export async function buildSdReportPdf(data: unknown): Promise<{ pdf: Buffer; overLength: number }> {
+type Kind = { path: string; dataKey: string; readyKey: string; pages: number };
+const KINDS: Record<'strategic' | 'executive', Kind> = {
+  strategic: { path: '/sd-report-print', dataKey: '__SD_REPORT__', readyKey: '__SD_READY__', pages: 16 },
+  executive: { path: '/ed-report-print', dataKey: '__ED_REPORT__', readyKey: '__ED_READY__', pages: 21 },
+};
+
+export async function buildSdReportPdf(data: unknown, tier: 'strategic' | 'executive' = 'strategic'): Promise<{ pdf: Buffer; overLength: number }> {
+  const k = KINDS[tier] ?? KINDS.strategic;
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath: await chromiumPath(),
@@ -28,18 +35,18 @@ export async function buildSdReportPdf(data: unknown): Promise<{ pdf: Buffer; ov
   });
   try {
     const page = await browser.newPage();
-    await page.evaluateOnNewDocument((d: unknown) => { (window as any).__SD_REPORT__ = d; }, data as any);
-    await page.goto(`${APP_ORIGIN}/sd-report-print`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.evaluateOnNewDocument((key: string, d: unknown) => { (window as any)[key] = d; }, k.dataKey, data as any);
+    await page.goto(`${APP_ORIGIN}${k.path}`, { waitUntil: 'networkidle0', timeout: 60000 });
     await page.waitForSelector('.pg', { timeout: 30000 });
-    await page.waitForFunction('window.__SD_READY__ === true', { timeout: 45000 });
+    await page.waitForFunction(`window.${k.readyKey} === true`, { timeout: 45000 });
     const pages = await page.evaluate(() => document.querySelectorAll('.pg').length);
-    if (pages !== 16) throw new Error(`The report page drew ${pages} pages instead of 16.`);
+    if (pages !== k.pages) throw new Error(`The report page drew ${pages} pages instead of ${k.pages}.`);
     const overLength = await page.evaluate(() => document.querySelectorAll('.f.over').length);
     const pdf = await page.pdf({ width: '8.5in', height: '11in', printBackground: true, preferCSSPageSize: true });
     const buf = Buffer.from(pdf);
-    // The PDF must hold all 16 pages. A short PDF is never stored or sent.
+    // The PDF must hold every page. A short PDF is never stored or sent.
     const made = (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-    if (made !== 16) throw new Error(`The PDF came out with ${made} pages instead of 16, so it was not sent.`);
+    if (made !== k.pages) throw new Error(`The PDF came out with ${made} pages instead of ${k.pages}, so it was not sent.`);
     return { pdf: buf, overLength };
   } finally {
     await browser.close();

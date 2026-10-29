@@ -24,6 +24,8 @@ import AdminOrg from "./pages/AdminOrg";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminReport from "./pages/AdminReport";
 import SdReportPrint from "./pages/SdReportPrint";
+import EdReportPrint from "./pages/EdReportPrint";
+import AdminEdReport from "./pages/AdminEdReport";
 import AdminArchived from "./pages/AdminArchived";
 import AdminMemberIntelligence from "./pages/AdminMemberIntelligence";
 import AdminDiagnostics from "./pages/AdminDiagnostics";
@@ -195,6 +197,10 @@ function Router() {
     setTitle("Strategic AI Insight Report");
     return <SdReportPrint />;
   }
+  if (path === "/ed-report-print" || path === "/ed-report-print/") {
+    setTitle("Executive AI Alignment Report");
+    return <EdReportPrint />;
+  }
   if (path === "/terms" || path === "/terms/") {
     setTitle("Terms of Engagement · DRU CLEAR™");
     return <TermsPage />;
@@ -257,6 +263,11 @@ function Router() {
     setTitle("Client Report · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminReport />;
+  }
+  if (path === "/admin-ed-report" || path === "/admin-ed-report/") {
+    setTitle("Client Report · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminEdReport />;
   }
   if (path === "/admin-archived" || path === "/admin-archived/") {
     setTitle("Archived Queue · DRU CLEAR™");

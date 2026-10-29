@@ -10,7 +10,7 @@ import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 
 export type Field = {
   n: string; p: number; x: number; y: number; w: number; h: number; s: number; ctr?: boolean;
-  c: string; f: string; wt: number; it: boolean; ml: boolean; d: string;
+  c: string; f: string; wt: number; it: boolean; ml: boolean; d: string; rt?: boolean; fx?: boolean;
 };
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
 export type ReportData = {
@@ -38,19 +38,19 @@ const GAP_CELLS = ["agent_019", "agent_022", "agent_025", "agent_028", "agent_03
 const GAP_CELLS_P16 = ["calc_163", "calc_164", "calc_165", "calc_166", "calc_167"];
 
 // Score bands are the free assessment's own (scaled percent): up to 40, 41 to 60, 61 to 80, 81 to 100.
-const TIER_BANDS: Record<string, string> = {
+export const TIER_BANDS: Record<string, string> = {
   EMERGING: "0 to 40", DEVELOPING: "41 to 60", ADVANCING: "61 to 80", LEADING: "81 to 100",
 };
 // The fixed achievement message for each tier: the wording the free assessment already carries for that tier.
-const TIER_MESSAGES: Record<string, string> = {
+export const TIER_MESSAGES: Record<string, string> = {
   EMERGING: "Your organization is in the early stages of AI readiness. Without a structured approach, you risk wasting resources on disconnected initiatives. The DRU CLEAR\u2122 Alignment Diagnostic will pinpoint exactly where to start for maximum impact.",
   DEVELOPING: "You've begun the AI conversation, but critical gaps in Clarity and Alignment are slowing your momentum. A full diagnostic will reveal the specific friction points and give you a clear path forward.",
   ADVANCING: "Your organization is making meaningful progress. However, one or two CLEAR pillars are underperforming and limiting your full potential. A diagnostic will identify exactly what's holding you back.",
   LEADING: "You're operating ahead of most organizations in AI readiness. The question now is sustainability and scale. An AI Leadership Advisory engagement will help you maintain your competitive edge and dominate your industry.",
 };
-const money = (n: number) => "$" + Number(n).toLocaleString("en-US");
+export const money = (n: number) => "$" + Number(n).toLocaleString("en-US");
 
-function longDate(iso: string | undefined): string {
+export function longDate(iso: string | undefined): string {
   if (!iso) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return iso;
@@ -139,7 +139,7 @@ export function lockedValues(r: ReportData): Record<string, string> {
 // Tile words that show only when the pre-session feeds them
 export const TILE_WORDS = new Set<string>(["sd_0093_L1", "sd_0093_L2", "sd_0095_L1"]);
 
-const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
+export const TIER_SUB: Record<string, string> = { EMERGING: "Explorer", DEVELOPING: "Adapter", ADVANCING: "Implementer", LEADING: "Builder" };
 
 // Heading words for boxes that have no heading above them, taken from the slot map
 export const BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean; right?: boolean }[] = [
@@ -244,7 +244,7 @@ export function FitField({ f, value, p, editable, imani, fitText, color, onChang
   };
   const common = {
     ref, style, spellCheck: false, autoComplete: "off" as const, "aria-label": `Page ${p} ${f.n}`,
-    className: "f" + (imani ? " edit" : "") + (over ? " over" : "") + (f.ctr ? " ctr" : ""),
+    className: "f" + (imani ? " edit" : "") + (over ? " over" : "") + (f.ctr ? " ctr" : "") + (f.rt ? " rt" : ""),
     title: over ? "This wording is longer than the space on the page. Shorten it to fit." : undefined,
   };
   return f.ml
@@ -519,7 +519,7 @@ main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:cente
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
 .f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
-.f.ctr{text-align:center}.f[readonly]{cursor:default}
+.f.ctr{text-align:center}.f.rt{text-align:right}.f[readonly]{cursor:default}
 .f.over{box-shadow:inset 0 0 0 2px #E53935 !important}
 .f.edit:not([readonly]):hover{box-shadow:inset 0 0 0 1px rgba(194,24,91,.55)}
 .f.edit:not([readonly]):focus{box-shadow:inset 0 0 0 2px #C2185B;background:rgba(255,255,255,.88)}
