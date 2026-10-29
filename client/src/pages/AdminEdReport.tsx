@@ -11,7 +11,23 @@ import type { Field, ReportData } from "./AdminReport";
 // own responses are shown locked. Each edit is saved as it is typed, beside Imani's original wording.
 
 export const ED_PAGE_COUNT = 21;
-export const ED_FIELDS = FIELDS as unknown as Field[];
+// The third Execution tile reads "Last three attempts stopped at" with the client's stage, as on the Strategic report,
+// so its label and answer get room for two lines.
+const GEOMETRY: Record<string, Partial<Field>> = {
+  pl3_s3a: { x: 77.098, w: 12.1569, y: 27.3, h: 2.8, s: 1.15, ml: true },
+  record_188: { y: 16.5 },
+  record_189: { y: 16.5 },
+  record_190: { y: 16.8 },
+  pl3_s3b: { x: 77.098, w: 12.1569, y: 30.3, h: 2.4242, s: 1.3, ml: true },
+};
+export const ED_FIELDS = (FIELDS as unknown as Field[]).map(f => (GEOMETRY[f.n] ? { ...f, ...GEOMETRY[f.n] } : f));
+
+// Headings over the three boxes at the top of page 5, as on page 4 of the Strategic report.
+export const ED_BOX_HEADS: { p: number; x: number; y: number; w: number; text: string; dark?: boolean }[] = [
+  { p: 5, x: 11.04, y: 14.45, w: 15, text: "Score 0-100", dark: true },
+  { p: 5, x: 26.92, y: 14.45, w: 40, text: "Tier, sub-name and band", dark: true },
+  { p: 5, x: 72.4, y: 14.45, w: 20, text: "Lowest pillars", dark: true },
+];
 const PILLAR_ROWS = ["Clarity", "Leadership", "Execution", "Alignment", "Results"];
 
 // Page 5 rows (score, label) in page order, then one score and label per pillar page, then the gap names on pages 7 and 21
@@ -59,6 +75,9 @@ export function edLockedValues(r: ReportData): Record<string, string> {
   if (n.execution) {
     v["pl3_cqv"] = money(n.execution.dollars);
     v["pl3_c4v"] = money(n.execution.dollars_x4);
+    if (n.execution.regions_reached != null) {
+      v["pl3_s1b"] = `${n.execution.regions_reached} ${Number(n.execution.regions_reached) === 1 ? "region" : "regions"}`;
+    }
   }
   if (n.results) v["pl5_tot"] = money(n.results.total_value);
 
@@ -82,6 +101,9 @@ export function edLockedValues(r: ReportData): Record<string, string> {
   if (objective) v["pl4_obj"] = objective;
   const obstacle = ans("CLEAR", "Execution", 1);
   if (obstacle) v["pl3_s2o"] = obstacle;
+  // The third tile shows where the last three attempts stopped (Execution Q3), as the Strategic report does
+  const stage = ans("CLEAR", "Execution", 3);
+  if (stage) { v["pl3_s3a"] = "Last three attempts stopped at"; v["pl3_s3b"] = stage; }
   return v;
 }
 
@@ -298,6 +320,9 @@ export default function AdminEdReport() {
             style={{ backgroundImage: `url("/ed-report-pages/p-${String(p).padStart(2, "0")}.png")` }}>
             {p > 1 && <div className="hdrname">{clientName}</div>}
             <EdReportArt page={p} report={report} />
+            {ED_BOX_HEADS.filter(h => h.p === p).map(h => (
+              <div key={h.text} className={"boxhead" + (h.dark ? " dk" : "")} style={{ left: h.x + "%", top: h.y + "%", width: h.w + "%" }}>{h.text}</div>
+            ))}
             {(byPage[p] ?? []).map(f => {
               if (ED_DRAWN_BY_ART.has(f.n)) return null;
               const isImani = editableKeys.has(f.n);

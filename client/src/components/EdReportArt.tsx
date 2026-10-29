@@ -41,9 +41,9 @@ function HeaderRing({ cx, cy, score }: { cx: number; cy: number; score: number }
     <g>
       <circle cx={cx} cy={cy} r={RING_R - RING_W / 2} fill="#FFFFFF" fillOpacity={0.06} />
       <circle cx={cx} cy={cy} r={RING_R} fill="none" stroke="#FFFFFF" strokeOpacity={0.19} strokeWidth={RING_W} />
-      <circle cx={cx} cy={cy} r={RING_R} fill="none" stroke={score >= 12 ? "#FFFFFF" : MAGENTA} strokeWidth={RING_W}
+      <circle cx={cx} cy={cy} r={RING_R} fill="none" stroke={score >= 12 ? GOLD : MAGENTA} strokeWidth={RING_W}
         strokeDasharray={`${frac * C} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} />
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={GOLD} strokeWidth={5} />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={score >= 12 ? "#FFFFFF" : GOLD} strokeWidth={5} />
     </g>
   );
 }
@@ -74,6 +74,14 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
       body.push(<rect key="bg" x={100} y={211} width={1080} height={506} fill={NAVY} />);
       body.push(<image key="b" href={src} x={158} y={211} width={964} height={506} preserveAspectRatio="xMidYMid meet" />);
     }
+  }
+
+  // Page 5: the three boxes in the dark band sit lower, so each has a heading above it (as on the Strategic report)
+  if (page === 5) {
+    body.push(<rect key="bandcover" x={118} y={244} width={1040} height={66} fill={NAVY} />);
+    [[126, 166], [328, 544], [908, 241]].forEach(([x, w], i) => (
+      body.push(<rect key={"bx" + i} x={x} y={264} width={w} height={50} rx={5} fill="#FAF6EA" />)
+    ));
   }
 
   // Page 5: five pillar bars, scale 3 to 15 with the gap line at 12
