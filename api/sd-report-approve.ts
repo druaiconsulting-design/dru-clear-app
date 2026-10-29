@@ -30,9 +30,8 @@ const REPORT: Record<Tier, { name: string; file: string; subject: string }> = {
   executive: { name: 'Executive AI Alignment Report', file: 'Executive-AI-Alignment-Report.pdf', subject: 'Your Executive AI Alignment Report is ready' },
 };
 
-// The Executive email wording is a draft until DeAnna approves it. While this is false, an Executive report cannot be
-// sent: the call stops before anything is locked, built or emailed. Set it to true once she has approved the wording below.
-const ED_EMAIL_APPROVED = false;
+// The Executive email wording was approved by DeAnna on Oct 29, 2026 (same four paragraphs as the Strategic email, with the Executive report name).
+const ED_EMAIL_APPROVED = true;
 
 function emailBody(firstName: string, tier: Tier): { html: string; text: string } {
   const hello = firstName ? `Hello ${firstName},` : 'Hello,';
