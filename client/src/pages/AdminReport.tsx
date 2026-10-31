@@ -175,8 +175,7 @@ const PAGE6_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
 // Captions and the regions line may run to two lines, so they get the room for it.
 const CAPTION2 = new Set<string>(["answer_068"]);
 
-// Page 12 law statements and the page 15 stage checkpoints are sentences, so they get two or three lines.
-const LAW12 = new Set<string>(["agent_126", "agent_129", "agent_132", "agent_135", "agent_138"]);
+// The page 15 stage checkpoints are sentences, so they get two or three lines.
 const ACTIONS15 = new Set<string>(["agent_153", "agent_155", "agent_157", "agent_159", "agent_161"]);
 const CHECK15 = new Set<string>(["agent_154", "agent_156", "agent_158", "agent_160", "agent_162"]);
 
@@ -209,7 +208,6 @@ export function geometryFor(f: Field): Field {
   if (T9[f.n]) return { ...f, ...T9[f.n] };
   if (f.n === "sd_0048") return { ...f, x: f.x + 1.41 };
   if (f.n === "sd_0003_L1") return { ...f, x: 27, w: 46, ml: false };
-  if (LAW12.has(f.n)) return { ...f, x: 61, w: 30, y: f.y - 0.6, h: 2.9, ml: true };
   if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
   if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
   if (CAPTION2.has(f.n)) return { ...f, y: 14.65, h: 2.1, ml: true };

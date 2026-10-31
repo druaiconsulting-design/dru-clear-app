@@ -2,6 +2,8 @@
 // Each page picture (the page background) holds the fixed design. Every part that changes per client is covered
 // here and drawn again from the calculator figures. Coordinates are in pixels of the 1275 x 1650 page pictures.
 
+import { fiveDPillShapes } from "./fiveDPills";
+
 const NAVY = "#0A2342";
 const MAGENTA = "#C2185B";
 const GOLD = "#D4AF37";
@@ -110,6 +112,9 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
       body.push(<rect key={"k14l" + i} x={x0} y={nb - 1} width={x1 - x0} height={2} fill={LINE} />);
     });
   }
+
+  // Page 13: each level shows the website's words as labels, drawn here in place of the old boxes and law line
+  if (page === 13) fiveDPillShapes().forEach(e => body.push(e));
 
   // Page 15: the three cards in the bottom row grow downward to hold a longer action line
   if (page === 15) {
