@@ -2,6 +2,8 @@
 // Each page picture (the page background) holds the fixed design. Every part that changes per client is covered
 // here and drawn again from the calculator figures. Coordinates are in pixels of the 1275 x 1650 page pictures.
 
+import { fiveDPillShapes } from "./fiveDPills";
+
 const NAVY = "#0A2342";
 const MAGENTA = "#C2185B";
 const GOLD = "#D4AF37";
@@ -128,14 +130,8 @@ export default function SdReportArt({ page, report, clean = false }: { page: num
     });
   }
 
-  // Page 12: the law statement is a sentence, so its box is drawn wider than the baked one
-  if (page === 12) {
-    [15.4508, 31.2563, 46.1907, 62.4318, 77.8018].forEach((pct, i) => {
-      const fy = (pct / 100) * 1650;
-      body.push(<rect key={"lc" + i} x={897} y={fy - 9} width={270} height={40} fill="#FFFFFF" />);
-      body.push(<rect key={"ln" + i} x={779} y={fy - 10} width={382} height={48} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
-    });
-  }
+  // Page 12: each level shows the website's words as labels, drawn here in place of the old boxes and law line
+  if (page === 12) fiveDPillShapes().forEach(e => body.push(e));
 
   // Page 15: each stage has an actions box and a checkpoint box, drawn at the sizes the wording needs
   if (page === 15) {
