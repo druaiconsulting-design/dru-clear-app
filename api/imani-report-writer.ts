@@ -273,7 +273,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const spots = ((spotRows ?? []) as Spot[]).filter(s => !s.leading_only || isLeading);
     if (spots.length === 0) throw new StepError('read spot list', 'The spot list is empty');
 
-    const corrections = await getAgentCorrections(AGENT_NAME, CORRECTIONS_TASK, 10);
+    const corrections = await getAgentCorrections(AGENT_NAME, CORRECTIONS_TASK, 1000);
     const system = [isEd ? IMANI_ED_JOB_DESCRIPTION : IMANI_JOB_DESCRIPTION, IMANI_VOICE_GUIDE, IMANI_OUTPUT_FORMAT].join('\n\n====\n\n') + corrections;
 
     // 3. Write in parallel batches. SD: the summary pages, then each remaining page. ED: the summary pages,
