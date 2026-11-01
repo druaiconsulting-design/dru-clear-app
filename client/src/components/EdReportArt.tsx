@@ -272,6 +272,10 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
     P19_BLOCK_TOP.forEach((b, i) => {
       body.push(<rect key={"p19card" + i} x={93} y={(b / 100) * 1650 - 20} width={1089} height={(15.0 / 100) * 1650 + 36} fill={CREAM} stroke="#E5E0D0" strokeWidth={1.5} />);
     });
+    // A short gold line sits above "WHAT THE FIGURES SHOW" in each box, lined up with the text.
+    P19_BLOCK_TOP.forEach((b, i) => {
+      body.push(<rect key={"p19ln" + i} x={194} y={((b + 7.1) / 100) * 1650 - 13} width={120} height={2} fill={GOLD} />);
+    });
     if (!clean) {
       P19_BLOCK_TOP.forEach((b, i) => {
         const bx = (y: number, h: number) => <rect key={"p19m" + i + "_" + y} x={191} y={(y / 100) * 1650} width={967} height={(h / 100) * 1650} rx={6} fill="#FCE3EC" stroke={MAGENTA} strokeWidth={1.5} strokeDasharray="5 3" />;
