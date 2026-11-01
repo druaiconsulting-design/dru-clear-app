@@ -260,7 +260,7 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
     });
   }
 
-  // Page 19: the three numbered circles sit beside each decision. The picture's own circles are covered and drawn again at the new places.
+  // Page 19: each decision sits in its own cream box, like page 20 and page 18. The picture's own circles are covered and drawn again inside the boxes.
   if (page === 19) {
     [274.5, 456.5, 639.5].forEach((oldCy, i) => {
       body.push(<rect key={"p19c" + i} x={78} y={oldCy - 28} width={70} height={56} fill={PAGE_BG} />);
@@ -268,16 +268,21 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
     // The review page's picture carries marker boxes at the old places. They are covered and drawn again beside the new text.
     if (!clean) {
       body.push(<rect key="p19mc" x={140} y={240} width={1050} height={530} fill={PAGE_BG} />);
+    }
+    P19_BLOCK_TOP.forEach((b, i) => {
+      body.push(<rect key={"p19card" + i} x={93} y={(b / 100) * 1650 - 20} width={1089} height={(15.0 / 100) * 1650 + 36} fill={CREAM} stroke="#E5E0D0" strokeWidth={1.5} />);
+    });
+    if (!clean) {
       P19_BLOCK_TOP.forEach((b, i) => {
-        const bx = (y: number, h: number) => <rect key={"p19m" + i + "_" + y} x={167} y={(y / 100) * 1650} width={1000} height={(h / 100) * 1650} rx={6} fill="#FCE3EC" stroke={MAGENTA} strokeWidth={1.5} strokeDasharray="5 3" />;
+        const bx = (y: number, h: number) => <rect key={"p19m" + i + "_" + y} x={191} y={(y / 100) * 1650} width={967} height={(h / 100) * 1650} rx={6} fill="#FCE3EC" stroke={MAGENTA} strokeWidth={1.5} strokeDasharray="5 3" />;
         body.push(bx(b + 1.7, 5.0));
         body.push(bx(b + 8.8, 6.2));
       });
     }
     [0, 1, 2].forEach(i => {
       const cy = P19_CIRCLE_CY[i];
-      body.push(<circle key={"p19d" + i} cx={113} cy={cy} r={30} fill={NAVY} />);
-      body.push(<text key={"p19n" + i} x={113} y={cy + 11} textAnchor="middle" fontFamily="Lora, serif" fontWeight={700} fontSize={32} fill={GOLD}>{i + 1}</text>);
+      body.push(<circle key={"p19d" + i} cx={143} cy={cy} r={30} fill={NAVY} />);
+      body.push(<text key={"p19n" + i} x={143} y={cy + 11} textAnchor="middle" fontFamily="Lora, serif" fontWeight={700} fontSize={32} fill={GOLD}>{i + 1}</text>);
     });
   }
 
