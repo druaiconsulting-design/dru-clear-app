@@ -84,6 +84,10 @@ export function lockedValues(r: ReportData): Record<string, string> {
     if (i >= 0 && i < 5) { v[GAP_CELLS[i]] = g.pillar; v[GAP_CELLS_P16[i]] = g.pillar; }
   });
 
+  // Closing paragraph on the roadmap page names the lowest-scoring pillar (rank 1 in the gap analysis)
+  const topGap = (n.ranked_gaps ?? []).find((g: any) => Number(g.rank) === 1);
+  if (topGap?.pillar) v["pillar_recommended"] = String(topGap.pillar);
+
   if (n.clarity) {
     v["answer_042"] = `${money(n.clarity.dollars)} in ${n.clarity.weeks} weeks`;
     v["calc_043"] = `${money(n.clarity.dollars_x4)} in ${n.clarity.weeks_x4} weeks`;
@@ -470,6 +474,7 @@ export default function AdminReport() {
               if (TILE_WORDS.has(f.n) && !isLockedCell) return null;
               let value = isImani ? valueFor(f.n) : isLockedCell ? locked[f.n] : f.d;
               if (f.n === "sd_0098" && locked["answer_080"]) value = value.replace("[PILOT NAME]", locked["answer_080"].toUpperCase());
+              if (f.n === "sd_0194" && locked["pillar_recommended"]) value = value.replace("[CALC: pillar recommended]", locked["pillar_recommended"]);
               return (
                 <FitField key={f.n} f={f} value={value} p={p}
                   editable={isImani && canEdit} imani={isImani} fitText={isImani || isLockedCell}
