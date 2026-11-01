@@ -215,7 +215,7 @@ export function geometryFor(f: Field, ctx: { numbers?: any; client_answers?: Rep
   if (T9[f.n]) return { ...f, ...T9[f.n] };
   if (f.n === "sd_0048") return { ...f, x: f.x + 1.41 };
   if (f.n === "sd_0003_L1") return { ...f, x: 27, w: 46, ml: false, ctr: true };
-  if (CHECK15.has(f.n)) return { ...f, y: 49.2, h: 9.1 };
+  if (CHECK15.has(f.n)) return { ...f, y: 50.67, h: 8.12 };
   if (ACTIONS15.has(f.n)) return { ...f, h: 22.2 };
   if (CAPTION2.has(f.n)) return { ...f, y: 14.65, h: 2.1, ml: true };
   if (f.n === "sd_0054") return { ...f, y: (212 / 1650) * 100, h: (58 / 1650) * 100, ml: true };

@@ -86,9 +86,9 @@ export default function SdReportArt({ page, report, clean = false }: { page: num
   // Page 15: each stage has an actions box and a checkpoint box, drawn at the sizes the wording needs
   if (page === 15) {
     [107, 327, 547, 767, 987].forEach((x, i) => {
-      body.push(<rect key={"sc" + i} x={x - 6} y={414} width={193} height={570} fill={CREAM_PG15} />);
+      body.push(<rect key={"sc" + i} x={x - 6} y={414} width={193} height={578} fill={CREAM_PG15} />);
       body.push(<rect key={"sa" + i} x={x - 2} y={420} width={185} height={378} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
-      body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={162} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
+      body.push(<rect key={"sk" + i} x={x - 2} y={806} width={185} height={170} rx={6} {...mk(PINK_FILL, PINK, "7 5", 2)} />);
     });
   }
 
