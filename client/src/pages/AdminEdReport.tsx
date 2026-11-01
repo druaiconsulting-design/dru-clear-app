@@ -85,6 +85,10 @@ export function edLockedValues(r: ReportData): Record<string, string> {
     if (i >= 0 && i < 5) { v[GAP_CELLS_P7[i]] = g.pillar; v[GAP_CELLS_P21[i]] = g.pillar; }
   });
 
+  // Closing paragraph on the roadmap page names the framework and the lowest-scoring pillar (rank 1 in the gap analysis)
+  const topGap = (n.ranked_gaps ?? []).find((g: any) => Number(g.rank) === 1);
+  if (topGap?.pillar) v["framework_pillar_ranked_1"] = `the DRU CLEAR™ pillar ${topGap.pillar}`;
+
   if (n.clarity) {
     v["pl1_q1v"] = `${money(n.clarity.dollars)} in ${n.clarity.weeks} weeks`;
     v["pl1_q4v"] = `${money(n.clarity.dollars_x4)} in ${n.clarity.weeks_x4} weeks`;
@@ -144,6 +148,7 @@ export function edFieldValue(f: Field, isImani: boolean, imaniText: string, lock
   if (!f.fx && !isImani && !isLocked) return null;
   let value = isImani ? imaniText : isLocked ? locked[f.n] : f.d;
   if (f.n === "pl3_costh" && locked["pl3_pil"]) value = value.replace("[PILOT NAME]", locked["pl3_pil"].toUpperCase());
+  if (f.n === "ed_0253" && locked["framework_pillar_ranked_1"]) value = value.replace("[CALC: framework and pillar ranked 1]", locked["framework_pillar_ranked_1"]);
   return value;
 }
 
