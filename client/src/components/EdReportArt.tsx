@@ -13,6 +13,10 @@ const PAGE_BG = "#FAFAF8";
 const CREAM = "#F5EFE0";
 const FONT = "Poppins, 'Segoe UI', sans-serif";
 
+// Page 19 layout: the top of each decision block, in percent of the page height. The decision text starts 1.7 below it.
+export const P19_BLOCK_TOP = [18.3, 39.6, 60.9];
+const P19_CIRCLE_CY = P19_BLOCK_TOP.map(b => ((b + 1.7) / 100) * 1650 + 18);
+
 export type EdArtReport = { numbers: any; first_name?: string | null };
 
 const pillarColor = (score: number) => (score >= 12 ? NAVY : MAGENTA);
@@ -249,6 +253,18 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
       body.push(<circle key={"c" + p} cx={cx} cy={cy} r={66} fill={PAGE_BG} />);
       body.push(<circle key={"d" + p} cx={cx} cy={cy} r={62.5} fill={pillarColor(sc)} stroke={GOLD} strokeWidth={3.5} />);
       body.push(<text key={"s" + p} x={cx} y={cy + 15} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={44} fill="#FFFFFF">{sc}</text>);
+    });
+  }
+
+  // Page 19: the three numbered circles sit beside each decision. The picture's own circles are covered and drawn again at the new places.
+  if (page === 19) {
+    [274.5, 456.5, 639.5].forEach((oldCy, i) => {
+      body.push(<rect key={"p19c" + i} x={78} y={oldCy - 28} width={70} height={56} fill={PAGE_BG} />);
+    });
+    [0, 1, 2].forEach(i => {
+      const cy = P19_CIRCLE_CY[i];
+      body.push(<circle key={"p19d" + i} cx={113} cy={cy} r={30} fill={NAVY} />);
+      body.push(<text key={"p19n" + i} x={113} y={cy + 11} textAnchor="middle" fontFamily="Lora, serif" fontWeight={700} fontSize={32} fill={GOLD}>{i + 1}</text>);
     });
   }
 
