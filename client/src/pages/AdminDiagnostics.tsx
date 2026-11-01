@@ -34,7 +34,7 @@ const CLEAR_PILLARS: Array<{
     key: "Leadership",
     questions: [
       "Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.",
-      "There is a designated executive sponsor who is accountable for driving AI transformation.",
+      "There is a designated leader who is accountable for driving AI transformation.",
       "Our leadership team actively participates in AI learning, development, and decision-making.",
     ],
     scoreField: "leadership_score",
