@@ -3,12 +3,14 @@
 // here and drawn again from the calculator figures. Coordinates are in pixels of the 1275 x 1650 page pictures.
 
 import { fiveDPillShapes } from "./fiveDPills";
+import { ROW6_H, ROW6_TOP } from "./SdReportArt";
 
 const NAVY = "#0A2342";
 const MAGENTA = "#C2185B";
 const GOLD = "#D4AF37";
 const TRACK = "#E9E4D4";
 const PAGE_BG = "#FAFAF8";
+const CREAM = "#F5EFE0";
 const FONT = "Poppins, 'Segoe UI', sans-serif";
 
 export type EdArtReport = { numbers: any; first_name?: string | null };
@@ -248,6 +250,23 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
       body.push(<circle key={"d" + p} cx={cx} cy={cy} r={62.5} fill={pillarColor(sc)} stroke={GOLD} strokeWidth={3.5} />);
       body.push(<text key={"s" + p} x={cx} y={cy + 15} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={44} fill="#FFFFFF">{sc}</text>);
     });
+  }
+
+  // Page 7: the table body is drawn again by the page itself (its rows grow with the wording), as on page 6 of the Strategic report
+  if (page === 7) {
+    const mk = (fill: string, stroke: string, dash: string, sw = 1) =>
+      clean ? { fill: "none", stroke: "none" } : { fill, stroke, strokeWidth: sw, strokeDasharray: dash };
+    body.push(<rect key="cover" x={93} y={308} width={1090} height={400} fill={PAGE_BG} />);
+    for (let i = 0; i < 5; i++) {
+      const y = ROW6_TOP + i * ROW6_H;
+      body.push(<rect key={"r" + i} x={93} y={y} width={1089} height={ROW6_H} fill={i % 2 === 0 ? "#FFFFFF" : CREAM} />);
+      body.push(<text key={"nr" + i} x={108} y={y + 34} fontFamily={FONT} fontWeight={700} fontSize={17} fill={NAVY}>{i + 1}</text>);
+      body.push(<rect key={"g" + i} x={152} y={y + 14} width={200} height={ROW6_H - 28} rx={6} {...mk("#E2F2E6", "#5BAA6E", "5 3")} />);
+      body.push(<rect key={"e" + i} x={385} y={y + 14} width={335} height={ROW6_H - 28} rx={6} {...mk("#FBF1CF", "#D9B84A", "5 3")} />);
+      body.push(<rect key={"w" + i} x={752} y={y + 14} width={415} height={ROW6_H - 28} rx={6} {...mk("#FCE3EC", MAGENTA, "5 3")} />);
+    }
+    body.push(<line key="l1" x1={367} y1={ROW6_TOP} x2={367} y2={ROW6_TOP + 5 * ROW6_H} stroke="#E5E0D0" />);
+    body.push(<line key="l2" x1={737} y1={ROW6_TOP} x2={737} y2={ROW6_TOP + 5 * ROW6_H} stroke="#E5E0D0" />);
   }
 
   if (!body.length) return null;

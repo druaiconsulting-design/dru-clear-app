@@ -91,7 +91,7 @@ export default function EdReportPrint() {
               const value = edFieldValue(f, isImani, isImani ? textFor(f.n) : "", locked);
               if (!value) return null;
               // The review copy colours slots by type (pink, gold, green). The client copy reads in one ink: navy, with GAP in magenta like its bar.
-              const ink = f.fx ? undefined : /^gap$/i.test(value.trim()) ? "#C2185B" : "#0A2342";
+              const ink = f.fx || /^pl\d_score$/.test(f.n) ? undefined : /^gap$/i.test(value.trim()) ? "#C2185B" : "#0A2342";
               return <FitField key={f.n} f={f} value={value} p={p} editable={false} imani={false} fitText color={ink} onChange={() => {}} onBlur={() => {}} />;
             })}
           </section>

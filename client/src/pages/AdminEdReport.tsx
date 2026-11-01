@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { supabase } from "../lib/supabase";
 import FIELDS from "../data/edReportFields.json";
 import EdReportArt from "../components/EdReportArt";
+import { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 import { FitField, css, weekdayDate, money, TIER_BANDS, TIER_MESSAGES, TIER_SUB } from "./AdminReport";
 import type { Field, ReportData } from "./AdminReport";
 
@@ -33,7 +34,16 @@ const GEOMETRY: Record<string, Partial<Field>> = {
   record_189: { y: 16.5 },
   record_190: { y: 16.8 },
   pl3_s3b: { x: 77.098, w: 12.1569, y: 30.3, h: 2.4242, s: 1.3, ml: true },
+  // Page 3: the summary statement is set larger so it fills the cream box beside the achievement picture
+  agent_170: { x: 47.4, w: 41.0, y: 15.4, h: 13.0, s: 1.65 },
 };
+// Page 7 rows grow with Imani's wording, laid out the same way as page 6 of the Strategic report.
+const P7_COLS = [{ x: 157, w: 190 }, { x: 390, w: 325 }, { x: 757, w: 405 }];
+[["agent_194", "agent_197", "agent_200", "agent_203", "agent_206"], ["answer_195", "answer_198", "answer_201", "answer_204", "answer_207"], ["agent_196", "agent_199", "agent_202", "agent_205", "agent_208"]]
+  .forEach((col, c) => col.forEach((k, row) => {
+    const top = ROW6_TOP + row * ROW6_H + 18;
+    GEOMETRY[k] = { x: (P7_COLS[c].x / 1275) * 100, w: (P7_COLS[c].w / 1275) * 100, y: (top / 1650) * 100, h: ((ROW6_H - 36) / 1650) * 100, ml: true };
+  }));
 export const ED_FIELDS = (FIELDS as unknown as Field[]).map(f => (GEOMETRY[f.n] ? { ...f, ...GEOMETRY[f.n] } : f));
 
 // Headings over the three boxes at the top of page 5, as on page 4 of the Strategic report.
@@ -67,7 +77,7 @@ export function edLockedValues(r: ReportData): Record<string, string> {
   for (const p of PILLAR_ROWS) {
     const row = n.pillars?.[p];
     if (!row) continue;
-    v[PAGE5_ROWS[p][0]] = String(row.score); v[PAGE5_ROWS[p][1]] = String(row.label);
+    v[PAGE5_ROWS[p][0]] = `Score ${row.score}`; v[PAGE5_ROWS[p][1]] = String(row.label);
     v[PILLAR_PAGE[p][0]] = String(row.score); v[PILLAR_PAGE[p][1]] = String(row.label);
   }
   (n.ranked_gaps ?? []).forEach((g: any) => {

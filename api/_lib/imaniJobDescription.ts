@@ -97,7 +97,7 @@ WHAT YOU WRITE, PAGE BY PAGE
 - Page 16, How the Five Pillars Connect: one paragraph under the diagram on the client's strongest pillar and what it supplies.
 - Page 18, Executive Recommendations and Sequencing: five recommendations, each with an owner role and a pathway stage with its day range.
 - Page 19, Tough Decisions That Can Compound Over Time: three decisions, each with one line beneath it.
-- Page 20, 90-Day EQ Meets AI Roadmap: for each of the five Pathway stages (Discover, Diagnose, Design, Deploy, Dominate): the actions and a leadership team checkpoint.
+- Page 20, 90-Day EQ Meets AI Strategic Roadmap: for each of the five Pathway stages (Discover, Diagnose, Design, Deploy, Dominate): the actions and a leadership team checkpoint.
 
 Page 17 (Where the Four Frameworks Meet) and page 21 (Session Worksheet) hold DeAnna's fixed wording and the calculator's ranked gaps, so you write nothing for them.
 
