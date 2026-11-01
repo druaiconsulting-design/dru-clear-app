@@ -17,6 +17,10 @@ const FONT = "Poppins, 'Segoe UI', sans-serif";
 export const P19_BLOCK_TOP = [18.3, 39.6, 60.9];
 const P19_CIRCLE_CY = P19_BLOCK_TOP.map(b => ((b + 1.7) / 100) * 1650 + 18);
 
+// Page 18 table geometry (pixels of the 1275 x 1650 page): the first row's top and every row's height
+export const ROW18_TOP = 269;
+export const ROW18_H = 170;
+
 export type EdArtReport = { numbers: any; first_name?: string | null };
 
 const pillarColor = (score: number) => (score >= 12 ? NAVY : MAGENTA);
@@ -266,6 +270,18 @@ export default function EdReportArt({ page, report, clean = false }: { page: num
       body.push(<circle key={"p19d" + i} cx={113} cy={cy} r={30} fill={NAVY} />);
       body.push(<text key={"p19n" + i} x={113} y={cy + 11} textAnchor="middle" fontFamily="Lora, serif" fontWeight={700} fontSize={32} fill={GOLD}>{i + 1}</text>);
     });
+  }
+
+  // Page 18: the five recommendation rows are drawn again at page 7's tall size so Imani's wording has room
+  if (page === 18) {
+    body.push(<rect key="p18cover" x={93} y={ROW18_TOP} width={1090} height={480} fill={PAGE_BG} />);
+    for (let i = 0; i < 5; i++) {
+      const y = ROW18_TOP + i * ROW18_H;
+      body.push(<rect key={"p18r" + i} x={93} y={y} width={1089} height={ROW18_H} fill={i % 2 === 0 ? "#FFFFFF" : CREAM} />);
+      body.push(<text key={"p18n" + i} x={108} y={y + 34} fontFamily={FONT} fontWeight={700} fontSize={17} fill={NAVY}>{i + 1}</text>);
+    }
+    body.push(<line key="p18l1" x1={797} y1={ROW18_TOP} x2={797} y2={ROW18_TOP + 5 * ROW18_H} stroke="#E5E0D0" />);
+    body.push(<line key="p18l2" x1={996} y1={ROW18_TOP} x2={996} y2={ROW18_TOP + 5 * ROW18_H} stroke="#E5E0D0" />);
   }
 
   // Page 7: the table body is drawn again by the page itself (its rows grow with the wording), as on page 6 of the Strategic report
