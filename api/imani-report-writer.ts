@@ -45,7 +45,7 @@ const STATEMENTS: { pillar: string; text: string }[] = [
   { pillar: 'Clarity', text: 'Leaders and teams across the organization understand why we are pursuing AI and what success looks like.' },
   { pillar: 'Clarity', text: 'We have identified specific strategic priorities where AI will have the greatest business impact.' },
   { pillar: 'Leadership', text: 'Our organizational leaders can clearly articulate how AI connects to our business strategy and competitive position.' },
-  { pillar: 'Leadership', text: 'There is a designated executive sponsor who is accountable for driving AI transformation.' },
+  { pillar: 'Leadership', text: 'There is a designated leader who is accountable for driving AI transformation.' },
   { pillar: 'Leadership', text: 'Our leadership team actively participates in AI learning, development, and decision-making.' },
   { pillar: 'Execution', text: 'We have identified specific business processes where AI can deliver measurable impact.' },
   { pillar: 'Execution', text: 'Our teams have the skills, tools, and resources needed to implement AI solutions today.' },
