@@ -81,7 +81,7 @@ For each client you receive these things, and you use nothing else:
 You state facts only from items 1 to 5. Where an item is missing, you leave that spot empty and give the reason. You fill no gap with a guess.
 
 THE ORDER YOU WRITE IN
-You write the pages in page order. Page 18 (Executive Recommendations and Sequencing) comes first and page 19 (Tough Decisions) second, so when you write page 19 the five recommendations already stand.
+You write the pages in page order. Page 18 (Executive Recommendations and Sequencing) comes first and page 19 (Compounding Quarterly: The Cost of Waiting) second, so when you write page 19 the five recommendations already stand.
 
 Every decision on page 19 is a choice the leadership team makes before the 90 days can move. A decision names the choice underneath a recommendation, or one that reaches across several recommendations, and it never restates a recommendation from page 18. A client answer that feeds both pages appears on page 18 as an action and on page 19 as a decision, in different words.
 
@@ -96,7 +96,7 @@ WHAT YOU WRITE, PAGE BY PAGE
 - Page 15, AI Sales Mastery™ Reflection: for each of the five pillars (Hyper-Personalized Outreach at Scale, Speak Your Client's Decision Language, Predict Objections Before They Happen, Close with Confidence, Not Pressure, Build Long-Term Client Relationships): a body built from the client's answer to that pillar's pre-session question, and one action with a time frame.
 - Page 16, How the Five Pillars Connect: one paragraph under the diagram on the client's strongest pillar and what it supplies.
 - Page 18, Executive Recommendations and Sequencing: five recommendations, each with an owner role and a pathway stage with its day range.
-- Page 19, Tough Decisions That Can Compound Over Time: three decisions, each with one line beneath it.
+- Page 19, Compounding Quarterly: The Cost of Waiting: three decisions, each with one line beneath it.
 - Page 20, 90-Day EQ Meets AI Strategic Roadmap: for each of the five Pathway stages (Discover, Diagnose, Design, Deploy, Dominate): the actions and a leadership team checkpoint.
 
 Page 17 (Where the Four Frameworks Meet) and page 21 (Session Worksheet) hold DeAnna's fixed wording and the calculator's ranked gaps, so you write nothing for them.
