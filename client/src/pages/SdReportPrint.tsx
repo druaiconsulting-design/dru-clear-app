@@ -88,7 +88,8 @@ export default function SdReportPrint() {
             ))}
             {(byPage[p] ?? []).map(f0 => {
               if (DRAWN_BY_ART.has(f0.n)) return null;
-              const f = geometryFor(f0);
+              const f = geometryFor(f0, report);
+              if (!f) return null;
               const isImani = imaniKeys.has(f.n);
               const isLockedCell = f.n in locked;
               const isFixed = f.n.startsWith("sd_");
@@ -99,7 +100,7 @@ export default function SdReportPrint() {
               if (f.n === "sd_0194" && locked["pillar_recommended"]) value = value.replace("[CALC: pillar recommended]", locked["pillar_recommended"]);
               if (!value) return null;
               // The review copy colours slots by type (pink, gold, green). The client copy reads in one ink: navy, with GAP in magenta like its bar.
-              const ink = isFixed ? undefined : /^gap$/i.test(value.trim()) ? "#C2185B" : "#0A2342";
+              const ink = f.fx ? f.c : isFixed ? undefined : /^gap$/i.test(value.trim()) ? "#C2185B" : "#0A2342";
               return <FitField key={f.n} f={f} value={value} p={p} editable={false} imani={false} fitText color={ink} onChange={() => {}} onBlur={() => {}} />;
             })}
           </section>

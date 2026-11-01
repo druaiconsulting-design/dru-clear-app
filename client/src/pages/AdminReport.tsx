@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { supabase } from "../lib/supabase";
 import FIELDS from "../data/sdReportFields.json";
 import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
+import { pillarGeometry } from "../data/sdPillarLayout";
 
 // Review page for one client's Strategic AI Insight Report.
 // Only Imani's spots are editable. Calculator figures, the Gap names, fixed wording and the client's
@@ -10,7 +11,7 @@ import SdReportArt, { ROW6_H, ROW6_TOP } from "../components/SdReportArt";
 
 export type Field = {
   n: string; p: number; x: number; y: number; w: number; h: number; s: number; ctr?: boolean;
-  c: string; f: string; wt: number; it: boolean; ml: boolean; d: string; rt?: boolean; fx?: boolean;
+  c: string; f: string; wt: number; it: boolean; ml: boolean; d: string; rt?: boolean; fx?: boolean; ls?: number; lh?: number; va?: "mid";
 };
 type Spot = { spot_key: string; page: number; label: string; writer: string; leading_only: boolean };
 export type ReportData = {
@@ -125,7 +126,7 @@ export function lockedValues(r: ReportData): Record<string, string> {
     v["calc_018"] = `Your results place your organization at ${badge} with ${n.scaled_percent}%. The next achievement is ${n.next_badge.badge}.`;
   }
   if (n.leadership) {
-    v["calc_061"] = `x 4 quarters of the year: ${n.leadership.postponed_decisions_x4} · ${n.leadership.delayed_initiatives_x4} · ${n.leadership.missed_cycles_x4}`;
+    v["calc_061"] = `${n.leadership.postponed_decisions_x4} · ${n.leadership.delayed_initiatives_x4} · ${n.leadership.missed_cycles_x4}`;
   }
   // Execution tiles: the number of regions reached and the stage where the last three attempts stopped
   if (n.execution?.regions_reached != null) {
@@ -183,7 +184,9 @@ const CAPTION2 = new Set<string>(["answer_068"]);
 const ACTIONS15 = new Set<string>(["agent_153", "agent_155", "agent_157", "agent_159", "agent_161"]);
 const CHECK15 = new Set<string>(["agent_154", "agent_156", "agent_158", "agent_160", "agent_162"]);
 
-export function geometryFor(f: Field): Field {
+export function geometryFor(f: Field, ctx: { numbers?: any; client_answers?: ReportData["client_answers"]; client_texts?: ReportData["client_texts"] } = {}): Field | null {
+  const pg = pillarGeometry(f, ctx);
+  if (pg !== undefined) return pg as Field | null;
   const r = PAGE6_ROWS[f.n];
   if (r) {
     const c = PAGE6_COLS[r.col];
@@ -241,7 +244,17 @@ export function FitField({ f, value, p, editable, imani, fitText, color, onChang
     el.style.setProperty("--k", String(fits ? best : 0.55));
     setOver(!fits);
   };
-  useLayoutEffect(() => { fit(); });
+  const centre = () => {
+    const el = ref.current;
+    if (!el || f.va !== "mid" || !f.ml) return;
+    el.style.paddingTop = "0px";
+    const prev = el.style.height;
+    el.style.height = "auto"; el.rows = 1;
+    const content = el.scrollHeight;
+    el.style.height = prev;
+    el.style.paddingTop = Math.max(0, (el.clientHeight - content) / 2) + "px";
+  };
+  useLayoutEffect(() => { fit(); centre(); });
   useEffect(() => {
     const host = ref.current?.parentElement;
     if (!host || typeof ResizeObserver === "undefined") return;
@@ -251,6 +264,7 @@ export function FitField({ f, value, p, editable, imani, fitText, color, onChang
   }, []);
   const style: CSSProperties = {
     ["--x" as any]: f.x, ["--y" as any]: f.y, ["--w" as any]: f.w, ["--h" as any]: f.h, ["--s" as any]: f.s,
+    ["--lh" as any]: f.lh ?? 1.3, ["--ls" as any]: (f.ls ?? 0) + "em",
     ["--c" as any]: color ?? f.c, ["--ff" as any]: `"${f.f}"`, ["--fw" as any]: f.wt, ["--fs" as any]: f.it ? "italic" : "normal",
   };
   const common = {
@@ -465,7 +479,8 @@ export default function AdminReport() {
             ))}
             {(byPage[p] ?? []).map(f0 => {
               if (DRAWN_BY_ART.has(f0.n)) return null;
-              const f = geometryFor(f0);
+              const f = geometryFor(f0, report);
+              if (!f) return null;
               const isImani = editableKeys.has(f.n);
               const isLockedCell = f.n in locked;
               const isFixed = f.n.startsWith("sd_");
@@ -529,7 +544,7 @@ main{padding:20px 16px 56px;display:flex;flex-direction:column;align-items:cente
 .pg{position:relative;width:min(100%,860px);aspect-ratio:612/792;container-type:inline-size;background-color:#FAFAF8;background-size:100% 100%;background-repeat:no-repeat;box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.18);scroll-margin-top:150px}
 .boxhead{position:absolute;height:1.7%;font:700 1.5cqw/1.2 Poppins,sans-serif;color:#51607A;white-space:nowrap;overflow:hidden;letter-spacing:.01em}.boxhead.dk{color:#D4AF37}
 .hdrname{position:absolute;left:78%;width:14.7%;top:.55%;height:2.1%;background:#0A2342;color:#D4AF37;font:700 .92cqw/1.3 Poppins,sans-serif;text-align:right;white-space:nowrap;overflow:hidden;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;justify-content:flex-end}
-.f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:1.3;color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
+.f{position:absolute;box-sizing:border-box;margin:0;padding:0 .08cqw 0 .25cqw;border:0;border-radius:2px;background:transparent;font-size:calc(var(--s)*var(--k,1)*1cqw);line-height:var(--lh,1.3);letter-spacing:var(--ls,0);color:var(--c);font-family:var(--ff),"DejaVu Sans",sans-serif;font-weight:var(--fw);font-style:var(--fs);resize:none;overflow:hidden;text-overflow:clip;white-space:nowrap;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1%);height:calc(var(--h)*1%);outline:0;caret-color:#C2185B}
 textarea.f{padding-top:.3cqw;white-space:pre-wrap;overflow-wrap:anywhere}
 .f.ctr{text-align:center}.f.rt{text-align:right}.f[readonly]{cursor:default}
 .f.over{box-shadow:inset 0 0 0 2px #E53935 !important}
