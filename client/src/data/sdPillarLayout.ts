@@ -131,7 +131,7 @@ export function pillarGeometry(f: LField, ctx: Ctx): LField | null | undefined {
       case "ofn": return G(f, { x: L.cx - 60, y: 262, w: 120, h: 24, px: m(11), c: "#C9D1DE", fx: true, ctr: true, ml: false });
       case "pill": return G(f, { x: L.bx0, y: Y.pill, w: m(90), h: m(20), px: m(8), c: white, fx: true, ctr: true, ml: false, ls: 0.1 });
       case "title": return G(f, { x: L.bx0 - m(2), y: Y.title, w: m(190), h: 98, px: m(46), c: white, fx: true, ml: true, lh: 1.2, f: "Lora", wt: 700, it: false });
-      case "tag": return G(f, { x: L.bx0, y: Y.tag, w: m(190), h: 86, px: m(13), c: PAGE_BG, fx: true, ml: true, lh: 1.35, f: "Lora", wt: 400, it: true });
+      case "tag": return G(f, { x: L.bx0, y: Y.tag, w: m(190), h: 96, px: m(13), c: PAGE_BG, fx: true, ml: true, lh: 1.35, f: "Lora", wt: 400, it: true });
       case "aha": return G(f, { x: L.colX + m(4) + m(16), y: Y.ahaTop + m(14), w: L.colW - m(4) - m(16) - m(66), h: Y.ahaH - m(28), px: m(11), ml: true, lh: 1.55 });
       case "cc": return G(f, { x: L.colX, y: Y.ccText, w: COL.half, h: Y.ccH, px: m(11), ml: true, lh: 1.55 });
       case "conn": return G(f, { x: L.colX + COL.halfR, y: Y.ccText, w: COL.halfRW, h: Y.ccH, px: m(11), ml: true, lh: 1.55 });
