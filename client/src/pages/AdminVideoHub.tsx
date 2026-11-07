@@ -24,7 +24,23 @@ interface HubItem {
   status: string;
   notes: string | null;
   created_at: string;
+  bunny_copies: BunnyCopy[] | null;
 }
+
+type Destination = "social" | "course" | "members";
+
+interface BunnyCopy {
+  destination: Destination;
+  library_id: string;
+  bunny_video_id: string;
+  sent_at: string;
+}
+
+const DEST_LABEL: Record<Destination, string> = {
+  social: "Social",
+  course: "Course",
+  members: "Members",
+};
 
 const TYPE_LABEL: Record<VideoType, string> = {
   micro_drama: "Micro drama",
@@ -141,6 +157,8 @@ export default function AdminVideoHub() {
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sending, setSending] = useState<{ id: string; dest: Destination } | null>(null);
+  const [sendMenuId, setSendMenuId] = useState<string | null>(null);
 
   const loadItems = useCallback(async () => {
     const { data, error } = await supabase
@@ -233,6 +251,32 @@ export default function AdminVideoHub() {
     setBusyId(null);
     if (error || !data) return setMessage({ kind: "error", text: error?.message || "Could not prepare the download." });
     window.location.href = data.signedUrl;
+  };
+
+  // Copy the original into a Bunny library. The original stays in the Hub.
+  const sendToBunny = async (item: HubItem, dest: Destination) => {
+    setSendMenuId(null);
+    setSending({ id: item.id, dest });
+    setMessage(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("You are signed out. Sign in again and retry.");
+      const res = await fetch("/api/hub-send-to-bunny", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ item_id: item.id, destination: dest }),
+      });
+      let body: { ok?: boolean; error?: string } = {};
+      try { body = await res.json(); } catch { /* non-JSON error page */ }
+      if (!res.ok || !body.ok) throw new Error(body.error || `Sending failed (${res.status}).`);
+      setMessage({ kind: "ok", text: `“${item.title}” was copied to the ${DEST_LABEL[dest]} library. The original is still here.` });
+      await loadItems();
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : "Sending failed." });
+    } finally {
+      setSending(null);
+    }
   };
 
   const remove = async (item: HubItem) => {
@@ -349,12 +393,23 @@ export default function AdminVideoHub() {
                         {TYPE_LABEL[item.video_type]} · {SOURCE_LABEL[item.source] || item.source} · {formatLength(item.length_seconds)} · {item.aspect_ratio || "size unknown"} · {formatBytes(item.file_size_bytes)} · {new Date(item.created_at).toLocaleDateString()}
                       </p>
                       {item.notes && <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)", margin: "3px 0 0" }}>{item.notes}</p>}
+                      {(item.bunny_copies || []).length > 0 && (
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#1B6E3C", margin: "5px 0 0" }}>
+                          Copies in Bunny: {(item.bunny_copies || []).map(c => `${DEST_LABEL[c.destination]} (video ID ${c.bunny_video_id})`).join(" · ")}
+                        </p>
+                      )}
+                      {sending?.id === item.id && (
+                        <p role="status" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.7)", margin: "5px 0 0" }}>
+                          Copying to the {DEST_LABEL[sending.dest]} library… large videos can take a few minutes. Keep this page open.
+                        </p>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button style={btn(false, busyId === item.id)} disabled={busyId === item.id} onClick={() => togglePlay(item)}>
                         {playing?.id === item.id ? "Close" : "Play"}
                       </button>
                       <button style={btn(false, busyId === item.id)} disabled={busyId === item.id} onClick={() => download(item)}>Download</button>
+                      <button style={btn(true, !!sending)} disabled={!!sending} onClick={() => setSendMenuId(sendMenuId === item.id ? null : item.id)}>Send to…</button>
                       {confirmDelete === item.id ? (
                         <>
                           <button style={{ ...btn(true, busyId === item.id), background: "#B3261E", color: "#FFFFFF" }} disabled={busyId === item.id} onClick={() => remove(item)}>Delete for good</button>
@@ -365,6 +420,19 @@ export default function AdminVideoHub() {
                       )}
                     </div>
                   </div>
+                  {sendMenuId === item.id && (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.6)" }}>Copy to the Bunny library for:</span>
+                      {(Object.keys(DEST_LABEL) as Destination[]).map(d => {
+                        const already = (item.bunny_copies || []).some(c => c.destination === d);
+                        return (
+                          <button key={d} style={btn(false, already)} disabled={already} onClick={() => sendToBunny(item, d)}>
+                            {DEST_LABEL[d]}{already ? " ✓" : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   {playing?.id === item.id && (
                     <video src={playing.url} controls autoPlay style={{ width: "100%", maxHeight: 460, marginTop: 12, borderRadius: 8, background: "#000" }} />
                   )}
