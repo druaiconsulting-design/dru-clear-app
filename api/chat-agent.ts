@@ -38,7 +38,7 @@ SERVICES:
 - Executive Diagnostic™ — $4,997 (BEST VALUE)
 - 90-Day AI Transformation Journey™ — $20K–$25K+
 - From Confusion to Confident with AI™ Course — from $1,497
-- Daily Connections — Free / Navigator $47/mo / Accelerator $147/mo
+- Daily Connections — Free / Navigator $97/month or $970/year (2 months free) / Accelerator $197/month or $1,970/year (2 months free)
 
 FRAMEWORKS (always ™):
 DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™

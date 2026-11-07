@@ -64,7 +64,7 @@ export default function Lab() {
             </p>
             <a href="https://link.druaiconsulting.com/payment-link/69ead3d37dd3512d920794b1"
               style={{ display: "inline-block", background: "#D4AF37", color: "#0A2342", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.08em", padding: "0.875rem 2rem", borderRadius: 8, textDecoration: "none" }}>
-              Upgrade to Accelerator — $147/mo
+              Upgrade to Accelerator, $197/month or $1,970/year
             </a>
           </div>
         </main>

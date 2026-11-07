@@ -49,7 +49,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { label: "Affiliate page updated", sub: "New copy - real links - GHL note" },
       { label: "Reset password flow - LIVE", sub: "type=signup + type=recovery both route to branded ResetPassword page" },
       { label: "NavBar restored - CLIENT VIEW / ADMIN VIEW", sub: "Toggle follows admin across all pages" },
-      { label: "Community Landing Page - LIVE", sub: "Founders Special - Navigator $97/mo - Accelerator $167/mo" },
+      { label: "Community Landing Page - LIVE", sub: "Founders Special - Navigator $97/mo or $970/yr - Accelerator $197/mo or $1,970/yr" },
       { label: "GHL Homepage Funnel - LIVE", sub: "15-section branded homepage - single CTA to assessment" },
       { label: "frameworks.druaiconsulting.com - LIVE", sub: "Standalone frameworks page deployed on Vercel" },
       { label: "Admin Command Center live stats", sub: "Supabase stats table - Edge Function - GHL webhooks wired" },
