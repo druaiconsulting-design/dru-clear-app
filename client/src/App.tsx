@@ -21,6 +21,7 @@ import AcceleratorCircle from "./pages/community/AcceleratorCircle";
 import Affiliate from "./pages/Affiliate";
 import Admin from "./pages/Admin";
 import AdminOrg from "./pages/AdminOrg";
+import AdminVideoHub from "./pages/AdminVideoHub";
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminReport from "./pages/AdminReport";
 import SdReportPrint from "./pages/SdReportPrint";
@@ -253,6 +254,11 @@ function Router() {
     setTitle("AI Empire Org Chart · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminOrg />;
+  }
+  if (path === "/admin-video-hub" || path === "/admin-video-hub/") {
+    setTitle("Video Hub · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminVideoHub />;
   }
   if (path === "/admin-approvals" || path === "/admin-approvals/") {
     setTitle("Intelligence Hub · DRU CLEAR™");
