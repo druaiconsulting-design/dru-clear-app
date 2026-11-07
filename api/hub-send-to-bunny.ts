@@ -13,26 +13,27 @@ type Destination = 'social' | 'course' | 'members'
 
 // Each Bunny library has its own library ID and its own upload key, both kept in the
 // team's shared Vercel variables. The library ID names are the ones DeAnna set up.
-// The upload key is found by its name in the shared variables: the exact names below
-// first, then any Bunny API key variable whose name carries the library's name.
+// The upload key is also a shared VITE_BUNNY_ variable (plain BUNNY_ names are not used, because
+// a project's own variable of the same name would override the shared one). The exact names below
+// are tried first, then any VITE_BUNNY_ ...API_KEY variable whose name carries the library's name.
 // Only variable NAMES are ever reported, never values.
 const DESTINATIONS: Record<Destination, { label: string; libraryEnvs: string[]; keyEnvs: string[]; keyPattern: RegExp }> = {
   social: {
     label: 'Social',
     libraryEnvs: ['VITE_BUNNY_SOCIAL_MEDIA_LIBRARY_ID'],
-    keyEnvs: ['BUNNY_SOCIAL_MEDIA_API_KEY', 'BUNNY_SOCIAL_API_KEY'],
+    keyEnvs: ['VITE_BUNNY_SOCIAL_MEDIA_API_KEY'],
     keyPattern: /SOCIAL/,
   },
   course: {
     label: 'Course',
     libraryEnvs: ['VITE_BUNNY_COURSES_LIBRARY_ID'],
-    keyEnvs: ['BUNNY_COURSES_API_KEY'],
+    keyEnvs: ['VITE_BUNNY_COURSES_API_KEY'],
     keyPattern: /COURSE/,
   },
   members: {
     label: 'Members',
     libraryEnvs: ['VITE_BUNNY_DRU_APP_LIBRARY_ID'],
-    keyEnvs: ['BUNNY_DRU_APP_API_KEY', 'BUNNY_APP_API_KEY'],
+    keyEnvs: ['VITE_BUNNY_DRU_APP_API_KEY'],
     keyPattern: /(DRU_APP|(^|_)APP(_|$))/,
   },
 }
@@ -43,7 +44,7 @@ function resolveDestination(d: Destination) {
   let keyName = cfg.keyEnvs.find(n => !!process.env[n]) || null
   if (!keyName) {
     keyName = Object.keys(process.env).find(
-      n => /BUNNY/.test(n) && /API_KEY$/.test(n) && !/TOKEN/.test(n) && cfg.keyPattern.test(n) && !!process.env[n]
+      n => /^VITE_BUNNY/.test(n) && /API_KEY$/.test(n) && !/TOKEN/.test(n) && cfg.keyPattern.test(n) && !!process.env[n]
     ) || null
   }
   return {
@@ -109,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = resolved.apiKey
   const missing = [
     !libraryId && `the library ID (${dest.libraryEnvs.join(' or ')})`,
-    !apiKey && `the upload key (looked for ${dest.keyEnvs.join(', ')}, or any Bunny API key variable named for ${dest.label})`,
+    !apiKey && `the upload key (looked for ${dest.keyEnvs.join(', ')}, or any VITE_BUNNY_ API key variable named for ${dest.label})`,
   ].filter(Boolean)
   if (missing.length) {
     const seen = Object.keys(process.env).filter(n => /BUNNY/.test(n)).sort()
