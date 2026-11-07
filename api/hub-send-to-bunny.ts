@@ -11,11 +11,59 @@ const ADMIN_EMAIL = 'deanna@druaiconsulting.com'
 
 type Destination = 'social' | 'course' | 'members'
 
-// Each Bunny library has its own library ID and its own upload key.
-const DESTINATIONS: Record<Destination, { label: string; libraryEnv: string; keyEnv: string }> = {
-  social:  { label: 'Social',  libraryEnv: 'VITE_BUNNY_SOCIAL_MEDIA_LIBRARY_ID', keyEnv: 'BUNNY_SOCIAL_API_KEY' },
-  course:  { label: 'Course',  libraryEnv: 'VITE_BUNNY_COURSES_LIBRARY_ID',      keyEnv: 'BUNNY_COURSES_API_KEY' },
-  members: { label: 'Members', libraryEnv: 'VITE_BUNNY_DRU_APP_LIBRARY_ID',      keyEnv: 'BUNNY_APP_API_KEY' },
+// Each Bunny library has its own library ID and its own upload key, both kept in the
+// team's shared Vercel variables. The library ID names are the ones DeAnna set up.
+// The upload key is found by its name in the shared variables: the exact names below
+// first, then any Bunny API key variable whose name carries the library's name.
+// Only variable NAMES are ever reported, never values.
+const DESTINATIONS: Record<Destination, { label: string; libraryEnvs: string[]; keyEnvs: string[]; keyPattern: RegExp }> = {
+  social: {
+    label: 'Social',
+    libraryEnvs: ['VITE_BUNNY_SOCIAL_MEDIA_LIBRARY_ID'],
+    keyEnvs: ['BUNNY_SOCIAL_MEDIA_API_KEY', 'BUNNY_SOCIAL_API_KEY'],
+    keyPattern: /SOCIAL/,
+  },
+  course: {
+    label: 'Course',
+    libraryEnvs: ['VITE_BUNNY_COURSES_LIBRARY_ID'],
+    keyEnvs: ['BUNNY_COURSES_API_KEY'],
+    keyPattern: /COURSE/,
+  },
+  members: {
+    label: 'Members',
+    libraryEnvs: ['VITE_BUNNY_DRU_APP_LIBRARY_ID'],
+    keyEnvs: ['BUNNY_DRU_APP_API_KEY', 'BUNNY_APP_API_KEY'],
+    keyPattern: /(DRU_APP|(^|_)APP(_|$))/,
+  },
+}
+
+function resolveDestination(d: Destination) {
+  const cfg = DESTINATIONS[d]
+  const libraryName = cfg.libraryEnvs.find(n => !!process.env[n]) || null
+  let keyName = cfg.keyEnvs.find(n => !!process.env[n]) || null
+  if (!keyName) {
+    keyName = Object.keys(process.env).find(
+      n => /BUNNY/.test(n) && /API_KEY$/.test(n) && !/TOKEN/.test(n) && cfg.keyPattern.test(n) && !!process.env[n]
+    ) || null
+  }
+  return {
+    libraryName,
+    keyName,
+    libraryId: libraryName ? process.env[libraryName]! : null,
+    apiKey: keyName ? process.env[keyName]! : null,
+  }
+}
+
+async function requireAdmin(req: VercelRequest, res: VercelResponse, supaUrl: string, serviceKey: string): Promise<boolean> {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  if (!token) { fail(res, 401, 'Sign in again and retry.'); return false }
+  const userRes = await fetch(`${supaUrl}/auth/v1/user`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${token}` },
+  })
+  if (!userRes.ok) { fail(res, 401, 'Sign in again and retry.'); return false }
+  const user: any = await userRes.json()
+  if (String(user?.email || '').toLowerCase() !== ADMIN_EMAIL) { fail(res, 403, 'Admin only.'); return false }
+  return true
 }
 
 interface BunnyCopy {
@@ -30,21 +78,25 @@ function fail(res: VercelResponse, status: number, error: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
+  if (req.method !== 'POST' && req.method !== 'GET') return fail(res, 405, 'Method not allowed')
 
   const supaUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supaUrl || !serviceKey) return fail(res, 500, 'Supabase credentials are not configured for this app.')
 
   // 1. Confirm the caller is DeAnna's admin login.
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (!token) return fail(res, 401, 'Sign in again and retry.')
-  const userRes = await fetch(`${supaUrl}/auth/v1/user`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${token}` },
-  })
-  if (!userRes.ok) return fail(res, 401, 'Sign in again and retry.')
-  const user: any = await userRes.json()
-  if (String(user?.email || '').toLowerCase() !== ADMIN_EMAIL) return fail(res, 403, 'Admin only.')
+  if (!(await requireAdmin(req, res, supaUrl, serviceKey))) return
+
+  // Connection check: which library ID and upload key variables this app can see (names only).
+  if (req.method === 'GET') {
+    const status: Record<string, { library_id_name: string | null; upload_key_name: string | null }> = {}
+    for (const d of Object.keys(DESTINATIONS) as Destination[]) {
+      const r = resolveDestination(d)
+      status[d] = { library_id_name: r.libraryName, upload_key_name: r.keyName }
+    }
+    const bunny_names = Object.keys(process.env).filter(n => /BUNNY/.test(n)).sort()
+    return res.status(200).json({ ok: true, status, bunny_names })
+  }
 
   // 2. Read the request.
   const { item_id, destination } = (req.body || {}) as { item_id?: string; destination?: Destination }
@@ -52,11 +104,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!item_id || !dest || !destination) return fail(res, 400, 'Choose a video and a destination (social, course or members).')
 
   // 3. Make sure this library's ID and upload key reach the app.
-  const libraryId = process.env[dest.libraryEnv]
-  const apiKey = process.env[dest.keyEnv]
-  const missing = [!libraryId && dest.libraryEnv, !apiKey && dest.keyEnv].filter(Boolean)
+  const resolved = resolveDestination(destination)
+  const libraryId = resolved.libraryId
+  const apiKey = resolved.apiKey
+  const missing = [
+    !libraryId && `the library ID (${dest.libraryEnvs.join(' or ')})`,
+    !apiKey && `the upload key (looked for ${dest.keyEnvs.join(', ')}, or any Bunny API key variable named for ${dest.label})`,
+  ].filter(Boolean)
   if (missing.length) {
-    return fail(res, 500, `The ${dest.label} library is not connected yet. Missing in Vercel for this app: ${missing.join(', ')}.`)
+    const seen = Object.keys(process.env).filter(n => /BUNNY/.test(n)).sort()
+    return fail(
+      res, 500,
+      `The ${dest.label} library is not connected yet. This app cannot see ${missing.join(' and ')}. ` +
+      `Bunny variables it can see: ${seen.length ? seen.join(', ') : 'none'}.`
+    )
   }
 
   const sbHeaders = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }
