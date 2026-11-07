@@ -92,6 +92,12 @@ export default function AdminOrg() {
     loadAgents();
   }, []);
 
+  // Travis's video team — they stay in their own divisions; this row only shows who works with him.
+  const VIDEO_TEAM = ["Darius King", "Nia Robinson", "Chloe Dubois", "Zara Ahmed", "Amelia Santos"];
+  const videoTeam = VIDEO_TEAM
+    .map(n => divisions.flatMap(d => d.agents).find(a => a.name === n))
+    .filter((a): a is AgentRow => !!a);
+
   const markPhotoError = (id: string) => setPhotoErrors(prev => ({ ...prev, [id]: true }));
 
   const circleStyle = (size: number, border = "#D4AF37"): React.CSSProperties => ({
@@ -184,6 +190,32 @@ export default function AdminOrg() {
             </div>
 
           </div>
+
+          {/* Video Production Team — reports into Travis, stays in own divisions */}
+          {videoTeam.length > 0 && (
+            <>
+              <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
+              <div style={{ border: "1px dashed rgba(27,77,142,0.55)", borderRadius: 10, padding: "0.5rem 0.75rem 0.75rem", maxWidth: 900 }}>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 6px", textAlign: "center" as const }}>Video Production Team · Works with Travis</p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, justifyContent: "center" }}>
+                  {videoTeam.map(agent => (
+                    <div key={agent.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 7, padding: "5px 9px", flex: "1 1 200px", maxWidth: 260 }}>
+                      {!photoErrors[agent.id] ? (
+                        <img src={agent.photo_url} alt={agent.name} onError={() => markPhotoError(agent.id)} style={{ width: 44, height: 44, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ ...fallback(initials(agent.name), 44), border: "1px solid rgba(212,175,55,0.35)", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700 }}>{initials(agent.name)}</div>
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{agent.name}</p>
+                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: 0 }}>{agent.role}</p>
+                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.52rem", margin: 0 }}>{agent.division}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
         </div>

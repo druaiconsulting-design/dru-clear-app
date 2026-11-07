@@ -166,7 +166,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"mateo",   agent_name:"Mateo Gonzalez",   role:"Sales Support" },
     { agent_id:"aaliyah", agent_name:"Aaliyah Foster",   role:"Outreach" },
     { agent_id:"jaylen",  agent_name:"Jaylen Brooks",    role:"Email Marketing" },
-    { agent_id:"chloe",   agent_name:"Chloe Dubois",     role:"Copy Writer" },
+    { agent_id:"chloe",   agent_name:"Chloe Dubois",     role:"Grant Application Reviewer · Video Script Writer" },
     { agent_id:"zara",    agent_name:"Zara Ahmed",       role:"Product Launch" },
     { agent_id:"elena",   agent_name:"Elena Vasquez",    role:"Product Knowledge" },
     { agent_id:"kwame",   agent_name:"Kwame Asante",     role:"Proposal Writer" },
@@ -176,7 +176,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   ],
   "Content & Brand": [
     { agent_id:"camila",  agent_name:"Camila Flores",    role:"Social Media Strategist" },
-    { agent_id:"darius",  agent_name:"Darius King",      role:"Viral Scripter" },
+    { agent_id:"darius",  agent_name:"Darius King",      role:"Copy Writer" },
     { agent_id:"ravi",    agent_name:"Ravi Gupta",       role:"Graphic Designer" },
     { agent_id:"yara",    agent_name:"Yara Mansour",     role:"Translator" },
     { agent_id:"ingrid",  agent_name:"Ingrid Larsen",    role:"Press Release" },

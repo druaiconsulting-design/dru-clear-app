@@ -77,7 +77,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true,  label: "Content & Brand Agents - BUILT",                     sub: "5 agents - Supabase edge function deployed" },
       { done: true,  label: "Client Delivery Agents + Creative Director - BUILT", sub: "7 agents - deployed" },
       { done: true,  label: "Governance Agents - BUILT",                          sub: "Legal & Finance - AI Governance - HR Division - 14 agents - all edge functions deployed" },
-      { done: true,  label: "Travis - Chief of Staff - BUILT",                    sub: "Pure deterministic router - routes all agents across 9 divisions" },
+      { done: true,  label: "Travis Wealthy - Executive Producer, Video Production - BUILT",                    sub: "Pure deterministic router - routes all agents across 9 divisions" },
       { done: true,  label: "All 39 Agents - Full Build COMPLETE",                sub: "Twin + Travis + 37 agents across 8 divisions - all system prompts - Genius Mode default" },
       { done: true,  label: "Passkeys / Face ID Login - LIVE",                    sub: "WebAuthn - device-based biometric - Supabase passkey_credentials table" },
       { done: true,  label: "Twin Streaming Fix - LIVE",                          sub: "WallClockTime timeout resolved - routed via Vercel serverless function" },

@@ -66,11 +66,11 @@ ABSOLUTE RULES — no exceptions, ever:
 AGENT COMMAND CAPABILITY: You have full access to DeAnna's 54-agent empire across 9 divisions. When DeAnna asks you to route a task to an agent, you can do it. Routing phrases include: "have [agent] do X", "ask [agent] to...", "tell [agent] to...", "get [agent] to...", "I need [agent] to...", or referencing an agent by name with a task.
 
 AGENT ROSTER (agent_id → name):
-raymond→Raymond Holloway (Chief of Staff) | travis→Travis Weston (Asst Chief of Staff) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
+raymond→Raymond Holloway (Chief of Staff) | travis→Travis Wealthy (Executive Producer, Video Production) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
 omar→Omar Patel (Lead Scoring) | ryan→Ryan Nakamura (CRM) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
-aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Copy) | zara→Zara Ahmed (ACC Weekly PDF Content Architect)
+aaliyah→Aaliyah Foster (Outreach) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Grant Application Reviewer, Video Script Writer) | zara→Zara Ahmed (ACC Weekly PDF Content Architect)
 elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
-camila→Camila Flores (Social Media) | darius→Darius King (Viral Scripter) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
+camila→Camila Flores (Social Media) | darius→Darius King (Copy Writer) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
 nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
 amara→Amara Okafor (Legal) | diego→Diego Reyes (Expenses) | yuki→Yuki Tanaka (Financial) | marcus→Marcus Chen (Tax)
 khalid→Khalid Hassan (Disclaimers) | sofia→Sofia Petrov (Privacy) | james→James Osei (Contracts) | meilin→Mei Lin (Brand Protection) | rafael→Rafael Torres (AI Intelligence)
@@ -90,14 +90,14 @@ const CLASSIFY_PROMPT = `You are a task router for DeAnna R. Upshaw's AI Twin. D
 
 TASK TYPE → PRIMARY AGENT MAPPING:
 - PDF, downloadable, lead magnet, checklist, guide → theo (Presentation Designer)
-- LinkedIn post, viral content, social post → darius (Viral Scripter)
+- LinkedIn post, viral content, social post → darius (Copy Writer)
 - Article, thought leadership, written content, blog → nia (Content Creation)
 - Slide deck, presentation, pitch deck → theo (Presentation Designer)
 - Video script, reel script, training video → amelia (Training Video Producer)
 - Email, email sequence, newsletter → jaylen (Email Marketing)
 - Social media strategy, content calendar → camila (Social Media Strategist)
 - Proposal, client document → kwame (Proposal Writer)
-- Copy, ad copy, headlines, CTAs → chloe (Copy Writer)
+- Copy, ad copy, headlines, CTAs → darius (Copy Writer)
 - ACC weekly PDF, Accelerator Circle content, leadership development/training content → zara (ACC Weekly PDF Content Architect)
 - Legal, contract, agreement → amara (Legal Advisor)
 - Financial, revenue, expenses → yuki (Financial Reporting)
