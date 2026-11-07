@@ -316,7 +316,7 @@ export default function AdminVideoHub() {
 
           <div style={{ marginTop: "1rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button style={btn(true, uploading || !file)} disabled={uploading || !file} onClick={startUpload}>
-              {uploading ? "Uploading…" : "Upload to the Hub"}
+              {uploading ? "Uploading…" : "Upload"}
             </button>
             {message && (
               <span role="status" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: message.kind === "ok" ? "#1B6E3C" : "#B3261E" }}>
