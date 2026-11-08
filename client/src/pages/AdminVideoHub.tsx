@@ -5,7 +5,7 @@ import AdminLayout from "../components/AdminLayout";
 // ─── Video Hub ────────────────────────────────────────────────────────────────
 // Originals live in the private Supabase bucket `hub-videos` (admin login only).
 // Each video (or voice-over) has one row in `video_hub_items`. Copies go to Bunny on request.
-// Sections: Travis's Videos (HeyGen), Voice-overs (ElevenLabs), manual upload, and the shelf.
+// Sections: Travis's Videos (HeyGen, with HeyGen or ElevenLabs voices), manual upload, and the shelf.
 
 const BUCKET = "hub-videos";
 
@@ -211,14 +211,9 @@ export default function AdminVideoHub() {
   const [tvMessage, setTvMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [tvCheckNote, setTvCheckNote] = useState<string | null>(null);
 
-  // Voice-overs (ElevenLabs)
+  // ElevenLabs voices (offered in Travis's Videos)
   const [voVoices, setVoVoices] = useState<VoiceChoice[]>([]);
   const [voLoadError, setVoLoadError] = useState<string | null>(null);
-  const [voTitle, setVoTitle] = useState("");
-  const [voVoice, setVoVoice] = useState("");
-  const [voText, setVoText] = useState("");
-  const [voBusy, setVoBusy] = useState(false);
-  const [voMessage, setVoMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const loadItems = useCallback(async () => {
     const { data, error } = await supabase
@@ -255,7 +250,6 @@ export default function AdminVideoHub() {
       if (el.ok) {
         const voices: VoiceChoice[] = el.body.voices || [];
         setVoVoices(voices);
-        setVoVoice(v => v || voices[0]?.voice_id || "");
         setTvVoice(v => v || (voices[0] ? `el:${voices[0].voice_id}` : ""));
       } else {
         setVoLoadError(el.body?.error || `ElevenLabs voices could not be loaded (${el.status}).`);
@@ -319,27 +313,6 @@ export default function AdminVideoHub() {
       return setTvMessage({ kind: "error", text: `This script is ${tvScript.trim().length.toLocaleString()} characters. ElevenLabs reads up to ${VOICE_OVER_LIMIT.toLocaleString()} at a time. Shorten it or split it into two videos.` });
     }
     setTvConfirm(true);
-  };
-
-  const makeVoiceOver = async () => {
-    setVoMessage(null);
-    if (!voTitle.trim()) return setVoMessage({ kind: "error", text: "Give the voice-over a title." });
-    if (!voText.trim()) return setVoMessage({ kind: "error", text: "Paste a script first." });
-    if (!voVoice) return setVoMessage({ kind: "error", text: "Choose a voice." });
-    if (voText.trim().length > VOICE_OVER_LIMIT) {
-      return setVoMessage({ kind: "error", text: `This script is ${voText.trim().length.toLocaleString()} characters. ElevenLabs reads up to ${VOICE_OVER_LIMIT.toLocaleString()} at a time. Shorten it or split it into two voice-overs.` });
-    }
-    setVoBusy(true);
-    const voiceName = voVoices.find(v => v.voice_id === voVoice)?.name;
-    const r = await callApi("/api/hub-elevenlabs", {
-      method: "POST",
-      body: { title: voTitle, text: voText, voice_id: voVoice, voice_name: voiceName },
-    });
-    setVoBusy(false);
-    if (!r.ok) return setVoMessage({ kind: "error", text: r.body?.error || `ElevenLabs could not make the voice-over (${r.status}).` });
-    setVoMessage({ kind: "ok", text: `“${voTitle.trim()}” voice-over is on the shelf.` });
-    setVoTitle(""); setVoText("");
-    await loadItems();
   };
 
   const pickFile = (f: File | null) => {
@@ -556,6 +529,9 @@ export default function AdminVideoHub() {
             <textarea id="tv-script" style={{ ...input, minHeight: 150, resize: "vertical", fontFamily: "'Inter', sans-serif" }}
               value={tvScript} onChange={e => setTvScript(e.target.value)} disabled={tvBusy} placeholder="Paste the script here" />
           </div>
+          {voLoadError && (
+            <p role="alert" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#B3261E", margin: "0.6rem 0 0" }}>ElevenLabs voices are not available: {voLoadError}</p>
+          )}
           {tvNotes.length > 0 && (
             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.55)", margin: "0.6rem 0 0" }}>{tvNotes.join(" ")}</p>
           )}
@@ -585,60 +561,6 @@ export default function AdminVideoHub() {
           {tvCheckNote && (
             <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#B3261E", margin: "0.6rem 0 0" }}>{tvCheckNote}</p>
           )}
-        </section>
-
-        {/* Voice-overs — ElevenLabs */}
-        <section style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1.25rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.1rem", margin: "0 0 0.2rem" }}>Voice-overs</h2>
-          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)", margin: "0 0 0.9rem" }}>
-            Paste a script and ElevenLabs reads it in the voice you choose. The audio lands on the shelf below.
-          </p>
-          {voLoadError && <p role="alert" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "#B3261E", margin: "0 0 0.8rem" }}>{voLoadError}</p>}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0.9rem" }}>
-            <div>
-              <label style={label} htmlFor="vo-title">Title</label>
-              <input id="vo-title" style={input} value={voTitle} onChange={e => setVoTitle(e.target.value)} disabled={voBusy} placeholder="Name this voice-over" />
-            </div>
-            <div>
-              <label style={label} htmlFor="vo-voice">Voice</label>
-              <select id="vo-voice" style={input} value={voVoice} onChange={e => setVoVoice(e.target.value)} disabled={voBusy || voVoices.length === 0}>
-                {voVoices.length === 0 && <option value="">No voices found</option>}
-                {voVoices.map(v => <option key={v.voice_id} value={v.voice_id}>{v.name}{v.category ? ` · ${v.category}` : ""}</option>)}
-              </select>
-              {(() => {
-                const chosen = voVoices.find(v => v.voice_id === voVoice);
-                if (!chosen) return null;
-                return (
-                  <div style={{ marginTop: "0.5rem" }}>
-                    {chosen.description && (
-                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.6)", margin: "0 0 0.3rem" }}>{chosen.description}</p>
-                    )}
-                    {chosen.preview_url ? (
-                      <audio key={chosen.voice_id} controls preload="none" src={chosen.preview_url} style={{ width: "100%", height: 34 }} aria-label={`Sample of ${chosen.name}`} />
-                    ) : (
-                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)", margin: 0 }}>No sample available for this voice.</p>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-          <div style={{ marginTop: "0.9rem" }}>
-            <label style={label} htmlFor="vo-text">Script</label>
-            <textarea id="vo-text" style={{ ...input, minHeight: 130, resize: "vertical", fontFamily: "'Inter', sans-serif" }}
-              value={voText} onChange={e => setVoText(e.target.value)} disabled={voBusy} placeholder="Paste the script here" />
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: voText.trim().length > VOICE_OVER_LIMIT ? "#B3261E" : "rgba(10,35,66,0.5)", margin: "0.3rem 0 0" }}>
-              {voText.trim().length.toLocaleString()} / {VOICE_OVER_LIMIT.toLocaleString()} characters
-            </p>
-          </div>
-          <div style={{ marginTop: "0.8rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button style={btn(true, voBusy || !!voLoadError)} disabled={voBusy || !!voLoadError} onClick={makeVoiceOver}>
-              {voBusy ? "Making…" : "Make voice-over"}
-            </button>
-            {voMessage && (
-              <span role="status" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: voMessage.kind === "ok" ? "#1B6E3C" : "#B3261E" }}>{voMessage.text}</span>
-            )}
-          </div>
         </section>
 
         {/* Upload */}
