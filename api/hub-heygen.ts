@@ -1,7 +1,7 @@
 // DRU AI Leadership Ecosystem™ — api/hub-heygen.ts
 // Video Hub: Travis's videos made with HeyGen (HeyGen's current v3 API).
-//   GET  ?action=options → avatars and voices to choose from (the ones saved in the team's Shared
-//        variables, plus the ones HeyGen lists for the account)
+//   GET  ?action=options → avatars (saved in Shared, plus the ones HeyGen lists for the account) and
+//        voices (the ones saved in the team's Shared variables)
 //   POST {action:'create', title, script, avatar_id, voice_id, aspect_ratio, video_type}
 //        → starts the video in HeyGen and puts a "Making…" item on the shelf
 //   POST {action:'check'} → asks HeyGen about every video still being made; finished ones are saved
@@ -90,16 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else notes.push(`HeyGen would not list avatars (${a.status}).`)
     } catch { notes.push('Could not reach HeyGen to list avatars.') }
 
-    try {
-      const v = await hgJson('/v3/voices?type=private&limit=100', key.value)
-      if (v.ok) {
-        for (const x of v.body?.data || []) {
-          if (x.voice_id && !voices.some(y => y.id === x.voice_id)) {
-            voices.push({ id: x.voice_id, label: `${x.name}${x.language ? ` · ${x.language}` : ''}` })
-          }
-        }
-      } else notes.push(`HeyGen would not list voices (${v.status}).`)
-    } catch { notes.push('Could not reach HeyGen to list voices.') }
+    // Voices come only from the variables saved in Shared (ElevenLabs is used for most voices).
 
     return res.status(200).json({ ok: true, avatars, voices, notes, key_name: key.name })
   }
