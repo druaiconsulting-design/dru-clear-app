@@ -1,5 +1,5 @@
 // DRU AI Leadership Ecosystem™ — api/_lib/hubShared.ts
-// Shared helpers for the Video Hub backends (voice-overs and HeyGen).
+// Shared helpers for the Video Hub backends (HeyGen and ElevenLabs).
 // Files that start with an underscore are not served as routes.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -73,13 +73,6 @@ export async function uploadToShelf(
   let msg = `The shelf storage refused the file (${r.status}).`
   try { const b: any = await r.json(); msg = b?.message || b?.error || msg } catch { /* keep default */ }
   return { ok: false, error: msg }
-}
-
-export async function removeFromShelf(cfg: { url: string; serviceKey: string }, path: string) {
-  try {
-    const encoded = path.split('/').map(encodeURIComponent).join('/')
-    await fetch(`${cfg.url}/storage/v1/object/${BUCKET}/${encoded}`, { method: 'DELETE', headers: sbHeaders(cfg.serviceKey) })
-  } catch { /* best effort */ }
 }
 
 export async function insertShelfItem(cfg: { url: string; serviceKey: string }, row: Record<string, unknown>): Promise<{ id?: string; error?: string }> {
