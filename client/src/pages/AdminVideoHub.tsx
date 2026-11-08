@@ -247,7 +247,7 @@ export default function AdminVideoHub() {
         setTvVoices(voices);
         setTvNotes(hg.body.notes || []);
         setTvAvatar(a => a || avatars[0]?.id || "");
-        setTvVoice(v => v || voices[0]?.id || "");
+        setTvVoice(v => v || (voices[0] ? `hg:${voices[0].id}` : ""));
       } else {
         setTvLoadError(hg.body?.error || `HeyGen options could not be loaded (${hg.status}).`);
       }
@@ -256,6 +256,7 @@ export default function AdminVideoHub() {
         const voices: VoiceChoice[] = el.body.voices || [];
         setVoVoices(voices);
         setVoVoice(v => v || voices[0]?.voice_id || "");
+        setTvVoice(v => v || (voices[0] ? `el:${voices[0].voice_id}` : ""));
       } else {
         setVoLoadError(el.body?.error || `ElevenLabs voices could not be loaded (${el.status}).`);
       }
@@ -294,7 +295,12 @@ export default function AdminVideoHub() {
     setTvMessage(null);
     const r = await callApi("/api/hub-heygen", {
       method: "POST",
-      body: { action: "create", title: tvTitle, script: tvScript, avatar_id: tvAvatar, voice_id: tvVoice, aspect_ratio: tvSize, video_type: tvType },
+      body: {
+        action: "create", title: tvTitle, script: tvScript, avatar_id: tvAvatar,
+        voice_id: tvVoice.slice(3), voice_source: tvVoice.startsWith("el:") ? "elevenlabs" : "heygen",
+        voice_name: tvVoice.startsWith("el:") ? voVoices.find(v => v.voice_id === tvVoice.slice(3))?.name : undefined,
+        aspect_ratio: tvSize, video_type: tvType,
+      },
     });
     setTvBusy(false);
     if (!r.ok) return setTvMessage({ kind: "error", text: r.body?.error || `HeyGen could not start the video (${r.status}).` });
@@ -309,6 +315,9 @@ export default function AdminVideoHub() {
     if (!tvScript.trim()) return setTvMessage({ kind: "error", text: "Paste a script first." });
     if (!tvAvatar) return setTvMessage({ kind: "error", text: "Choose an avatar." });
     if (!tvVoice) return setTvMessage({ kind: "error", text: "Choose a voice." });
+    if (tvVoice.startsWith("el:") && tvScript.trim().length > VOICE_OVER_LIMIT) {
+      return setTvMessage({ kind: "error", text: `This script is ${tvScript.trim().length.toLocaleString()} characters. ElevenLabs reads up to ${VOICE_OVER_LIMIT.toLocaleString()} at a time. Shorten it or split it into two videos.` });
+    }
     setTvConfirm(true);
   };
 
@@ -510,10 +519,36 @@ export default function AdminVideoHub() {
             </div>
             <div>
               <label style={label} htmlFor="tv-voice">Voice</label>
-              <select id="tv-voice" style={input} value={tvVoice} onChange={e => setTvVoice(e.target.value)} disabled={tvBusy || tvVoices.length === 0}>
-                {tvVoices.length === 0 && <option value="">No voices found</option>}
-                {tvVoices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+              <select id="tv-voice" style={input} value={tvVoice} onChange={e => setTvVoice(e.target.value)} disabled={tvBusy || (tvVoices.length === 0 && voVoices.length === 0)}>
+                {tvVoices.length === 0 && voVoices.length === 0 && <option value="">No voices found</option>}
+                {voVoices.length > 0 && (
+                  <optgroup label="ElevenLabs voices">
+                    {voVoices.map(v => <option key={`el:${v.voice_id}`} value={`el:${v.voice_id}`}>ElevenLabs · {v.name}{v.category ? ` · ${v.category}` : ""}</option>)}
+                  </optgroup>
+                )}
+                {tvVoices.length > 0 && (
+                  <optgroup label="HeyGen voices">
+                    {tvVoices.map(v => <option key={`hg:${v.id}`} value={`hg:${v.id}`}>HeyGen · {v.label}</option>)}
+                  </optgroup>
+                )}
               </select>
+              {(() => {
+                if (!tvVoice.startsWith("el:")) return null;
+                const chosen = voVoices.find(v => v.voice_id === tvVoice.slice(3));
+                if (!chosen) return null;
+                return (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    {chosen.description && (
+                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.6)", margin: "0 0 0.3rem" }}>{chosen.description}</p>
+                    )}
+                    {chosen.preview_url ? (
+                      <audio key={chosen.voice_id} controls preload="none" src={chosen.preview_url} style={{ width: "100%", height: 34 }} aria-label={`Sample of ${chosen.name}`} />
+                    ) : (
+                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)", margin: 0 }}>No sample available for this voice.</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <div style={{ marginTop: "0.9rem" }}>
@@ -527,7 +562,11 @@ export default function AdminVideoHub() {
           <div style={{ marginTop: "1rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {tvConfirm ? (
               <>
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: NAVY }}>HeyGen charges credits for each video. Make this one?</span>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: NAVY }}>
+                  {tvVoice.startsWith("el:")
+                    ? "ElevenLabs uses characters and HeyGen charges credits for each video. Make this one?"
+                    : "HeyGen charges credits for each video. Make this one?"}
+                </span>
                 <button style={btn(true, tvBusy)} disabled={tvBusy} onClick={startHeygen}>Yes, make it</button>
                 <button style={btn(false)} onClick={() => setTvConfirm(false)}>Cancel</button>
               </>

@@ -2,8 +2,10 @@
 // Video Hub: Travis's videos made with HeyGen (HeyGen's current v3 API).
 //   GET  ?action=options → avatars (saved in Shared, plus the ones HeyGen lists for the account) and
 //        voices (the ones saved in the team's Shared variables)
-//   POST {action:'create', title, script, avatar_id, voice_id, aspect_ratio, video_type}
-//        → starts the video in HeyGen and puts a "Making…" item on the shelf
+//   POST {action:'create', title, script, avatar_id, voice_id, aspect_ratio, video_type, voice_source?, voice_name?}
+//        → starts the video in HeyGen and puts a "Making…" item on the shelf.
+//        voice_source 'elevenlabs': ElevenLabs reads the script in that voice first, and HeyGen's avatar
+//        speaks to that recording (HeyGen's audio-to-video). Otherwise HeyGen reads the script itself.
 //   POST {action:'check'} → asks HeyGen about every video still being made; finished ones are saved
 //        onto the shelf as originals
 // Admin only: the caller's Supabase login must belong to DeAnna.
@@ -12,7 +14,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   fail, supabaseConfig, requireAdmin, sbHeaders, findEnv, namesMatching, safeName,
-  uploadToShelf, insertShelfItem, providerMessage,
+  uploadToShelf, insertShelfItem, providerMessage, elevenKey, elevenSpeak, ELEVEN_MAX_CHARS,
 } from './_lib/hubShared.js'
 
 export const config = { maxDuration: 300 }
@@ -99,8 +101,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── Start a video ──────────────────────────────────────────────────────────
   if (action === 'create') {
-    const { title, script, avatar_id, voice_id, aspect_ratio, video_type } = req.body as {
+    const { title, script, avatar_id, voice_id, aspect_ratio, video_type, voice_source, voice_name } = req.body as {
       title?: string; script?: string; avatar_id?: string; voice_id?: string; aspect_ratio?: string; video_type?: string
+      voice_source?: string; voice_name?: string
     }
     const text = (script || '').trim()
     if (!title?.trim()) return fail(res, 400, 'Give the video a title.')
@@ -109,15 +112,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!voice_id) return fail(res, 400, 'Choose a voice.')
     const aspect = ASPECTS.includes(aspect_ratio || '') ? aspect_ratio! : '9:16'
     const type = ['micro_drama', 'course', 'social', 'other'].includes(video_type || '') ? video_type! : 'other'
+    const useEleven = voice_source === 'elevenlabs'
+
+    if (useEleven && text.length > ELEVEN_MAX_CHARS) {
+      return fail(res, 400, `This script is ${text.length.toLocaleString()} characters. ElevenLabs reads up to ${ELEVEN_MAX_CHARS.toLocaleString()} at a time, so it is ${(text.length - ELEVEN_MAX_CHARS).toLocaleString()} over. Shorten it or split it into two videos.`)
+    }
 
     try {
+      let heygenBody: Record<string, unknown>
+      if (useEleven) {
+        // 1. ElevenLabs reads the script in the chosen voice.
+        const el = elevenKey()
+        if (!el) {
+          return fail(res, 500, `ElevenLabs is not connected yet. This app cannot see the ElevenLabs key (looked for VITE_ELEVENLABS_API_KEY). Check that the Shared variable is linked to dru-clear-app, then redeploy.`)
+        }
+        const spoken = await elevenSpeak(el.value, voice_id, text)
+        if (!spoken.ok) return fail(res, 502, spoken.error)
+
+        // 2. The recording goes to HeyGen's file storage.
+        const form = new FormData()
+        form.append('file', new Blob([new Uint8Array(spoken.audio)], { type: 'audio/mpeg' }), 'voice.mp3')
+        const up = await hgJson('/v3/assets', key.value, { method: 'POST', body: form })
+        const assetId = up.body?.data?.asset_id || up.body?.data?.id
+        if (!up.ok || !assetId) {
+          return fail(res, 502, `ElevenLabs made the voice (its characters were used), but HeyGen would not take the audio file: ${hgError(up)}`)
+        }
+        // 3. HeyGen's avatar speaks to that recording.
+        heygenBody = { type: 'avatar', avatar_id, audio_asset_id: assetId, aspect_ratio: aspect, title: title.trim() }
+      } else {
+        heygenBody = { type: 'avatar', avatar_id, voice_id, script: text, aspect_ratio: aspect, title: title.trim() }
+      }
+
       const made = await hgJson('/v3/videos', key.value, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'avatar', avatar_id, voice_id, script: text, aspect_ratio: aspect, title: title.trim() }),
+        body: JSON.stringify(heygenBody),
       })
       const videoId = made.body?.data?.video_id
-      if (!made.ok || !videoId) return fail(res, 502, `HeyGen would not start the video: ${hgError(made)}`)
+      if (!made.ok || !videoId) {
+        return fail(res, 502, `${useEleven ? 'ElevenLabs made the voice (its characters were used), but ' : ''}HeyGen would not start the video: ${hgError(made)}`)
+      }
 
       const saved = await insertShelfItem(cfg, {
         title: title.trim(),
@@ -126,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         aspect_ratio: aspect,
         storage_path: '',
         status: 'making',
-        notes: 'Made by Travis with HeyGen',
+        notes: useEleven ? `Made by Travis with HeyGen · voice: ElevenLabs ${voice_name || voice_id}` : 'Made by Travis with HeyGen',
         script_text: text,
         provider_video_id: videoId,
       })

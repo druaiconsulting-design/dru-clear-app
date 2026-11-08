@@ -103,3 +103,38 @@ export function providerMessage(raw: string): string {
   } catch { /* not JSON */ }
   return raw.slice(0, 300)
 }
+
+// ── ElevenLabs text-to-speech, used when a video is made with an ElevenLabs voice ──
+export const ELEVEN_MAX_CHARS = 10000
+
+export function elevenKey() {
+  return findEnv(['VITE_ELEVENLABS_API_KEY', 'ELEVENLABS_API_KEY', 'XI_API_KEY'], /ELEVEN/, /VOICE|MODEL|AGENT/)
+}
+
+// Reads the script in the chosen voice. Returns the mp3 bytes, or a plain-English error.
+export async function elevenSpeak(
+  key: string, voiceId: string, text: string
+): Promise<{ ok: true; audio: Buffer; model: string } | { ok: false; error: string }> {
+  const speak = (model: string) =>
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+      body: JSON.stringify({ text, model_id: model }),
+    })
+  let model = 'eleven_v4'
+  let r = await speak(model)
+  if (!r.ok && [400, 404, 422].includes(r.status)) {
+    const first = providerMessage(await r.text())
+    if (!/model/i.test(first)) return { ok: false, error: `ElevenLabs would not make the voice (${r.status}): ${first}` }
+    model = 'eleven_multilingual_v2'
+    r = await speak(model)
+  }
+  if (!r.ok) {
+    const msg = providerMessage(await r.text())
+    const money = r.status === 401 || r.status === 402 || /quota|credit|subscription|plan|payment|upgrade|free/i.test(msg)
+    return { ok: false, error: `ElevenLabs would not make the voice (${r.status}): ${msg}${money ? ' — this may be where ElevenLabs needs funds or a paid plan.' : ''}` }
+  }
+  const audio = Buffer.from(await r.arrayBuffer())
+  if (!audio.length) return { ok: false, error: 'ElevenLabs returned an empty audio file.' }
+  return { ok: true, audio, model }
+}
