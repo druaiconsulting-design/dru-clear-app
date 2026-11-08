@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── Voices in DeAnna's account ─────────────────────────────────────────────
   if (req.method === 'GET') {
     try {
-      const voices: { voice_id: string; name: string; category: string | null }[] = []
+      const voices: { voice_id: string; name: string; category: string | null; preview_url: string | null; description: string | null }[] = []
       let token: string | null = null
       for (let page = 0; page < 5; page++) {
         const qs = new URLSearchParams({ page_size: '100' })
@@ -61,7 +61,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const r = await fetch(`${EL_BASE}/v2/voices?${qs.toString()}`, { headers: elHeaders })
         if (!r.ok) return fail(res, 502, `ElevenLabs would not list voices (${r.status}): ${providerMessage(await r.text())}`)
         const body: any = await r.json()
-        for (const v of body?.voices || []) voices.push({ voice_id: v.voice_id, name: v.name, category: v.category ?? null })
+        for (const v of body?.voices || []) {
+          const labels = v.labels && typeof v.labels === 'object' ? Object.values(v.labels).filter(x => typeof x === 'string' && x).join(' · ') : ''
+          voices.push({
+            voice_id: v.voice_id, name: v.name, category: v.category ?? null,
+            preview_url: typeof v.preview_url === 'string' && v.preview_url ? v.preview_url : null, // ElevenLabs' own sample recording; costs no credits
+            description: (typeof v.description === 'string' && v.description.trim()) || labels || null,
+          })
+        }
         if (!body?.has_more || !body?.next_page_token) break
         token = body.next_page_token
       }

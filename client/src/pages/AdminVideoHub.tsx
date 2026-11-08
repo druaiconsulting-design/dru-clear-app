@@ -135,7 +135,7 @@ async function callApi(path: string, init?: { method?: string; body?: unknown })
 }
 
 interface Choice { id: string; label: string }
-interface VoiceChoice { voice_id: string; name: string; category: string | null }
+interface VoiceChoice { voice_id: string; name: string; category: string | null; preview_url?: string | null; description?: string | null }
 
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: "9:16", label: "Vertical (9:16)" },
@@ -566,6 +566,22 @@ export default function AdminVideoHub() {
                 {voVoices.length === 0 && <option value="">No voices found</option>}
                 {voVoices.map(v => <option key={v.voice_id} value={v.voice_id}>{v.name}{v.category ? ` · ${v.category}` : ""}</option>)}
               </select>
+              {(() => {
+                const chosen = voVoices.find(v => v.voice_id === voVoice);
+                if (!chosen) return null;
+                return (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    {chosen.description && (
+                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.6)", margin: "0 0 0.3rem" }}>{chosen.description}</p>
+                    )}
+                    {chosen.preview_url ? (
+                      <audio key={chosen.voice_id} controls preload="none" src={chosen.preview_url} style={{ width: "100%", height: 34 }} aria-label={`Sample of ${chosen.name}`} />
+                    ) : (
+                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)", margin: 0 }}>No sample available for this voice.</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <div style={{ marginTop: "0.9rem" }}>
