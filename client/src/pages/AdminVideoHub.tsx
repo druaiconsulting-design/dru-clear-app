@@ -135,6 +135,7 @@ async function callApi(path: string, init?: { method?: string; body?: unknown })
 }
 
 interface Choice { id: string; label: string }
+interface AgentChoice { id: string; name: string; role: string | null; photo_url: string }
 interface VoiceChoice { voice_id: string; name: string; category: string | null; preview_url?: string | null; description?: string | null }
 
 const SIZE_OPTIONS: { value: string; label: string }[] = [
@@ -196,7 +197,7 @@ export default function AdminVideoHub() {
   const [sendMenuId, setSendMenuId] = useState<string | null>(null);
 
   // Travis's Videos (HeyGen)
-  const [tvAvatars, setTvAvatars] = useState<Choice[]>([]);
+  const [tvAgents, setTvAgents] = useState<AgentChoice[]>([]);
   const [tvVoices, setTvVoices] = useState<Choice[]>([]);
   const [tvLoadError, setTvLoadError] = useState<string | null>(null);
   const [tvNotes, setTvNotes] = useState<string[]>([]);
@@ -236,12 +237,12 @@ export default function AdminVideoHub() {
     (async () => {
       const hg = await callApi("/api/hub-heygen");
       if (hg.ok) {
-        const avatars: Choice[] = hg.body.avatars || [];
+        const agents: AgentChoice[] = hg.body.agents || [];
         const voices: Choice[] = hg.body.voices || [];
-        setTvAvatars(avatars);
+        setTvAgents(agents);
         setTvVoices(voices);
         setTvNotes(hg.body.notes || []);
-        setTvAvatar(a => a || avatars[0]?.id || "");
+        setTvAvatar(a => a || agents[0]?.id || "");
         setTvVoice(v => v || (voices[0] ? `hg:${voices[0].id}` : ""));
       } else {
         setTvLoadError(hg.body?.error || `HeyGen options could not be loaded (${hg.status}).`);
@@ -290,7 +291,7 @@ export default function AdminVideoHub() {
     const r = await callApi("/api/hub-heygen", {
       method: "POST",
       body: {
-        action: "create", title: tvTitle, script: tvScript, avatar_id: tvAvatar,
+        action: "create", title: tvTitle, script: tvScript, agent_id: tvAvatar,
         voice_id: tvVoice.slice(3), voice_source: tvVoice.startsWith("el:") ? "elevenlabs" : "heygen",
         voice_name: tvVoice.startsWith("el:") ? voVoices.find(v => v.voice_id === tvVoice.slice(3))?.name : undefined,
         aspect_ratio: tvSize, video_type: tvType,
@@ -307,7 +308,7 @@ export default function AdminVideoHub() {
     setTvMessage(null);
     if (!tvTitle.trim()) return setTvMessage({ kind: "error", text: "Give the video a title." });
     if (!tvScript.trim()) return setTvMessage({ kind: "error", text: "Paste a script first." });
-    if (!tvAvatar) return setTvMessage({ kind: "error", text: "Choose an avatar." });
+    if (!tvAvatar) return setTvMessage({ kind: "error", text: "Choose an agent." });
     if (!tvVoice) return setTvMessage({ kind: "error", text: "Choose a voice." });
     if (tvVoice.startsWith("el:") && tvScript.trim().length > VOICE_OVER_LIMIT) {
       return setTvMessage({ kind: "error", text: `This script is ${tvScript.trim().length.toLocaleString()} characters. ElevenLabs reads up to ${VOICE_OVER_LIMIT.toLocaleString()} at a time. Shorten it or split it into two videos.` });
@@ -484,11 +485,19 @@ export default function AdminVideoHub() {
               </select>
             </div>
             <div>
-              <label style={label} htmlFor="tv-avatar">Avatar</label>
-              <select id="tv-avatar" style={input} value={tvAvatar} onChange={e => setTvAvatar(e.target.value)} disabled={tvBusy || tvAvatars.length === 0}>
-                {tvAvatars.length === 0 && <option value="">No avatars found</option>}
-                {tvAvatars.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+              <label style={label} htmlFor="tv-avatar">Avatar (agent)</label>
+              <select id="tv-avatar" style={input} value={tvAvatar} onChange={e => setTvAvatar(e.target.value)} disabled={tvBusy || tvAgents.length === 0}>
+                {tvAgents.length === 0 && <option value="">No agents found</option>}
+                {tvAgents.map(a => <option key={a.id} value={a.id}>{a.name}{a.role ? ` — ${a.role}` : ""}</option>)}
               </select>
+              {(() => {
+                const chosen = tvAgents.find(a => a.id === tvAvatar);
+                if (!chosen) return null;
+                return (
+                  <img src={chosen.photo_url} alt={`Photo of ${chosen.name}`} loading="lazy"
+                    style={{ marginTop: "0.5rem", width: 96, height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(212,175,55,0.4)" }} />
+                );
+              })()}
             </div>
             <div>
               <label style={label} htmlFor="tv-voice">Voice</label>

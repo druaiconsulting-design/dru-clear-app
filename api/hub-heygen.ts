@@ -1,11 +1,12 @@
 // DRU AI Leadership Ecosystem™ — api/hub-heygen.ts
 // Video Hub: Travis's videos made with HeyGen (HeyGen's current v3 API).
-//   GET  ?action=options → avatars (saved in Shared, plus the ones HeyGen lists for the account) and
-//        voices (the ones saved in the team's Shared variables)
-//   POST {action:'create', title, script, avatar_id, voice_id, aspect_ratio, video_type, voice_source?, voice_name?}
-//        → starts the video in HeyGen and puts a "Making…" item on the shelf.
-//        voice_source 'elevenlabs': ElevenLabs reads the script in that voice first, and HeyGen's avatar
-//        speaks to that recording (HeyGen's audio-to-video). Otherwise HeyGen reads the script itself.
+//   GET  ?action=options → the agents (name, role, photo from the agents table: each agent's photo is the
+//        face) and the HeyGen voices saved in the team's Shared variables
+//   POST {action:'create', title, script, agent_id, voice_id, aspect_ratio, video_type, voice_source?, voice_name?}
+//        → starts the video in HeyGen (the agent's photo animated, HeyGen's photo-to-video) and puts a
+//        "Making…" item on the shelf.
+//        voice_source 'elevenlabs': ElevenLabs reads the script in that voice first, and the photo speaks
+//        to that recording. Otherwise HeyGen reads the script itself in the chosen HeyGen voice.
 //   POST {action:'check'} → asks HeyGen about every video still being made; finished ones are saved
 //        onto the shelf as originals
 // Admin only: the caller's Supabase login must belong to DeAnna.
@@ -30,9 +31,9 @@ function heygenKey() {
   )
 }
 
-// Avatar and voice IDs DeAnna saved in the Shared variables (IDs are not secrets).
-function savedChoices(kind: 'AVATAR' | 'VOICE'): { id: string; label: string }[] {
-  const names = namesMatching(new RegExp(`HEYGEN.*${kind}|${kind}.*HEYGEN`)).filter(n => !/TYPE|STYLE|SPEED/.test(n))
+// Voice IDs DeAnna saved in the Shared variables (IDs are not secrets).
+function savedVoices(): { id: string; label: string }[] {
+  const names = namesMatching(/HEYGEN.*VOICE|VOICE.*HEYGEN/).filter(n => !/TYPE|STYLE|SPEED/.test(n))
   return names
     .map(n => ({ id: (process.env[n] || '').trim(), label: `Saved: ${n}` }))
     .filter(c => c.id)
@@ -74,41 +75,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = heygenKey()
   if (!key) return notConnected(res)
 
-  // ── Options: avatars and voices ────────────────────────────────────────────
+  // ── Options: agents (the faces) and voices ─────────────────────────────────
   if (req.method === 'GET') {
-    const avatars = savedChoices('AVATAR')
-    const voices = savedChoices('VOICE')
     const notes: string[] = []
-
-    try {
-      const a = await hgJson('/v3/avatars/looks?limit=50', key.value)
-      if (a.ok) {
-        const list: any[] = a.body?.data || a.body?.looks || []
-        for (const l of list) {
-          const id = l.id || l.look_id || l.avatar_id
-          const name = l.name || l.look_name || l.avatar_name
-          if (id && !avatars.some(x => x.id === id)) avatars.push({ id, label: name ? String(name) : String(id) })
-        }
-      } else notes.push(`HeyGen would not list avatars (${a.status}).`)
-    } catch { notes.push('Could not reach HeyGen to list avatars.') }
-
-    // Voices come only from the variables saved in Shared (ElevenLabs is used for most voices).
-
-    return res.status(200).json({ ok: true, avatars, voices, notes, key_name: key.name })
+    const ar = await fetch(
+      `${cfg.url}/rest/v1/agents?select=id,name,role,photo_url&photo_url=not.is.null&order=division_sort.asc,sort_order.asc`,
+      { headers: sbHeaders(cfg.serviceKey) }
+    )
+    if (!ar.ok) return fail(res, 500, `The agents list could not be read (${ar.status}).`)
+    const agents: { id: string; name: string; role: string | null; photo_url: string }[] =
+      (await ar.json()).filter((a: any) => a.photo_url)
+    return res.status(200).json({ ok: true, agents, voices: savedVoices(), notes, key_name: key.name })
   }
 
   const { action } = (req.body || {}) as { action?: string }
 
   // ── Start a video ──────────────────────────────────────────────────────────
   if (action === 'create') {
-    const { title, script, avatar_id, voice_id, aspect_ratio, video_type, voice_source, voice_name } = req.body as {
-      title?: string; script?: string; avatar_id?: string; voice_id?: string; aspect_ratio?: string; video_type?: string
+    const { title, script, agent_id, voice_id, aspect_ratio, video_type, voice_source, voice_name } = req.body as {
+      title?: string; script?: string; agent_id?: string; voice_id?: string; aspect_ratio?: string; video_type?: string
       voice_source?: string; voice_name?: string
     }
     const text = (script || '').trim()
     if (!title?.trim()) return fail(res, 400, 'Give the video a title.')
     if (!text) return fail(res, 400, 'Paste a script first.')
-    if (!avatar_id) return fail(res, 400, 'Choose an avatar.')
+    if (!agent_id) return fail(res, 400, 'Choose an agent.')
     if (!voice_id) return fail(res, 400, 'Choose a voice.')
     const aspect = ASPECTS.includes(aspect_ratio || '') ? aspect_ratio! : '9:16'
     const type = ['micro_drama', 'course', 'social', 'other'].includes(video_type || '') ? video_type! : 'other'
@@ -119,6 +110,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+      // The agent's own photo is the face. It is read from the agents table here, not taken from the page.
+      const agentRes = await fetch(
+        `${cfg.url}/rest/v1/agents?id=eq.${encodeURIComponent(agent_id)}&select=name,photo_url`,
+        { headers: sbHeaders(cfg.serviceKey) }
+      )
+      const agentRows: { name: string; photo_url: string | null }[] = agentRes.ok ? await agentRes.json() : []
+      const agent = agentRows[0]
+      if (!agent?.photo_url) return fail(res, 400, 'That agent has no photo saved, so there is no face to use.')
+      const face = { type: 'url', url: agent.photo_url }
+
       let heygenBody: Record<string, unknown>
       if (useEleven) {
         // 1. ElevenLabs reads the script in the chosen voice.
@@ -137,10 +138,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!up.ok || !assetId) {
           return fail(res, 502, `ElevenLabs made the voice (its characters were used), but HeyGen would not take the audio file: ${hgError(up)}`)
         }
-        // 3. HeyGen's avatar speaks to that recording.
-        heygenBody = { type: 'avatar', avatar_id, audio_asset_id: assetId, aspect_ratio: aspect, title: title.trim() }
+        // 3. The agent's photo speaks to that recording.
+        heygenBody = { type: 'image', image: face, audio_asset_id: assetId, aspect_ratio: aspect, title: title.trim() }
       } else {
-        heygenBody = { type: 'avatar', avatar_id, voice_id, script: text, aspect_ratio: aspect, title: title.trim() }
+        heygenBody = { type: 'image', image: face, voice_id, script: text, aspect_ratio: aspect, title: title.trim() }
       }
 
       const made = await hgJson('/v3/videos', key.value, {
@@ -160,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         aspect_ratio: aspect,
         storage_path: '',
         status: 'making',
-        notes: useEleven ? `Made by Travis with HeyGen · voice: ElevenLabs ${voice_name || voice_id}` : 'Made by Travis with HeyGen',
+        notes: `Made by Travis with HeyGen · face: ${agent.name} · voice: ${useEleven ? `ElevenLabs ${voice_name || voice_id}` : 'HeyGen voice'}`,
         script_text: text,
         provider_video_id: videoId,
       })
