@@ -1,5 +1,6 @@
 // DRU AI Leadership Ecosystem™ — api/hub-studio-audio.ts
 // Micro Drama Studio, Stage 4: the Audio step. Admin only.
+//   GET  ?view=preview&id=<project> → approved frames, recordings and music for the free film preview
 //   GET  ?view=audio&id=<project>   → the voices chosen, each scene's spoken lines and recording, and the music track
 //   POST {action: ...} — save_voice, make_recording, approve_recording, delete_recording,
 //        save_music_brief, make_music, upload_music, approve_music, delete_music
@@ -122,8 +123,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Read ─────────────────────────────────────────────────────────────────
     if (req.method === 'GET') {
       const id = String(req.query.id || '')
-      if (String(req.query.view || '') !== 'audio') return fail(res, 400, 'Unknown view.')
+      const view = String(req.query.view || '')
+      if (view !== 'audio' && view !== 'preview') return fail(res, 400, 'Unknown view.')
       if (!UUID.test(id)) return fail(res, 400, 'That project is not valid.')
+
+      // The free film preview: approved frames and recordings, and the approved music, as links the page can play.
+      if (view === 'preview') {
+        const [proj, sc] = await Promise.all([
+          one(cfg, 'micro_drama_projects', id, 'id,settings'),
+          rest(cfg, `micro_drama_scenes?project_id=eq.${id}&select=id,position,start_s,end_s,dialogue,frame_path,extra&order=position.asc&limit=2000`),
+        ])
+        if (!proj) return fail(res, 404, 'That project was not found.')
+        if (!sc.ok) return fail(res, 500, `The scenes could not be read (${sc.status}).`)
+        const rows: any[] = sc.body
+        const { music } = audioSettings(proj.settings)
+        const useFrame = (s: any) => !!s.frame_path && s.extra?.frame_approved === true
+        const useAudio = (s: any) => !!s.extra?.audio_path && s.extra?.audio_approved === true && s.extra?.audio_text === String(s.dialogue || '')
+        const urls = await signPaths(cfg, [...rows.filter(useFrame).map(s => s.frame_path), ...rows.filter(useAudio).map(s => s.extra.audio_path), music?.approved ? music.path : null])
+        return res.status(200).json({
+          ok: true,
+          scenes: rows.map(s => ({
+            id: s.id, position: s.position, length_s: Math.max(1, Number(s.end_s || 0) - Number(s.start_s || 0)) || 6,
+            frame_url: useFrame(s) ? urls[s.frame_path] || null : null,
+            audio_url: useAudio(s) ? urls[s.extra.audio_path] || null : null,
+            audio_seconds: typeof s.extra?.audio_seconds === 'number' ? s.extra.audio_seconds : null,
+            has_lines: !!String(s.dialogue || '').trim(),
+          })),
+          music_url: music?.approved && music?.path ? urls[music.path] || null : null,
+        })
+      }
       const [proj, sc, ch] = await Promise.all([
         one(cfg, 'micro_drama_projects', id, 'id,settings'),
         rest(cfg, `micro_drama_scenes?project_id=eq.${id}&select=id,position,start_s,end_s,dialogue,extra&order=position.asc&limit=2000`),

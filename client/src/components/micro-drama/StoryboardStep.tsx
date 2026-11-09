@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { callApi } from "../../lib/adminApi";
+import PreviewFilm from "./PreviewFilm";
 import { NAVY, GOLD, btn, card, chip, h2, input, small, fmtTime, fileToDataUrl, type StepProps } from "./ui";
 
 // Step 6 — Storyboard. One starting-frame picture per scene, made from the scene's picture prompt and the
@@ -67,7 +68,7 @@ export default function StoryboardStep({ projectId, stepsDone, onChanged }: Step
   const [size, setSize] = useState<string | null>(null);
   const [shape, setShape] = useState("");
   const [quality, setQuality] = useState<"draft" | "final">("draft");
-  const [view, setView] = useState<"frames" | "sheet">("frames");
+  const [view, setView] = useState<"frames" | "sheet" | "preview">("frames");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -199,6 +200,7 @@ export default function StoryboardStep({ projectId, stepsDone, onChanged }: Step
           <span style={{ flex: 1 }} />
           <button style={chip(view === "frames")} onClick={() => setView("frames")}>Frames</button>
           <button style={chip(view === "sheet")} onClick={() => setView("sheet")}>Contact sheet</button>
+          <button style={chip(view === "preview")} onClick={() => setView("preview")}>Preview film</button>
         </div>
 
         {offer && (
@@ -220,7 +222,9 @@ export default function StoryboardStep({ projectId, stepsDone, onChanged }: Step
         {msg && <p role={msg.kind === "error" ? "alert" : "status"} style={{ ...small, marginTop: 10, color: msg.kind === "ok" ? "#1B6E3C" : "#B3261E" }}>{msg.text}</p>}
       </div>
 
-      {view === "frames" ? (
+      {view === "preview" ? (
+        <PreviewFilm key={`preview-${approvedCount}`} projectId={projectId} ratio={ratio} />
+      ) : view === "frames" ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
           {frames.map(f => (
             <FrameCard key={f.id} f={f} ratio={ratio} busy={working} quality={quality} onMake={fr => single(fr)} onFix={(fr, t) => single(fr, t)} onUpload={upload} onApprove={approve} />
