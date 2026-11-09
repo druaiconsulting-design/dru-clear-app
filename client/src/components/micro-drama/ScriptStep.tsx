@@ -7,7 +7,7 @@ import { NAVY, btn, card, h2, input, label, small, fmtTime, type SceneRow, type 
 // Suggestions only: the shape and style boxes also accept anything typed.
 const SHAPES = ["Vertical 9:16 (phones)", "Square 1:1", "Wide 16:9"];
 const STYLES = [
-  "Pixar-style 3D animation", "Cinematic, natural light", "Photorealistic", "Documentary handheld", "Film noir black and white",
+  "Pixar-style 3D animation", "Cinematic, natural light", "Cinematic realism", "Photorealistic", "Documentary handheld", "Film noir black and white",
   "1970s film grain", "Wes Anderson symmetrical pastel", "DreamWorks-style 3D animation", "Claymation", "Stop-motion",
   "Felt and fabric stop-motion", "Crochet and knitted yarn", "Puppet show", "Muppet-style puppets", "Paper cutout",
   "Origami papercraft", "LEGO-style bricks", "Anime", "Studio Ghibli-style anime", "Cel-shaded cartoon", "South Park-style cutout cartoon",
