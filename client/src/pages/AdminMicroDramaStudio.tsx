@@ -5,11 +5,12 @@ import ProductStep from "../components/micro-drama/ProductStep";
 import StoryStep from "../components/micro-drama/StoryStep";
 import ScriptStep from "../components/micro-drama/ScriptStep";
 import CastStep from "../components/micro-drama/CastStep";
+import AudioStep from "../components/micro-drama/AudioStep";
 import StoryboardStep from "../components/micro-drama/StoryboardStep";
 
-// ─── Micro Drama Studio — Stages 1 to 3 ─────────────────────────────────────────────
+// ─── Micro Drama Studio — Stages 1 to 4 ─────────────────────────────────────────────
 // Projects tab (create, resume, list), the project page with its 8-step bar, and the Usage tab.
-// The eight steps are built one stage at a time. Product, Story, Script, Cast and Storyboard are live; the rest show "built in a later stage".
+// The eight steps are built one stage at a time. Product, Story, Script, Cast, Audio and Storyboard are live; the rest show "built in a later stage".
 // All costs are estimates: providers do not report the real billed cost of each request.
 
 const NAVY = "#0A2342";
@@ -305,6 +306,8 @@ export default function AdminMicroDramaStudio() {
               <ScriptStep key={`${open.id}-script`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : activeStep === "cast" ? (
               <CastStep key={`${open.id}-cast`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} onGoto={setActiveStep} />
+            ) : activeStep === "audio" ? (
+              <AudioStep key={`${open.id}-audio`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} onGoto={setActiveStep} />
             ) : activeStep === "storyboard" ? (
               <StoryboardStep key={`${open.id}-storyboard`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : (
