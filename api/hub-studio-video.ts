@@ -100,10 +100,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const made = x.video_made && typeof x.video_made === 'object' ? x.video_made : null
         return {
           id: s.id, position: s.position, scene_seconds: sceneSeconds(s),
-          frame_url: s.frame_path ? urls[s.frame_path] || null : null, frame_approved: x.frame_approved === true,
+          frame_key: s.frame_path || null, frame_url: s.frame_path ? urls[s.frame_path] || null : null, frame_approved: x.frame_approved === true,
           prompt, length, resolution,
           status: x.video_status || (x.video_path ? 'completed' : 'none'), error: x.video_error || null,
-          clip_url: x.video_path ? urls[x.video_path] || null : null, source: x.video_source || (x.video_path ? 'made' : null),
+          clip_key: x.video_path || null, clip_url: x.video_path ? urls[x.video_path] || null : null, source: x.video_source || (x.video_path ? 'made' : null),
           cost_usd: typeof x.video_cost === 'number' ? x.video_cost : null, approved: x.video_approved === true && !!x.video_path,
           needs_review: !!x.video_path && !!made && (made.frame_path !== s.frame_path || made.prompt !== prompt),
           estimate_usd: Math.round(length * FROM_USD_PER_SECOND * 100) / 100,

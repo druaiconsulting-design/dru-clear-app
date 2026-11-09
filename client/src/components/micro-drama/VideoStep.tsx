@@ -5,7 +5,7 @@ import { btn, card, h2, input, label, small, type StepProps } from "./ui";
 // Step 7 — Video. One short clip per scene, made by Higgsfield (Seedance 2.5) from the scene's approved Storyboard frame.
 // Making a clip uses Higgsfield API funds. Playing a finished clip is free.
 interface Scene {
-  id: string; position: number; scene_seconds: number; frame_url: string | null; frame_approved: boolean;
+  id: string; position: number; scene_seconds: number; frame_key: string | null; clip_key: string | null; frame_url: string | null; frame_approved: boolean;
   prompt: string; length: number; resolution: string; status: string; error: string | null;
   clip_url: string | null; source: string | null; cost_usd: number | null; approved: boolean; needs_review: boolean; estimate_usd: number;
 }
@@ -34,6 +34,8 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
   const checking = useRef(false);
   const uploadFor = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Each reload hands out fresh temporary links. Keeping the first link for a given picture or clip stops the players restarting.
+  const urlCache = useRef<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const r = await callApi(`${API}?view=video&id=${projectId}`);
@@ -41,7 +43,16 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
     const serverSteps = (r.body.steps_done as string[]) || [];
     if (serverSteps.length !== stepsDone.length || serverSteps.some(x => !stepsDone.includes(x))) onChanged();
     setKeyError((r.body.key_error as string | null) || "");
-    setScenes(r.body.scenes as Scene[]);
+    const stable = (r.body.scenes as Scene[]).map(sc => {
+      const keep = (kind: string, key: string | null, url: string | null) => {
+        if (!key || !url) return url;
+        const id = `${sc.id}:${kind}:${key}`;
+        if (!urlCache.current[id]) urlCache.current[id] = url;
+        return urlCache.current[id];
+      };
+      return { ...sc, frame_url: keep("frame", sc.frame_key, sc.frame_url), clip_url: keep("clip", sc.clip_key, sc.clip_url) };
+    });
+    setScenes(stable);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -206,7 +217,7 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
                     <div style={{ flex: "0 1 170px", minWidth: 130 }}>
                       <p style={{ ...small, marginBottom: 6 }}>{s.clip_url ? (s.source === "upload" ? "Your own clip" : "Clip · generated") : "Clip"}</p>
                       {s.clip_url ? (
-                        <video key={s.clip_url} src={s.clip_url} controls playsInline preload="metadata" style={{ width: "100%", borderRadius: 8, background: "#000", display: "block" }} />
+                        <video key={s.clip_key || s.clip_url} src={s.clip_url} controls playsInline preload="metadata" style={{ width: "100%", borderRadius: 8, background: "#000", display: "block" }} />
                       ) : (
                         <div style={{ ...small, padding: "2rem 0.8rem", textAlign: "center", border: "1px dashed rgba(10,35,66,0.3)", borderRadius: 8 }}>{isPending ? "Being made…" : "No clip yet"}</div>
                       )}
