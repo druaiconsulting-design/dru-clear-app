@@ -228,19 +228,17 @@ export default function AdminMicroDramaStudio() {
           </p>
         </div>
 
-        {!open && (
-          <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: "1.25rem" }}>
-            <button role="tab" aria-selected={tab === "projects"} style={tabBtn(tab === "projects")} onClick={() => setTab("projects")}>Projects</button>
-            <button role="tab" aria-selected={tab === "usage"} style={tabBtn(tab === "usage")} onClick={() => setTab("usage")}>Usage</button>
-          </div>
-        )}
+        <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: "1.25rem" }}>
+          <button role="tab" aria-selected={tab === "projects"} style={tabBtn(tab === "projects")} onClick={() => setTab("projects")}>Projects</button>
+          <button role="tab" aria-selected={tab === "usage"} style={tabBtn(tab === "usage")} onClick={() => setTab("usage")}>Usage</button>
+        </div>
 
         {message && (
           <p role="status" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", margin: "0 0 1rem", color: message.kind === "ok" ? "#1B6E3C" : "#B3261E" }}>{message.text}</p>
         )}
 
         {/* ── A project ── */}
-        {open && (
+        {open && tab === "projects" && (
           <section>
             <button style={{ ...btn(false), marginBottom: "1rem" }} onClick={closeProject}>← Projects</button>
 
@@ -364,7 +362,7 @@ export default function AdminMicroDramaStudio() {
         )}
 
         {/* ── Usage tab ── */}
-        {!open && tab === "usage" && (
+        {tab === "usage" && (
           <section>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: "0.5rem" }}>
               <h2 style={{ ...h2, margin: 0 }}>
