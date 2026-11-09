@@ -24,19 +24,25 @@ const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
 
 type Line = { speaker: string; text: string }
 
+// Stage directions in parentheses, like "(soft, to herself)", stay in the script but are not spoken.
+const spokenOnly = (t: string) => t.replace(/\([^)]*\)/g, ' ').replace(/\s{2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim()
+
 // The script writes each spoken line as "Name: words". In narration films the whole field is the narrator's.
 function parseLines(dialogue: string | null, sound: string): { lines: Line[]; problem: string | null } {
   const raw = String(dialogue || '').trim()
   if (!raw) return { lines: [], problem: null }
-  if (sound === 'narration') return { lines: [{ speaker: 'Narrator', text: raw.replace(/\s*\n+\s*/g, ' ') }], problem: null }
+  if (sound === 'narration') {
+    const text = spokenOnly(raw.replace(/\s*\n+\s*/g, ' '))
+    return { lines: text ? [{ speaker: 'Narrator', text }] : [], problem: null }
+  }
   const lines: Line[] = []
-  for (const part of raw.split(/\n+/).map(s => s.trim()).filter(Boolean)) {
-    const m = /^[*_"'\[(\s]*([^:\n]{1,40}?)[*_"'\])\s]*:\s*(.+)$/.exec(part)
+  for (const part of raw.split(/\n+/).map(x => x.trim()).filter(Boolean)) {
+    const m = /^[*_"'\[(\s]*([^:\n(]{1,40}?)[*_"'\])\s]*:\s*(.+)$/.exec(part)
     if (m && m[1].trim()) lines.push({ speaker: m[1].trim(), text: m[2].trim() })
     else if (lines.length) lines[lines.length - 1].text += ' ' + part
     else return { lines: [], problem: 'The first line has no speaker name. On the Script step, start each line with the speaker\'s name and a colon, like "Name: words".' }
   }
-  return { lines, problem: null }
+  return { lines: lines.map(l => ({ speaker: l.speaker, text: spokenOnly(l.text) })).filter(l => l.text), problem: null }
 }
 
 async function one(cfg: Cfg, table: string, id: string, select = '*'): Promise<any | null> {
@@ -148,8 +154,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         key, name, in_cast: castNames.some(n => n === key || n.split(/\s+/)[0] === key.split(/\s+/)[0]),
         voice_id: voices[key]?.voice_id || '', voice_name: voices[key]?.voice_name || '',
       }))
+      const stepsDone = await syncAudioStep(cfg, id)
       return res.status(200).json({
-        ok: true, sound, length_s: Number(film.length_s || 0), speakers, scenes,
+        ok: true, steps_done: stepsDone, sound, length_s: Number(film.length_s || 0), speakers, scenes,
         music: music ? { prompt: music.prompt || '', instrumental: music.instrumental !== false, source: music.source || 'made', seconds: music.seconds ?? null, cost_usd: music.cost_usd ?? null, approved: !!music.approved, url: music.path ? urls[music.path] || null : null } : null,
       })
     }

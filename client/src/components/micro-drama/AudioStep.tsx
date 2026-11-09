@@ -43,11 +43,14 @@ export default function AudioStep({ projectId, stepsDone, onChanged, onGoto }: S
   const load = useCallback(async () => {
     const r = await callApi(`${API}?view=audio&id=${projectId}`);
     if (!r.ok) { setMsg({ kind: "error", text: r.body?.error || `The audio step could not be loaded (${r.status}).` }); return; }
+    const serverSteps = (r.body.steps_done as string[]) || [];
+    if (serverSteps.length !== stepsDone.length || serverSteps.some(x => !stepsDone.includes(x))) onChanged();
     setSound(r.body.sound as string); setFilmLength(Number(r.body.length_s || 0));
     setSpeakers(r.body.speakers as Speaker[]); setScenes(r.body.scenes as Scene[]);
     const m = r.body.music as Music | null;
     setMusic(m);
     if (!briefLoaded.current) { briefLoaded.current = true; setBrief(m?.prompt || ""); setInstrumental(m ? m.instrumental : true); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -176,6 +179,7 @@ export default function AudioStep({ projectId, stepsDone, onChanged, onGoto }: S
         <h2 style={{ ...h2, fontSize: "1.1rem" }}>Scene recordings</h2>
         <span style={small}>{spoken.length ? `${approvedCount} of ${spoken.length} approved` : ""}</span>
       </div>
+      <p style={{ ...small, marginBottom: "0.6rem" }}>Directions in parentheses stay in the script. The voice does not read them aloud, so the lines below show only the spoken words.</p>
       {scenes.length === 0 ? <p style={small}>No scenes yet. Write the script first.</p> : scenes.map(s => {
         const over = s.seconds !== null && s.length_s > 0 && s.seconds > s.length_s + 0.5;
         return (
@@ -195,7 +199,7 @@ export default function AudioStep({ projectId, stepsDone, onChanged, onGoto }: S
                 {s.stale && <p role="alert" style={{ ...small, color: "#B3261E", marginBottom: 6 }}>The lines changed on the Script step after this was recorded. Make the recording again.</p>}
                 {s.recording_url && <audio controls src={s.recording_url} style={{ width: "100%", maxWidth: 420, marginBottom: 6 }} aria-label={`Recording for scene ${s.position}`} />}
                 {s.seconds !== null && (
-                  <p style={{ ...small, color: over ? "#B3261E" : undefined, marginBottom: 6 }}>
+                  <p style={{ ...small, ...(over ? { color: "#B3261E" } : {}), marginBottom: 6 }}>
                     About {s.seconds} s{s.length_s ? ` of ${s.length_s} s` : ""}{over ? " — longer than the scene. Shorten the lines on the Script step and re-make it." : ""}
                     {s.cost_usd !== null ? ` · estimated cost ${money(s.cost_usd)}` : ""}
                   </p>
