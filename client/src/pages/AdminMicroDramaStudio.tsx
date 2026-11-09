@@ -7,6 +7,7 @@ import ScriptStep from "../components/micro-drama/ScriptStep";
 import CastStep from "../components/micro-drama/CastStep";
 import AudioStep from "../components/micro-drama/AudioStep";
 import StoryboardStep from "../components/micro-drama/StoryboardStep";
+import VideoStep from "../components/micro-drama/VideoStep";
 
 // ─── Micro Drama Studio — Stages 1 to 4 ─────────────────────────────────────────────
 // Projects tab (create, resume, list), the project page with its 8-step bar, and the Usage tab.
@@ -310,6 +311,8 @@ export default function AdminMicroDramaStudio() {
               <AudioStep key={`${open.id}-audio`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} onGoto={setActiveStep} />
             ) : activeStep === "storyboard" ? (
               <StoryboardStep key={`${open.id}-storyboard`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : activeStep === "video" ? (
+              <VideoStep key={`${open.id}-video`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} onGoto={setActiveStep} />
             ) : (
               <div style={card}>
                 <h2 style={h2}>{STEP_LABEL[activeStep]}</h2>
