@@ -207,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (done) await snapshotScript(cfg, projectId, `Written by ${writerLabel(writer)}`, { writer: writerLabel(writer) })
       await rest(cfg, `micro_drama_projects?id=eq.${projectId}`, {
         method: 'PATCH', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ settings: { ...settings, script: { ...(settings.script || {}), writer: writerLabel(writer) } }, current_step: 'script', updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ settings: { ...settings, script: { ...(settings.script || {}), writer: writerLabel(writer), writer_id: String(b.writer) } }, current_step: 'script', updated_at: new Date().toISOString() }),
       })
       return res.status(200).json({ ok: true, done, covered_s: t, scene_count: pos, cost_usd: Math.round(out.cost * 10000) / 10000 })
     }

@@ -42,6 +42,7 @@ export interface StepProps {
   settings: any;
   stepsDone: string[];
   onChanged: () => void | Promise<void>;
+  onGoto?: (step: string) => void;
 }
 
 export function fmtTime(s: number): string {

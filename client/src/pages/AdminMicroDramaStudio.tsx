@@ -304,7 +304,7 @@ export default function AdminMicroDramaStudio() {
             ) : activeStep === "script" ? (
               <ScriptStep key={`${open.id}-script`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : activeStep === "cast" ? (
-              <CastStep key={`${open.id}-cast`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+              <CastStep key={`${open.id}-cast`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} onGoto={setActiveStep} />
             ) : activeStep === "storyboard" ? (
               <StoryboardStep key={`${open.id}-storyboard`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : (

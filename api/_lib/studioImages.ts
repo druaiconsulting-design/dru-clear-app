@@ -141,17 +141,18 @@ export function parseDataUrl(dataUrl: string): { ok: true; bytes: Buffer; mime: 
 
 export const extFor = (mime: string) => (mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg')
 
-// Recomputes whether the Cast and Storyboard steps are done: Cast when every character has an approved picture,
+// Recomputes whether the Cast and Storyboard steps are done: Cast when every character and the product have an approved picture,
 // Storyboard when every scene has an approved frame.
 export async function syncPictureSteps(cfg: Cfg, projectId: string): Promise<string[]> {
   if (!UUID.test(projectId)) return []
   const [proj, chars, scenes] = await Promise.all([
-    rest(cfg, `micro_drama_projects?id=eq.${projectId}&select=steps_done`),
+    rest(cfg, `micro_drama_projects?id=eq.${projectId}&select=steps_done,settings`),
     rest(cfg, `micro_drama_characters?project_id=eq.${projectId}&select=approved_path`),
     rest(cfg, `micro_drama_scenes?project_id=eq.${projectId}&select=frame_path,extra`),
   ])
   const steps: string[] = proj.ok && proj.body?.[0]?.steps_done ? proj.body[0].steps_done : []
-  const castDone = Array.isArray(chars.body) && chars.body.length > 0 && chars.body.every((c: any) => !!c.approved_path)
+  const productApproved = !!(proj.ok && proj.body?.[0]?.settings?.product_reference?.approved_path)
+  const castDone = productApproved && Array.isArray(chars.body) && chars.body.length > 0 && chars.body.every((c: any) => !!c.approved_path)
   const boardDone = Array.isArray(scenes.body) && scenes.body.length > 0 && scenes.body.every((s: any) => !!s.frame_path && s.extra?.frame_approved === true)
   let next = steps.filter(s => s !== 'cast' && s !== 'storyboard')
   if (castDone) next.push('cast')
