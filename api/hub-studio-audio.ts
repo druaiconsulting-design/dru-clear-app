@@ -37,8 +37,12 @@ function parseLines(dialogue: string | null, sound: string): { lines: Line[]; pr
   }
   const lines: Line[] = []
   for (const part of raw.split(/\n+/).map(x => x.trim()).filter(Boolean)) {
-    const m = /^[*_"'\[(\s]*([^:\n(]{1,40}?)[*_"'\])\s]*:\s*(.+)$/.exec(part)
-    if (m && m[1].trim()) lines.push({ speaker: m[1].trim(), text: m[2].trim() })
+    // "Name: words", "Name: (direction) words", "Name (direction): words" and "Name (direction) words"
+    const m = /^[*_"'\[\s]*([^:\n(]{1,40}?)[*_"'\]\s]*:\s*(.+)$/.exec(part)
+    const d = /^[*_"'\[\s]*([A-Z][^:\n(]{0,39}?)\s*\([^)]*\)\s*:?\s*(.+)$/.exec(part)
+    const named = d && d[1].trim().split(/\s+/).length <= 3 && d[1].trim().split(/\s+/).every(w => /^[A-Z]/.test(w)) ? d : null
+    if (named) lines.push({ speaker: named[1].trim(), text: named[2].trim() }) // the direction is dropped; it is not spoken
+    else if (m && m[1].trim()) lines.push({ speaker: m[1].trim(), text: m[2].trim() })
     else if (lines.length) lines[lines.length - 1].text += ' ' + part
     else return { lines: [], problem: 'The first line has no speaker name. On the Script step, start each line with the speaker\'s name and a colon, like "Name: words".' }
   }
