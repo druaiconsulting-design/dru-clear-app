@@ -5,8 +5,14 @@ import { NAVY, btn, card, h2, input, label, small, fmtTime, type SceneRow, type 
 
 // Step 3 — Script. Film settings, a writer turns the chosen story into scene cards, DeAnna edits and approves.
 // Suggestions only: the shape and style boxes also accept anything typed.
-const SHAPES = ["Vertical 9:16", "Square 1:1", "Wide 16:9"];
-const STYLES = ["Cinematic realism", "Documentary", "Black and white film", "Soft illustration", "Anime"];
+const SHAPES = ["Vertical 9:16 (phones)", "Square 1:1", "Wide 16:9"];
+const STYLES = [
+  "Pixar-style 3D animation", "Cinematic, natural light", "Photorealistic", "Documentary handheld", "Film noir black and white",
+  "1970s film grain", "Wes Anderson symmetrical pastel", "DreamWorks-style 3D animation", "Claymation", "Stop-motion",
+  "Felt and fabric stop-motion", "Crochet and knitted yarn", "Puppet show", "Muppet-style puppets", "Paper cutout",
+  "Origami papercraft", "LEGO-style bricks", "Anime", "Studio Ghibli-style anime", "Cel-shaded cartoon", "South Park-style cutout cartoon",
+];
+const OTHER = "__other";
 const SCENE_LIMITS = { short: "4–8 seconds each", long: "10–30 seconds each" };
 
 interface Version { id: string; label: string; created_at: string; scene_count: number }
@@ -100,6 +106,7 @@ export default function ScriptStep({ projectId, settings, stepsDone, onChanged }
   const [mode, setMode] = useState<string>(film.scene_mode || "");
   const [shape, setShape] = useState<string>(film.shape || "");
   const [style, setStyle] = useState<string>(film.style || "");
+  const [styleOther, setStyleOther] = useState<boolean>(!!film.style && !STYLES.includes(film.style));
   const [sound, setSound] = useState<string>(film.sound || "");
   const [writer, setWriter] = useState("");
 
@@ -134,6 +141,12 @@ export default function ScriptStep({ projectId, settings, stepsDone, onChanged }
 
   useEffect(() => { loadScenes(); }, [loadScenes]);
   useEffect(() => { if (showVersions) loadVersions(); }, [showVersions, loadVersions]);
+
+  // Shape and style save the moment they change (only that field is sent).
+  async function savePart(film: { shape?: string; style?: string }) {
+    const r = await callApi("/api/hub-studio", { method: "POST", body: { action: "save_settings", id: projectId, patch: { film } } });
+    if (!r.ok) setMsg({ kind: "error", text: r.body?.error || `That setting could not be saved (${r.status}).` });
+  }
 
   async function saveFilm(): Promise<boolean> {
     const r = await callApi("/api/hub-studio", { method: "POST", body: { action: "save_settings", id: projectId, patch: { film: { length_s: totalSeconds, scene_mode: mode, shape, style, sound } } } });
@@ -239,13 +252,25 @@ export default function ScriptStep({ projectId, settings, stepsDone, onChanged }
           </div>
           <div>
             <label htmlFor="md-shape" style={label}>Shape</label>
-            <input id="md-shape" list="md-shapes" value={shape} disabled={approved || busy} onChange={e => setShape(e.target.value)} style={input} placeholder="Pick one or type your own" />
-            <datalist id="md-shapes">{SHAPES.map(s => <option key={s} value={s} />)}</datalist>
+            <select id="md-shape" value={shape} disabled={approved || busy} onChange={e => { setShape(e.target.value); savePart({ shape: e.target.value }); }} style={input}>
+              <option value="">Choose a shape…</option>
+              {shape && !SHAPES.includes(shape) && <option value={shape}>{shape}</option>}
+              {SHAPES.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
           </div>
           <div>
             <label htmlFor="md-style" style={label}>Visual style</label>
-            <input id="md-style" list="md-styles" value={style} disabled={approved || busy} onChange={e => setStyle(e.target.value)} style={input} placeholder="Pick one or type your own" />
-            <datalist id="md-styles">{STYLES.map(s => <option key={s} value={s} />)}</datalist>
+            <select id="md-style" value={styleOther ? OTHER : style} disabled={approved || busy} onChange={e => {
+              if (e.target.value === OTHER) { setStyleOther(true); return; }
+              setStyleOther(false); setStyle(e.target.value); savePart({ style: e.target.value });
+            }} style={input}>
+              <option value="">Choose a visual style…</option>
+              {STYLES.map(o => <option key={o} value={o}>{o === "Pixar-style 3D animation" ? `${o} — most popular` : o}</option>)}
+              <option value={OTHER}>Other (type your own)</option>
+            </select>
+            {styleOther && (
+              <input aria-label="Your own visual style" value={style} disabled={approved || busy} onChange={e => setStyle(e.target.value)} onBlur={() => savePart({ style })} style={{ ...input, marginTop: 6 }} placeholder="Describe the look you want" />
+            )}
           </div>
         </div>
         <fieldset style={{ border: "none", padding: 0, margin: "0 0 0.8rem" }}>
