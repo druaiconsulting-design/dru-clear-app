@@ -4,10 +4,12 @@ import { callApi } from "../lib/adminApi";
 import ProductStep from "../components/micro-drama/ProductStep";
 import StoryStep from "../components/micro-drama/StoryStep";
 import ScriptStep from "../components/micro-drama/ScriptStep";
+import CastStep from "../components/micro-drama/CastStep";
+import StoryboardStep from "../components/micro-drama/StoryboardStep";
 
-// ─── Micro Drama Studio — Stages 1 and 2 ─────────────────────────────────────────────
+// ─── Micro Drama Studio — Stages 1 to 3 ─────────────────────────────────────────────
 // Projects tab (create, resume, list), the project page with its 8-step bar, and the Usage tab.
-// The eight steps are built one stage at a time. Product, Story and Script are live; the rest show "built in a later stage".
+// The eight steps are built one stage at a time. Product, Story, Script, Cast and Storyboard are live; the rest show "built in a later stage".
 // All costs are estimates: providers do not report the real billed cost of each request.
 
 const NAVY = "#0A2342";
@@ -62,7 +64,7 @@ interface Usage {
   month_start: string;
   providers: ProviderUsage[];
   recent: ActivityRow[];
-  storage: { shelf_files: number; shelf_bytes: number };
+  storage: { shelf_files: number; shelf_bytes: number; studio_pictures?: number };
 }
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -301,6 +303,10 @@ export default function AdminMicroDramaStudio() {
               <StoryStep key={`${open.id}-story`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : activeStep === "script" ? (
               <ScriptStep key={`${open.id}-script`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : activeStep === "cast" ? (
+              <CastStep key={`${open.id}-cast`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : activeStep === "storyboard" ? (
+              <StoryboardStep key={`${open.id}-storyboard`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
             ) : (
               <div style={card}>
                 <h2 style={h2}>{STEP_LABEL[activeStep]}</h2>
@@ -445,7 +451,7 @@ export default function AdminMicroDramaStudio() {
                   <h2 style={h2}>Storage</h2>
                   <p style={small}>
                     Video Hub shelf: {usage.storage.shelf_files} {usage.storage.shelf_files === 1 ? "file" : "files"} · {formatBytes(usage.storage.shelf_bytes)}.
-                    Studio pictures, clips and audio are added here once those steps are built.
+                    Studio pictures: {usage.storage.studio_pictures ?? 0} saved (cast and storyboard). Clips and audio are added here once those steps are built.
                   </p>
                 </div>
               </>

@@ -25,6 +25,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { fail, supabaseConfig, requireAdmin, elevenKey, heygenKey } from './_lib/hubShared.js'
 import { rest, UUID, SCENE_COLUMNS, SCENE_TEXT_FIELDS, snapshotScript, type Cfg } from './_lib/studioData.js'
+import { syncPictureSteps } from './_lib/studioImages.js'
 
 export const config = { maxDuration: 30 }
 
@@ -166,11 +167,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (view === 'usage') {
         const since = monthStartIso()
-        const [log, recent, claude, shelf, hg, el] = await Promise.all([
+        const [log, recent, claude, shelf, frames, cast, hg, el] = await Promise.all([
           rest(cfg, `studio_activity_log?created_at=gte.${encodeURIComponent(since)}&select=provider,est_cost_usd,status&limit=10000`),
           rest(cfg, 'studio_activity_log?select=id,provider,action,detail,units_label,est_cost_usd,status,created_at,project_id,micro_drama_projects(title)&order=created_at.desc&limit=50'),
           rest(cfg, `model_usage_log?created_at=gte.${encodeURIComponent(since)}&select=cost_usd&limit=20000`),
           rest(cfg, 'video_hub_items?select=file_size_bytes&file_size_bytes=not.is.null&limit=10000'),
+          rest(cfg, 'micro_drama_scenes?select=id&frame_path=not.is.null&limit=10000'),
+          rest(cfg, 'micro_drama_characters?select=reference_paths&limit=10000'),
           heygenBalance(),
           elevenBalance(),
         ])
@@ -203,13 +206,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           month_start: since,
           providers: byProvider,
           recent: recent.ok ? recent.body : [],
-          storage: { shelf_files: shelfRows.length, shelf_bytes: shelfRows.reduce((s, r) => s + Number(r.file_size_bytes || 0), 0) },
+          storage: {
+            shelf_files: shelfRows.length, shelf_bytes: shelfRows.reduce((s, r) => s + Number(r.file_size_bytes || 0), 0),
+            studio_pictures: (frames.ok && Array.isArray(frames.body) ? frames.body.length : 0)
+              + (cast.ok && Array.isArray(cast.body) ? cast.body.reduce((n: number, c: any) => n + (Array.isArray(c.reference_paths) ? c.reference_paths.length : 0), 0) : 0),
+          },
         })
       }
 
 
       if (view === 'writers') {
-        const r = await rest(cfg, 'agents?select=slug,name,role,division&order=division_sort.asc,sort_order.asc&limit=300')
+        const r = await rest(cfg, 'agents?select=slug,name,role,division,photo_url&order=division_sort.asc,sort_order.asc&limit=300')
         if (!r.ok) return fail(res, 500, `The agents could not be read (${r.status}).`)
         return res.status(200).json({ ok: true, agents: (r.body as any[]).filter(a => a.slug) })
       }
@@ -386,6 +393,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await resequence(cfg, projectId, ordered)
       }
       await patchProject(cfg, projectId, {})
+      await syncPictureSteps(cfg, projectId)
       return res.status(200).json({ ok: true })
     }
 

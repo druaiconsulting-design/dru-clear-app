@@ -26,7 +26,7 @@ export const chip = (active: boolean): React.CSSProperties => ({
   border: `1px solid ${active ? NAVY : "rgba(10,35,66,0.25)"}`, background: active ? NAVY : "#FFFFFF", color: active ? GOLD : NAVY,
 });
 
-export interface Agent { slug: string; name: string; role: string; division: string }
+export interface Agent { slug: string; name: string; role: string; division: string; photo_url?: string | null }
 
 export interface StoryCard { id: string; category: string; title: string; summary: string; writer?: string }
 
@@ -48,4 +48,28 @@ export function fmtTime(s: number): string {
   const n = Math.max(0, Math.round(s));
   const m = Math.floor(n / 60);
   return `${m}:${String(n % 60).padStart(2, "0")}`;
+}
+
+// Shrinks a picture the user picks (up to 1600 pixels on the long side) and returns it as a JPEG data URL,
+// so it travels to the backend well under its size limit.
+export function fileToDataUrl(file: File, maxSide = 1600): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error("This browser could not read the picture.")); return; }
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.9));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file could not be read as a picture.")); };
+    img.src = url;
+  });
 }
