@@ -14,22 +14,14 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
-  fail, supabaseConfig, requireAdmin, sbHeaders, findEnv, namesMatching, safeName,
-  uploadToShelf, insertShelfItem, providerMessage, elevenKey, elevenSpeak, ELEVEN_MAX_CHARS,
+  fail, supabaseConfig, requireAdmin, sbHeaders, namesMatching, safeName, heygenKey,
+  uploadToShelf, insertShelfItem, providerMessage, elevenKey, elevenSpeak, ELEVEN_MAX_CHARS, logActivity,
 } from './_lib/hubShared.js'
 
 export const config = { maxDuration: 300 }
 
 const HG_BASE = 'https://api.heygen.com'
 const ASPECTS = ['9:16', '16:9', '1:1']
-
-function heygenKey() {
-  return findEnv(
-    ['VITE_HEYGEN_API_KEY', 'HEYGEN_API_KEY'],
-    /HEYGEN/,
-    /AVATAR|VOICE|TYPE|STYLE|SECRET|WEBHOOK/
-  )
-}
 
 // Voice IDs DeAnna saved in the Shared variables (IDs are not secrets).
 function savedVoices(): { id: string; label: string }[] {
@@ -128,7 +120,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return fail(res, 500, `ElevenLabs is not connected yet. This app cannot see the ElevenLabs key (looked for VITE_ELEVENLABS_API_KEY). Check that the Shared variable is linked to dru-clear-app, then redeploy.`)
         }
         const spoken = await elevenSpeak(el.value, voice_id, text)
-        if (!spoken.ok) return fail(res, 502, spoken.error)
+        if (!spoken.ok) {
+          await logActivity(cfg, { provider: 'elevenlabs', action: "Voice reading for Travis's video", detail: `${title.trim()} · ${spoken.error}`, status: 'failed' })
+          return fail(res, 502, spoken.error)
+        }
+        await logActivity(cfg, {
+          provider: 'elevenlabs', action: "Voice reading for Travis's video",
+          detail: `${title.trim()} · ${voice_name || voice_id}`, units_label: `${text.length.toLocaleString()} characters`,
+        })
 
         // 2. The recording goes to HeyGen's file storage.
         const form = new FormData()
@@ -150,6 +149,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify(heygenBody),
       })
       const videoId = made.body?.data?.video_id
+      await logActivity(cfg, {
+        provider: 'heygen', action: "Travis's video sent to HeyGen",
+        detail: made.ok && videoId ? `${title.trim()} · ${aspect}` : `${title.trim()} · ${hgError(made)}`,
+        units_label: made.ok && videoId ? aspect : null,
+        status: made.ok && videoId ? 'ok' : 'failed',
+      })
       if (!made.ok || !videoId) {
         return fail(res, 502, `${useEleven ? 'ElevenLabs made the voice (its characters were used), but ' : ''}HeyGen would not start the video: ${hgError(made)}`)
       }

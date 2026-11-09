@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import AdminLayout from "../components/AdminLayout";
+import { callApi } from "../lib/adminApi";
 
 // ─── Video Hub ────────────────────────────────────────────────────────────────
 // Originals live in the private Supabase bucket `hub-videos` (admin login only).
@@ -115,23 +116,6 @@ function readVideoMeta(file: File): Promise<{ seconds: number | null; aspect: st
 
 function safeName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
-}
-
-interface ApiResult { ok: boolean; status: number; body: any }
-
-// Calls one of the app's own backend routes with the signed-in admin token.
-async function callApi(path: string, init?: { method?: string; body?: unknown }): Promise<ApiResult> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token;
-  if (!token) return { ok: false, status: 401, body: { error: "You are signed out. Sign in again and retry." } };
-  const res = await fetch(path, {
-    method: init?.method || "GET",
-    headers: { Authorization: `Bearer ${token}`, ...(init?.body ? { "Content-Type": "application/json" } : {}) },
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  });
-  let body: any = {};
-  try { body = await res.json(); } catch { /* non-JSON error page */ }
-  return { ok: res.ok && body?.ok !== false, status: res.status, body };
 }
 
 interface Choice { id: string; label: string }
@@ -459,6 +443,20 @@ export default function AdminVideoHub() {
             Every original video lives here. Only copies go to Bunny.
           </p>
         </div>
+
+        {/* Micro Drama Studio entrance */}
+        <a href="/admin-micro-drama" style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textDecoration: "none",
+          background: NAVY, color: GOLD, borderRadius: 12, padding: "1rem 1.25rem", marginBottom: "1.5rem",
+        }}>
+          <span>
+            <span style={{ display: "block", fontFamily: "'Playfair Display', serif", fontSize: "1.05rem", fontWeight: 700 }}>Micro Drama Studio</span>
+            <span style={{ display: "block", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(255,255,255,0.75)", marginTop: 2 }}>
+              Story, script, cast, audio, storyboard, video and finish, step by step. Usage and recent activity live there too.
+            </span>
+          </span>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.05em", whiteSpace: "nowrap" }}>OPEN →</span>
+        </a>
 
         {/* Travis's Videos — HeyGen */}
         <section style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1.25rem", marginBottom: "1.5rem" }}>

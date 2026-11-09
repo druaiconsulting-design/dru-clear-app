@@ -97,6 +97,48 @@ export function providerMessage(raw: string): string {
   return raw.slice(0, 300)
 }
 
+export function heygenKey() {
+  return findEnv(
+    ['VITE_HEYGEN_API_KEY', 'HEYGEN_API_KEY'],
+    /HEYGEN/,
+    /AVATAR|VOICE|TYPE|STYLE|SECRET|WEBHOOK/
+  )
+}
+
+// ── Activity log: every paid action the Micro Drama Studio and Travis's Videos take ──
+export type StudioProvider = 'openai' | 'elevenlabs' | 'higgsfield' | 'heygen' | 'claude'
+
+// Writes one line to studio_activity_log. Logging never stops the real work, so errors are swallowed.
+// est_cost_usd stays empty when there is no verified rate for the provider; the Usage tab says so.
+export async function logActivity(
+  cfg: { url: string; serviceKey: string },
+  row: {
+    project_id?: string | null
+    provider: StudioProvider
+    action: string
+    detail?: string | null
+    units_label?: string | null
+    est_cost_usd?: number | null
+    status?: 'ok' | 'failed'
+  }
+): Promise<void> {
+  try {
+    await fetch(`${cfg.url}/rest/v1/studio_activity_log`, {
+      method: 'POST',
+      headers: { ...sbHeaders(cfg.serviceKey), Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        project_id: row.project_id ?? null,
+        provider: row.provider,
+        action: row.action,
+        detail: row.detail ? row.detail.slice(0, 300) : null,
+        units_label: row.units_label ?? null,
+        est_cost_usd: row.est_cost_usd ?? null,
+        status: row.status || 'ok',
+      }),
+    })
+  } catch { /* logging is best effort */ }
+}
+
 // ── ElevenLabs text-to-speech, used when a video is made with an ElevenLabs voice ──
 export const ELEVEN_MAX_CHARS = 10000
 

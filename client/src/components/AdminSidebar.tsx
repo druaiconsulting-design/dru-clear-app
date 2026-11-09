@@ -33,6 +33,7 @@ const SECTIONS: Section[] = [
       { icon: '🤖', label: 'Empire Org Chart', path: '/admin-org' },
       { icon: '🔮', label: 'Twin',              path: '/twin' },
       { icon: '🎞️', label: 'Video Hub',         path: '/admin-video-hub' },
+      { icon: '🎭', label: 'Micro Drama Studio', path: '/admin-micro-drama' },
     ],
   },
   {
