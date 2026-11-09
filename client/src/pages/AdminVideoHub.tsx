@@ -6,7 +6,7 @@ import { callApi } from "../lib/adminApi";
 // ─── Video Hub ────────────────────────────────────────────────────────────────
 // Originals live in the private Supabase bucket `hub-videos` (admin login only).
 // Each video (or voice-over) has one row in `video_hub_items`. Copies go to Bunny on request.
-// Sections: Travis's Videos (HeyGen, with HeyGen or ElevenLabs voices), manual upload, and the shelf.
+// Sections: Travis's Videos (HeyGen, with HeyGen or ElevenLabs voices), manual upload, and Video Que.
 
 const BUCKET = "hub-videos";
 
@@ -59,6 +59,7 @@ const SOURCE_LABEL: Record<string, string> = {
   higgsfield: "Higgsfield",
   heygen: "HeyGen",
   elevenlabs: "ElevenLabs",
+  micro_drama_studio: "Micro Drama Studio",
 };
 
 const NAVY = "#0A2342";
@@ -242,7 +243,7 @@ export default function AdminVideoHub() {
     })();
   }, []);
 
-  // While any HeyGen video is still being made, ask HeyGen every 30 seconds; finished ones land on the shelf.
+  // While any HeyGen video is still being made, ask HeyGen every 30 seconds; finished ones land in Video Que.
   const checking = useRef(false);
   const anyMaking = items.some(i => i.status === "making" || i.status === "saving");
   useEffect(() => {
@@ -283,7 +284,7 @@ export default function AdminVideoHub() {
     });
     setTvBusy(false);
     if (!r.ok) return setTvMessage({ kind: "error", text: r.body?.error || `HeyGen could not start the video (${r.status}).` });
-    setTvMessage({ kind: "ok", text: `“${tvTitle.trim()}” is being made. It shows on the shelf as Making… and lands there when HeyGen finishes.` });
+    setTvMessage({ kind: "ok", text: `“${tvTitle.trim()}” is being made. It shows in Video Que as Making… and lands there when HeyGen finishes.` });
     setTvTitle(""); setTvScript("");
     await loadItems();
   };
@@ -335,12 +336,12 @@ export default function AdminVideoHub() {
         notes: notes.trim() || null,
       });
       if (error) {
-        // Keep the shelf and storage in step: remove the file if its row could not be saved.
+        // Keep Video Que and storage in step: remove the file if its row could not be saved.
         await supabase.storage.from(BUCKET).remove([path]);
         throw new Error(error.message);
       }
 
-      setMessage({ kind: "ok", text: `“${title.trim()}” is on the shelf.` });
+      setMessage({ kind: "ok", text: `“${title.trim()}” is in Video Que.` });
       setTitle(""); setNotes(""); setFile(null);
       if (fileInput.current) fileInput.current.value = "";
       await loadItems();
@@ -462,7 +463,7 @@ export default function AdminVideoHub() {
         <section style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, padding: "1.25rem", marginBottom: "1.5rem" }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.1rem", margin: "0 0 0.2rem" }}>Travis's Videos</h2>
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)", margin: "0 0 0.9rem" }}>
-            Paste a script, choose the software, and Travis makes the video. The finished video lands on the shelf below.
+            Paste a script, choose the software, and Travis makes the video. The finished video lands in Video Que below.
           </p>
           {tvLoadError && <p role="alert" style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "#B3261E", margin: "0 0 0.8rem" }}>{tvLoadError}</p>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.9rem" }}>
@@ -622,18 +623,18 @@ export default function AdminVideoHub() {
           </div>
         </section>
 
-        {/* Shelf */}
+        {/* Video Que */}
         <section>
           <h2 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.1rem", margin: "0 0 0.75rem" }}>
-            The shelf {items.length > 0 && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.5)", fontWeight: 400 }}>· {items.length} video{items.length === 1 ? "" : "s"}</span>}
+            Video Que {items.length > 0 && <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.5)", fontWeight: 400 }}>· {items.length} video{items.length === 1 ? "" : "s"}</span>}
           </h2>
 
           {loading ? (
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(10,35,66,0.5)" }}>Loading the shelf…</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(10,35,66,0.5)" }}>Loading Video Que…</p>
           ) : loadError ? (
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "#B3261E" }}>Could not load the shelf: {loadError}</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "#B3261E" }}>Could not load Video Que: {loadError}</p>
           ) : items.length === 0 ? (
-            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(10,35,66,0.5)" }}>Nothing on the shelf yet. Make or upload your first video above.</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(10,35,66,0.5)" }}>Nothing in Video Que yet. Make or upload your first video above.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {items.map(item => (

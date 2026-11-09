@@ -127,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const itemRes = await fetch(`${supaUrl}/rest/v1/video_hub_items?id=eq.${encodeURIComponent(item_id)}&select=*`, { headers: sbHeaders })
   const items: any[] = itemRes.ok ? await itemRes.json() : []
   const item = items[0]
-  if (!item) return fail(res, 404, 'That video is not on the shelf.')
+  if (!item) return fail(res, 404, 'That video is not in Video Que.')
 
   const copies: BunnyCopy[] = Array.isArray(item.bunny_copies) ? item.bunny_copies : []
   if (copies.some(c => c.destination === destination)) {
@@ -177,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     if (!saveRes.ok) {
       // The copy exists in Bunny; report its ID so nothing is lost.
-      return fail(res, 500, `The copy is in Bunny (video ID ${guid}) but the shelf could not be updated (${saveRes.status}).`)
+      return fail(res, 500, `The copy is in Bunny (video ID ${guid}) but Video Que could not be updated (${saveRes.status}).`)
     }
     return res.status(200).json({ ok: true, copy })
   } catch (err: any) {

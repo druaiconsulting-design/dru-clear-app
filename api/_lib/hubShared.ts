@@ -70,7 +70,7 @@ export async function uploadToShelf(
     body: bytes as any,
   })
   if (r.ok) return { ok: true }
-  let msg = `The shelf storage refused the file (${r.status}).`
+  let msg = `Video Que storage refused the file (${r.status}).`
   try { const b: any = await r.json(); msg = b?.message || b?.error || msg } catch { /* keep default */ }
   return { ok: false, error: msg }
 }
@@ -81,7 +81,7 @@ export async function insertShelfItem(cfg: { url: string; serviceKey: string }, 
     headers: { ...sbHeaders(cfg.serviceKey), Prefer: 'return=representation' },
     body: JSON.stringify(row),
   })
-  if (!r.ok) return { error: `The shelf could not save the item (${r.status}): ${(await r.text()).slice(0, 200)}` }
+  if (!r.ok) return { error: `Video Que could not save the item (${r.status}): ${(await r.text()).slice(0, 200)}` }
   const rows: any[] = await r.json()
   return { id: rows?.[0]?.id }
 }

@@ -240,7 +240,7 @@ export default function AdminMicroDramaStudio() {
         <div style={{ marginBottom: "1.25rem" }}>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.2rem" }}>Micro Drama Studio</h1>
           <p style={{ color: "rgba(10,35,66,0.55)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", margin: 0 }}>
-            Plan, cast and make micro dramas step by step. Finished films land on the Video Hub shelf.
+            Plan, cast and make micro dramas step by step. Finished films are exported to Video Que in the Video Hub.
           </p>
         </div>
 
@@ -459,7 +459,7 @@ export default function AdminMicroDramaStudio() {
                 <div style={card}>
                   <h2 style={h2}>Storage</h2>
                   <p style={small}>
-                    Video Hub shelf: {usage.storage.shelf_files} {usage.storage.shelf_files === 1 ? "file" : "files"} · {formatBytes(usage.storage.shelf_bytes)}.
+                    Video Que: {usage.storage.shelf_files} {usage.storage.shelf_files === 1 ? "file" : "files"} · {formatBytes(usage.storage.shelf_bytes)}.
                     Studio pictures: {usage.storage.studio_pictures ?? 0} saved (cast and storyboard). Clips and audio are added here once those steps are built.
                   </p>
                 </div>

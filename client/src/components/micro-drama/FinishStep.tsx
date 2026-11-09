@@ -12,7 +12,7 @@ interface FScene {
 }
 interface Flag { kind: string; where: string; quote: string; why: string; fix: string }
 interface AdCheck { hash: string; at: string; flags: Flag[] }
-interface Exp { id: string; n: number; version: string; path: string; mime: string; created_at: string; seconds: number | null; expected_seconds: number | null; width: number | null; height: number | null; bytes: number | null; verified: boolean; url: string | null }
+interface Exp { id: string; n: number; version: string; path: string; mime: string; created_at: string; seconds: number | null; expected_seconds: number | null; width: number | null; height: number | null; bytes: number | null; verified: boolean; url: string | null; queue_item_id?: string }
 interface Trim { in: number; out: number }
 interface EndCardState { on: boolean; cta: string; website: string; seconds: number; logo: "none" | "product" }
 
@@ -245,6 +245,12 @@ export default function FinishStep({ projectId, stepsDone, onChanged, onGoto }: 
     if (!r.ok) setMsg({ kind: "error", text: r.body?.error || `That could not be removed (${r.status}).` });
     setBusy(null); await load(); await onChanged();
   }
+  async function toQueue(x: Exp) {
+    setBusy(`q-${x.id}`); setMsg(null);
+    const r = await callApi(API, { method: "POST", body: { action: "export_to_queue", project_id: projectId, export_id: x.id } });
+    setMsg(r.ok ? { kind: "ok", text: `v${x.n} is in Video Que (Video Hub).` } : { kind: "error", text: r.body?.error || `It could not be sent to Video Que (${r.status}).` });
+    setBusy(null); await load();
+  }
   async function download(x: Exp) {
     if (!x.url) return;
     setBusy(`dl-${x.id}`);
@@ -460,6 +466,7 @@ export default function FinishStep({ projectId, stepsDone, onChanged, onGoto }: 
                   </span>
                   <button style={btn(false, !x.url)} disabled={!x.url} onClick={() => setWatching(watching === x.id ? null : x.id)}>{watching === x.id ? "Hide" : "Watch"}</button>
                   <button style={btn(false, !x.url || busy === `dl-${x.id}`)} disabled={!x.url || busy === `dl-${x.id}`} onClick={() => download(x)}>Download</button>
+                  {x.queue_item_id ? <span style={{ ...small, color: "#1B6E3C" }}>✓ In Video Que</span> : <button style={btn(false, working)} disabled={working} onClick={() => toQueue(x)}>{busy === `q-${x.id}` ? "Sending…" : "Export to Video Que"}</button>}
                   <button style={btn(false, working)} disabled={working} onClick={() => removeExport(x)}>Remove</button>
                 </div>
                 {watching === x.id && x.url && <video src={x.url} controls playsInline style={{ width: "100%", maxWidth: 420, display: "block", margin: "0.7rem auto 0", borderRadius: 8, background: "#000" }} />}

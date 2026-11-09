@@ -1,13 +1,13 @@
 // DRU AI Leadership Ecosystem™ — api/hub-studio-finish.ts
 // Micro Drama Studio, Stage 6: the Finish step. Admin only.
 //   GET  ?view=finish&id=<project> → approved clips, recordings, music, the saved timeline/end card/versions, ad-policy result and exports
-//   POST {action: ...} — save_finish, ad_check, upload_url, register_export, delete_export
+//   POST {action: ...} — save_finish, ad_check, upload_url, register_export, delete_export, export_to_queue
 // The film itself is put together in the browser. This file stores the settings, runs the ad-policy check (Claude reads the words
 // against Meta's and TikTok's published rules), hands the browser a one-time upload link for the finished file, and lists exports.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash, randomUUID } from 'node:crypto'
-import { fail, supabaseConfig, requireAdmin } from './_lib/hubShared.js'
+import { fail, supabaseConfig, requireAdmin, insertShelfItem, safeName, BUCKET as SHELF_BUCKET } from './_lib/hubShared.js'
 import { rest, UUID, type Cfg } from './_lib/studioData.js'
 import { deleteStudioFile, signPaths, STUDIO_BUCKET } from './_lib/studioImages.js'
 import { parseLines } from './_lib/studioLines.js'
@@ -260,6 +260,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!r.ok) { await deleteStudioFile(cfg, path); return fail(res, 500, `The export could not be recorded (${r.status}).`) }
       await syncFinishStep(cfg, projectId, { ...settings, finish: next }, proj.steps_done || [])
       return res.status(200).json({ ok: true })
+    }
+
+    if (action === 'export_to_queue') {
+      const hit = fin.exports.find((x: any) => x?.id === b.export_id)
+      if (!hit || !hit.path) return fail(res, 404, 'That export was not found.')
+      if (hit.queue_item_id) return bad('That film is already in Video Que.')
+      const ext = hit.mime === 'video/webm' ? 'webm' : 'mp4'
+      const label = hit.version === 'cut30' ? '30-second cutdown' : hit.version === 'cut15' ? '15-second cutdown' : 'Full film'
+      const title = `${str(proj.title, 120) || 'Micro drama'} · ${label} v${hit.n}`
+      const dest = `${new Date().getFullYear()}/${randomUUID()}-${safeName(title)}.${ext}`
+      const copy = await fetch(`${cfg.url}/storage/v1/object/copy`, {
+        method: 'POST',
+        headers: { apikey: cfg.serviceKey, Authorization: `Bearer ${cfg.serviceKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucketId: STUDIO_BUCKET, sourceKey: hit.path, destinationBucket: SHELF_BUCKET, destinationKey: dest }),
+      })
+      if (!copy.ok) return fail(res, 502, `Video Que could not receive the film (${copy.status}): ${(await copy.text()).slice(0, 200)}`)
+      const ratio = hit.width && hit.height ? (hit.width === hit.height ? '1:1' : hit.height > hit.width ? '9:16' : '16:9') : null
+      const saved = await insertShelfItem(cfg, {
+        title, video_type: 'micro_drama', source: 'micro_drama_studio', aspect_ratio: ratio, storage_path: dest,
+        file_name: `${safeName(title)}.${ext}`, file_size_bytes: hit.bytes || null, mime_type: hit.mime || 'video/mp4', status: 'ready',
+        length_seconds: hit.seconds ? Math.round(hit.seconds) : null, notes: 'Made in the Micro Drama Studio Finish step.',
+      })
+      if (saved.error || !saved.id) {
+        await fetch(`${cfg.url}/storage/v1/object/${SHELF_BUCKET}/${encodePath(dest)}`, { method: 'DELETE', headers: { apikey: cfg.serviceKey, Authorization: `Bearer ${cfg.serviceKey}` } })
+        return fail(res, 500, saved.error || 'Video Que could not record the film.')
+      }
+      const next = { ...fin, exports: fin.exports.map((x: any) => (x?.id === hit.id ? { ...x, queue_item_id: saved.id } : x)) }
+      const r = await saveFinish(cfg, projectId, settings, next)
+      if (!r.ok) return fail(res, 500, `The film is in Video Que, but this list could not be updated (${r.status}).`)
+      return res.status(200).json({ ok: true, item_id: saved.id })
     }
 
     if (action === 'delete_export') {

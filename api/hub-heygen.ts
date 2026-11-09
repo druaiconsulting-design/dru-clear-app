@@ -171,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         provider_video_id: videoId,
       })
       if (saved.error) {
-        return fail(res, 500, `HeyGen started the video (HeyGen video number ${videoId}) but the shelf could not record it: ${saved.error}`)
+        return fail(res, 500, `HeyGen started the video (HeyGen video number ${videoId}) but Video Que could not record it: ${saved.error}`)
       }
       return res.status(200).json({ ok: true, item_id: saved.id, video_id: videoId })
     } catch (e: any) {
