@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { callApi } from "../lib/adminApi";
+import ProductStep from "../components/micro-drama/ProductStep";
+import StoryStep from "../components/micro-drama/StoryStep";
+import ScriptStep from "../components/micro-drama/ScriptStep";
 
-// ─── Micro Drama Studio — Stage 1 ─────────────────────────────────────────────
+// ─── Micro Drama Studio — Stages 1 and 2 ─────────────────────────────────────────────
 // Projects tab (create, resume, list), the project page with its 8-step bar, and the Usage tab.
-// The eight steps are built one stage at a time; each shows "coming next" until its stage ships.
+// The eight steps are built one stage at a time. Product, Story and Script are live; the rest show "built in a later stage".
 // All costs are estimates: providers do not report the real billed cost of each request.
 
 const NAVY = "#0A2342";
@@ -31,6 +34,7 @@ interface Project {
   created_at: string;
   updated_at: string;
   est_cost_usd: number;
+  settings?: any;
 }
 
 interface ProviderUsage {
@@ -141,7 +145,14 @@ export default function AdminMicroDramaStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-reads the open project (settings, steps done, cost so far) after a step saves something.
+  const refreshOpen = useCallback(async (id: string) => {
+    const r = await callApi(`/api/hub-studio?view=project&id=${encodeURIComponent(id)}`);
+    if (r.ok) setOpen(prev => (prev && prev.id === id ? { ...prev, ...(r.body.project as Project) } : prev));
+  }, []);
+
   function openProject(p: Project) {
+    refreshOpen(p.id);
     setOpen(p);
     setActiveStep(p.current_step || "product");
     setTitleDraft(p.title);
@@ -282,10 +293,20 @@ export default function AdminMicroDramaStudio() {
               })}
             </div>
 
-            <div style={card}>
-              <h2 style={h2}>{STEP_LABEL[activeStep]}</h2>
-              <p style={small}>This step is built in a later stage. Nothing to do here yet. Your project and its title are saved.</p>
-            </div>
+            {!open.settings ? (
+              <p style={small}>Loading the project…</p>
+            ) : activeStep === "product" ? (
+              <ProductStep key={`${open.id}-product`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : activeStep === "story" ? (
+              <StoryStep key={`${open.id}-story`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : activeStep === "script" ? (
+              <ScriptStep key={`${open.id}-script`} projectId={open.id} settings={open.settings} stepsDone={open.steps_done} onChanged={() => refreshOpen(open.id)} />
+            ) : (
+              <div style={card}>
+                <h2 style={h2}>{STEP_LABEL[activeStep]}</h2>
+                <p style={small}>This step is built in a later stage. Nothing to do here yet. Your project and its title are saved.</p>
+              </div>
+            )}
           </section>
         )}
 
