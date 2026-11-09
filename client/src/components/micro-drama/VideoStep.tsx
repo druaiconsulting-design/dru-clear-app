@@ -194,15 +194,22 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
               return (
                 <div key={s.id} style={card}>
                   <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                    <div style={{ flex: "0 1 280px", minWidth: 200 }}>
-                      {s.clip_url ? (
-                        <video key={s.clip_url} src={s.clip_url} poster={s.frame_url || undefined} controls playsInline style={{ width: "100%", borderRadius: 8, background: "#000" }} />
-                      ) : s.frame_url ? (
+                    <div style={{ flex: "0 1 170px", minWidth: 130 }}>
+                      <p style={{ ...small, marginBottom: 6 }}>Starting frame</p>
+                      {s.frame_url ? (
                         <img src={s.frame_url} alt={`Scene ${s.position} frame`} style={{ width: "100%", borderRadius: 8, display: "block" }} />
                       ) : (
                         <div style={{ ...small, padding: "2rem 0.8rem", textAlign: "center", border: "1px dashed rgba(10,35,66,0.3)", borderRadius: 8 }}>No frame yet</div>
                       )}
-                      <p style={{ ...small, marginTop: 6 }}>{s.clip_url ? (s.source === "upload" ? "Your own clip" : "Made by Higgsfield") : "Starting frame"}</p>
+                    </div>
+
+                    <div style={{ flex: "0 1 170px", minWidth: 130 }}>
+                      <p style={{ ...small, marginBottom: 6 }}>{s.clip_url ? (s.source === "upload" ? "Your own clip" : "Clip · generated") : "Clip"}</p>
+                      {s.clip_url ? (
+                        <video key={s.clip_url} src={s.clip_url} controls playsInline preload="metadata" style={{ width: "100%", borderRadius: 8, background: "#000", display: "block" }} />
+                      ) : (
+                        <div style={{ ...small, padding: "2rem 0.8rem", textAlign: "center", border: "1px dashed rgba(10,35,66,0.3)", borderRadius: 8 }}>{isPending ? "Being made…" : "No clip yet"}</div>
+                      )}
                     </div>
 
                     <div style={{ flex: "1 1 320px", minWidth: 260 }}>
