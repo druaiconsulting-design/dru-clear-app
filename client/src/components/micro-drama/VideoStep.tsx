@@ -11,7 +11,8 @@ interface Scene {
 }
 
 const API = "/api/hub-studio-video";
-const FROM_USD_PER_SECOND = 0.1748;
+// Measured on the real Higgsfield bill: a 6-second 720p clip with sound off cost $2.36.
+const FROM_USD_PER_SECOND = 2.36 / 6;
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 const money = (n: number | null) => (n === null ? "" : `$${n < 0.01 ? n.toFixed(4) : n.toFixed(2)}`);
 const pending = (s: Scene) => s.status === "queued" || s.status === "in_progress";
@@ -168,7 +169,7 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
       </div>
 
       <div style={{ ...card, marginBottom: "1rem", padding: "0.8rem 1.1rem" }}>
-        <p style={small}>Playing a finished clip is free. Making a clip uses Higgsfield API funds, which are separate from your Higgsfield subscription. Higgsfield lists Seedance 2.5 from about $0.17 per second, and the real price can be higher at higher settings. The amounts shown here are estimates, and every clip is logged on the Usage tab. Clips are made without sound, because your Audio recordings are added later.</p>
+        <p style={small}>Playing a finished clip is free. Making a clip uses Higgsfield API funds, which are separate from your Higgsfield subscription. Your real Higgsfield bill for a 6-second clip at 720p with sound off was $2.36, about $0.39 per second, and the estimates here use that rate. Other resolutions have not been measured yet. Every clip is logged on the Usage tab. Clips are made without sound, because your Audio recordings are added later.</p>
         {stepsDone.includes("video") && <p style={{ ...small, color: "#1B6E3C", marginTop: 6 }}>✓ Video done. Every scene has an approved clip.</p>}
         {keyError && <p style={{ ...small, color: "#B3261E", marginTop: 6 }}>{keyError}</p>}
       </div>
@@ -190,7 +191,7 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
             )}
             {confirmAll && (
               <>
-                <p style={{ ...small, color: "#0A2342" }}>This starts {toMake.length} clip{toMake.length === 1 ? "" : "s"} and costs at least about {money(totalEstimate)} in Higgsfield funds.</p>
+                <p style={{ ...small, color: "#0A2342" }}>This starts {toMake.length} clip{toMake.length === 1 ? "" : "s"} and costs about {money(totalEstimate)} in Higgsfield funds.</p>
                 <button style={btn(true, working)} disabled={working} onClick={makeAll}>Yes, make them</button>
                 <button style={btn(false)} onClick={() => setConfirmAll(false)}>Cancel</button>
               </>
@@ -268,7 +269,7 @@ export default function VideoStep({ projectId, stepsDone, onChanged, onGoto }: S
                       </div>
 
                       <p style={{ ...small, marginTop: 8 }}>
-                        Estimate: at least about {money(Math.round(s.length * FROM_USD_PER_SECOND * 100) / 100)}.
+                        Estimate: about {money(Math.round(s.length * FROM_USD_PER_SECOND * 100) / 100)}{s.resolution === "720p" ? " (measured at 720p)." : " (measured at 720p; this resolution is not measured yet)."}
                         {s.cost_usd !== null ? ` This clip was logged at ${money(s.cost_usd)}.` : ""}
                       </p>
 

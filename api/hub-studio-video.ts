@@ -15,8 +15,9 @@ export const config = { maxDuration: 300 }
 
 const HF = 'https://api.higgsfield.ai'
 const MODEL_PATH = 'bytedance/seedance-2.5/image-to-video'
-// Higgsfield's listed starting price for Seedance 2.5 is $0.1748 per second. Higher settings may cost more, so the estimate is a floor.
-const FROM_USD_PER_SECOND = 0.1748
+// Measured on the real Higgsfield bill (Nov 9, 2026): a 6-second 720p clip with sound off cost $2.36, which is $0.3933 per second.
+// Other resolutions have not been measured, so they use the same rate as an estimate.
+const FROM_USD_PER_SECOND = 2.36 / 6
 const RESOLUTIONS = ['480p', '720p', '1080p']
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024
 
