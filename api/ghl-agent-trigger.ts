@@ -1992,6 +1992,14 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_jaylen'){const result=await runJaylen();res.status(202).json({success:true,agent:route.agent_name,...result});}
   else if (route.pipeline==='p1_chloe'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "Leadership Clarity · AI Mastery · Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_zara'){
+    // Nov 11, 2026 -- Zara's ACC PDF runs on the 1st, 3rd and 5th Monday of each month. The scheduler still
+    // wakes her every Monday; on the 2nd and 4th Monday the scheduled run stops here. Manual / on-demand runs are unaffected.
+    const nthMonday=Math.ceil(parseInt(new Date().toLocaleDateString('en-US',{day:'numeric',timeZone:'America/Chicago'}),10)/7);
+    if (['pg_cron','vercel_cron'].includes(sourceLabel)&&![1,3,5].includes(nthMonday)){
+      console.log(`[ghl-agent-trigger] Zara skipped -- Monday #${nthMonday} of the month (runs on the 1st, 3rd and 5th)`);
+      res.status(202).json({success:true,agent:route.agent_name,status:'skipped',note:`Monday #${nthMonday} of the month -- Zara's PDF runs on the 1st, 3rd and 5th Monday.`});
+      return;
+    }
     const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
     const weekNum=Math.floor((Date.now()-new Date('2026-07-07').getTime())/(7*24*60*60*1000));
     const frameworks=['DRU CLEAR™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™'];
