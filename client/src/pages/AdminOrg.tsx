@@ -143,7 +143,11 @@ export default function AdminOrg() {
           {hasMore && <span style={{ color: "#D4AF37", fontSize: "0.65rem", flexShrink: 0, alignSelf: "flex-start" }}>{isOpen ? "▴" : "▾"}</span>}
         </div>
         {isOpen && detail && (
-          <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(212,175,55,0.35)", fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.85)", lineHeight: 1.5, whiteSpace: "pre-line" as const }}>{detail}</div>
+          <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(212,175,55,0.35)", fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.85)", lineHeight: 1.5 }}>
+            <ul style={{ margin: 0, paddingLeft: 14, listStyle: "disc" }}>
+              {detail.split("\n").map(l => l.trim()).filter(Boolean).map((line, i) => <li key={i} style={{ marginBottom: 2 }}>{line}</li>)}
+            </ul>
+          </div>
         )}
       </div>
     );
