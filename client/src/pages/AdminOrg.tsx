@@ -29,6 +29,8 @@ interface AgentRow {
   sort_order: number;
   is_leader: boolean;
   photo_url: string;
+  what_they_do: string | null;
+  what_they_do_detail: string | null;
 }
 
 interface DivisionGroup {
@@ -53,6 +55,7 @@ export default function AdminOrg() {
   const [agentCount, setAgentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [photoErrors, setPhotoErrors] = useState<Record<string, boolean>>({});
+  const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
   const [deAnnaErr,  setDeAnnaErr]  = useState(false);
   const [raymondErr, setRaymondErr] = useState(false);
   const [travisErr,  setTravisErr]  = useState(false);
@@ -110,6 +113,41 @@ export default function AdminOrg() {
     ...circleStyle(size), display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: size * 0.35, background: bg,
   });
+
+  const toggleCard = (id: string) => setOpenCards(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // One agent card, used by the Video Production team row and every division box.
+  // Short "what they do" line always shows; clicking the card opens the full detail.
+  const agentCard = (agent: AgentRow, opts: { photo: number; flex: string; maxWidth?: number; showDivision?: boolean }) => {
+    const isOpen = !!openCards[agent.id];
+    const hasMore = !!(agent.what_they_do || agent.what_they_do_detail);
+    const detail = agent.what_they_do_detail || agent.what_they_do;
+    return (
+      <div
+        key={agent.id}
+        onClick={() => hasMore && toggleCard(agent.id)}
+        style={{ background: "#FFFFFF", border: `1px solid ${isOpen ? "rgba(212,175,55,0.6)" : "rgba(10,35,66,0.1)"}`, borderRadius: 7, padding: "5px 9px", flex: isOpen ? "1 1 100%" : opts.flex, maxWidth: isOpen ? "none" : opts.maxWidth, cursor: hasMore ? "pointer" : "default" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {!photoErrors[agent.id] ? (
+            <img src={agent.photo_url} alt={agent.name} onError={() => markPhotoError(agent.id)} style={{ width: opts.photo, height: opts.photo, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: opts.photo, height: opts.photo, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#0A2342", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontSize: opts.photo > 48 ? "0.85rem" : "0.75rem", fontWeight: 700 }}>{initials(agent.name)}</div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{agent.name}{agent.is_leader ? " ★" : ""}</p>
+            <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: 0 }}>{agent.role}</p>
+            {opts.showDivision && <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.52rem", margin: 0 }}>{agent.division}</p>}
+            {agent.what_they_do && <p style={{ fontFamily: "'Inter', sans-serif", color: "#0A2342", fontSize: "0.58rem", fontWeight: 600, margin: "2px 0 0", lineHeight: 1.3 }}>{agent.what_they_do}</p>}
+          </div>
+          {hasMore && <span style={{ color: "#D4AF37", fontSize: "0.65rem", flexShrink: 0, alignSelf: "flex-start" }}>{isOpen ? "▴" : "▾"}</span>}
+        </div>
+        {isOpen && detail && (
+          <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(212,175,55,0.35)", fontFamily: "'Inter', sans-serif", fontSize: "0.62rem", color: "rgba(10,35,66,0.85)", lineHeight: 1.5, whiteSpace: "pre-line" as const }}>{detail}</div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AdminLayout currentPath={window.location.pathname}>
@@ -208,22 +246,9 @@ export default function AdminOrg() {
             <>
               <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
               <div style={{ border: "1px dashed rgba(27,77,142,0.55)", borderRadius: 10, padding: "0.5rem 0.75rem 0.75rem", maxWidth: 900 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 6px", textAlign: "center" as const }}>Video Production Team · Works with Travis</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 6px", textAlign: "center" as const }}>Video Production Team</p>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, justifyContent: "center" }}>
-                  {videoTeam.map(agent => (
-                    <div key={agent.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 7, padding: "5px 9px", flex: "1 1 200px", maxWidth: 260 }}>
-                      {!photoErrors[agent.id] ? (
-                        <img src={agent.photo_url} alt={agent.name} onError={() => markPhotoError(agent.id)} style={{ width: 44, height: 44, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ ...fallback(initials(agent.name), 44), border: "1px solid rgba(212,175,55,0.35)", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700 }}>{initials(agent.name)}</div>
-                      )}
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{agent.name}</p>
-                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: 0 }}>{agent.role}</p>
-                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.4)", fontSize: "0.52rem", margin: 0 }}>{agent.division}</p>
-                      </div>
-                    </div>
-                  ))}
+                  {videoTeam.map(agent => agentCard(agent, { photo: 44, flex: "1 1 200px", maxWidth: 260, showDivision: true }))}
                 </div>
               </div>
             </>
@@ -244,19 +269,7 @@ export default function AdminOrg() {
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.56rem", fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}>{div.tag}</span>
                 </div>
                 <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
-                  {div.agents.map(agent => (
-                    <div key={agent.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.1)", borderRadius: 7, padding: "5px 9px", flex: div.fullWidth ? "1 1 160px" : "1 1 100%" }}>
-                      {!photoErrors[agent.id] ? (
-                        <img src={agent.photo_url} alt={agent.name} onError={() => markPhotoError(agent.id)} style={{ width: 54, height: 54, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 54, height: 54, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#0A2342", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontSize: "0.85rem", fontWeight: 700 }}>{initials(agent.name)}</div>
-                      )}
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#0A2342", fontSize: "0.7rem", fontWeight: 700, margin: 0, lineHeight: 1.2, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}{agent.is_leader ? " ★" : ""}</p>
-                        <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.5)", fontSize: "0.58rem", margin: 0, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{agent.role}</p>
-                      </div>
-                    </div>
-                  ))}
+                  {div.agents.map(agent => agentCard(agent, { photo: 54, flex: div.fullWidth ? "1 1 160px" : "1 1 100%" }))}
                 </div>
               </div>
             ))}
