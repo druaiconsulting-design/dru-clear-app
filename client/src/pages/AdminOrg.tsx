@@ -127,10 +127,10 @@ export default function AdminOrg() {
         {/* Hierarchy — keep dark cards intentionally */}
         <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", marginBottom: "1.5rem", gap: 6 }}>
 
-          {/* DeAnna and her AI Twin, side by side */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap" as const, rowGap: 6 }}>
+          {/* DeAnna with her AI Twin beside her and Priya directly under her */}
+          <div style={{ display: "grid", gridTemplateColumns: "360px 20px 360px", justifyContent: "center" }}>
 
-          <div style={{ background: "#D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
+          <div style={{ gridColumn: 1, gridRow: 1, boxSizing: "border-box" as const, background: "#D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12 }}>
             {!deAnnaErr ? <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} /> : <div style={fallback("👑", 56, "#0A2342")}>👑</div>}
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>DeAnna R. Upshaw</p>
@@ -140,15 +140,39 @@ export default function AdminOrg() {
             </div>
           </div>
 
-          <div style={{ width: 20, height: 2, background: "rgba(212,175,55,0.5)" }} />
+            {/* Gold line: DeAnna to her AI Twin, and down the middle to Raymond */}
+            <div style={{ gridColumn: 2, gridRow: 1, display: "flex", flexDirection: "column" as const }}>
+              <div style={{ flex: 1 }} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center" }}>
+                <div style={{ width: 20, height: 2, background: "rgba(212,175,55,0.5)" }} />
+                <div style={{ width: 2, flex: 1, background: "rgba(212,175,55,0.5)" }} />
+              </div>
+            </div>
 
-          <div style={{ background: "#C2185B", border: "2px solid #0A2342", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
+          <div style={{ gridColumn: 3, gridRow: 1, alignSelf: "center", boxSizing: "border-box" as const, background: "#C2185B", border: "2px solid #0A2342", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12 }}>
             <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
               <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>DeAnna's Voice · Face of the Company</p>
             </div>
           </div>
+
+            <div style={{ gridColumn: 2, gridRow: 2, display: "flex", justifyContent: "center" }}>
+              <div style={{ width: 2, background: "rgba(212,175,55,0.5)" }} />
+            </div>
+
+            {/* Priya — DeAnna's super email agent, connected directly under her */}
+            <div style={{ gridColumn: 1, gridRow: 2, display: "flex", flexDirection: "column" as const, alignItems: "center" }}>
+              <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
+            <div style={{ width: "100%", boxSizing: "border-box" as const, background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12 }}>
+              {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
+              <div>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant · Inbox Command</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Gmail super agent · Build in progress</p>
+              </div>
+            </div>
+            </div>
 
           </div>
 
@@ -174,15 +198,6 @@ export default function AdminOrg() {
                 <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Producer · Video Production</p>
                 <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Wealthy</p>
                 <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.9)", fontSize: "0.58rem", margin: "1px 0 0" }}>Video Pipeline · Script → render → publish</p>
-              </div>
-            </div>
-
-            <div style={{ background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-              {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
-              <div>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant · Inbox Command</p>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Gmail super agent · Build in progress</p>
               </div>
             </div>
 
