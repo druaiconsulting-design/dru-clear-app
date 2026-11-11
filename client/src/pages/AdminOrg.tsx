@@ -127,6 +127,9 @@ export default function AdminOrg() {
         {/* Hierarchy — keep dark cards intentionally */}
         <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", marginBottom: "1.5rem", gap: 6 }}>
 
+          {/* DeAnna and her AI Twin, side by side */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap" as const, rowGap: 6 }}>
+
           <div style={{ background: "#D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
             {!deAnnaErr ? <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} /> : <div style={fallback("👑", 56, "#0A2342")}>👑</div>}
             <div>
@@ -135,19 +138,16 @@ export default function AdminOrg() {
             </div>
           </div>
 
-          <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
+          <div style={{ width: 20, height: 2, background: "rgba(212,175,55,0.5)" }} />
 
           <div style={{ background: "#C2185B", border: "2px solid #0A2342", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
             <div>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>Master Orchestrator · DeAnna's Voice · Face of the Company</p>
-              <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
-                {["DeAnna's Voice", "Face of All Video Content", "Persistent Memory", "Routes All Agents"].map(b => (
-                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#FFFFFF" }}>{b}</span>
-                ))}
-              </div>
+              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>DeAnna's Voice · Face of the Company</p>
             </div>
+          </div>
+
           </div>
 
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
@@ -155,14 +155,9 @@ export default function AdminOrg() {
           <div style={{ background: "#0A2342", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
             {!raymondErr ? <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : <div style={fallback("RH", 54)}>RH</div>}
             <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff · Sole Command Layer</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length || 11} Divisions · {agentCount || 55} Agents · Daily briefing carries his name</p>
-              <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" as const }}>
-                {["Strategic Oversight", "Single Consolidated Review", "Operations Command"].map(b => (
-                  <span key={b} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.5rem", fontWeight: 700, padding: "1px 6px", borderRadius: 20, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#D4AF37" }}>{b}</span>
-                ))}
-              </div>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length || 11} Divisions · {agentCount || 55} Agents</p>
             </div>
           </div>
 
