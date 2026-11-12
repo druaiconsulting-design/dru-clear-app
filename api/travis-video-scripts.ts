@@ -28,7 +28,7 @@ export const config = { maxDuration: 300 };
 
 import { GENIUS_MODE, DIRECT_RESPONSE_PHILOSOPHY, fetchBrandCopy } from './_lib/agentKnowledge.js';
 
-const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
+const FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confidence with AI™'];
 
 const FRAMEWORK_KNOWLEDGE = `
 ## THE DRU AI TRANSFORMATION PATHWAY™
@@ -80,7 +80,7 @@ Combines DISC behavioral insights with AI. Selling stops feeling like selling.
 DRU CLEAR™ is the CONNECTOR — anchors every engagement.
 Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
 Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
-Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
+Course: From Confusion to Confidence with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
 `;
 
 // Logs every real API call's actual token usage and cost to Supabase so spend

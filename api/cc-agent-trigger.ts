@@ -38,7 +38,7 @@ const TM_PAIRS: [RegExp, string][] = [
   [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
   [/5D Leadership(?!™)/g,                       '5D Leadership™'],
   [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
-  [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
+  [/From Confusion to Confidence with AI(?!™)/g, 'From Confusion to Confidence with AI™'],
 ];
 function enforceTM(content: string): string {
   let corrected = content;
@@ -163,7 +163,7 @@ async function postAcknowledgmentComment(postId: string, firstName: string, sign
 }
 
 // ─── Agent Knowledge Base (inline) ─────────────────────────────────────────
-const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confident with AI™'];
+const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confidence with AI™'];
 const FRAMEWORK_KNOWLEDGE = `
 ## THE DRU AI TRANSFORMATION PATHWAY™
 Sequential journey every client walks — no shortcuts, no skipped steps:
@@ -217,7 +217,7 @@ Combines DISC behavioral insights with AI. Selling stops feeling like selling.
 DRU CLEAR™ is the CONNECTOR — anchors every engagement.
 Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
 Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
-Course: From Confusion to Confident with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
+Course: From Confusion to Confidence with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
 `;
 async function getAgentKnowledge(): Promise<string> {
   let tmMarks: string[] = [];
@@ -281,7 +281,7 @@ async function runVictor(): Promise<{ approval_id: string | null; post_id: strin
   };
   const todayFocus = focus[dayOfWeek] ?? focus['Monday'];
 
-  return runCCAgent('victor', 'Victor Reyes', 'cc_strategy_insight', 'agent', 'cc_strategy_insight', `You are Victor Reyes, a strategy and culture thinker inside the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nAUDIENCE: Business owners and leaders actively navigating AI in their businesses — practical people in the middle of it, not senior enterprise executives. Stay grounded and real. No jargon, no rarified language.\nTODAY'S LENS: ${todayFocus.lens}\nTODAY'S FRAMEWORK: ${todayFocus.framework}\nWrite a MASTERMIND CONVERSATION STARTER. 150-200 words. Voice: peer-to-peer strategic depth in plain language — you are a fellow business owner who sees how AI implementation and company culture are one inseparable challenge. Share a tension, a pattern, or an insight from inside the work. Apply today's framework naturally — as a lens, never a lesson. End with one genuine question that has no easy answer. No calls to action.`);
+  return runCCAgent('victor', 'Victor Reyes', 'cc_strategy_insight', 'agent', 'cc_strategy_insight', `You are Victor Reyes, a strategy and culture thinker inside the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nAUDIENCE: Business owners and leaders actively navigating AI in their businesses — practical people in the middle of it, not senior enterprise executives. Stay grounded and real. No jargon, no rarified language.\nTODAY'S LENS: ${todayFocus.lens}\nTODAY'S FRAMEWORK: ${todayFocus.framework}\nWrite a MASTERMIND CONVERSATION STARTER. 150-200 words. Voice: peer-to-peer strategic depth in plain language — you are a fellow business owner who sees how AI implementation and company culture are one inseparable challenge. Share a tension, a pattern, or an insight from inside the work. Apply today's framework naturally — as a lens, never a lesson. End with one genuine question that has no easy answer. No calls to action.`);
 }
 
 // ─── Sasha Kim — AI Sales Mastery™ Intelligence (Sun / Tue / Thu) ────────────
@@ -309,7 +309,7 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Sasha Kim');
   const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
 ${peerSection}${trainingSection}${signalsSection}
@@ -396,7 +396,7 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Tariq Oladele');
   const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
 TODAY'S ANGLE: ${angle.label}
@@ -438,7 +438,7 @@ async function runZoe(): Promise<{ approval_id: string | null; post_id: string |
     const r = await fetch(`${url}/rest/v1/community_posts?published_at=gte.${since.toISOString()}&order=published_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const posts = await r.json(); if (posts.length > 0) recentPostsSummary = posts.map((p: any) => `${p.agent_name}: ${p.title}`).join('\n'); }
   }
-  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'agent', 'community_edge', `You are Zoe Beaumont, a community leader and fellow business owner inside the DRU AI Leadership Ecosystem™. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY:\n${recentPostsSummary}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm peer-to-peer — you are a trusted peer reflecting on something real you've noticed, felt, or been sitting with. NOT a coach, NOT educational content. Like what you'd say to open a meaningful conversation at a mastermind table. Where relevant, build naturally off recent community activity to create continuity. End with one genuine question for the room. No calls to action.`);
+  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'agent', 'community_edge', `You are Zoe Beaumont, a community leader and fellow business owner inside the DRU AI Leadership Ecosystem™. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY:\n${recentPostsSummary}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm peer-to-peer — you are a trusted peer reflecting on something real you've noticed, felt, or been sitting with. NOT a coach, NOT educational content. Like what you'd say to open a meaningful conversation at a mastermind table. Where relevant, build naturally off recent community activity to create continuity. End with one genuine question for the room. No calls to action.`);
 }
 async function runMicah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -448,7 +448,7 @@ async function runMicah(): Promise<{ approval_id: string | null; post_id: string
     const r = await fetch(`${url}/rest/v1/profiles?tier=in.(navigator,accelerator)&order=updated_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const members = await r.json(); if (members.length > 0) memberContext = `Active members: ${members.length} navigator/accelerator subscribers.`; }
   }
-  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'agent', 'community_engagement', `You are Micah Santos, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm and human — you are a fellow business owner who wants to celebrate wins, invite honesty, or open up something real you've been sitting with. NOT educational. NOT a coach post. Like a message you'd send to a group chat of people you trust. Invite others to share their own experience. End with one open, genuine question. No calls to action.`);
+  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'agent', 'community_engagement', `You are Micah Santos, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm and human — you are a fellow business owner who wants to celebrate wins, invite honesty, or open up something real you've been sitting with. NOT educational. NOT a coach post. Like a message you'd send to a group chat of people you trust. Invite others to share their own experience. End with one open, genuine question. No calls to action.`);
 }
 
 // ─── Daily Community Seed — rotates Zoe / Micah / Victor (one post per day) ──
@@ -468,7 +468,7 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor\n- Connect to a relevant DRU framework (DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™)\n- Add one strategic insight that elevates the conversation\n- Invite further reflection or engagement\n- Your voice: grounded, clear, purposeful`;
   const micahInstructions = `- Acknowledge the member personally — make them feel genuinely seen\n- Validate their experience with specificity\n- Add warmth, encouragement, and a sense of belonging\n- Your voice: warm, engaged, human`;
   const agentCorrections = await getAgentCorrections(agentName);
-  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
   try {
     const raw = await callAnthropic(prompt, 600);
     const corrected = enforceTM(raw);

@@ -7,7 +7,7 @@ export const config = { maxDuration: 60 };
 const STAGES = ['discover', 'diagnose', 'design', 'deploy', 'dominate'];
 
 const FRAMEWORKS_BY_DAY = [
-  'From Confusion to Confident with AI™',  // Sunday
+  'From Confusion to Confidence with AI™',  // Sunday
   'DRU CLEAR™',                             // Monday
   'DRU AI Leadership Ecosystem™',           // Tuesday
   'DRU AI Transformation Pathway™',         // Wednesday
@@ -102,7 +102,7 @@ Stage Context: ${STAGE_CONTEXT[stage]}
 
 Generate premium daily content for an executive at the ${STAGE_LABELS[stage]} stage of the DRU AI Transformation Pathway™ (Discover → Diagnose → Design → Deploy → Dominate).
 
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confident with AI™
+TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™
 
 CONTENT RULES:
 - Write as DeAnna speaking directly to the executive ("You are..." / "Your team..." / "I've seen...")

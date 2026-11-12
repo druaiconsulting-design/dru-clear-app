@@ -19,7 +19,7 @@ const TM_PAIRS: [RegExp, string][] = [
   [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
   [/5D Leadership(?!™)/g,                       '5D Leadership™'],
   [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
-  [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
+  [/From Confusion to Confidence with AI(?!™)/g, 'From Confusion to Confidence with AI™'],
 ];
 
 function enforceTM(content: string): string {

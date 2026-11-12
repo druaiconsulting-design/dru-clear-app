@@ -95,7 +95,7 @@ export default function AdminCourses() {
         {/* Header */}
         <div style={{ marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.2rem" }}>From Confusion to Confident with AI™</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.2rem" }}>From Confusion to Confidence with AI™</h1>
             <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.78rem" }}>Course Management · Modules · Lessons · Enrollments</p>
           </div>
           <a href="https://courses.druaiconsulting.com" target="_blank" rel="noopener noreferrer"
@@ -238,7 +238,7 @@ export default function AdminCourses() {
         )}
 
         <div style={{ marginTop: "2rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 8 }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>DRU AI Consulting · From Confusion to Confident with AI™ · Course Admin © 2026</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.7)", margin: 0 }}>DRU AI Consulting · From Confusion to Confidence with AI™ · Course Admin © 2026</p>
         </div>
 
         <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.3)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.65rem", letterSpacing: "0.04em" }}>

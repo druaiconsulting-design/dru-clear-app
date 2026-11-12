@@ -3,7 +3,7 @@ import AdminLayout from "../components/AdminLayout";
 interface FocusPoint { label: string; sub: string; }
 const FOCAL_POINTS: FocusPoint[] = [
   { label: "GHL Webhook URL — wire into course waitlist form", sub: "Connect GHL webhook to courses.druaiconsulting.com waitlist capture" },
-  { label: "From Confusion to Confident with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · courses.druaiconsulting.com deploy next" },
+  { label: "From Confusion to Confidence with AI™ — Course Build", sub: "Waitlist form built · 3 payment links live · courses.druaiconsulting.com deploy next" },
   { label: "L3 — Courses catalog + course cards", sub: "All courses / My courses tabs · progress bars · tier-gated · non-enrolled see locked CTA" },
   { label: "L3 — api/course-enrollment.ts serverless function", sub: "GHL webhook → Supabase account auto-created → tier assigned → magic link sent" },
   { label: "L3 — GHL workflows (3 tiers)", sub: "self_paced · live_cohort · mastermind · each fires webhook" },

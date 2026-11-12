@@ -39,7 +39,7 @@ VOICE FOR THIS COPY: Conversational, not robotic. Read like talking to a friend.
 // (e.g. a static agent-prompt map) and can't await the live brand_marks fetch below.
 // Content is identical to what getAgentKnowledge() enforces — kept in sync manually,
 // same safety-net pattern as FALLBACK_TM_MARKS.
-export const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ only to these exact approved marks, written in full, in their original casing, every time: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™. Every other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," and offer names like "Executive Diagnostic" — stays plain text, no matter how proprietary it sounds. In hashtags, write the mark as plain alphanumeric characters with no ™ and no spaces (e.g. #DRUCLEAR) — that is the correct, compliant hashtag form. Compliance clearance stamps, status lines, and reviewer signatures come from the external review process, issued after your content is written — leave them out of your own draft. SERVICE CLASSES: Keep all content within Classes 35, 41, 42. All CTAs point to assessment.druaiconsulting.com.`;
+export const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ only to these exact approved marks, written in full, in their original casing, every time: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™. Every other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," and offer names like "Executive Diagnostic" — stays plain text, no matter how proprietary it sounds. In hashtags, write the mark as plain alphanumeric characters with no ™ and no spaces (e.g. #DRUCLEAR) — that is the correct, compliant hashtag form. Compliance clearance stamps, status lines, and reviewer signatures come from the external review process, issued after your content is written — leave them out of your own draft. SERVICE CLASSES: Keep all content within Classes 35, 41, 42. All CTAs point to assessment.druaiconsulting.com.`;
 
 // ─── Grant drafting — shared across Kwame's draft, Kwame's rewrite, Chloe's
 // review, and Isabella's context (api/ghl-agent-trigger.ts and
@@ -219,7 +219,7 @@ Entry point diagnostics:
 ---
 
 ## COURSE OFFERING
-From Confusion to Confident with AI™
+From Confusion to Confidence with AI™
 - Self-Paced: $1,497 | Live Cohort: $7,997 | Cohort Mastermind: $12,997
 Delivered by AI Twin and agents. Entry via assessment only.
 `;
@@ -233,7 +233,7 @@ const FALLBACK_TM_MARKS = [
   '5C Cultural DNA™',
   '5D Leadership™',
   'AI Sales Mastery™',
-  'From Confusion to Confident with AI™',
+  'From Confusion to Confidence with AI™',
 ];
 
 /**

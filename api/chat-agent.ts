@@ -36,12 +36,12 @@ SERVICES:
 - DRU CLEAR™ AI Readiness Assessment — Free at assessment.druaiconsulting.com (START HERE)
 - Strategic Diagnostic™ — $3,497
 - Executive Diagnostic™ — $4,997 (BEST VALUE)
-- 90-Day AI Transformation Journey™ — $20K–$25K+
-- From Confusion to Confident with AI™ Course — from $1,497
+- 90-Day AI Transformation Journey — $20K–$25K+
+- From Confusion to Confidence with AI™ Course — from $1,497
 - Daily Connections — Free / Navigator $97/month or $970/year (2 months free) / Accelerator $197/month or $1,970/year (2 months free)
 
 FRAMEWORKS (always ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™
+DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
 
 DEANNA'S BACKGROUND:
 25+ years in IT, 10+ years leadership development. International facilitator. AI Authority. Maxwell Leadership certified.
@@ -73,7 +73,7 @@ SERVICIOS:
 - Viaje de Transformación IA de 90 Días™ — $20K–$25K+
 
 MARCOS (siempre con ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™
+DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
 
 REGLAS:
 - Máximo 2-4 oraciones por respuesta
@@ -99,7 +99,7 @@ SERVICES:
 - Diagnostic Exécutif™ — $4,997 (MEILLEURE VALEUR)
 
 CADRES (toujours avec ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™
+DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
 
 RÈGLES:
 - Maximum 2-4 phrases par réponse
@@ -125,7 +125,7 @@ RÈGLES:
 - التشخيص التنفيذي™ — $4,997 (أفضل قيمة)
 
 الأطر (دائماً مع ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confident with AI™
+DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
 
 القواعد:
 - 2-4 جمل كحد أقصى لكل رد

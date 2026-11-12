@@ -1,4 +1,4 @@
-// From Confusion to Confident with AI™ — Student Dashboard
+// From Confusion to Confidence with AI™ — Student Dashboard
 // Embedded in admin app — top nav removed (AdminTopNav handles navigation)
 
 import { useState, useEffect, useMemo } from "react";
@@ -138,7 +138,7 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
         <div style={{ maxWidth: 480, textAlign: "center" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Access Required</p>
-          <h1 style={{ fontFamily: "'Cinzel', serif", color: "#0A2342", fontSize: "1.4rem", fontWeight: 700, lineHeight: 1.4, marginBottom: "0.75rem" }}>From Confusion to Confident<br />with AI™</h1>
+          <h1 style={{ fontFamily: "'Cinzel', serif", color: "#0A2342", fontSize: "1.4rem", fontWeight: 700, lineHeight: 1.4, marginBottom: "0.75rem" }}>From Confusion to Confidence<br />with AI™</h1>
           <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.55)", fontSize: "0.8rem", lineHeight: 1.7, marginBottom: "2rem" }}>
             Signed in as <strong style={{ color: "#D4AF37" }}>{user?.email}</strong> — no active enrollment found.
           </p>
@@ -332,7 +332,7 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
       </div>
 
       <footer style={{ textAlign: "center" as const, padding: "0.75rem", color: "rgba(10,35,66,0.3)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.58rem", borderTop: "1px solid rgba(10,35,66,0.08)", background: "#FFFFFF", flexShrink: 0 }}>
-        © 2026 DRU AI Consulting · From Confusion to Confident with AI™ · All Rights Reserved
+        © 2026 DRU AI Consulting · From Confusion to Confidence with AI™ · All Rights Reserved
       </footer>
     </div>
   );

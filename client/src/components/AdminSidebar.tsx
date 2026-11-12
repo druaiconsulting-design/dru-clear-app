@@ -52,7 +52,7 @@ const SECTIONS: Section[] = [
   {
     heading: 'COURSES',
     items: [
-      { icon: '🎓', label: 'From Confusion to Confident', path: '/admin-courses' },
+      { icon: '🎓', label: 'From Confusion to Confidence', path: '/admin-courses' },
       { icon: '📊', label: 'Dashboard',                   path: '/course-dashboard' },
     ],
   },
