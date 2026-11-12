@@ -149,10 +149,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   travis_video_production:"Travis Video Production",
   video_script:"Video Script",
   sd_report:"Client Delivery · SD/ED Reports",
+  crm_review:"CRM Review",
 };
 
 const CATEGORY_ORDER = [
-  "business_outlook_corrections","daily_briefing","revenue_growth","content_brand","marketing",
+  "business_outlook_corrections","daily_briefing","revenue_growth","crm_review","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","sd_report","customer_support",
   "community_connection","community_post","social","proposals_press","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
@@ -160,8 +161,8 @@ const CATEGORY_ORDER = [
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
   "Revenue, Growth & Sales": [
-    { agent_id:"omar",    agent_name:"Omar Patel",       role:"Lead Scoring" },
-    { agent_id:"ryan",    agent_name:"Ryan Nakamura",    role:"CRM Management" },
+    { agent_id:"omar",    agent_name:"Omar Patel",       role:"TBA" },
+    { agent_id:"ryan",    agent_name:"Ryan Nakamura",    role:"CRM Management (GHL)" },
     { agent_id:"serena",  agent_name:"Serena Jackson",   role:"Business Coach" },
     { agent_id:"mateo",   agent_name:"Mateo Gonzalez",   role:"Sales Support" },
     { agent_id:"aaliyah", agent_name:"Aaliyah Foster",   role:"Outreach" },
