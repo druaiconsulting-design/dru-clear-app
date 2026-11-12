@@ -515,7 +515,7 @@ async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<v
 
 // CROSS-READ HELPER — reads recent CSQ outputs from specified agents
 // Used by Camila and Nia to ground their outputs in live ecosystem intelligence
-async function getCrossRead(agentIds: string[], days = 7): Promise<string> {
+async function getCrossRead(agentIds: string[], days = 7, category?: string, maxChars = 450): Promise<string> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return '';
@@ -524,13 +524,13 @@ async function getCrossRead(agentIds: string[], days = 7): Promise<string> {
     since.setDate(since.getDate() - days);
     const sinceDate = since.toISOString().split('T')[0];
     const idList = agentIds.join(',');
-    const query = `${url}/rest/v1/chief_of_staff_queue?agent_id=in.(${idList})&run_date=gte.${sinceDate}&order=created_at.desc&limit=12&select=agent_name,division,raw_output,run_date`;
+    const query = `${url}/rest/v1/chief_of_staff_queue?agent_id=in.(${idList})&run_date=gte.${sinceDate}${category?`&category=eq.${category}`:''}&order=created_at.desc&limit=12&select=agent_name,division,raw_output,run_date`;
     const res = await fetch(query, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!res.ok) return '';
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return '';
     return (data as Record<string, string>[]).map(item =>
-      `[${item.agent_name} — ${item.run_date}]\n${(item.raw_output || '').slice(0, 450)}`
+      `[${item.agent_name} — ${item.run_date}]\n${(item.raw_output || '').slice(0, maxChars)}`
     ).join('\n\n---\n\n');
   } catch { return ''; }
 }
@@ -1682,9 +1682,11 @@ async function runSofia(): Promise<string|null> {
 async function runJames(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const previousFlags = await getCrossRead(['james'], 1);
-  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (do not repeat any of these):\n${previousFlags}` : 'No previous flags on record.';
+  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (skip anything listed here and report what is new):\n${previousFlags}` : 'No previous flags on record.';
+  const kwameProposals = await getCrossRead(['kwame'], 7, 'proposals', 3000);
+  const kwameSection = kwameProposals ? `KWAME ASANTE'S LATEST PROPOSAL UPDATES:\n${kwameProposals}` : 'No proposal updates from Kwame Asante on record.';
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('james','James Osei','AI Governance','daily_contract_readiness','contract_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\nHARD RULE: If you are about to raise something already listed above, skip it entirely. Only surface what is genuinely new or has materially changed since yesterday.\n\n**Engagement Agreement Status** — Any NEW contract gap for: Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), 90-Day AI Transformation Journey ($20K+), From Confusion to Confidence with AI™ Course.\n**Today's Contract Action** — One specific NEW gap to close. If nothing new: \"No new contract gaps today.\"\n\nFormat: 200 words or fewer. Write in first person as James Osei.`,'normal',0,null,1500);
+  return await runAgentToCSQ('james','James Osei','AI Governance','daily_contract_readiness','contract_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${kwameSection}\n\nCollaborate with Kwame Asante by checking his proposal updates against the engagement agreements.\n\n**Engagement Agreement Status** — For Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), 90-Day AI Transformation Journey ($20K+), and From Confusion to Confidence with AI™ Course: where the proposal and the engagement agreement do not match or are not covered, and the engagement agreement language that matches the proposal, written for DeAnna's approval.\n**New Information on Contracts** — The specific new information on engagement agreements, IP protection clauses, and contract templates.\n**Today's Contract Action** — The most important NEW item to close. If nothing new: "No new contract gaps today."\n\nFormat: 300 words or fewer. Write in first person as James Osei.`,'normal',0,null,1500);
 }
 async function runMeiLin(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
