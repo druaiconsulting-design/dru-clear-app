@@ -305,6 +305,38 @@ export async function fetchBrandCopy(key: string): Promise<string> {
  * and returns a complete formatted knowledge block for agent prompt injection.
  * Uses raw fetch to match existing pattern in both trigger files.
  */
+// ── Governing documents: the shared reader for the governing_documents table ─
+// The Terms of Engagement, Privacy Policy and Results Disclaimer live in the
+// governing_documents Supabase table. Every agent, Isabella and the AI
+// Governance team's review read this same text through this one function.
+export async function getGoverningDocuments(): Promise<string> {
+  try {
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return '';
+
+    const res = await fetch(
+      `${url}/rest/v1/governing_documents?active=eq.true&order=sort_order.asc&select=title,content`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!res.ok) return '';
+
+    const rows = await res.json() as { title: string; content: string }[];
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+
+    const docs = rows.map(r => `### ${r.title}\n${String(r.content).trim()}`).join('\n\n---\n\n');
+
+    return `## GOVERNING DOCUMENTS — READ BEFORE YOU WRITE
+
+DRU AI Consulting's three governing documents follow: the Terms of Engagement, the Privacy Policy, and the Results Disclaimer. Read all three, form your understanding of what they say, and write your content with that understanding. Everything you write sits inside these documents. The AI Governance team reads these same three documents when your work reaches them.
+
+${docs}`;
+  } catch (err) {
+    console.error('[agentKnowledge] Unexpected error fetching governing_documents:', err);
+    return '';
+  }
+}
+
 export async function getAgentKnowledge(): Promise<string> {
   let tmMarks: string[] = [];
 
@@ -335,6 +367,8 @@ export async function getAgentKnowledge(): Promise<string> {
   const tmList = tmMarks.map(m => `  - ${m}`).join('\n');
   const positioningLine = await fetchBrandCopy('positioning');
   const assessmentHook = await fetchBrandCopy('assessment_hook');
+  const governingDocs = await getGoverningDocuments();
+  const governingSection = governingDocs ? `${governingDocs}\n\n---\n` : '';
 
   return `
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -388,6 +422,8 @@ This is the ONLY entry point into the DRU AI Leadership Ecosystem™.
 All content must stay within Classes 35, 41, 42 only.
 
 ---
+
+${governingSection}
 ${FRAMEWORK_KNOWLEDGE}
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  End of Agent Knowledge Base — Proceed with your assigned task below        ║

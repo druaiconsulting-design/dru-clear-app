@@ -6,7 +6,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
 
-import { GENIUS_MODE } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, getGoverningDocuments } from './_lib/agentKnowledge.js';
 
 const INTERNAL_CATEGORIES = ['coaching','sales_support','lead_intelligence','proposals','product_knowledge','product_launch','digital_marketing','analytics_report','seo_sem','legal_briefing','expense_report','financial_report','tax_strategy','disclaimer_review','privacy_policy','contract_review','brand_monitoring','ai_intelligence','recruiting','onboarding','helpdesk','client_onboarding','community_management','feedback_coaching','creative_direction','course_architecture','presentation_design','video_production','issue_resolution','multichannel_comms'];
 const CLIENT_FACING_CATEGORIES = ['linkedin_post','instagram_post','facebook_post','twitter_post','tiktok_post','youtube_post','social_post','email_marketing','outreach','copywriting','press_release','localization','design_brief','content_creation','community_insight','community_lesson','community_challenge','community_edge','community_training','community_engagement'];
@@ -85,6 +85,8 @@ async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number
   let cleared = 0; let blocked = 0;
   const updates: Promise<void>[] = [];
 
+  const governingDocs = await getGoverningDocuments();
+
   for (const item of items) {
     try {
       const isInternal = INTERNAL_CATEGORIES.includes(item.category);
@@ -99,7 +101,7 @@ async function runGovernancePanel(): Promise<{ reviewed: number; cleared: number
       }
 
       const raw = await callAnthropic(
-        `${GENIUS_MODE}\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella has already cleared trademark and service class compliance — FINAL. Do NOT re-check.\n${rulesBlock}\nAGENT: ${item.agent_name} | DIVISION: ${item.division} | CATEGORY: ${item.category} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON:\nIf cleared: {"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No blocking conditions present.","legal_notes":"No legal risk detected.","flags":"none"}\nIf blocked: {"cleared":false,"compliance_score":3,"governance_notes":"Condition violated: [exact text]","legal_notes":"[issue]","flags":"[exact phrase]"}`,
+        `${GENIUS_MODE}\n\n${governingDocs}\n\nYou are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella has already cleared trademark and service class compliance — FINAL. Do NOT re-check.\n${rulesBlock}\nAGENT: ${item.agent_name} | DIVISION: ${item.division} | CATEGORY: ${item.category} | TASK: ${item.task}\nCONTENT: ${item.raw_output}\nOutput ONLY this JSON:\nIf cleared: {"cleared":true,"compliance_score":9,"governance_notes":"Panel reviewed. No blocking conditions present.","legal_notes":"No legal risk detected.","flags":"none"}\nIf blocked: {"cleared":false,"compliance_score":3,"governance_notes":"Condition violated: [exact text]","legal_notes":"[issue]","flags":"[exact phrase]"}`,
         800
       );
 

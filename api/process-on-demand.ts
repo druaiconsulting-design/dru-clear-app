@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -468,9 +468,12 @@ async function runGovernanceOnItem(item: Record<string, unknown>): Promise<{ cle
     (item.agent_name as string).toLowerCase().includes(name.toLowerCase())
   );
   const isClientFacing = !isInternalAdvisory;
+  const governingDocs = await getGoverningDocuments();
 
   const raw = await callAnthropic(
     `${GENIUS_MODE}
+
+${governingDocs}
 
 You are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabella Moreno has cleared this content for trademark and class compliance. Your role is to review for legal risk, privacy concerns, financial accuracy, and brand consistency.
 
