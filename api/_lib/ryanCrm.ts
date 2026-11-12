@@ -224,7 +224,7 @@ async function readSnapshot(): Promise<Snapshot> {
   {
     let startAfter: string | undefined; let startAfterId: string | undefined;
     for (let page = 1; page <= MAX_DEAL_PAGES; page++) {
-      const r = await ghl('GET', '/opportunities/search', { query: { location_id: GHL_LOCATION_ID, locationId: GHL_LOCATION_ID, status: 'all', limit: 100, startAfter, startAfterId } });
+      const r = await ghl('GET', '/opportunities/search', { query: { location_id: GHL_LOCATION_ID, status: 'all', limit: 100, startAfter, startAfterId } });
       if (!r.ok) { fail('deals', r); break; }
       const list: Json[] = r.data?.opportunities ?? [];
       if (typeof r.data?.meta?.total === 'number') snap.dealsTotal = r.data.meta.total;
@@ -537,9 +537,10 @@ export async function generateRyanReport(): Promise<{ approval_id: string | null
       return { approval_id: id, sections_with_changes: 0, read_errors: 1, note: 'key missing' };
     }
     const snap = await readSnapshot();
-    const coreRefused = ['contacts', 'pipelines', 'deals'].every(w => snap.readErrors.some(e => e.what === w));
+    // Contacts are what most of the 16 jobs are about. Without them a report would be guesses, so no report is written.
+    const coreRefused = snap.readErrors.some(e => e.what === 'contacts');
     if (coreRefused) {
-      const id = await writeCard({ output: `Ryan's CRM Review did not run today.\n\nGHL refused every main read, so there is nothing to report on:\n${snap.readErrors.map(e => `- ${e.what} (status ${e.status}): ${e.message}`).join('\n')}\n\nThis usually means the permissions on Ryan's GHL Private Integration need a second look.\nNo changes are proposed.` });
+      const id = await writeCard({ output: `Ryan's CRM Review did not run today.\n\nGHL refused to let Ryan read the contacts, so there is nothing reliable to report on. These reads failed:\n${snap.readErrors.map(e => `- ${e.what} (status ${e.status}): ${e.message}`).join('\n')}\n\nThis usually means the permissions on Ryan's GHL Private Integration need a second look.\nNo changes are proposed.` });
       return { approval_id: id, sections_with_changes: 0, read_errors: snap.readErrors.length, note: 'GHL refused the main reads' };
     }
     const audit = await auditFacts();
