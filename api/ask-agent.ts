@@ -8,6 +8,8 @@
 // in their persona using their full original CSQ output as context.
 // ================================================================
 
+import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
+
 export const config = { maxDuration: 30 };
 
 interface ConversationMessage {
@@ -64,7 +66,8 @@ export default async function handler(req: any, res: any): Promise<void> {
   // then yesterday), the original behavior for every other card type.
   let agentOriginalOutput = card_output ?? '';
 
-  if (supabaseUrl && supabaseKey && agent_id !== 'twin') {
+  // Ryan's answers come from the CRM Review card DeAnna is looking at (card_output), never from an older queue row.
+  if (supabaseUrl && supabaseKey && agent_id !== 'twin' && agent_id !== 'ryan') {
     try {
       if (csq_id) {
         const r = await fetch(
@@ -113,8 +116,20 @@ export default async function handler(req: any, res: any): Promise<void> {
   // ── Agent persona system prompt ────────────────────────────
   const isTwin     = agent_id === 'twin';
   const isIsabella = agent_id === 'isabella';
+  const isRyan     = agent_id === 'ryan';
 
-  const systemPrompt = isTwin
+  const systemPrompt = isRyan
+    ? `You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
+
+${RYAN_JOB_DESCRIPTION}
+
+DeAnna is reviewing your CRM Review card and has a question for you. Answer from the 16 jobs above and from the card below. When she asks about a finding or a suggested change, tell her what you saw in GHL, why you suggested it, and what approving it would do.
+
+YOUR CRM REVIEW CARD (what DeAnna is reviewing and asking about):
+${agentOriginalOutput}
+
+Answer DeAnna's question directly and specifically.`
+    : isTwin
     ? `You are DeAnna R. Upshaw's AI Twin — Master Orchestrator of DRU AI Consulting. DeAnna is reviewing the daily briefing you synthesized and has a question. Answer in her voice and with full strategic authority. Draw on everything the team produced today.
 
 YOUR SYNTHESIZED BRIEFING (the content DeAnna is reviewing):

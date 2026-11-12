@@ -11,7 +11,6 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
-import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -574,18 +573,14 @@ async function runAgentToCSQ(agentId:string,agentName:string,division:string,tas
 }
 
 // ─── Ryan Nakamura — CRM Management (GHL) ─────────────────────────────────────
-// Ryan's instructions are DeAnna's own text, word for word (api/_lib/ryanJob.ts).
-// His output goes to DeAnna's approvals.
-async function runRyan(): Promise<{approval_id:string|null}> {
+// Ryan's daily CRM Review runs in its own function (api/ryan-crm-report.ts, 300-second limit) because
+// reading GHL and writing his 16-section report takes longer than this file's limit. This hands the
+// request over and returns. Ryan's instructions are DeAnna's own text (api/_lib/ryanJob.ts).
+async function runRyan(): Promise<{started:boolean}> {
   try {
-    const output = await callAnthropic(`You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n\n${RYAN_JOB_DESCRIPTION}`,3000);
-    const approval_id = await writeApprovalDirect({
-      source:'ryan_crm_review', trigger_type:'crm_review', agent_name:'Ryan Nakamura', agent_role:'Revenue, Growth & Sales', division:'Revenue, Growth & Sales',
-      task_brief:`CRM Review — Ryan Nakamura | ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}`,
-      output, status:'pending', notify_deanna:false, priority:'normal', category:'crm_review', platform:null,
-    });
-    return {approval_id};
-  } catch(error){ console.error('[runRyan] Error:',error); return {approval_id:null}; }
+    const res = await fetch('https://app.druaiconsulting.com/api/ryan-crm-report',{method:'POST',headers:{'Content-Type':'application/json','x-cron-secret':process.env.CRON_SECRET??''},body:JSON.stringify({source:'ac-agent-trigger'})});
+    return {started:res.ok};
+  } catch(error){ console.error('[runRyan] Could not start the CRM Review:',error); return {started:false}; }
 }
 
 // ─── Weekly IP Theme Rotation (Sept 8 – Oct 4, 2026) ──────────────────────────
@@ -1607,7 +1602,7 @@ export default async function handler(req:any,res:any): Promise<void> {
 
   if (route.pipeline==='p1_omar'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
   else if (route.pipeline==='p1_omar_realtime'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
-  else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(202).json({success:true,agent:route.agent_name,approval_id:result.approval_id});}
+  else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(result.started?202:502).json({success:result.started,agent:route.agent_name,status:result.started?'started':'failed'});}
   else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`,'normal',0,null,1500,'claude-sonnet-4-6');res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confidence with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){

@@ -21,6 +21,12 @@
     },
     "api/sd-report-approve.ts": {
       "maxDuration": 300
+    },
+    "api/ryan-crm-report.ts": {
+      "maxDuration": 300
+    },
+    "api/ryan-apply.ts": {
+      "maxDuration": 300
     }
   },
   "rewrites": [

@@ -1,6 +1,6 @@
 // Ryan Nakamura — CRM Management (GHL) job description.
 // Word for word as written by DeAnna R. Upshaw, Nov 12, 2026. Nothing added, removed or reworded.
-// Used by api/ghl-agent-trigger.ts, api/ac-agent-trigger.ts and api/twin-on-demand.ts so every path shows Ryan the same text.
+// Used by api/_lib/ryanCrm.ts, api/ask-agent.ts and api/twin-on-demand.ts so every path shows Ryan the same text.
 export const RYAN_JOB_DESCRIPTION = `What an agent can do inside GHL
 * Find contacts: look one up by email or phone, run advanced searches by tag, custom field, pipeline stage or date, and check for a duplicate of a given contact.
 * Tags: add and remove tags on contacts.

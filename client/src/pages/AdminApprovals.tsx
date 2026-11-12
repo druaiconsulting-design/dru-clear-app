@@ -315,6 +315,7 @@ function getStatusText(approval: Approval, status: "posting" | "posted" | "faile
   if (approval.category === "ac_upsell_outreach")         return status === "posted" ? "✓ AC Outreach Sent"    : status === "posting" ? "Sending..."          : "⚠ Send Failed";
   if (approval.category === "travis_video_production")    return status === "posted" ? "✓ Queued for Upload"  : status === "posting" ? "Approving..."        : "⚠ Approval Failed";
   if (approval.category === "video_script")               return status === "posted" ? "✓ Sent to Travis"    : status === "posting" ? "Approving..."        : "⚠ Approval Failed";
+  if (approval.category === "crm_review")                 return status === "posted" ? "✓ Ryan made the approved changes" : status === "posting" ? "Ryan is making the changes..." : "⚠ Ryan's run failed";
   return status === "posted" ? "✓ Posted" : status === "posting" ? "Posting..." : "⚠ Post Failed";
 }
 
@@ -589,8 +590,140 @@ function CorrectionsBody({ approval, photos, pending }: { approval: Approval; ph
   );
 }
 
+// ── Ryan's daily CRM report card body ──────────────────────────────────────
+// The report is saved as JSON in approvals.original_content by api/_lib/ryanCrm.ts. One section
+// per job (16). Only sections with something to approve get a checkmark. After she approves,
+// api/ryan-apply.ts makes the changes for the checked jobs and writes each change's result
+// (done / skipped / failed) back into the same JSON, which this component shows.
+interface CrmChange {
+  id: string; summary: string; target_label: string; field: string | null;
+  current_value: string | null; new_value: string | null; overwrites: boolean;
+}
+interface CrmSection { job: number; group: string; title: string; finding: string; suggestion: string; changes: CrmChange[]; dropped: number; }
+interface CrmResult { outcome: "applied" | "skipped" | "failed" | "not_attempted"; reason: string | null; }
+interface CrmReport {
+  kind: "ryan_crm_report"; generated_at: string;
+  read_summary: { contacts_total: number | null; contacts_read: number; deals_total: number | null; deals_read: number; notes_tasks_read_for: number; workflows_read: number; custom_fields_read: number; pipelines_read: number; };
+  read_errors: { what: string; status: number; message: string }[];
+  sections: CrmSection[]; checked: number[]; approved_at: string | null; applied_at: string | null;
+  results: Record<string, CrmResult>;
+}
+
+function parseCrmReport(approval: Approval): CrmReport | null {
+  if (approval.category !== "crm_review") return null;
+  try {
+    const parsed = JSON.parse(approval.original_content || "");
+    return parsed && parsed.kind === "ryan_crm_report" && Array.isArray(parsed.sections) ? parsed as CrmReport : null;
+  } catch { return null; }
+}
+
+function CrmReviewBody({ report, pending, checked, onToggle }: { report: CrmReport; pending: boolean; checked: number[]; onToggle: (job: number) => void }) {
+  const rs = report.read_summary;
+  const approvedJobs = pending ? checked : (report.checked ?? []);
+  const label = { fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, margin:"0 0 0.2rem" };
+  const text  = { fontFamily:"'Inter', sans-serif", fontSize:"0.76rem", color:"#0A2342", lineHeight:1.65, whiteSpace:"pre-wrap" as const, margin:"0 0 0.6rem" };
+  const outcomeStyle = (o: CrmResult["outcome"]) =>
+    o === "applied" ? { color:"#2E7D32", text:"✓ Done" } :
+    o === "failed"  ? { color:"#C2185B", text:"⚠ Failed" } :
+    o === "skipped" ? { color:"#8A6E1A", text:"Skipped" } :
+                      { color:"#8A6E1A", text:"Not run" };
+
+  let lastGroup = "";
+  return (
+    <div style={{ padding:"1rem", display:"flex", flexDirection:"column" as const, gap:"0.75rem" }}>
+      <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", color:"rgba(10,35,66,0.6)", lineHeight:1.6, margin:0 }}>
+        Ryan read {rs.contacts_read}{rs.contacts_total != null ? ` of ${rs.contacts_total}` : ""} contacts, {rs.deals_read}{rs.deals_total != null ? ` of ${rs.deals_total}` : ""} deals,
+        notes and tasks for {rs.notes_tasks_read_for} contacts, {rs.pipelines_read} pipelines, {rs.workflows_read} workflows and {rs.custom_fields_read} custom fields.
+      </p>
+
+      {report.read_errors.length > 0 && (
+        <div style={{ border:"1px solid rgba(194,24,91,0.4)", background:"rgba(194,24,91,0.04)", borderRadius:8, padding:"0.6rem 0.8rem" }}>
+          <p style={{ ...label, color:"#C2185B" }}>GoHighLevel refused part of what Ryan tried to read</p>
+          {report.read_errors.map((e, i) => (
+            <p key={i} style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"#0A2342", margin:"0 0 0.15rem" }}>{e.what} — {e.status ? `error ${e.status}: ` : ""}{e.message}</p>
+          ))}
+        </div>
+      )}
+
+      {report.sections.map(section => {
+        const showGroup = section.group !== lastGroup;
+        lastGroup = section.group;
+        const hasChanges = section.changes.length > 0;
+        const isChecked = approvedJobs.includes(section.job);
+        return (
+          <div key={section.job}>
+            {showGroup && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase" as const, color:"#D4AF37", margin:"0.5rem 0 0.4rem" }}>{section.group}</p>}
+            <div style={{ border:`1px solid ${hasChanges ? "rgba(212,175,55,0.5)" : "rgba(10,35,66,0.12)"}`, borderRadius:10, padding:"0.8rem 1rem", background:"#FFFFFF" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:"0.6rem", marginBottom:"0.5rem" }}>
+                {hasChanges && pending && (
+                  <input type="checkbox" checked={isChecked} onChange={() => onToggle(section.job)} aria-label={`Approve job ${section.job}`}
+                    style={{ width:18, height:18, marginTop:2, accentColor:"#D4AF37", cursor:"pointer", flexShrink:0 }} />
+                )}
+                {hasChanges && !pending && (
+                  <span style={{ width:18, flexShrink:0, color:isChecked ? "#2E7D32" : "rgba(10,35,66,0.3)", fontWeight:700, fontSize:"0.9rem", lineHeight:1.2 }}>{isChecked ? "✓" : "–"}</span>
+                )}
+                <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.8rem", fontWeight:700, color:"#0A2342", margin:0, lineHeight:1.4 }}>{section.job}. {section.title}</p>
+              </div>
+
+              <p style={{ ...label, color:"rgba(10,35,66,0.5)" }}>Finding</p>
+              <p style={text}>{section.finding}</p>
+              <p style={{ ...label, color:"rgba(10,35,66,0.5)" }}>Ryan's suggestion</p>
+              <p style={text}>{section.suggestion}</p>
+
+              {hasChanges ? (
+                <>
+                  <p style={{ ...label, color:"#8A6E1A" }}>Needs your approval{!pending && !isChecked ? " — not approved" : ""}</p>
+                  <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.4rem" }}>
+                    {section.changes.map(change => {
+                      const result = report.results?.[change.id];
+                      const o = result ? outcomeStyle(result.outcome) : null;
+                      return (
+                        <div key={change.id} style={{ padding:"0.45rem 0.65rem", borderRadius:8, background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)" }}>
+                          <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.74rem", color:"#0A2342", lineHeight:1.55, margin:0 }}>
+                            {change.summary}
+                            {change.target_label ? <span style={{ color:"rgba(10,35,66,0.55)" }}> — {change.target_label}</span> : null}
+                          </p>
+                          {(change.current_value !== null || change.new_value !== null) && (
+                            <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.68rem", color:"rgba(10,35,66,0.7)", margin:"0.15rem 0 0", wordBreak:"break-word" as const }}>
+                              {change.field ? `${change.field}: ` : ""}{change.current_value !== null && change.current_value !== "" ? change.current_value : "(empty)"} → {change.new_value ?? "(empty)"}
+                            </p>
+                          )}
+                          {change.overwrites && (
+                            <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#C2185B", margin:"0.2rem 0 0" }}>Replaces a value that is already there</p>
+                          )}
+                          {o && result && isChecked && (
+                            <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, color:o.color, margin:"0.25rem 0 0" }}>
+                              {o.text}{result.reason ? ` — ${result.reason}` : ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {!pending && isChecked && !report.applied_at && (
+                    <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, color:"#D4AF37", margin:"0.4rem 0 0" }}>Ryan is making these changes...</p>
+                  )}
+                </>
+              ) : (
+                <p style={{ ...label, color:"rgba(10,35,66,0.4)", margin:0 }}>Nothing to approve</p>
+              )}
+
+              {section.dropped > 0 && (
+                <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:"rgba(10,35,66,0.45)", margin:"0.5rem 0 0" }}>
+                  {section.dropped} suggestion{section.dropped === 1 ? " was" : "s were"} left off because {section.dropped === 1 ? "it" : "they"} did not match what Ryan read in GoHighLevel.
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminApprovals() {
   const [approvals, setApprovals]             = useState<Approval[]>([]);
+  const [crmChecked, setCrmChecked]           = useState<Record<string, number[]>>({});
   const [loading, setLoading]                 = useState(true);
   const [activeFilter, setActiveFilter]       = useState<string>("knowledge");
   const [schedulerOpenId, setSchedulerOpenId] = useState<string | null>(null);
@@ -1374,6 +1507,12 @@ export default function AdminApprovals() {
     const updatePayload: Record<string, any> = { status: "approved" };
     // Business Outlook Corrections: Approve means she is done with the card -- it goes to Archived.
     if (approval.category === "business_outlook_corrections") updatePayload.archived = true;
+    // Ryan's CRM card: record which jobs she checked and when, in the same update that marks it approved.
+    const crmReport = parseCrmReport(approval);
+    const crmJobs = crmReport
+      ? (crmChecked[id] ?? []).filter(job => crmReport.sections.some(s => s.job === job && s.changes.length > 0))
+      : [];
+    if (crmReport) updatePayload.original_content = JSON.stringify({ ...crmReport, checked: crmJobs, approved_at: new Date().toISOString() });
     if (approval.category === "social") {
       if (media.video_url) updatePayload.video_url = media.video_url;
       if (media.image_url) updatePayload.image_url = media.image_url;
@@ -1448,6 +1587,17 @@ export default function AdminApprovals() {
       // Nothing else needed here — status:approved is the signal travis-render.ts watches for.
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       setPublishStatus(prev => ({ ...prev, [id]: "posted" }));
+    } else if (crmReport && crmJobs.length > 0) {
+      // Ryan makes the changes for the checked jobs himself (api/ryan-apply.ts). Nothing is
+      // made for unchecked jobs. A card approved with nothing checked changes nothing.
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      let ok = false;
+      try {
+        const res = await fetch("/api/ryan-apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approval_id: id }) });
+        ok = res.ok;
+      } catch { /* shown as failed below */ }
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+      await fetchApprovals();
     }
     setSaving(null);
   };
@@ -1630,7 +1780,8 @@ export default function AdminApprovals() {
       const autoAgent = (approval.category === "social" || approval.category === "email") ? { agent_id: approval.source?.replace('_social','').replace('_content','') ?? 'darius', agent_name: approval.agent_name, role: approval.agent_role }
         : approval.category === "community_post" ? { agent_id: approval.source?.replace('_cc','') ?? 'dominique', agent_name: approval.agent_name, role: 'CC Agent' }
         : approval.category === "daily_briefing" ? { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" }
-        : approval.category === "grant_applications" ? { agent_id:"kwame", agent_name: approval.agent_name, role: "Grant Writer" } : null;
+        : approval.category === "grant_applications" ? { agent_id:"kwame", agent_name: approval.agent_name, role: "Grant Writer" }
+        : approval.category === "crm_review" ? { agent_id:"ryan", agent_name:"Ryan Nakamura", role:"CRM Management (GHL)" } : null;
       setQS(approval.id, { open:true, selectedAgent:autoAgent, messages: savedMessages });
     } else { setQS(approval.id, { open:false }); }
   };
@@ -1883,6 +2034,8 @@ export default function AdminApprovals() {
               const isUpsell      = approval.category === "cc_upsell_outreach";
               const isKnowledge   = READ_CATEGORIES.has(approval.category);
               const isCorrections = approval.category === "business_outlook_corrections";
+              const crmReportCard = parseCrmReport(approval);
+              const crmCheckedJobs = (crmReportCard && crmChecked[approval.id]) || [];
               const isSocial        = approval.category === "social" || approval.category === "email";
               const isTravisVideo   = approval.category === "travis_video_production";
               const isVideoScript   = approval.category === "video_script";
@@ -1960,7 +2113,9 @@ export default function AdminApprovals() {
 
                   {/* Card Body */}
                   {isCorrections && <CorrectionsBody key={approval.id} approval={approval} photos={agentPhotoByName} pending={approval.status === "pending"} />}
-                  {!isCorrections && <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
+                  {crmReportCard && <CrmReviewBody key={approval.id} report={crmReportCard} pending={approval.status === "pending"} checked={crmCheckedJobs}
+                    onToggle={job => setCrmChecked(prev => { const cur = prev[approval.id] ?? []; return { ...prev, [approval.id]: cur.includes(job) ? cur.filter(j => j !== job) : [...cur, job] }; })} />}
+                  {!isCorrections && !crmReportCard && <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
                     <div>
                       <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
                       <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
@@ -2387,7 +2542,7 @@ export default function AdminApprovals() {
                       {!isKnowledge && approval.status === "pending" && editingId !== approval.id && rejectingId !== approval.id && !isPostTrigger && (
                         <>
                           {!isCorrections && <button onClick={() => handleRejectClick(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.5)", background:"transparent", color:"#C2185B", letterSpacing:"0.06em" }}>Corrective Feedback</button>}
-                          {!isCorrections && <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
+                          {!isCorrections && !crmReportCard && <button onClick={() => handleEditStart(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.4)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>
                             {isMulti ? `Edit ${activePlatformTab}` : "Edit"}
                           </button>}
                           {/* Ready to Use — reusable deliverables (Client Delivery, Customer Support, Marketing, Content & Brand,
@@ -2404,7 +2559,7 @@ export default function AdminApprovals() {
                               onClick={() => handleApprove(approval.id)}
                               disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
                               style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : approval.category === "social_response" ? "Send Reply ✓" : "Approve ✓"}
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : approval.category === "social_response" ? "Send Reply ✓" : crmReportCard ? (crmCheckedJobs.length > 0 ? `Approve Checked ✓ (${crmCheckedJobs.length})` : "Approve (nothing checked)") : "Approve ✓"}
                             </button>
                           )}
                           {/* Approve + Schedule — Social Media Post cards only (Darius/Nia/Yara), not Proposals & Press Release */}
