@@ -58,12 +58,12 @@ export default function CourseDashboard({ adminPreview = false }: { adminPreview
     if (!user) return;
     if (adminPreview || isAdmin) { setEnrollment({ tier: "mastermind" }); return; }
     supabase.from("course_enrollments")
-      .select("tier").eq("user_id", user.id).eq("course_id", "confusion_to_confident").eq("payment_status", "active").single()
+      .select("tier").eq("user_id", user.id).eq("course_id", "confusion_to_confidentce").eq("payment_status", "active").single()
       .then(({ data }) => setEnrollment(data ? { tier: data.tier } : null));
   }, [user?.id, isAdmin, adminPreview]);
 
   useEffect(() => {
-    supabase.from("course_modules").select("*").eq("course_id", "confusion_to_confident").eq("is_active", true).order("module_number")
+    supabase.from("course_modules").select("*").eq("course_id", "confusion_to_confidentce").eq("is_active", true).order("module_number")
       .then(({ data }) => setModules((data as Module[]) || []));
     supabase.from("course_lessons").select("*").eq("is_active", true).order("lesson_number")
       .then(({ data }) => { const all = (data as Lesson[]) || []; setLessons(all); if (all.length > 0) setActiveLesson(all[0]); });

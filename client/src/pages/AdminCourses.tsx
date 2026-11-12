@@ -35,9 +35,9 @@ export default function AdminCourses() {
 
   const fetchAll = async () => {
     const [mods, less, enroll] = await Promise.all([
-      supabase.from("course_modules").select("*").eq("course_id", "confusion_to_confident").order("module_number"),
+      supabase.from("course_modules").select("*").eq("course_id", "confusion_to_confidentce").order("module_number"),
       supabase.from("course_lessons").select("*").order("lesson_number"),
-      supabase.from("course_enrollments").select("*").eq("course_id", "confusion_to_confident").order("enrolled_at", { ascending: false }),
+      supabase.from("course_enrollments").select("*").eq("course_id", "confusion_to_confidentce").order("enrolled_at", { ascending: false }),
     ]);
     setModules((mods.data as Module[]) || []);
     setLessons((less.data as Lesson[]) || []);
