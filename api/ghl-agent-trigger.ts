@@ -576,144 +576,18 @@ async function runAgentToCSQ(agentId:string,agentName:string,division:string,tas
 }
 
 // ─── Ryan Nakamura — CRM Management (GHL) ─────────────────────────────────────
-// Nov 12, 2026 -- Omar's role is TBA (lead scan removed). Ryan's four jobs, approved by DeAnna:
-//   1. Hygiene -- stale records, missing fields, duplicate entries, inconsistent fields.
-//      Detects duplicates and pulls missing data from outside sources.
-//   2. Stale deals and stage correction -- enforces stage progression standards, flags
-//      inactive pipeline (30 days), recommends the next pipeline stage from the latest interaction.
-//   3. Nightly summary -- posts a data-quality summary.
-//   4. Speed-to-lead -- proposes the updates that route and reach out to new leads.
-// Every finding goes to DeAnna's approvals as a proposal. Ryan changes nothing in GHL himself.
-const RYAN_STALE_DAYS = 30;
-
-async function runRyan(): Promise<{approval_id:string|null;counts:Record<string,number>}> {
-  const ghlApiKey = process.env.GHL_API_KEY;
-  if (!ghlApiKey) return {approval_id:null,counts:{}};
-  const H = {Authorization:`Bearer ${ghlApiKey}`,Version:'2021-07-28','Content-Type':'application/json'};
-  const DAY = 86400000; const now = Date.now();
+// Ryan's instructions are DeAnna's own text, word for word (api/_lib/ryanJob.ts).
+// His output goes to DeAnna's approvals.
+async function runRyan(): Promise<{approval_id:string|null}> {
   try {
-    // Pipelines and stage names (stage order within a pipeline is the stage progression standard)
-    const pr = await (await fetch(`${GHL_API_BASE}/opportunities/pipelines?locationId=${GHL_LOCATION_ID}`,{headers:H})).json();
-    const pipelines:any[] = pr.pipelines ?? [];
-    const stageName:Record<string,string> = {}; const pipelineName:Record<string,string> = {};
-    for (const p of pipelines){ pipelineName[p.id]=p.name; for (const s of (p.stages??[])) stageName[s.id]=s.name; }
-    const pipelineText = pipelines.map(p=>`${p.name}: ${(p.stages??[]).map((s:any)=>s.name).join(' → ')}`).join('\n');
-
-    // All contacts, 100 at a time
-    const contacts:any[] = [];
-    for (let page=1; page<=20; page++){
-      const r = await (await fetch(`${GHL_API_BASE}/contacts/search`,{method:'POST',headers:H,body:JSON.stringify({locationId:GHL_LOCATION_ID,pageLimit:100,page})})).json();
-      const batch:any[] = r.contacts ?? []; contacts.push(...batch);
-      if (batch.length<100) break;
-    }
-    // All deals, 100 at a time
-    const opps:any[] = [];
-    for (let page=1; page<=20; page++){
-      const r = await (await fetch(`${GHL_API_BASE}/opportunities/search?location_id=${GHL_LOCATION_ID}&status=all&limit=100&page=${page}`,{headers:H})).json();
-      const batch:any[] = r.opportunities ?? []; opps.push(...batch);
-      if (batch.length<100) break;
-    }
-    const byId = new Map<string,any>(contacts.map(c=>[c.id,c]));
-    const fullName = (c:any)=>`${c.firstName??''} ${c.lastName??''}`.trim() || c.contactName || c.email || c.phone || c.id;
-
-    // JOB 1 — Hygiene: duplicate entries
-    // Same email or same phone number = sure match (merge proposal). Same first and last name only = unsure (review only).
-    const sureGroups = new Map<string,any[]>(); const nameGroups = new Map<string,any[]>();
-    const add = (m:Map<string,any[]>,k:string|null,c:any)=>{ if(!k) return; const a=m.get(k)??[]; if(!a.find(x=>x.id===c.id)) a.push(c); m.set(k,a); };
-    for (const c of contacts){
-      add(sureGroups,c.email?`email ${String(c.email).trim().toLowerCase()}`:null,c);
-      const digits = String(c.phone??'').replace(/\D/g,''); add(sureGroups,digits.length>=10?`phone ${digits.slice(-10)}`:null,c);
-      add(nameGroups,c.firstName&&c.lastName?`name ${String(c.firstName).trim().toLowerCase()} ${String(c.lastName).trim().toLowerCase()}`:null,c);
-    }
-    const sureDuplicates = [...sureGroups.entries()].filter(([,v])=>v.length>1);
-    const sureIds = new Set(sureDuplicates.flatMap(([,v])=>v.map(c=>c.id)));
-    const nameOnlyDuplicates = [...nameGroups.entries()].filter(([,v])=>v.length>1 && !v.every(c=>sureIds.has(c.id)));
-
-    // JOB 1 — Hygiene: missing fields
-    const missing = contacts.map(c=>({c,gaps:[!c.email&&'email',!c.phone&&'phone',!c.firstName&&'first name',!c.lastName&&'last name'].filter(Boolean) as string[]})).filter(x=>x.gaps.length>0);
-
-    // JOB 1 — Hygiene: inconsistent fields (formatting)
-    const properCase = (s:string)=>s===s.trim() && s!==s.toLowerCase() && s!==s.toUpperCase();
-    const inconsistent = contacts.map(c=>{
-      const issues:string[] = [];
-      if (c.email && (c.email!==String(c.email).trim() || c.email!==String(c.email).toLowerCase())) issues.push('email has capital letters or spaces');
-      if (c.phone && !/^\+\d{10,15}$/.test(String(c.phone))) issues.push('phone is not in +country-code format');
-      if (c.firstName && !properCase(String(c.firstName))) issues.push('first name capitalization');
-      if (c.lastName && !properCase(String(c.lastName))) issues.push('last name capitalization');
-      return {c,issues};
-    }).filter(x=>x.issues.length>0);
-
-    // JOB 1 — Hygiene: pull missing data from outside sources (public sources only, empty fields only)
-    const lookupTargets = missing.filter(x=>(x.c.email||x.c.firstName||x.c.companyName)).slice(0,8);
-    let outsideData:any[] = [];
-    if (lookupTargets.length>0){
-      try {
-        const raw = await callAnthropicWithWebSearch(`You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Use web search to find publicly listed professional information that fills the empty fields below: organization, job title, website, publicly listed business email or business phone.\nFor each contact, report a value when a public source states it and name the source URL. A field with no public source stays empty, and fields that already hold data stay untouched.\nReturn ONLY JSON: {"found":[{"contact_id":"","field":"","value":"","source_url":""}]}\nCONTACTS: ${JSON.stringify(lookupTargets.map(x=>({contact_id:x.c.id,name:fullName(x.c),email:x.c.email??null,company:x.c.companyName??null,empty_fields:x.gaps})))}`,2000,4,'ryan');
-        const parsedOutside = extractJSONObject(raw);
-        outsideData = (Array.isArray((parsedOutside as any)?.found) ? (parsedOutside as any).found : [])
-          .filter((f:any)=>f && byId.has(f.contact_id) && f.value && f.source_url);
-      } catch(err){ console.error('[runRyan] outside-source lookup failed:',err); }
-    }
-
-    // JOB 2 — Stale deals: open deals with no activity for 30 days
-    const open = opps.filter(o=>o.status==='open');
-    const lastTouch = (o:any)=>Math.max(...[o.lastActionDate,o.lastStageChangeAt,o.lastStatusChangeAt,o.createdAt].map((d:any)=>d?new Date(d).getTime():0));
-    const stale = open.map(o=>({o,days:Math.floor((now-lastTouch(o))/DAY)})).filter(x=>x.days>=RYAN_STALE_DAYS);
-
-    // JOB 2 — Stage correction: latest interaction on each open deal (first 40)
-    const candidates = open.slice(0,40);
-    const interactions = await Promise.all(candidates.map(async o=>{
-      try {
-        const r = await (await fetch(`${GHL_API_BASE}/conversations/search?locationId=${GHL_LOCATION_ID}&contactId=${o.contactId}&limit=1`,{headers:H})).json();
-        const cv = r.conversations?.[0];
-        return cv ? {opportunity_id:o.id,date:cv.lastMessageDate,direction:cv.lastMessageDirection,text:String(cv.lastMessageBody??'').slice(0,300)} : null;
-      } catch { return null; }
-    }));
-
-    // JOB 4 — Speed-to-lead: contacts added in the last 24 hours with no deal yet
-    const hasDeal = new Set(opps.map(o=>o.contactId));
-    const fresh = contacts.filter(c=>now-new Date(c.dateAdded).getTime()<=DAY && !hasDeal.has(c.id)).slice(0,25);
-
-    // Stage recommendations, routing proposals and the summary
-    const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections('Ryan Nakamura');
-    const counts = {
-      contacts:contacts.length, open_deals:open.length,
-      duplicate_groups_sure:sureDuplicates.length, duplicate_groups_name_only:nameOnlyDuplicates.length,
-      contacts_missing_fields:missing.length, contacts_inconsistent_fields:inconsistent.length,
-      missing_values_found_from_outside_sources:outsideData.length,
-      stale_deals:stale.length, new_contacts_without_deal:fresh.length,
-    };
-    const text = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}${agentCorrections}\n\nYou are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n\n${RYAN_JOB_DESCRIPTION}\n\nReview the GHL data below and return JSON.\n\n1. stage_corrections: for each open deal whose latest interaction shows it belongs in a different stage of its own pipeline, give opportunity_id, recommended_stage (a stage name from that pipeline) and reason (one sentence that names the interaction). Deals whose current stage already fits are left out.\n2. speed_to_lead: for each new contact, give contact_id, recommended_pipeline, recommended_stage (a stage name from that pipeline), outreach_step (a short plain description of the first outreach action) and reason (one sentence).\n3. summary: a data-quality summary in plain sentences that covers every number in COUNTS.\n\nReturn ONLY JSON: {"stage_corrections":[{"opportunity_id":"","recommended_stage":"","reason":""}],"speed_to_lead":[{"contact_id":"","recommended_pipeline":"","recommended_stage":"","outreach_step":"","reason":""}],"summary":""}\n\nPIPELINES:\n${pipelineText}\n\nCOUNTS: ${JSON.stringify(counts)}\n\nOPEN DEALS: ${JSON.stringify(candidates.map(o=>({opportunity_id:o.id,name:o.name,pipeline:pipelineName[o.pipelineId],current_stage:stageName[o.pipelineStageId],latest_interaction:interactions.find(i=>i?.opportunity_id===o.id)??null})))}\n\nNEW CONTACTS: ${JSON.stringify(fresh.map(c=>({contact_id:c.id,name:fullName(c),source:c.source??null,tags:c.tags??[]})))}`,3000);
-    let parsed:any = {};
-    try { parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim()); } catch(err){ console.error('[runRyan] model JSON parse failed:',err); }
-
-    // Proposals carry a value only when it names a real stage in the right pipeline
-    const stageExists = (pipe:string|undefined, stage:string) => pipelines.some(p=>(!pipe||p.name===pipe) && (p.stages??[]).some((s:any)=>s.name===stage));
-    const stageCorrections = (parsed.stage_corrections??[]).filter((r:any)=>{ const o=candidates.find(x=>x.id===r.opportunity_id); return o && stageExists(pipelineName[o.pipelineId], r.recommended_stage) && r.recommended_stage!==stageName[o.pipelineStageId]; });
-    const speedToLead = (parsed.speed_to_lead??[]).filter((r:any)=>fresh.find(c=>c.id===r.contact_id) && stageExists(r.recommended_pipeline, r.recommended_stage));
-
-    const list = (arr:string[], empty='None.') => arr.length ? arr.join('\n') : empty;
-    const output = [
-      `**Data-quality summary**\n${parsed.summary || Object.entries(counts).map(([k,v])=>`${k.replace(/_/g,' ')}: ${v}`).join(' | ')}`,
-      `**Speed-to-lead (new contacts, last 24 hours, no deal yet)**\n${list(speedToLead.map((r:any)=>{const c=byId.get(r.contact_id); return `* ${fullName(c)} → ${r.recommended_pipeline} / ${r.recommended_stage} — ${r.outreach_step} — ${r.reason}`;}))}`,
-      `**Stale deals (no activity for ${RYAN_STALE_DAYS}+ days)**\n${list(stale.map(({o,days})=>`* ${o.name} — ${pipelineName[o.pipelineId]} / ${stageName[o.pipelineStageId]} — ${days} days${o.monetaryValue?` — $${o.monetaryValue}`:''}`))}`,
-      `**Stage corrections**\n${list(stageCorrections.map((r:any)=>{const o=candidates.find(x=>x.id===r.opportunity_id)!; return `* ${o.name} — ${stageName[o.pipelineStageId]} → ${r.recommended_stage} — ${r.reason}`;}))}`,
-      `**Duplicates — same email or phone (merge proposed)**\n${list(sureDuplicates.map(([k,v])=>`* ${k} — ${v.map(c=>`${fullName(c)} (${c.id})`).join(' | ')}`))}`,
-      `**Duplicates — same name only (review, merge not proposed)**\n${list(nameOnlyDuplicates.map(([k,v])=>`* ${k} — ${v.map(c=>`${c.email||c.phone||'no email or phone'} (${c.id})`).join(' | ')}`))}`,
-      `**Missing fields**\n${list(missing.slice(0,25).map(({c,gaps})=>`* ${fullName(c)} — missing ${gaps.join(', ')}`).concat(missing.length>25?[`…and ${missing.length-25} more`]:[]))}`,
-      `**Missing data found from outside sources**\n${list(outsideData.map((f:any)=>`* ${fullName(byId.get(f.contact_id))} — ${f.field}: ${f.value} — source: ${f.source_url}`))}`,
-      `**Inconsistent fields**\n${list(inconsistent.slice(0,25).map(({c,issues})=>`* ${fullName(c)} — ${issues.join('; ')}`).concat(inconsistent.length>25?[`…and ${inconsistent.length-25} more`]:[]))}`,
-    ].join('\n\n');
-
-    const found = stale.length+stageCorrections.length+sureDuplicates.length+nameOnlyDuplicates.length+missing.length+inconsistent.length+speedToLead.length;
+    const output = await callAnthropic(`You are Ryan Nakamura, CRM Management Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n\n${RYAN_JOB_DESCRIPTION}`,3000);
     const approval_id = await writeApprovalDirect({
       source:'ryan_crm_review', trigger_type:'crm_review', agent_name:'Ryan Nakamura', agent_role:'Revenue, Growth & Sales', division:'Revenue, Growth & Sales',
       task_brief:`CRM Review — Ryan Nakamura | ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}`,
-      output, status:'pending', notify_deanna: found>0, priority:'normal', category:'crm_review', platform:null,
+      output, status:'pending', notify_deanna:false, priority:'normal', category:'crm_review', platform:null,
     });
-    return {approval_id,counts};
-  } catch(error){ console.error('[runRyan] Error:',error); return {approval_id:null,counts:{}}; }
+    return {approval_id};
+  } catch(error){ console.error('[runRyan] Error:',error); return {approval_id:null}; }
 }
 
 // ─── Weekly IP Theme Rotation (Sept 28 – Nov 22, 2026) ─────────────────────────
@@ -1927,7 +1801,7 @@ export default async function handler(req:any,res:any): Promise<void> {
 
   if (route.pipeline==='p1_omar'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
   else if (route.pipeline==='p1_omar_realtime'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
-  else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(202).json({success:true,agent:route.agent_name,approval_id:result.approval_id,counts:result.counts});}
+  else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(202).json({success:true,agent:route.agent_name,approval_id:result.approval_id});}
   else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`,'normal',0,null,1500,'claude-sonnet-4-6');res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confidence with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
