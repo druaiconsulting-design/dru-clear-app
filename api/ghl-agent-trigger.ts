@@ -1668,9 +1668,14 @@ async function runKhalid(): Promise<string|null> {
 async function runSofia(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const previousFlags = await getCrossRead(['sofia'], 1);
-  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (do not repeat any of these):\n${previousFlags}` : 'No previous flags on record.';
+  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (skip anything listed here and report what is new):\n${previousFlags}` : 'No previous flags on record.';
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('sofia','Sofia Petrov','AI Governance','daily_privacy_compliance','privacy_policy',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Sofia Petrov, Privacy Policy Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\nHARD RULE: If you are about to raise something already listed above, skip it entirely. Only surface what is genuinely new or has materially changed since yesterday.\n\n**Data Collection Status** — One NEW gap in what is collected via assessment.druaiconsulting.com.\n**GDPR/CCPA Readiness** — One NEW compliance gap and actionable step. If none new, say so.\n**Privacy Policy Review** — One NEW update needed. If none new, say so.\n**Today's Priority** — Single most important NEW privacy action. If nothing new: \"No new privacy gaps today.\"\n\nFormat: 200 words or fewer. Write in first person as Sofia Petrov.`,'normal',0,null,1500);
+  const agentCorrections = await getAgentCorrections('Sofia Petrov');
+  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sofia Petrov, Privacy Policy Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\nUse web search to do the following:\n**Data Collection Status** — One NEW gap in what is collected via assessment.druaiconsulting.com.\n**Texas Law Scan** — Search for new information on Texas laws that pertain to DRU AI Consulting, a small business legally established in Texas that collects information from people worldwide. Report what your search returns: the law, what it says, and what it means for DRU AI Consulting.\n**Privacy Policy Update** — The Privacy Policy update that coincides with the Texas law findings, written for DeAnna's approval. If nothing new, say so.\n**Today's Priority** — The most important NEW privacy action. If nothing new: "No new privacy gaps today."\n\nFormat: 200 words or fewer. Write in first person as Sofia Petrov.`;
+  try {
+    const output = await callAnthropicWithWebSearch(prompt, 1500, 3);
+    return await writeToCSQ({agent_id:'sofia',agent_name:'Sofia Petrov',division:'AI Governance',task:'daily_privacy_compliance',category:'privacy_policy',raw_output:output,priority:'normal',status:'pending',retry_count:0});
+  } catch(err) { console.error('[sofia] Error:', err); return null; }
 }
 async function runJames(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
