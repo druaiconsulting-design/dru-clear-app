@@ -204,7 +204,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   "HR": [
     { agent_id:"naomi",   agent_name:"Naomi Williams",   role:"TBA" },
     { agent_id:"aiden",   agent_name:"Aiden Park",       role:"Onboarding" },
-    { agent_id:"fatima",  agent_name:"Fatima Al-Rashid", role:"Internal Helpdesk" },
+    { agent_id:"fatima",  agent_name:"Fatima Al-Rashid", role:"TBA" },
   ],
   "Client Delivery": [
     { agent_id:"keisha",  agent_name:"Keisha Thompson",  role:"Onboarding Coach" },

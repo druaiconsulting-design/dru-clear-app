@@ -53,7 +53,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_rafael_learning_daily:     { agent_id: 'rafael',   agent_name: 'Rafael Torres',     division: 'AI Governance',    task: 'daily_ai_intelligence',         pipeline: 'p5_rafael' },
   cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
-  cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_internal_helpdesk',       pipeline: 'p6_fatima' },
+  cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
   cron_keisha_onboarding_daily:   { agent_id: 'keisha',   agent_name: 'Keisha Thompson',   division: 'Client Delivery',  task: 'daily_client_onboarding',       pipeline: 'p7_keisha' },
   cron_marco_community_daily:     { agent_id: 'marco',    agent_name: 'Marco Silva',       division: 'Client Delivery',  task: 'daily_community_management',    pipeline: 'p7_marco' },
   cron_leila_feedback_daily:      { agent_id: 'leila',    agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
@@ -1709,41 +1709,6 @@ async function runRafael(): Promise<string|null> {
   } catch(err) { console.error('[rafael] Error:', err); return null; }
 }
 
-// Pulls real system health data from Supabase for Fatima.
-// Queries CSQ for needs_correction and rejected items in last 24 hours
-// so Fatima reports actual agent issues, not invented operational status.
-async function fetchSystemHealthData(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'System health data unavailable.';
-  try {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const [correctionRes, rejectedRes, pendingRes] = await Promise.all([
-      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.needs_correction&created_at=gte.${since}&select=agent_name,division,correction_notes,isabella_flags&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.rejected&created_at=gte.${since}&select=agent_name,division,correction_notes&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/chief_of_staff_queue?status=eq.pending&created_at=gte.${since}&select=agent_name,division&order=created_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-    ]);
-    const [corrections, rejected, pending]: [any[], any[], any[]] = await Promise.all([correctionRes.json(), rejectedRes.json(), pendingRes.json()]);
-    const correctionList = Array.isArray(corrections) && corrections.length > 0
-      ? corrections.map((c: any) => `  - ${c.agent_name} (${c.division}): ${(c.correction_notes || c.isabella_flags || 'flagged').slice(0, 120)}`).join('\n')
-      : '  (none)';
-    const rejectedList = Array.isArray(rejected) && rejected.length > 0
-      ? rejected.map((r: any) => `  - ${r.agent_name} (${r.division}): ${(r.correction_notes || 'rejected').slice(0, 120)}`).join('\n')
-      : '  (none)';
-    const lines = [
-      'REAL SYSTEM HEALTH DATA (last 24 hours) ' + '—' + ' use only these, never invent agent issues:',
-      `Agents needing correction: ${Array.isArray(corrections) ? corrections.length : 0}`,
-      `Correction details:\n${correctionList}`,
-      `Agents rejected: ${Array.isArray(rejected) ? rejected.length : 0}`,
-      `Rejection details:\n${rejectedList}`,
-      `Agents still pending (stuck): ${Array.isArray(pending) ? pending.length : 0}`,
-    ];
-    return lines.join('\n');
-  } catch {
-    return 'System health data unavailable.';
-  }
-}
-
 // P6
 async function runNaomi(): Promise<string|null> {
   // Naomi Williams' role is TBA -- the recruiting role was retired Nov 12, 2026. Nothing is generated or queued.
@@ -1757,10 +1722,8 @@ async function runAiden(): Promise<string|null> {
   return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment — GHL automation — welcome sequence — diagnostic scheduling.\n\n${prevSection}\n\nDesign the client onboarding flow for the client's first 24-hour experience.\n\nFormat: 200 words or fewer. Write in first person as Aiden.`,'normal',0,null,1500);
 }
 async function runFatima(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const healthData = await fetchSystemHealthData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('fatima','Fatima Al-Rashid','HR','daily_internal_helpdesk','helpdesk',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Fatima Al-Rashid, Internal Helpdesk and Operations Coordinator for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL SYSTEM HEALTH DATA (use only this — do not invent agent issues, error rates, or operational status):\n${healthData}\n\nHARD RULES:\n1. Your ecosystem health report must be based entirely on the data above. Do not invent issues, percentages, or agent-specific problems.\n2. If agents needing correction = 0 and agents rejected = 0, open with: \"All agents cleared in the last 24 hours. No corrections or rejections on record.\"\n3. If there ARE real issues, name the agent, the division, and what the correction note says. One action to resolve each.\n4. Do not assert vendor status (Vercel, Supabase, GHL, etc.) unless you have real data showing an issue. If no vendor data available, skip that section.\n5. One genuine workflow optimization to reduce DeAnna's manual review time — based on what the health data actually shows.\n\nFormat: 200 words or fewer. Write in first person as Fatima.`,'normal',0,null,1500);
+  // Fatima Al-Rashid's role is TBA -- the internal helpdesk role was retired Nov 12, 2026. Nothing is generated or queued.
+  return null;
 }
 
 // P7
