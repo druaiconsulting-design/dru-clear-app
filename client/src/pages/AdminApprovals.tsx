@@ -165,7 +165,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"ryan",    agent_name:"Ryan Nakamura",    role:"CRM Management (GHL)" },
     { agent_id:"serena",  agent_name:"Serena Jackson",   role:"Business Coach" },
     { agent_id:"mateo",   agent_name:"Mateo Gonzalez",   role:"Sales Support" },
-    { agent_id:"aaliyah", agent_name:"Aaliyah Foster",   role:"Outreach" },
+    { agent_id:"aaliyah", agent_name:"Aaliyah Foster",   role:"Lead Intelligence" },
     { agent_id:"jaylen",  agent_name:"Jaylen Brooks",    role:"Email Marketing" },
     { agent_id:"chloe",   agent_name:"Chloe Dubois",     role:"Grant Application Reviewer · Video Script Writer" },
     { agent_id:"zara",    agent_name:"Zara Ahmed",       role:"Product Launch" },
