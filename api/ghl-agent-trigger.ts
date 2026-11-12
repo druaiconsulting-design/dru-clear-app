@@ -51,7 +51,7 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_james_contract_daily:      { agent_id: 'james',    agent_name: 'James Osei',        division: 'AI Governance',    task: 'daily_contract_readiness',      pipeline: 'p5_james' },
   cron_meilin_brand_daily:        { agent_id: 'meilin',   agent_name: 'Mei Lin',           division: 'AI Governance',    task: 'daily_brand_protection',        pipeline: 'p5_meilin' },
   cron_rafael_learning_daily:     { agent_id: 'rafael',   agent_name: 'Rafael Torres',     division: 'AI Governance',    task: 'daily_ai_intelligence',         pipeline: 'p5_rafael' },
-  cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_recruiting_status',       pipeline: 'p6_naomi' },
+  cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
   cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_internal_helpdesk',       pipeline: 'p6_fatima' },
   cron_keisha_onboarding_daily:   { agent_id: 'keisha',   agent_name: 'Keisha Thompson',   division: 'Client Delivery',  task: 'daily_client_onboarding',       pipeline: 'p7_keisha' },
@@ -1746,10 +1746,8 @@ async function fetchSystemHealthData(): Promise<string> {
 
 // P6
 async function runNaomi(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const pipelineData = await fetchLegalFinanceData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('naomi','Naomi Williams','HR','daily_recruiting_status','recruiting',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Naomi Williams, Recruiting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PIPELINE DATA (use only this — do not invent candidates, interviews, or offers):\n${pipelineData}\n\nHARD RULES:\n1. There are no real candidates in the system until GHL or Supabase shows them. Do not invent phone screens, offers, or pipeline stages.\n2. If clients in journey = 0 and diagnostics sold = 0, open with: \"No clients yet, no active candidates. Recruiting is in preparation mode.\" Then give ONE structural action to take today to prepare for hiring (write a JD, define a role scorecard, set up a GHL recruiting pipeline stage).\n3. If clients ARE in the pipeline, hiring urgency is real — name the client volume and which role becomes critical first.\n4. Do not repeat the same role priority list every day. If the priority list has not changed, acknowledge that and focus only on today's one action.\n\nFormat: 200 words or fewer. Write in first person as Naomi.`,'normal',0,null,1500);
+  // Naomi Williams' role is TBA -- the recruiting role was retired Nov 12, 2026. Nothing is generated or queued.
+  return null;
 }
 async function runAiden(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});

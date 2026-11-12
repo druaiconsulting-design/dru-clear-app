@@ -202,7 +202,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"rafael",   agent_name:"Rafael Torres",   role:"Continuous Learning" },
   ],
   "HR": [
-    { agent_id:"naomi",   agent_name:"Naomi Williams",   role:"Recruiting" },
+    { agent_id:"naomi",   agent_name:"Naomi Williams",   role:"TBA" },
     { agent_id:"aiden",   agent_name:"Aiden Park",       role:"Onboarding" },
     { agent_id:"fatima",  agent_name:"Fatima Al-Rashid", role:"Internal Helpdesk" },
   ],

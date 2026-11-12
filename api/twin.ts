@@ -74,7 +74,7 @@ camila→Camila Flores (Social Media) | darius→Darius King (Copy Writer) | rav
 nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
 amara→Amara Okafor (Legal) | diego→Diego Reyes (Expenses) | yuki→Yuki Tanaka (Financial) | marcus→Marcus Chen (Tax)
 khalid→Khalid Hassan (Disclaimers) | sofia→Sofia Petrov (Privacy) | james→James Osei (Contracts) | meilin→Mei Lin (Brand Protection) | rafael→Rafael Torres (AI Intelligence)
-naomi→Naomi Williams (Recruiting) | aiden→Aiden Park (Onboarding) | fatima→Fatima Al-Rashid (Helpdesk)
+naomi→Naomi Williams (TBA) | aiden→Aiden Park (Onboarding) | fatima→Fatima Al-Rashid (Helpdesk)
 keisha→Keisha Thompson (Client Onboarding) | marco→Marco Silva (Community Mgr) | leila→Leila Nasser (Feedback) | jordan→Jordan Hayes (Creative Director)
 simone→Simone Laurent (Course Architect) | theo→Theo Nguyen (Presentations) | amelia→Amelia Santos (Video)
 isaiah→Isaiah Carter (Support) | priscilla→Priscilla Okonkwo (Comms)
