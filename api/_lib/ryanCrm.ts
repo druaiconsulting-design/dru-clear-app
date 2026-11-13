@@ -159,7 +159,7 @@ async function logModelUsage(model: string, inputTokens: number, outputTokens: n
   await sb('POST', 'model_usage_log', { source_file: 'ryan-crm-report', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }, 'return=minimal');
 }
 
-async function callAnthropic(prompt: string, maxTokens: number, model = 'claude-haiku-4-5-20251001'): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens: number, model = 'claude-sonnet-4-6'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const startedAt = Date.now();
