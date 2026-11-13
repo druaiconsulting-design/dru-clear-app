@@ -128,7 +128,7 @@ export default function AdminOrg() {
         onClick={() => hasMore && toggleCard(agent.id)}
         style={{ background: "#FFFFFF", border: `1px solid ${isOpen ? "rgba(212,175,55,0.6)" : "rgba(10,35,66,0.1)"}`, borderRadius: 7, padding: "5px 9px", flex: isOpen ? "1 1 100%" : opts.flex, maxWidth: isOpen ? "none" : opts.maxWidth, cursor: hasMore ? "pointer" : "default" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           {!photoErrors[agent.id] ? (
             <img src={agent.photo_url} alt={agent.name} onError={() => markPhotoError(agent.id)} style={{ width: opts.photo, height: opts.photo, borderRadius: "50%", border: "1px solid rgba(212,175,55,0.35)", objectFit: "cover" as const, flexShrink: 0 }} />
           ) : (
@@ -273,7 +273,7 @@ export default function AdminOrg() {
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.56rem", fontWeight: 700, padding: "1px 7px", borderRadius: 10, background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}>{div.tag}</span>
                 </div>
                 <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
-                  {div.agents.map(agent => agentCard(agent, { photo: 54, flex: div.fullWidth ? "1 1 160px" : "1 1 100%" }))}
+                  {div.agents.map(agent => agentCard(agent, { photo: 54, flex: div.fullWidth ? "1 1 240px" : "1 1 100%" }))}
                 </div>
               </div>
             ))}
