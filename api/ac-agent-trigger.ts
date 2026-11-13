@@ -25,7 +25,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_aaliyah_prospect_scout:    { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'prospect_scout',                pipeline: 'p1_aaliyah_scout' },
   cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue, Growth & Sales', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
   cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
-  cron_elena_knowledge:           { agent_id: 'elena',    agent_name: 'Elena Vasquez',     division: 'Revenue, Growth & Sales', task: 'product_knowledge_update',      pipeline: 'p1_elena' },
   manual_kwame_grant_draft:       { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'grant_application_draft',       pipeline: 'p1_kwame_grants' },
   cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
   cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
@@ -1660,7 +1659,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
     'normal',0,null,2500,'claude-sonnet-4-6');
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});
   }
-  else if (route.pipeline==='p1_elena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('elena','Elena Vasquez','Revenue, Growth & Sales','product_knowledge_update','product_knowledge',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Elena Vasquez, Product Knowledge Agent for DRU AI Consulting. Generate weekly product knowledge update. Include: 5 executive FAQs, offer comparison guide (all starting with assessment.druaiconsulting.com), objection + response per offer, one positioning insight.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
   else if (route.pipeline==='p1_kwame_grants'){
     const opportunityName = typeof payload.opportunity_name === 'string' ? payload.opportunity_name : '';
