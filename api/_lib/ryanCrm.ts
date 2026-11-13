@@ -238,7 +238,9 @@ async function readSnapshot(): Promise<Snapshot> {
 
   // Workflows
   {
-    const r = await ghl('POST', '/workflows/search', { query: { locationId: GHL_LOCATION_ID }, body: { limit: 100 } });
+    // The standard "list workflows" call (View Workflows permission). The older POST /workflows/search is
+    // limited by GHL to selected sub-accounts and answers 403 for this one.
+    const r = await ghl('GET', '/workflows/', { query: { locationId: GHL_LOCATION_ID } });
     if (r.ok) snap.workflows = r.data?.workflows ?? []; else fail('workflows', r);
   }
 
