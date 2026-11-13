@@ -180,6 +180,9 @@ const str = (v: unknown): string => (v === null || v === undefined ? '' : String
 const norm = (v: unknown): string => str(v).replace(/\s+/g, ' ');
 const lc = (v: unknown): string => norm(v).toLowerCase();
 const digits = (v: unknown): string => str(v).replace(/\D/g, '');
+// A note or task is a to-do for later. Text that says work was already done would be untrue when it is written.
+const claimsWorkDone = (text: string): boolean =>
+  /\b(was|were|has been|have been|had been)\s+(already\s+)?(cleared|fixed|corrected|merged|removed|deleted|updated|resolved|replaced|blanked)\b/i.test(text);
 const clip = (v: unknown, n: number): string => { const s = str(v); return s.length > n ? s.slice(0, n) + '…' : s; };
 const contactName = (c: Json): string => {
   const n = [str(c?.firstName), str(c?.lastName)].filter(Boolean).join(' ') || str(c?.contactName) || str(c?.name);
@@ -322,7 +325,9 @@ Return one JSON object and nothing else. It has a "sections" array holding exact
 The 16 jobs, numbered by the bullets of the job description above:
 ${RYAN_JOBS.map(j => `${j.job}. ${j.title}`).join('\n')}
 Each item looks like: {"job": 1, "finding": "...", "suggestion": "...", "changes": []}
+Every number you write comes from "counts_by_code", "read_scope" or "checks_run_by_code" in the data above and is copied exactly as it appears there.
 Each finding and suggestion is about the job with that number and heading in the numbered list above, and the job text above describes it; when that job has nothing to report today, the finding says "Nothing to report today."
+Notes and tasks you write describe what the data shows today and what DeAnna or her team should do next. They are written as things still to be done, so a note or task says what is found and what is needed, and does not say that something was fixed, cleared, merged, removed or updated.
 Write "finding" and "suggestion" in plain English, based on the data above. Describe duplicate contacts in the finding and suggestion so DeAnna can merge them in GHL herself.
 Fill "changes" with the changes that need DeAnna's approval under that job. Use contact ids, deal ids, stage ids, workflow ids and field ids exactly as they appear in the data, and current values exactly as they appear in the data. Leave "changes" as an empty array when a job needs no change.
 Each change is one of these shapes:
@@ -377,6 +382,18 @@ function buildPrompt(snap: Snapshot, audit: Json): string {
       contacts_with_missing_fields: facts.missing,
       deals_per_pipeline_stage_status: facts.dealsByStage,
       contacts_added_in_last_24_hours: facts.newLast24h,
+    },
+    counts_by_code: {
+      contacts_in_account: snap.contactsTotal ?? snap.contacts.length,
+      deals_in_account: snap.dealsTotal ?? snap.deals.length,
+      pipelines: snap.pipelines.length,
+      stages_per_pipeline: Object.fromEntries(snap.pipelines.map(p => [str(p.name), (p.stages ?? []).length])),
+      workflows_total: snap.workflows.length,
+      workflows_published: snap.workflows.filter(w => lc(w.status) === 'published').length,
+      workflows_draft: snap.workflows.filter(w => lc(w.status) === 'draft').length,
+      custom_fields_total: snap.customFields.length,
+      custom_fields_on_contacts: snap.customFields.filter(f => f.model === 'contact').length,
+      custom_fields_on_deals: snap.customFields.filter(f => f.model === 'opportunity').length,
     },
     audit_trail: audit,
   };
@@ -446,14 +463,15 @@ function checkChange(raw: Json, snap: Snapshot): Omit<RyanChange, 'id'> | null {
       return { kind, ...base(contact), summary: `Change "${str(def.name)}" for ${contactName(contact)}`, field: str(def.name), current_value: current || null, new_value: next, overwrites: !!current, params: { field_id: fieldId, field_name: str(def.name) } };
     }
     case 'add_note': {
-      const note = str(raw.note); if (!contact || !note || note.length > 2000) return null;
+      const note = str(raw.note); if (!contact || !note || note.length > 2000 || claimsWorkDone(note)) return null;
       return { kind, ...base(contact), summary: `Add a note to ${contactName(contact)}`, field: 'note', current_value: null, new_value: note, overwrites: false, params: { note } };
     }
     case 'create_task': {
       const title = norm(raw.title); const days = Math.round(Number(raw.due_in_days));
       if (!contact || !title || title.length > 200 || !Number.isFinite(days) || days < 0 || days > 60) return null;
       const body = clip(raw.body, 1000);
-      return { kind, ...base(contact), summary: `Create the task "${title}" for ${contactName(contact)}, due in ${days} day${days === 1 ? '' : 's'}`, field: 'task', current_value: null, new_value: title, overwrites: false, params: { title, body, due_in_days: days } };
+      if (claimsWorkDone(`${title} ${body}`)) return null;
+      return { kind, ...base(contact), summary: `Create the task "${title}" for ${contactName(contact)}, due in ${days} day${days === 1 ? '' : 's'}`, field: 'task', current_value: null, new_value: body ? `${title} — ${body}` : title, overwrites: false, params: { title, body, due_in_days: days } };
     }
     case 'move_deal_stage': {
       const deal = dealById.get(str(raw.deal_id)); if (!deal || deal.status !== 'open') return null;
@@ -472,7 +490,7 @@ function checkChange(raw: Json, snap: Snapshot): Omit<RyanChange, 'id'> | null {
     case 'enroll_workflow': {
       const wf = snap.workflows.find(w => w.id === str(raw.workflow_id)); if (!contact || !wf) return null;
       if (wf.status && lc(wf.status) !== 'published') return null;
-      return { kind, ...base(contact), summary: `Add ${contactName(contact)} to the workflow "${str(wf.name)}"`, field: 'workflow', current_value: null, new_value: str(wf.name), overwrites: false, params: { workflow_id: wf.id, workflow_name: str(wf.name) } };
+      return { kind, ...base(contact), summary: `Add ${contactName(contact)} to the workflow "${str(wf.name)}" (this workflow is published and can send messages to ${contactName(contact)})`, field: 'workflow', current_value: null, new_value: str(wf.name), overwrites: false, params: { workflow_id: wf.id, workflow_name: str(wf.name) } };
     }
     case 'create_custom_field': {
       const name = norm(raw.name); const dt = str(raw.data_type).toUpperCase(); const model = str(raw.model);
