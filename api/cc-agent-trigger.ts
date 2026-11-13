@@ -125,7 +125,7 @@ async function getTrainingMaterial(): Promise<string> {
   } catch { return ''; }
 }
 
-// Kwame's real, sourced market signals -- actual people and organizations
+// Aaliyah's real, sourced market signals -- actual people and organizations
 // showing real leadership/AI-adoption pain points, found via live web search.
 // Sitting unused in prospect_opportunities until now.
 async function getProspectSignals(limit = 8): Promise<string> {
@@ -146,7 +146,7 @@ async function getProspectSignals(limit = 8): Promise<string> {
 // The depth instruction both Sasha and Tariq need alongside GENIUS_MODE --
 // GENIUS_MODE sets the bar, this makes them actually use the material instead
 // of writing generic strategy prose that could apply to any company.
-const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Kwame found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — DISC and sales acceleration are one lens, not the only one.`;
+const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Aaliyah found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — DISC and sales acceleration are one lens, not the only one.`;
 
 
 // Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
@@ -303,7 +303,7 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
     ? `\n\nDEANNA'S CURRENT DISC/SALES COPY TRAINING MATERIAL (what she's actively developing/teaching right now — ground your thinking in this, not just the static framework definitions above):\n${trainingMaterial}\n`
     : '';
   const signalsSection = prospectSignals
-    ? `\n\nKWAME'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen a DISC insight):\n${prospectSignals}\n`
+    ? `\n\nAALIYAH'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen a DISC insight):\n${prospectSignals}\n`
     : '';
 
   const positioning = await fetchBrandCopy('positioning');
@@ -325,7 +325,7 @@ S — STEADY: How S-style buyers evaluate AI investments. Their need for certain
 
 C — CONSCIENTIOUS: How C-style buyers research AI solutions. Their analytical triggers and what they need to commit. One behavioral signal that indicates readiness. One communication strategy that satisfies their need for detail.
 
-Where Tariq's recent revenue intelligence, DeAnna's training material, or Kwame's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
+Where Tariq's recent revenue intelligence, DeAnna's training material, or Aaliyah's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
 Draw the connection to DRU CLEAR™, 5C Cultural DNA™, or 5D Leadership™ wherever a DISC insight genuinely touches one of them — a D-style buyer's need for control connects to 5D Leadership's SELF dimension, an S-style buyer's need for relational safety connects to 5C's CONNECTION. Make the link only where it's real, not in every section.
 Be specific, tactical, and immediately actionable. This is DeAnna's secret weapon.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
@@ -390,7 +390,7 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
     ? `\n\nDEANNA'S CURRENT DISC/SALES COPY TRAINING MATERIAL (what she's actively developing/teaching right now — ground your thinking in this, not just the static framework definitions above):\n${trainingMaterial}\n`
     : '';
   const signalsSection = prospectSignals
-    ? `\n\nKWAME'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen the strategy):\n${prospectSignals}\n`
+    ? `\n\nAALIYAH'S RECENT REAL-WORLD SIGNALS (actual leaders/organizations showing real AI-adoption pain points, found via live web search — reference specific ones where they sharpen the strategy):\n${prospectSignals}\n`
     : '';
 
   const positioning = await fetchBrandCopy('positioning');
