@@ -602,13 +602,13 @@ const WEEKLY_THEME_CALENDAR: Record<string, ThemeDay> = {
   '2026-09-12': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Alignment & Results', synthesis: false },
   '2026-09-13': { framework: 'DRU CLEAR™', file: 'dru-clear.docx', dimension: 'Synthesis', synthesis: true },
   // Week 2 — 5C Cultural DNA™
-  '2026-09-14': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Communication', synthesis: false },
-  '2026-09-15': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Connection', synthesis: false },
-  '2026-09-16': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Collaboration', synthesis: false },
-  '2026-09-17': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Coaching', synthesis: false },
-  '2026-09-18': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Culture Transformation', synthesis: false },
-  '2026-09-19': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
-  '2026-09-20': { framework: '5C Cultural DNA™', file: '5c-cultural-dna.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-09-14': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Communication', synthesis: false },
+  '2026-09-15': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Connection', synthesis: false },
+  '2026-09-16': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Collaboration', synthesis: false },
+  '2026-09-17': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Coaching', synthesis: false },
+  '2026-09-18': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Culture Transformation', synthesis: false },
+  '2026-09-19': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Synthesis', synthesis: true },
+  '2026-09-20': { framework: '5C Cultural DNA™', file: '5c-culture-dna.docx', dimension: 'Synthesis', synthesis: true },
   // Week 3 — 5D Leadership™
   '2026-09-21': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'Self', synthesis: false },
   '2026-09-22': { framework: '5D Leadership™', file: '5d-leadership.docx', dimension: 'People', synthesis: false },
@@ -727,7 +727,6 @@ async function runCamila(): Promise<string|null> {
   const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeWeekMondayKey()];
   const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
 
-  if (fixedWeekBreakdown) {
     // LOCKED ROTATION (Sept 8 - Oct 4, 2026). Sept 9, 2026 rewrite: the
     // framework, day-by-day dimension breakdown, and DeAnna's own EQ source
     // material now arrive as fact, the same way they already do for Darius
@@ -780,47 +779,6 @@ Name what should dominate messaging this week, based on the Ryan, Serena, Keisha
 Every framework reference carries its ™.`,
       'normal',0,null,2500
     );
-  }
-
-  // OUTSIDE THE LOCKED WINDOW: Camila's original freeform behavior, unchanged.
-  return await runAgentToCSQ(
-    'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}." Today: ${today}.
-
-ECOSYSTEM INTELLIGENCE THIS WEEK — use these real signals to inform content themes, angles, and language. Do not invent scenarios when real ones are available:
-${ecosystemIntel || 'No prior intelligence available — use framework rotation.'}
-
-Generate this week's FULL CONTENT STRATEGY BRIEF covering both Darius King (social posts) and Nia Robinson (thought leadership, articles, blog content). They must tell one cohesive story across all formats.
-
-## WEEKLY THEME & POSITIONING
-- This week's overarching theme and positioning angle based on ecosystem signals
-- Core message that runs through ALL content this week
-- Framework rotation plan ensuring all 4 frameworks get coverage (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™)
-
-## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)
-Day-by-day direction for Darius:
-- Monday: post type, framework focus, hook direction, audience angle
-- Tuesday: post type, framework focus, hook direction, audience angle
-- Thursday: post type, framework focus, hook direction, audience angle
-- Friday: post type, framework focus, hook direction, audience angle
-CTA alignment: all posts drive to assessment.druaiconsulting.com
-
-## NIA ROBINSON — Thought Leadership & Newsletter (Wed/Thu/Fri/Sat/Sun)
-- Wednesday LinkedIn post angle (200-300 words, educational)
-- Thursday LEAD, CLARITY, WIN! Newsletter theme for all 3 editions:
-  · Non-member edition: what problem to surface, how deep to go, hook direction
-  · Navigator edition: which framework concept to apply, what action step to suggest
-  · Accelerator edition: which strategic implementation angle to take
-- Friday native article topic and angle (500-700 words)
-- Saturday LinkedIn post angle (framework spotlight direction)
-- Sunday LinkedIn post angle (executive insight direction)
-
-## KEY MESSAGES TO AMPLIFY
-Based on Revenue, Client Delivery, and Analytics signals — what should dominate messaging this week.
-
-Be specific about angles, not generic. Every framework reference must include ™.`,
-    'normal',0,null,2500
-  );
 }
 
 // PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON
