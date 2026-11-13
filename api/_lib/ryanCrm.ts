@@ -318,6 +318,7 @@ async function auditFacts() {
 const OUTPUT_FORMAT = `OUTPUT FORMAT
 Return one JSON object and nothing else. It has a "sections" array holding exactly 16 items, job 1 to job 16 in the order above.
 Each item looks like: {"job": 1, "finding": "...", "suggestion": "...", "changes": []}
+Each finding and suggestion is about the job named by its own heading in the job description above; when that job has nothing to report today, the finding says "Nothing to report today."
 Write "finding" and "suggestion" in plain English, based on the data above. Describe duplicate contacts in the finding and suggestion so DeAnna can merge them in GHL herself.
 Fill "changes" with the changes that need DeAnna's approval under that job. Use contact ids, deal ids, stage ids, workflow ids and field ids exactly as they appear in the data, and current values exactly as they appear in the data. Leave "changes" as an empty array when a job needs no change.
 Each change is one of these shapes:
