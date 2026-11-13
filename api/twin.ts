@@ -69,7 +69,7 @@ AGENT ROSTER (agent_id → name):
 raymond→Raymond Holloway (Chief of Staff) | travis→Travis Wealthy (Executive Producer, Video Production) | priya→Priya Sharma (EA) | isabella→Isabella Moreno (Compliance)
 omar→Omar Patel (TBA) | ryan→Ryan Nakamura (CRM Management (GHL)) | serena→Serena Jackson (Business Coach) | mateo→Mateo Gonzalez (Sales Support)
 aaliyah→Aaliyah Foster (Lead Intelligence) | jaylen→Jaylen Brooks (Email) | chloe→Chloe Dubois (Grant Application Reviewer, Video Script Writer) | zara→Zara Ahmed (ACC Weekly PDF Content Architect)
-elena→Elena Vasquez (Product Knowledge) | kwame→Kwame Asante (Proposals)
+kwame→Kwame Asante (Proposals)
 camila→Camila Flores (Social Media) | darius→Darius King (Copy Writer) | ravi→Ravi Gupta (Design) | yara→Yara Mansour (Translation) | ingrid→Ingrid Larsen (Press Release)
 nia→Nia Robinson (Content) | luca→Luca Romano (Digital Marketing) | hyunji→Hyun-Ji Kim (Analytics) | andre→Andre Mitchell (SEO/SEM)
 amara→Amara Okafor (Legal) | diego→Diego Reyes (Expenses) | yuki→Yuki Tanaka (Financial) | marcus→Marcus Chen (Tax)
