@@ -2113,6 +2113,18 @@ export default function AdminApprovals() {
 
                   {/* Card Body */}
                   {isCorrections && <CorrectionsBody key={approval.id} approval={approval} photos={agentPhotoByName} pending={approval.status === "pending"} />}
+                  {crmReportCard && (
+                    <div style={{ padding:"1rem 1rem 0" }}>
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>{origCol.heading}</p>
+                      <p style={{ fontFamily:"'Inter', sans-serif", color:"rgba(10,35,66,0.7)", fontSize:"0.75rem", lineHeight:1.6, margin:0 }}>{origCol.content ?? <em style={{ color:"rgba(10,35,66,0.3)" }}>No content</em>}</p>
+                      {agentPhotoByName[approval.agent_name] && (
+                        <div style={{ display:"flex", flexWrap:"wrap" as const, gap:"0.6rem", marginTop:"0.75rem" }}>
+                          <img src={agentPhotoByName[approval.agent_name]} alt={approval.agent_name} title={`${approval.agent_name} · ${approval.agent_role}`}
+                            style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover" as const, border:"1px solid rgba(212,175,55,0.4)" }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {crmReportCard && <CrmReviewBody key={approval.id} report={crmReportCard} pending={approval.status === "pending"} checked={crmCheckedJobs}
                     onToggle={job => setCrmChecked(prev => { const cur = prev[approval.id] ?? []; return { ...prev, [approval.id]: cur.includes(job) ? cur.filter(j => j !== job) : [...cur, job] }; })} />}
                   {!isCorrections && !crmReportCard && <div style={{ padding:"1rem", display:"grid", gridTemplateColumns:isBriefing ? "1fr 2fr" : "1fr 1fr", gap:"1rem" }}>
