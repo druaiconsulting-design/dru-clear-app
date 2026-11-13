@@ -929,6 +929,7 @@ async function runNia(): Promise<string|null> {
   const EQ_BRAND_LINE = buildBrandTheme('newsletter', await fetchBrandCopy('positioning'));
   const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
   const camilaBrief  = await getCrossRead(['camila']);
+  const andreReports = await getCrossRead(['andre'], 7, undefined, 2000);
   const themeLog     = await getContentThemeLog();
   const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
@@ -944,9 +945,9 @@ async function runNia(): Promise<string|null> {
   const strategyContext = (camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
     : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext + (themeBlock ?? '');
-  const intelContext = clientIntel
+  const intelContext = (clientIntel
     ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
-    : '\nNo prior intelligence — draw from framework-based scenarios.';
+    : '\nNo prior intelligence — draw from framework-based scenarios.') + (andreReports ? `\nANDRE MITCHELL'S SEO REPORTS — the content gap he names can influence your marketing writing:\n${andreReports}` : '');
 
   // ── WEDNESDAY / SATURDAY / SUNDAY — LinkedIn Post (200-300 words) ──────────
   if (['Wednesday','Saturday','Sunday'].includes(dayOfWeek)) {
