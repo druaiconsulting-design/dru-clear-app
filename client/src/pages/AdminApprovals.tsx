@@ -24,6 +24,7 @@ interface Approval {
   status: ApprovalStatus; ghl_contact_id: string | null; notify_deanna: boolean;
   priority: Priority; category: string; platform: string | null;
   context: string | null; archived: boolean;
+  week_theme: string | null;
   video_url: string | null;
   image_url: string | null;
   linkedin_content: string | null;
@@ -2062,6 +2063,7 @@ export default function AdminApprovals() {
                       {isKnowledge && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(192,208,232,0.1)", border:"1px solid rgba(192,208,232,0.3)", color:"rgba(192,208,232,0.8)" }}>Knowledge Vault</span>}
                       <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 8px", borderRadius:20, background:"transparent", border:`1px solid ${PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL}`, color:PRIORITY_COLORS[approval.priority] ?? PRIORITY_COLORS.NORMAL }}>{approval.priority || "NORMAL"}</span>
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(212,175,55,0.8)", fontSize:"0.62rem" }}>{isCorrections ? "Raymond Holloway · Issues needing your attention" : isBriefing ? `${approval.division} Division` : `${approval.agent_name} · ${approval.agent_role}`}</span>
+                      {approval.week_theme && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, padding:"2px 9px", borderRadius:20, background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.45)", color:"#D4AF37" }}>Theme: {approval.week_theme}</span>}
                       {isLead && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" }}>Routes to GHL</span>}
                       {isCCReply && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
                       {isCCPost && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.52rem", fontWeight:700, padding:"2px 7px", borderRadius:20, background:"rgba(45,90,142,0.2)", border:"1px solid rgba(45,90,142,0.5)", color:"#7BA7D4" }}>Posts to Community</span>}
