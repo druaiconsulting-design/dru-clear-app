@@ -440,6 +440,7 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
           jaylenOutput = jaylenOutput.split(/\n{2,}/).map((p: string) => p.replace(/\n/g, ' ').trim()).filter((p: string) => p.length > 0).join('\n\n');
         }
 
+        const themePrefix = item.context && (isJaylen || isChloe) ? `${item.context} — ` : '';
         await writeApproval({
           source: `${item.agent_id}_content`,
           trigger_type: item.task,
@@ -451,8 +452,8 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
             : isCamila
             ? `Weekly LinkedIn Queue — ${item.agent_name} | ${today}`
             : isJaylen && JAYLEN_LABELS[item.task]
-            ? `${JAYLEN_LABELS[item.task]} — ${item.agent_name} | ${today}`
-            : `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
+            ? `${themePrefix}${JAYLEN_LABELS[item.task]} — ${item.agent_name} | ${today}`
+            : `${themePrefix}${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
           output: isJaylen ? jaylenOutput : item.raw_output,
           original_content: isJaylen ? (jaylenInternalNotes || null) : undefined,
           status: 'pending',

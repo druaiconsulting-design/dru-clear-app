@@ -11,7 +11,7 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
-import { prepareCamilaWeek } from './_lib/camilaInputs.js';
+import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
 import crypto from 'crypto';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
@@ -778,7 +778,7 @@ async function runDarius(): Promise<string|null> {
   // to a generic prompt, disconnected from Camila's weekly theme and Nia's actual output.
   // Now reads Camila's weekly Content Strategy Brief (same cross-read Nia already uses)
   // plus the shared content theme log, so today's post is grounded in what's real.
-  const camilaBrief = await getCrossRead(['camila']);
+  const { brief: camilaBrief, theme: weekTheme } = await getLatestCamilaBrief();
   const themeLog = await getContentThemeLog();
   const weeklyContext = camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align today's post with this week's direction:\n${camilaBrief}`
@@ -786,24 +786,12 @@ async function runDarius(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (yours and Nia Robinson's) — reference or build on this, don't repeat it:\n${themeLog}`
     : '';
-  // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
-  const themeBlock = await getWeeklyThemeBlock();
-  const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
-  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}${themeBlock ?? ''}`;
-  // When a source doc is present (locked rotation weeks), require Darius to
-  // write from that material's own tone rather than inventing a rebuttal/
-  // critique hook -- this was the direct cause of the Sept 8, 2026 negative,
-  // generic post ("Most leaders treat clarity... Wrong.") and matches
-  // DeAnna's original build decision: EQ perspective first, AI angle blended
-  // on top, all positive wording.
-  const sourceGroundingRule = themeBlock
-    ? `\n\nSOURCE MATERIAL RULE: The SOURCE MATERIAL above is DeAnna's own writing. Write every claim, hook, and framing directly from what it actually says, in its own positive, affirmative tone, then blend the AI angle on top of it. Ground every scenario in the source material or today's real published log.`
-    : '';
+  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}`;
   const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}${sourceGroundingRule}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words — a direct question about the reader's own specific situation, not a statement claiming what they do, feel, or struggle with — one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com. Make it relatable by opening with a direct question about the reader's own specific situation — 'Where is your team...', 'What happens when you...' — not a statement claiming what they do, feel, or struggle with.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com. Make it punchy with a direct question about the reader's own specific situation — not a statement claiming what they do, feel, or struggle with.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
+    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Darius King, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words — a direct question about the reader's own specific situation, not a statement claiming what they do, feel, or struggle with — one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com. Make it relatable by opening with a direct question about the reader's own specific situation — 'Where is your team...', 'What happens when you...' — not a statement claiming what they do, feel, or struggle with.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com. Make it punchy with a direct question about the reader's own specific situation — not a statement claiming what they do, feel, or struggle with.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
     2500
   );
-  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0,...(todayThemeDay?{context:`${todayThemeDay.framework} — ${todayThemeDay.dimension}`}:{})});
+  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0,...(weekTheme?{context:weekTheme}:{})});
   // Log this piece to the shared content theme log so Nia (and tomorrow's Darius) can see
   // exactly what went out today, not just the abstract weekly plan.
   try {
@@ -874,7 +862,7 @@ async function runNia(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
   const EQ_BRAND_LINE = buildBrandTheme('newsletter', await fetchBrandCopy('positioning'));
   const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
-  const camilaBrief  = await getCrossRead(['camila']);
+  const { brief: camilaBrief, theme: weekTheme } = await getLatestCamilaBrief();
   const andreReports = await getCrossRead(['andre'], 7, undefined, 2000);
   const themeLog     = await getContentThemeLog();
   const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -886,13 +874,10 @@ async function runNia(): Promise<string|null> {
   const logContext = themeLog
     ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (Darius King's posts and your own) — reference or build on this where it fits naturally, don't repeat it:\n${themeLog}`
     : '';
-  // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
-  const themeBlock = await getWeeklyThemeBlock();
-  const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
-  const topicLabel = todayThemeDay ? `${todayThemeDay.framework} — ${todayThemeDay.dimension}` : undefined;
+  const topicLabel = weekTheme || undefined;
   const strategyContext = (camilaBrief
     ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
-    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext + (themeBlock ?? '');
+    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext;
   const intelContext = (clientIntel
     ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
     : '\nNo prior intelligence — draw from framework-based scenarios.') + (andreReports ? `\nANDRE MITCHELL'S SEO REPORTS — the content gap he names can influence your marketing writing:\n${andreReports}` : '');
@@ -1078,6 +1063,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
   const agentKnowledge = await getAgentKnowledge();
   const jaylenPrefix = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n`;
   const brandLine = buildBrandTheme('email', await fetchBrandCopy('positioning'));
+  const { theme: weekTheme } = await getLatestCamilaBrief(1);
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
   // ── 1. Non-member sequence — one card per due stage, not per contact ─────────
@@ -1085,7 +1071,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
   for (const stage of dueStages) {
     await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', `jaylen_sequence_${stage}`, 'email_marketing',
       `${jaylenPrefix}You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${brandLine}${JAYLEN_PERSONALIZATION}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content.${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
-      'high', 0, null, 1000);
+      'high', 0, null, 1000, 'claude-haiku-4-5-20251001', weekTheme || undefined);
   }
 
   // ── 2. Deploy -> Dominate promotion (silent, no content) ─────────────────────
@@ -1102,7 +1088,7 @@ async function runJaylen(): Promise<{ sequence_emails_generated: number; dominat
     for (const t of tiers) {
       await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', t.trigger, 'email_marketing',
         `${jaylenPrefix}You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${brandLine}${JAYLEN_PERSONALIZATION}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content.${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
-        'high', 0, null, 1000);
+        'high', 0, null, 1000, 'claude-haiku-4-5-20251001', weekTheme || undefined);
       weeklyCount++;
     }
   }
@@ -1716,7 +1702,7 @@ export default async function handler(req:any,res:any): Promise<void> {
     // See /areas/rgs-lead-gen-buildout.md for full context before reactivating anything here.
     res.status(202).json({success:true,agent:route.agent_name,status:'parked',note:'Aaliyah\'s outreach job is parked -- redundant with the GHL nurture sequence. No action taken.'});}
   else if (route.pipeline==='p1_jaylen'){const result=await runJaylen();res.status(202).json({success:true,agent:route.agent_name,...result});}
-  else if (route.pipeline==='p1_chloe'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "Leadership Clarity · AI Mastery · Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_chloe'){const agentKnowledge=await getAgentKnowledge();const { theme: weekTheme } = await getLatestCamilaBrief(1);const id=await runAgentToCSQ('chloe','Chloe Dubois','Revenue, Growth & Sales','daily_copy_asset','copywriting',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Chloe Dubois, Copy Writer for DRU AI Consulting. Generate one copy asset today. Rotate: ad copy, landing page headline+subhead+hero, CTA button variations (5 options), or testimonial prompt template. Brand: "Leadership Clarity · AI Mastery · Measurable Results." CTA destination: assessment.druaiconsulting.com. Every word earns its place.`,'normal',0,null,1500,'claude-haiku-4-5-20251001',weekTheme||undefined);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_zara'){
     // Nov 11, 2026 -- Zara's ACC PDF runs on the 1st, 3rd and 5th Monday of each month. The scheduler still
     // wakes her every Monday; on the 2nd and 4th Monday the scheduled run stops here. Manual / on-demand runs are unaffected.
@@ -1816,22 +1802,22 @@ Write the complete article. This is the full PDF content — not a summary or ou
     // disconnected content every weekend. Now reads the live content_theme_log,
     // same source Darius and Nia actually publish to.
     const topPost = await getContentThemeLog();
-    // Weekly IP Theme Rotation (Sept 28 - Nov 22, 2026 only) -- null outside that window.
-    const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
+    const { theme: weekTheme } = await getLatestCamilaBrief(1);
     // GENIUS_MODE/agentKnowledge/VOICE_DNA removed from here -- runAgentToCSQ
     // already prepends GENIUS_MODE + agentKnowledge automatically, so having
     // them here too was sending that block to the model twice. VOICE_DNA is
     // kept since runAgentToCSQ does not add that on its own.
     const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write original AI leadership content for a bilingual multi-platform campaign targeting English-speaking and LATAM executives.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level LATAM Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
-    const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt,'normal',0,null,1500,'claude-haiku-4-5-20251001',todayThemeDay?`${todayThemeDay.framework} — ${todayThemeDay.dimension}`:undefined);
+    const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt,'normal',0,null,1500,'claude-haiku-4-5-20251001',weekTheme||undefined);
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p2_ingrid'){
     // Fixed Sept 8, 2026: same dead-table bug as Yara above -- now reads the
     // live content_theme_log instead of the abandoned content_queue table.
     const weekContent = await getContentThemeLog();
+    const { theme: weekTheme } = await getLatestCamilaBrief(1);
     // Duplicate GENIUS_MODE/agentKnowledge removed here for the same reason as
     // Yara above -- runAgentToCSQ already adds them; VOICE_DNA is kept.
-    const id=await runAgentToCSQ('ingrid','Ingrid Larsen','Content & Brand','weekly_press_release','press_release',`${VOICE_DNA}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's actual published content: ${weekContent||'AI leadership, DRU frameworks, executive AI adoption'}. Write AP-style press release. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`);
+    const id=await runAgentToCSQ('ingrid','Ingrid Larsen','Content & Brand','weekly_press_release','press_release',`${VOICE_DNA}\n\nYou are Ingrid Larsen, Press Release Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, CEO/Founder. This week's actual published content: ${weekContent||'AI leadership, DRU frameworks, executive AI adoption'}. Write AP-style press release. Include: FOR IMMEDIATE RELEASE / Headline / Subheadline / Lead paragraph / Body (2-3 paragraphs with DeAnna quotes) / Boilerplate mentioning assessment.druaiconsulting.com / Contact: druaiconsulting@gmail.com`,'normal',0,null,1500,'claude-haiku-4-5-20251001',weekTheme||undefined);
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p3_nia'){const id=await runNia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p3_luca'){const id=await runLuca();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
