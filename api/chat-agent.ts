@@ -166,6 +166,24 @@ async function createGHLContact(name: string, email: string, phone: string): Pro
   }
 }
 
+// Saves each visitor question and the answer given, so Camila Flores can read what visitors
+// really ask. Name, email and phone stay out of this table on purpose (they go to the contact
+// system). A failed save never blocks the chat reply.
+async function saveChatQuestion(question: string, answer: string, language: string): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  try {
+    const res = await fetch(`${url}/rest/v1/website_chat_questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
+      body: JSON.stringify({ question: String(question).slice(0, 2000), answer: String(answer).slice(0, 2000), language }),
+    });
+    if (!res.ok) console.error(`[chat-agent] Saving the question failed: ${res.status} ${await res.text()}`);
+  } catch (err) {
+    console.error('[chat-agent] Saving the question failed:', err);
+  }
+}
+
 async function getAIResponse(message: string, language: string, name: string, history: {role: string; content: string}[]): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
@@ -231,6 +249,7 @@ export default async function handler(req: any, res: any): Promise<void> {
     try {
       const response = await getAIResponse(message, language, name, history);
       console.log(`[chat-agent] Response generated | lang: ${language} | message: ${message.slice(0, 50)}`);
+      await saveChatQuestion(message, response, language);
       res.status(200).json({ success: true, response });
     } catch (err) {
       console.error('[chat-agent] AI error:', err);

@@ -11,6 +11,7 @@ const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
+import { prepareCamilaWeek } from './_lib/camilaInputs.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -711,74 +712,23 @@ async function getWeeklyThemeBlock(): Promise<string | null> {
 
 // P2
 // FIXED: Camila now writes to CSQ like all other agents — full chain (Isabella → Governance → Command Layer → Twin)
-// PHASE 3: Reads ecosystem intelligence from Revenue, Client Delivery, and Analytics before generating
+// Nov 13, 2026: reads the outside world's raw words, picks the week's theme and sources, then writes the brief (api/_lib/camilaInputs.ts)
 // content_queue write removed — everything flows through CSQ
 async function runCamila(): Promise<string|null> {
-  const ecosystemIntel = await getCrossRead(['ryan','serena','keisha','leila','hyunji']);
+  // Nov 13, 2026 rewrite (DeAnna's design): Camila reads the outside world's raw words herself
+  // (Aaliyah's leads, social comments, support requests, community comments and posts, website
+  // chat questions, Nia's published pieces, her own last briefs), then picks the week's theme and
+  // up to 3 sources from the Supabase catalog (her framework documents, the licensed library, the
+  // DISC Sales Assessment). No date calendar. All reading and picking lives in api/_lib/camilaInputs.ts.
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const positioning=await fetchBrandCopy('positioning');
-  const agentKnowledge = await getAgentKnowledge();
-  // Weekly IP Theme Rotation (Sept 8 - Oct 4, 2026 only) -- fixedWeekBreakdown
-  // resolves to the Monday of whatever week "today" falls in, so this holds
-  // whether Camila fires on her normal Monday cron or an off-cycle manual
-  // trigger mid-week. todayThemeDay gives the exact day's calendar entry,
-  // which carries the source filename (same file for every day in a given
-  // week) so the source pull below works no matter which day she runs.
-  const fixedWeekBreakdown = WEEK_THEME_SUMMARIES[getThemeWeekMondayKey()];
-  const todayThemeDay = WEEKLY_THEME_CALENDAR[getThemeTodayKey()];
-
-    // LOCKED ROTATION (Sept 8 - Oct 4, 2026). Sept 9, 2026 rewrite: the
-    // framework, day-by-day dimension breakdown, and DeAnna's own EQ source
-    // material now arrive as fact, the same way they already do for Darius
-    // and Nia (getThemeSourceMaterial) -- previously Camila never pulled the
-    // source doc at all and only saw dimension labels. The ecosystem signals
-    // from Ryan, Serena, Keisha, Leila, and Hyunji keep their seat, but their
-    // job here is choosing audience, language, and urgency for the week that's
-    // already set, not proposing what the week is about.
-    const sourceText = todayThemeDay ? await getThemeSourceMaterial(todayThemeDay.file) : '';
-    const sourceBlock = sourceText
-      ? `\n\nDeAnna's own source material for this week's framework, written from the EQ perspective:\n${sourceText}\n\nGround everything you write this week in this material's own words and tone. Blend the AI angle on top of it.`
-      : '';
-    return await runAgentToCSQ(
-      'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
-      `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Camila Flores, Social Media Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}." Today: ${today}.
-
-THIS WEEK'S CONFIRMED FRAMEWORK is set. Here is the day-by-day dimension breakdown for the week:
-${fixedWeekBreakdown}${sourceBlock}
-
-SIGNALS FROM RYAN, SERENA, KEISHA, LEILA, AND HYUNJI — use these to choose which audience each day speaks to, the language that will land with them, and where urgency matters most this week:
-${ecosystemIntel || 'No prior intelligence available this week.'}
-
-Write this week's FULL CONTENT STRATEGY BRIEF for Darius King and Nia Robinson, carrying the confirmed framework and dimension breakdown through every format as one cohesive story.
-
-## THIS WEEK'S THROUGHLINE
-Write one or two sentences connecting all seven days into a single story, built from the confirmed dimension order and the source material's own language.
-
-## DARIUS KING — Daily Social Posts (Mon/Tue/Thu/Fri)
-Day-by-day direction for Darius:
-- Monday: audience angle
-- Tuesday: audience angle
-- Thursday: audience angle
-- Friday: audience angle
-Name the audience that day's confirmed dimension speaks to. CTA alignment: all posts drive to assessment.druaiconsulting.com
-
-## NIA ROBINSON — Thought Leadership & Newsletter (Wed/Thu/Fri/Sat/Sun)
-Match each day's structure to that day's confirmed dimension:
-- Wednesday LinkedIn post angle (200-300 words, educational)
-- Thursday LEAD, CLARITY, WIN! Newsletter theme for all 3 editions:
-  · Non-member edition: what problem to surface, how deep to go, hook direction
-  · Navigator edition: which framework concept to apply, what action step to suggest
-  · Accelerator edition: which strategic implementation angle to take
-- Friday native article topic and angle (500-700 words)
-- Saturday LinkedIn post angle (framework spotlight direction)
-- Sunday LinkedIn post angle (executive insight direction)
-
-## KEY MESSAGES TO AMPLIFY
-Name what should dominate messaging this week, based on the Ryan, Serena, Keisha, Leila, and Hyunji signals above.
-
-Every framework reference carries its ™.`,
-      'normal',0,null,2500
-    );
+  const week = await prepareCamilaWeek({ today, positioning, voiceDna: VOICE_DNA });
+  if (!week) return null;
+  // The theme title is saved with her brief (context) so every producer's card can carry it.
+  return await runAgentToCSQ(
+    'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
+    week.prompt,'normal',0,null,2500,'claude-haiku-4-5-20251001',week.theme
+  );
 }
 
 // PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON

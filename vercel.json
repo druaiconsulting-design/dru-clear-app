@@ -5,7 +5,7 @@
   "framework": null,
   "functions": {
     "api/ghl-agent-trigger.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/cc-agent-trigger.ts": {
       "maxDuration": 60
