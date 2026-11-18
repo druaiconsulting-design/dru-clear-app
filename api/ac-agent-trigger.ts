@@ -48,7 +48,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
   cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
-  cron_keisha_onboarding_daily:   { agent_id: 'keisha',   agent_name: 'Keisha Thompson',   division: 'Client Delivery',  task: 'daily_client_onboarding',       pipeline: 'p7_keisha' },
   cron_marco_community_daily:     { agent_id: 'marco',    agent_name: 'Marco Silva',       division: 'Client Delivery',  task: 'daily_community_management',    pipeline: 'p7_marco' },
   cron_leila_feedback_daily:      { agent_id: 'leila',    agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
   cron_jordan_creative_daily:     { agent_id: 'jordan',   agent_name: 'Jordan Hayes',      division: 'Client Delivery',  task: 'daily_creative_direction',      pipeline: 'p7_jordan' },
@@ -1215,14 +1214,6 @@ async function fetchClientDeliveryData(): Promise<string> {
   } catch { return 'Client delivery data unavailable.'; }
 }
 
-async function runKeisha(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const deliveryData = await fetchClientDeliveryData();
-  const prev = await getCrossRead(['keisha'], 1);
-  const prevSection = prev ? `WHAT YOU RECOMMENDED YESTERDAY (do not repeat):\n${prev}` : 'No previous output on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('keisha','Keisha Thompson','Client Delivery','daily_client_onboarding','client_onboarding',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Keisha Thompson, Client Onboarding Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment — GHL automation — welcome sequence — diagnostic scheduling.\n\nREAL DATA:\n${deliveryData}\n\n${prevSection}\n\nHARD RULES:\n1. If clients in journey = 0, open with: \"No clients in pipeline yet.\" Then give ONE new onboarding infrastructure item not covered yesterday.\n2. If clients exist, name each one, their stage, and the specific onboarding action their stage requires.\n3. Do not repeat the same friction point or protocol every day. Check previous output above first.\n4. Do not invent client scenarios, drop-off rates, or conversion windows.\n\nFormat: 200 words or fewer. Write in first person as Keisha.`,'normal',0,null,1500);
-}
 async function runMarco(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const deliveryData = await fetchClientDeliveryData();
@@ -1494,7 +1485,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p6_naomi'){const id=await runNaomi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_aiden'){const id=await runAiden();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_keisha'){const id=await runKeisha();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_marco'){const id=await runMarco();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_leila'){const id=await runLeila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_jordan'){const id=await runJordan();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}

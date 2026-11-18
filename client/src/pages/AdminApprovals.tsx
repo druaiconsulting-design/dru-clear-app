@@ -209,7 +209,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"fatima",  agent_name:"Fatima Al-Rashid", role:"TBA" },
   ],
   "Client Delivery": [
-    { agent_id:"keisha",  agent_name:"Keisha Thompson",  role:"Onboarding Coach" },
+    { agent_id:"keisha",  agent_name:"Keisha Thompson",  role:"New Client Awareness" },
     { agent_id:"marco",   agent_name:"Marco Silva",      role:"Community Manager" },
     { agent_id:"leila",   agent_name:"Leila Nasser",     role:"Feedback Coach" },
     { agent_id:"jordan",  agent_name:"Jordan Hayes",     role:"Creative Director" },
