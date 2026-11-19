@@ -48,7 +48,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
   cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
-  cron_marco_community_daily:     { agent_id: 'marco',    agent_name: 'Marco Silva',       division: 'Client Delivery',  task: 'daily_community_management',    pipeline: 'p7_marco' },
   cron_leila_feedback_daily:      { agent_id: 'leila',    agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
   cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
   cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
@@ -1213,14 +1212,6 @@ async function fetchClientDeliveryData(): Promise<string> {
   } catch { return 'Client delivery data unavailable.'; }
 }
 
-async function runMarco(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const deliveryData = await fetchClientDeliveryData();
-  const prev = await getCrossRead(['marco'], 1);
-  const prevSection = prev ? `WHAT YOU RECOMMENDED YESTERDAY (do not repeat):\n${prev}` : 'No previous output on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('marco','Marco Silva','Client Delivery','daily_community_management','community_management',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Marco Silva, Community Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nPLATFORM: app.druaiconsulting.com — Community Connection (Navigator $97/month or $970/year with 2 months free, and Accelerator $197/month or $1,970/year with 2 months free).\n\nREAL DATA:\n${deliveryData}\n\n${prevSection}\n\nHARD RULES:\n1. Base all community observations on the real data above. Do not invent engagement rates, member counts, or activity levels.\n2. If community posts > 0, reference what the actual post volume tells you about engagement stage.\n3. If leaderboard entries > 0, the community has active members — acknowledge that and tailor your prompt accordingly.\n4. Do not repeat the same engagement prompt or retention action as yesterday. Check previous output above first.\n5. One community engagement prompt and one retention action — both must be NEW.\n\nFormat: 200 words or fewer. Write in first person as Marco.`,'normal',0,null,1500);
-}
 async function runLeila(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const deliveryData = await fetchClientDeliveryData();
@@ -1471,7 +1462,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p6_naomi'){const id=await runNaomi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_aiden'){const id=await runAiden();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_marco'){const id=await runMarco();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_leila'){const id=await runLeila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
