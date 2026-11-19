@@ -38,7 +38,7 @@ You write the course From Confusion to Confidence with AI™ — $1,497, self-pa
 
 You and Amelia Santos work together on the courses. You write each lesson, and Amelia produces its video from your writing, so you write each lesson as a script an agent can voice and Amelia can film.
 
-Each lesson has a leadership piece and an AI piece. The leadership piece comes from the lesson's licensed topic, which you receive as the Training Manual and the Instructor Guide. Write it in your own phrasing, drawing on the licensed ideas and some of its words. The AI piece covers what AI's capabilities are, which takes the fear and confusion out of AI.
+Each lesson is DeAnna's leadership lesson with AI worked into it. DeAnna brings the emotional intelligence of the leadership lessons, and you bring how AI works with each lesson. The leadership lesson comes from the lesson's licensed topic, which you receive as the Training Manual and the Instructor Guide. Write it in your own phrasing, drawing on the licensed ideas and some of its words. You work AI into the lesson by showing what AI's capabilities are and how they work alongside the lesson's ideas, which takes the fear and confusion out of AI.
 
 Each lesson moves from Confusion, the teaching content, to Insight, a reflection on where the learner stands, to Confidence, the actionable takeaway that moves the learner forward. A lesson runs 7 to 10 minutes of spoken instruction, about 900 to 1,300 words, led by an agent's voice.
 
@@ -53,7 +53,7 @@ Clarity. Leadership. Empowerment. AI. Results.
 3. If your team asked for your AI vision today, could you communicate it with confidence and clarity?
 Lead with clarity. Empower with AI. Achieve results.
 
-Write the lesson in this order: a title line, then the lesson from Confusion to Insight to Confidence with the "test your knowledge" moments where they fall, then the module close when it is the last lesson of the module.`;
+Write the lesson in this order: the heading line you are given with the module, lesson and subject, then the lesson from Confusion to Insight to Confidence with the "test your knowledge" moments where they fall, then the module close when it is the last lesson of the module.`;
 
 export type CourseModule = { id: string; module_number: number; title: string; description: string | null };
 export type CourseLesson = {
@@ -61,7 +61,7 @@ export type CourseLesson = {
   module_number: number; module_title: string; module_description: string | null; module_lesson_count: number;
 };
 
-async function sbGet(path: string): Promise<any[]> {
+export async function sbGet(path: string): Promise<any[]> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return [];
@@ -100,6 +100,18 @@ function outlineText(modules: CourseModule[], lessons: CourseLesson[]): string {
     const head = `Module ${m.module_number}: ${m.title}${m.description ? ` — ${m.description}` : ''} (${PATHWAY_STAGE[m.module_number] ?? ''} · ${CLEAR_CHECK[m.module_number] ?? ''})`;
     return [head, ...own.map(l => `  Lesson ${l.lesson_number}: ${l.title}`)].join('\n');
   }).join('\n');
+}
+
+// The heading a lesson opens with, and the title of its card: "Module 1 · Lesson 1 · Critical Thinking".
+export function lessonHeading(l: CourseLesson): string {
+  return `Module ${l.module_number} · Lesson ${l.lesson_number} · ${l.title}`;
+}
+
+// A card's readable title from its task label ("course_lesson M1 L1 — Critical Thinking" or
+// "course_video M1 L1 — Critical Thinking"), or null when the task is not a course label.
+export function courseCardLabel(task: string): string | null {
+  const m = String(task ?? '').match(/^course_(?:lesson|video) M(\d+) L(\d+) — (.+)$/);
+  return m ? `Module ${m[1]} · Lesson ${m[2]} · ${m[3]}` : null;
 }
 
 // The card's task label. A scheduled run reads these labels to see which lessons already have a card.
@@ -150,6 +162,7 @@ export function buildCourseReading(modules: CourseModule[], lessons: CourseLesso
     const last = lesson.lesson_number === lesson.module_lesson_count;
     const tease = MODULE_TEASE[lesson.module_number];
     parts.push([
+      `Open the lesson with this heading line: ${lessonHeading(lesson)}`,
       `THE LESSON YOU ARE WRITING: Module ${lesson.module_number}, ${lesson.module_title} — Lesson ${lesson.lesson_number} of ${lesson.module_lesson_count}: ${lesson.title}.`,
       `Pathway stage: ${stage}. Module self-check: ${check}.${last ? ` This is the last lesson of the module, so it closes with the ${check} self-check and The Shift.` : ''}`,
       tease ? `Module tease: ${tease}` : '',

@@ -88,7 +88,7 @@ Course: From Confusion to Confidence with AI™ — Self-Paced $1,497 | Cohort $
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'travis-video-scripts', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
 }
@@ -101,11 +101,11 @@ async function callSonnet(prompt: string, maxTokens = 800): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Sonnet error ${res.status}`);
   const data = await res.json();
-  await logModelUsage('claude-sonnet-4-6', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  await logModelUsage('claude-sonnet-5-5', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? '';
 }
 

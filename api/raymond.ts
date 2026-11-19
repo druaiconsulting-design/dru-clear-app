@@ -22,6 +22,7 @@
 // The AI Twin no longer runs daily synthesis — she is the face of all video content and retains on-demand chat (twin.ts).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { courseCardLabel } from "./_lib/simoneCourse.js";
 export const config = { maxDuration: 300 };
 
 const SOCIAL_DIVISIONS = ['Content & Brand', 'Marketing'];
@@ -449,6 +450,8 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
             ? `${item.context || 'Grant Application'} — ${item.agent_name} | ${today}`
             : isJaylen && JAYLEN_LABELS[item.task]
             ? `${JAYLEN_LABELS[item.task]} — ${item.agent_name} | ${today}`
+            : courseCardLabel(item.task)
+            ? `${courseCardLabel(item.task)} — ${item.agent_name} | ${today}`
             : `${item.task.replace(/_/g, ' ')} — ${item.agent_name} | ${today}`,
           output: isJaylen ? jaylenOutput : item.raw_output,
           original_content: isJaylen ? (jaylenInternalNotes || null) : undefined,

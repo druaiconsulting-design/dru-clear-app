@@ -37,7 +37,7 @@ function extractJSON(text: string): string {
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'cmd-isabella', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
 }
@@ -49,11 +49,11 @@ async function callTwin(prompt: string, maxTokens = 2000): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Twin error ${res.status}`);
   const data = await res.json();
-  await logModelUsage('claude-sonnet-4-6', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  await logModelUsage('claude-sonnet-5-5', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? '';
 }
 
@@ -123,7 +123,7 @@ async function runIsabellaCorrectionText(item: CSQItem, currentContent: string, 
     const output = await callAnthropic(
       `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${currentContent}\nProduce a corrected version that applies exactly what the correction notes above require -- whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
       rewriteMaxTokens(currentContent),
-      item.agent_name === 'Simone Laurent' ? SIMONE_MODEL : 'claude-haiku-4-5-20251001'
+      item.agent_name === 'Simone Laurent' || String(item.task).startsWith('course_video') ? SIMONE_MODEL : 'claude-haiku-4-5-20251001'
     );
     return output || null;
   } catch (error) {

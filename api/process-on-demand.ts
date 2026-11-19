@@ -8,6 +8,7 @@
 //   On-demand synthesis cards remain the Twin's — on-demand chat is her retained role.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { courseCardLabel } from "./_lib/simoneCourse.js";
 export const config = { maxDuration: 300 };
 import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS, rewriteMaxTokens } from './_lib/agentKnowledge.js';
 
@@ -151,7 +152,7 @@ async function findApprovalByTitle(category: string, title: string): Promise<str
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
-  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith("claude-sonnet-5") ? { in: 2, out: 10 } : model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${url}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: "process-on-demand", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
 }
@@ -174,12 +175,12 @@ async function callTwin(prompt: string, maxTokens = 1000): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Anthropic Sonnet error ${res.status}`);
   const data = await res.json();
   console.log(`[sonnet] stop_reason: ${data.stop_reason ?? 'unknown'}`);
-  await logModelUsage("claude-sonnet-4-6", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  await logModelUsage("claude-sonnet-5-5", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? "";
 }
 
@@ -625,7 +626,7 @@ async function runTwinSynthesisOnItem(
       agent_name:    item.agent_name,
       agent_role:    item.division,
       division:      item.division,
-      task_brief:    `${(item.task as string).replace(/_/g, ' ')} — On-Demand: ${item.agent_name} | ${today}`,
+      task_brief:    `${courseCardLabel(item.task as string) ?? (item.task as string).replace(/_/g, ' ')} — On-Demand: ${item.agent_name} | ${today}`,
       output:        content,
       status:        "pending",
       notify_deanna: true,

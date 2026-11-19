@@ -62,7 +62,7 @@ async function callAnthropic(prompt: string, maxTokens = 1500, model = 'claude-h
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'cc-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
@@ -331,7 +331,7 @@ Be specific, tactical, and immediately actionable. This is DeAnna's secret weapo
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-4-6');
+    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-5-5');
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
@@ -408,7 +408,7 @@ Be specific, tactical, and immediately actionable. This is DeAnna's competitive 
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
   try {
-    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-4-6');
+    const raw = await callAnthropic(prompt, 3000, 'claude-sonnet-5-5');
     const cleaned = raw.replace(/```json\s*|```/g, '').trim();
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');

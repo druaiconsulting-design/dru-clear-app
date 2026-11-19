@@ -18,7 +18,7 @@ export const config = { maxDuration: 60 };
 // is visible in the Intelligence Hub instead of estimated by hand.
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${SUPABASE_URL}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` }, body: JSON.stringify({ source_file: 'zoe-weekly-challenge', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) });
 }
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5-5',
         max_tokens: 600,
         system: `You are Zoe Beaumont, Community Connection Division Leader at DRU AI Consulting. You facilitate the DRU AI Leadership Ecosystem™ community — a space for leaders navigating the AI era with clarity, confidence, and measurable results.
 
@@ -80,7 +80,7 @@ Rules:
     }
 
     const anthropicData = await anthropicRes.json();
-    await logModelUsage('claude-sonnet-4-6', anthropicData.usage?.input_tokens ?? 0, anthropicData.usage?.output_tokens ?? 0).catch(() => {});
+    await logModelUsage('claude-sonnet-5-5', anthropicData.usage?.input_tokens ?? 0, anthropicData.usage?.output_tokens ?? 0).catch(() => {});
     const content: string = anthropicData.content?.[0]?.text?.trim() ?? '';
 
     if (!content) {

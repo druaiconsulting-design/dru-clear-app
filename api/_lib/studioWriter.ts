@@ -10,7 +10,7 @@ import { findEnv, logActivity, providerMessage, sbHeaders } from './hubShared.js
 
 type Cfg = { url: string; serviceKey: string }
 
-export const CLAUDE_WRITING_MODEL = 'claude-sonnet-4-6'
+export const CLAUDE_WRITING_MODEL = 'claude-sonnet-5-5'
 export const CLAUDE_TIDY_MODEL = 'claude-haiku-4-5-20251001'
 // Source: OpenAI developers changelog (Sep 22, 2026): GPT-6 Sol, Chat Completions API, $2 input / $10 output per 1M tokens.
 export const OPENAI_WRITING_MODEL = 'gpt-6-sol'
@@ -131,7 +131,7 @@ export async function callWriter(
   const text: string = (data?.content || []).map((b: any) => b?.text || '').join('')
   const inTok = Number(data?.usage?.input_tokens || 0)
   const outTok = Number(data?.usage?.output_tokens || 0)
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 } // same rates the rest of the app uses
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 } // same rates the rest of the app uses
   const cost = (inTok / 1e6) * rate.in + (outTok / 1e6) * rate.out
   try {
     await fetch(`${cfg.url}/rest/v1/model_usage_log`, {

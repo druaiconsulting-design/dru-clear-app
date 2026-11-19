@@ -154,12 +154,12 @@ async function sb(method: string, path: string, body?: unknown, prefer?: string)
 }
 
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
-  const rate = model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await sb('POST', 'model_usage_log', { source_file: 'ryan-crm-report', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }, 'return=minimal');
 }
 
-async function callAnthropic(prompt: string, maxTokens: number, model = 'claude-sonnet-4-6'): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens: number, model = 'claude-sonnet-5-5'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const startedAt = Date.now();

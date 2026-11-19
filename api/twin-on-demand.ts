@@ -12,8 +12,9 @@ export const config = { maxDuration: 300 };
 
 import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
-import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
+import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask, lessonHeading } from './_lib/simoneCourse.js';
 import type { CourseLesson } from './_lib/simoneCourse.js';
+import { fetchApprovedLessons, approvedLessonText, buildVideoReading, videoTask, AMELIA_CODE, AMELIA_COURSE_MAX_TOKENS } from './_lib/ameliaCourse.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
@@ -149,7 +150,7 @@ async function callAnthropic(content: string | ContentBlockItem[], maxTokens = 2
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
-  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith("claude-sonnet-5") ? { in: 2, out: 10 } : model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${url}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: "twin-on-demand", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
@@ -292,7 +293,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const agentName = AGENT_NAMES[agent_id];
   const division  = AGENT_DIVISIONS[agent_id];
   const category  = AGENT_CATEGORIES[agent_id] ?? "on_demand";
-  const baseSystemPrompt = AGENT_SYSTEM_PROMPTS[agent_id];
+  // Amelia writes a lesson's video script from the lesson Simone wrote once DeAnna has approved it
+  // (api/_lib/ameliaCourse.ts). When DeAnna names a lesson that is not approved yet, she is told so.
+  let ameliaLesson: CourseLesson | null = null;
+  let ameliaReading = "";
+  if (agent_id === "amelia") {
+    const course = await fetchCourse();
+    const named = findNamedLesson(String(task), course.lessons);
+    if (named) {
+      const approvedLessons = await fetchApprovedLessons();
+      const lessonText = approvedLessonText(named, approvedLessons);
+      if (!lessonText) {
+        res.status(200).json({ success: false, reason: "lesson_not_approved", agent_name: agentName, message: `Simone's ${lessonHeading(named)} is not approved yet, so Amelia has no approved lesson to write a video script from.` });
+        return;
+      }
+      ameliaLesson = named;
+      ameliaReading = `\n\n${buildVideoReading(course.modules, course.lessons, named, lessonText)}`;
+    }
+  }
+  const baseSystemPrompt = ameliaLesson ? `${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA}\n\n${AMELIA_CODE}` : AGENT_SYSTEM_PROMPTS[agent_id];
 
   if (!agentName || !baseSystemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
 
@@ -333,7 +352,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const raw = await callAnthropic(
         `${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`,
         1200,
-        "claude-sonnet-4-6"
+        "claude-sonnet-5-5"
       );
       const cleaned = raw.replace(/```json\s*|```/g, "").trim();
       const firstBrace = cleaned.indexOf("{");
@@ -387,12 +406,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       simoneLesson = findNamedLesson(String(task), course.lessons);
       const source = simoneLesson ? await fetchLessonSource(simoneLesson.title) : null;
       courseReading = `\n\n${buildCourseReading(course.modules, course.lessons, simoneLesson, source)}`;
+    } else if (ameliaLesson) {
+      courseReading = ameliaReading;
     }
     const taskText = `${systemPrompt}${courseReading}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`;
     const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
       ? [...attachmentBlocks, { type: "text", text: taskText }]
       : taskText;
-    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : 2000, agent_id === "simone" ? SIMONE_MODEL : SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
+    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : ameliaLesson ? AMELIA_COURSE_MAX_TOKENS : 2000, agent_id === "simone" ? SIMONE_MODEL : SONNET_AGENTS.has(agent_id) ? "claude-sonnet-5-5" : "claude-haiku-4-5-20251001");
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ
@@ -400,7 +421,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       agent_id,
       agent_name: agentName,
       division,
-      task: simoneLesson ? lessonTask(simoneLesson) : "on_demand_request",
+      task: simoneLesson ? lessonTask(simoneLesson) : ameliaLesson ? videoTask(ameliaLesson) : "on_demand_request",
       category,
       raw_output: output,
       priority: "high",

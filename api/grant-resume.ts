@@ -71,7 +71,7 @@ async function getGrantFactsByName(name: string): Promise<Record<string, unknown
 }
 
 async function logModelUsage(model: string, inputTokens: number, outputTokens: number): Promise<void> {
-  const rate = model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
+  const rate = model.startsWith("claude-sonnet-5") ? { in: 2, out: 10 } : model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
   await fetch(`${SUPABASE_URL}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body: JSON.stringify({ source_file: "grant-resume", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) }).catch(() => {});
 }
@@ -94,12 +94,12 @@ async function callTwin(prompt: string, maxTokens = 1000): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Anthropic Sonnet error ${res.status}`);
   const data = await res.json();
   console.log(`[sonnet] stop_reason: ${data.stop_reason ?? 'unknown'}`);
-  await logModelUsage("claude-sonnet-4-6", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  await logModelUsage("claude-sonnet-5-5", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? "";
 }
 
