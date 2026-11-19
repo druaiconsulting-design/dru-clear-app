@@ -12,6 +12,7 @@ export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
 import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
+import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -1211,14 +1212,16 @@ async function fetchClientDeliveryData(): Promise<string> {
   } catch { return 'Client delivery data unavailable.'; }
 }
 
+// Nov 18, 2026 (DeAnna's design): Simone writes the course, one lesson per run. She reads the live
+// course records and the lesson's licensed Training Manual and Instructor Guide, then writes the next
+// lesson in order that has no card yet. Her code and all of her reading live in api/_lib/simoneCourse.ts.
 async function runSimone(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const deliveryData = await fetchClientDeliveryData();
-  const moduleMap:Record<string,string>={Monday:'Module 1: AI Readiness (DRU CLEAR™ Foundation)',Tuesday:'Module 2: AI Strategy (DRU AI Transformation Pathway™ — Discover & Diagnose)',Wednesday:'Module 3: AI Design & Deploy (DRU AI Transformation Pathway™ — Design & Deploy)',Thursday:'Module 4: AI Leadership (5D Leadership™ + 5C Cultural DNA™)',Friday:'Module 5: AI Mastery (DRU AI Leadership Ecosystem™.)'};
-  const todayModule=moduleMap[dayOfWeek]??'Module 1: AI Readiness (DRU CLEAR™ Foundation)';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery','daily_course_architecture','course_architecture',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCOURSE: From Confusion to Confidence with AI™. Tiers: Self-Paced $1,497, Live Cohort $7,997, Cohort Mastermind $12,997.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent completion rates, cohort data, learner feedback, or engagement metrics. The real numbers are above — use only those.\n2. If course lessons completed = 0, the course has not been completed by any student yet. Do not reference student outcomes.\n3. Course enrollments shows how many students exist. Calibrate your architecture decisions to that reality.\n4. You are building architecture — that is real, valuable work even before students arrive. But describe it as design in progress, not as complete or validated.\n\nTODAY'S MODULE FOCUS: ${todayModule}\n**Module Architecture** — 3 learning objectives, 3-5 key concepts, one framework application exercise, one executive reflection prompt.\n**Assessment Design** — One knowledge check and one real-world application activity.\n**Today's Priority** — Single most important architecture decision or asset to produce today.\n\nFormat: 250 words or fewer. Write in first person as Simone.`,'normal',0,null,1500,'claude-sonnet-4-6');
+  const { modules, lessons } = await fetchCourse();
+  const lesson = await pickNextLesson(lessons);
+  if (!lesson) { console.log('[simone] No lesson to write: every lesson has a card, or the course records could not be read.'); return null; }
+  const source = await fetchLessonSource(lesson.title);
+  if (!source.text) { console.error(`[simone] No licensed files found for ${lesson.title}`); return null; }
+  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery',lessonTask(lesson),'course_architecture',`${VOICE_DNA}\n\n${SIMONE_CODE}\n\n${buildCourseReading(modules,lessons,lesson,source)}`,'normal',0,null,COURSE_LESSON_MAX_TOKENS,'claude-sonnet-4-6');
 }
 async function runTheo(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});

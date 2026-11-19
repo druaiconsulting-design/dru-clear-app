@@ -12,6 +12,8 @@ export const config = { maxDuration: 300 };
 
 import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
+import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
+import type { CourseLesson } from './_lib/simoneCourse.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
@@ -52,7 +54,7 @@ const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   marco:       `You are Marco Silva, Agent of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Your role is to be announced.`,
   leila:       `You are Leila Nasser, Agent of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Your role is to be announced.`,
   jordan:      `You are Jordan Hayes, Agent of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Your role is to be announced.`,
-  simone:      `You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You design course modules, learning objectives, and curriculum for From Confusion to Confidence with AI™.`,
+  simone:      `${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA}\n\n${SIMONE_CODE}`,
   theo:        `You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You design slide decks, diagnostic readouts, and framework visualizations.`,
   amelia:      `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You write video scripts, production briefs, and social video concepts for LinkedIn and Instagram.`,
   isaiah:      `You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You build support protocols, FAQ guides, and escalation frameworks. Direct all general inquiries to assessment.druaiconsulting.com.`,
@@ -376,11 +378,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     // Step 1 — Run agent
-    const taskText = `${systemPrompt}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`;
+    // Simone reads the live course and, when DeAnna names a lesson, that lesson's licensed
+    // Training Manual and Instructor Guide (api/_lib/simoneCourse.ts).
+    let courseReading = "";
+    let simoneLesson: CourseLesson | null = null;
+    if (agent_id === "simone") {
+      const course = await fetchCourse();
+      simoneLesson = findNamedLesson(String(task), course.lessons);
+      const source = simoneLesson ? await fetchLessonSource(simoneLesson.title) : null;
+      courseReading = `\n\n${buildCourseReading(course.modules, course.lessons, simoneLesson, source)}`;
+    }
+    const taskText = `${systemPrompt}${courseReading}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`;
     const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
       ? [...attachmentBlocks, { type: "text", text: taskText }]
       : taskText;
-    const output = await callAnthropic(agentContent, 2000, SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
+    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : 2000, SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ
@@ -388,7 +400,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       agent_id,
       agent_name: agentName,
       division,
-      task: "on_demand_request",
+      task: simoneLesson ? lessonTask(simoneLesson) : "on_demand_request",
       category,
       raw_output: output,
       priority: "high",
