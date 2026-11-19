@@ -50,7 +50,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
   cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
   cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
-  cron_leila_feedback_daily:      { agent_id: 'leila',    agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
   cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
   cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
@@ -694,7 +693,7 @@ function buildBrandTheme(kind: 'newsletter' | 'email', line: string): string {
 async function runNia(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
   const EQ_BRAND_LINE = buildBrandTheme('newsletter', await fetchBrandCopy('positioning'));
-  const clientIntel  = await getCrossRead(['keisha','leila','ryan']);
+  const clientIntel  = await getCrossRead(['keisha','ryan']);
   const { brief: camilaBrief } = await getLatestCamilaBrief();
   const andreReports = await getCrossRead(['andre'], 7, undefined, 2000);
   const themeLog     = await getContentThemeLog();
@@ -1368,14 +1367,6 @@ async function fetchClientDeliveryData(): Promise<string> {
   } catch { return 'Client delivery data unavailable.'; }
 }
 
-async function runLeila(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const deliveryData = await fetchClientDeliveryData();
-  const prev = await getCrossRead(['leila'], 1);
-  const prevSection = prev ? `WHAT YOU RECOMMENDED YESTERDAY (do not repeat):\n${prev}` : 'No previous output on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('leila','Leila Nasser','Client Delivery','daily_feedback_coaching','feedback_coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DATA:\n${deliveryData}\n\n${prevSection}\n\nHARD RULES:\n1. If clients in journey = 0 and course lessons completed = 0, there is no real feedback to report. Open with: \"No client feedback to report yet.\" Then give ONE new feedback infrastructure item not covered yesterday.\n2. If clients or course progress exist, build your feedback recommendations around those specific touchpoints.\n3. Do not invent NPS scores, testimonial quotes, or satisfaction metrics.\n4. Do not repeat the same feedback template or system recommendation as yesterday.\n\nFormat: 200 words or fewer. Write in first person as Leila.`,'normal',0,null,1500);
-}
 async function runSimone(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
@@ -1627,7 +1618,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p6_naomi'){const id=await runNaomi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_aiden'){const id=await runAiden();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_leila'){const id=await runLeila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}

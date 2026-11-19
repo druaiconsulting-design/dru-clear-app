@@ -211,7 +211,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   "Client Delivery": [
     { agent_id:"keisha",  agent_name:"Keisha Thompson",  role:"New Client Awareness" },
     { agent_id:"marco",   agent_name:"Marco Silva",      role:"TBA" },
-    { agent_id:"leila",   agent_name:"Leila Nasser",     role:"Feedback Coach" },
+    { agent_id:"leila",   agent_name:"Leila Nasser",     role:"TBA" },
     { agent_id:"jordan",  agent_name:"Jordan Hayes",     role:"TBA" },
     { agent_id:"simone",  agent_name:"Simone Laurent",   role:"Course Architect" },
     { agent_id:"theo",    agent_name:"Theo Nguyen",      role:"Presentation Designer" },
