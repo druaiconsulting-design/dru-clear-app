@@ -50,7 +50,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
   cron_marco_community_daily:     { agent_id: 'marco',    agent_name: 'Marco Silva',       division: 'Client Delivery',  task: 'daily_community_management',    pipeline: 'p7_marco' },
   cron_leila_feedback_daily:      { agent_id: 'leila',    agent_name: 'Leila Nasser',      division: 'Client Delivery',  task: 'daily_feedback_coaching',       pipeline: 'p7_leila' },
-  cron_jordan_creative_daily:     { agent_id: 'jordan',   agent_name: 'Jordan Hayes',      division: 'Client Delivery',  task: 'daily_creative_direction',      pipeline: 'p7_jordan' },
   cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
   cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
@@ -1230,19 +1229,6 @@ async function runLeila(): Promise<string|null> {
   const agentKnowledge = await getAgentKnowledge();
   return await runAgentToCSQ('leila','Leila Nasser','Client Delivery','daily_feedback_coaching','feedback_coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DATA:\n${deliveryData}\n\n${prevSection}\n\nHARD RULES:\n1. If clients in journey = 0 and course lessons completed = 0, there is no real feedback to report. Open with: \"No client feedback to report yet.\" Then give ONE new feedback infrastructure item not covered yesterday.\n2. If clients or course progress exist, build your feedback recommendations around those specific touchpoints.\n3. Do not invent NPS scores, testimonial quotes, or satisfaction metrics.\n4. Do not repeat the same feedback template or system recommendation as yesterday.\n\nFormat: 200 words or fewer. Write in first person as Leila.`,'normal',0,null,1500);
 }
-async function runJordan(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const deliveryData = await fetchClientDeliveryData();
-  const focusType=dayOfWeek==='Monday'?'weekly_creative_brief':dayOfWeek==='Friday'?'weekly_creative_recap':'daily_creative_direction';
-  const focusInstructions:Record<string,string>={
-    weekly_creative_brief:`Set creative direction for Simone (course), Theo (presentations), and Amelia (video) this week. One unifying theme, one visual direction (Navy #0A2342 / Gold #D4AF37 / Magenta #C2185B), one production priority per team member. Base priorities on what is actually needed given the real delivery data above — do not assign work that presupposes clients or course completions that don't exist yet.`,
-    daily_creative_direction:`One creative asset priority for today. Specify which team member and the exact deliverable. One brand consistency note. Do not describe any asset as complete, deployed, or live unless the delivery data above confirms it exists.`,
-    weekly_creative_recap:`Review this week's creative direction. Note what was assigned. Do not describe any deliverable as completed or live unless confirmed in the delivery data above. One quality recommendation for next week.`
-  };
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('jordan','Jordan Hayes','Client Delivery','daily_creative_direction','creative_direction',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. You coordinate: Simone Laurent (Course Architect), Theo Nguyen (Presentation Designer), Amelia Santos (Training Video Producer).\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULE: Do not describe any asset, module, or video as complete, deployed, or live unless the data above confirms it. Course enrollments and lessons completed are the truth — report them as-is.\n\nFOCUS: ${focusType}\n${focusInstructions[focusType]}`,'normal',0,null,1500,'claude-sonnet-4-6');
-}
 async function runSimone(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
@@ -1487,7 +1473,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_marco'){const id=await runMarco();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_leila'){const id=await runLeila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_jordan'){const id=await runJordan();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}

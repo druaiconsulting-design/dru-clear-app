@@ -51,7 +51,7 @@ const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   keisha:      `You are Keisha Thompson, New Client Awareness for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You design client onboarding flows, friction elimination, and welcome experience improvements.`,
   marco:       `You are Marco Silva, Community Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You manage community engagement strategy, retention, and upgrade triggers toward higher DRU AI Consulting offers.`,
   leila:       `You are Leila Nasser, Feedback Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You build testimonial frameworks, NPS systems, and feedback infrastructure.`,
-  jordan:      `You are Jordan Hayes, Creative Director for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You orchestrate Simone (course), Theo (presentations), and Amelia (video).`,
+  jordan:      `You are Jordan Hayes, Agent of DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Your role is to be announced.`,
   simone:      `You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You design course modules, learning objectives, and curriculum for From Confusion to Confidence with AI™.`,
   theo:        `You are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). You design slide decks, diagnostic readouts, and framework visualizations.`,
   amelia:      `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You write video scripts, production briefs, and social video concepts for LinkedIn and Instagram.`,
@@ -115,7 +115,7 @@ const AGENT_CATEGORIES: Record<string, string> = {
   diego:"expense_report", yuki:"financial_report", marcus:"tax_strategy", khalid:"disclaimer_review",
   sofia:"privacy_policy", james:"contract_review", meilin:"brand_monitoring", rafael:"ai_intelligence",
   naomi:"tba", aiden:"onboarding", fatima:"tba", keisha:"client_onboarding",
-  marco:"community_management", leila:"feedback_coaching", jordan:"creative_direction",
+  marco:"community_management", leila:"feedback_coaching", jordan:"tba",
   simone:"course_architecture", theo:"presentation_design", amelia:"video_production",
   isaiah:"issue_resolution", priscilla:"multichannel_comms", zoe:"community_management",
   micah:"community_management", dominique:"community_post", elijah:"community_post", solange:"community_post",
@@ -125,7 +125,7 @@ const AGENT_CATEGORIES: Record<string, string> = {
 type ContentBlockItem = { type: string; text?: string; [key: string]: unknown };
 
 // Agents whose on-demand chat replies also run on Sonnet, matching their daily-cron depth.
-const SONNET_AGENTS = new Set(["sasha", "tariq", "marcus", "renata", "serena", "zara", "simone", "amelia", "jordan"]);
+const SONNET_AGENTS = new Set(["sasha", "tariq", "marcus", "renata", "serena", "zara", "simone", "amelia"]);
 
 async function callAnthropic(content: string | ContentBlockItem[], maxTokens = 2000, model = "claude-haiku-4-5-20251001"): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;

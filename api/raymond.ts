@@ -35,7 +35,7 @@ const INTERNAL_NOTES_MARKER = '===INTERNAL NOTES===';
 
 // Agents that always get their own standalone Intelligence Hub card
 // regardless of division — never buried in division synthesis
-const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Jaylen Brooks', 'Chloe', 'Kwame', 'Theo Nguyen', 'Jordan Hayes', 'Simone Laurent', 'Amelia Santos', 'Zara Ahmed'];
+const CONTENT_ALWAYS_SURFACE = ['Nia Robinson', 'Jaylen Brooks', 'Chloe', 'Kwame', 'Theo Nguyen', 'Simone Laurent', 'Amelia Santos', 'Zara Ahmed'];
 
 interface CSQItem {
   id: string; agent_id: string; agent_name: string; division: string;
