@@ -6,7 +6,8 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, rewriteMaxTokens } from './_lib/agentKnowledge.js';
+import { SIMONE_MODEL } from './_lib/simoneCourse.js';
 
 
 interface CSQItem {
@@ -56,18 +57,18 @@ async function callTwin(prompt: string, maxTokens = 2000): Promise<string> {
   return data.content?.[0]?.text ?? '';
 }
 
-// Haiku — correction agent
-async function callAnthropic(prompt: string, maxTokens = 2000): Promise<string> {
+// Haiku — correction agent (Simone's lessons are rewritten on her own model, Claude Sonnet 5.5)
+async function callAnthropic(prompt: string, maxTokens = 2000, model = 'claude-haiku-4-5-20251001'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
   });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
-  await logModelUsage('claude-haiku-4-5-20251001', data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? '';
 }
 
@@ -121,7 +122,8 @@ async function runIsabellaCorrectionText(item: CSQItem, currentContent: string, 
     const agentCorrections = await getAgentCorrections(item.agent_name);
     const output = await callAnthropic(
       `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${currentContent}\nProduce a corrected version that applies exactly what the correction notes above require -- whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
-      1500
+      rewriteMaxTokens(currentContent),
+      item.agent_name === 'Simone Laurent' ? SIMONE_MODEL : 'claude-haiku-4-5-20251001'
     );
     return output || null;
   } catch (error) {

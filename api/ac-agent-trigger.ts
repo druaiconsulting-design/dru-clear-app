@@ -12,7 +12,7 @@ export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
 import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
 import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
-import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
+import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -1221,7 +1221,7 @@ async function runSimone(): Promise<string|null> {
   if (!lesson) { console.log('[simone] No lesson to write: every lesson has a card, or the course records could not be read.'); return null; }
   const source = await fetchLessonSource(lesson.title);
   if (!source.text) { console.error(`[simone] No licensed files found for ${lesson.title}`); return null; }
-  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery',lessonTask(lesson),'course_architecture',`${VOICE_DNA}\n\n${SIMONE_CODE}\n\n${buildCourseReading(modules,lessons,lesson,source)}`,'normal',0,null,COURSE_LESSON_MAX_TOKENS,'claude-sonnet-4-6');
+  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery',lessonTask(lesson),'course_architecture',`${VOICE_DNA}\n\n${SIMONE_CODE}\n\n${buildCourseReading(modules,lessons,lesson,source)}`,'normal',0,null,COURSE_LESSON_MAX_TOKENS,SIMONE_MODEL);
 }
 async function runTheo(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});

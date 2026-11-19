@@ -13,6 +13,8 @@
 // wording, the 23 lessons and the lesson order are DeAnna's, Nov 18, 2026.
 
 export const COURSE_LESSON_MAX_TOKENS = 6000;
+// Simone writes on Claude Sonnet 5.5 (DeAnna, Nov 18, 2026), the same model as Imani.
+export const SIMONE_MODEL = 'claude-sonnet-5-5';
 
 const COURSE_ID = 'confusion_to_confidence';
 // The two licensed files are read in full. This ceiling keeps the largest topic (about 430,000

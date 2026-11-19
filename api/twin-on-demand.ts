@@ -12,7 +12,7 @@ export const config = { maxDuration: 300 };
 
 import { GENIUS_MODE, TRADEMARK_RULES, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections } from './_lib/agentKnowledge.js';
 import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
-import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
+import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
 import type { CourseLesson } from './_lib/simoneCourse.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
@@ -392,7 +392,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
       ? [...attachmentBlocks, { type: "text", text: taskText }]
       : taskText;
-    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : 2000, SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
+    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : 2000, agent_id === "simone" ? SIMONE_MODEL : SONNET_AGENTS.has(agent_id) ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001");
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ

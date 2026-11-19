@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS, rewriteMaxTokens } from './_lib/agentKnowledge.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -305,7 +305,7 @@ RULES — strictly enforced:
 
 ORIGINAL CONTENT (copy verbatim, apply only the one correction above):
 ${currentContent}`,
-    2000
+    rewriteMaxTokens(currentContent, 2000)
   );
   return correctedOutput || null;
 }

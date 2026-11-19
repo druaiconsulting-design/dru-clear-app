@@ -64,6 +64,12 @@ export const DEANNA_MARKER_FOR_REVIEWERS = `A bracketed note like [DEANNA: ...] 
 // that's proven to hold that content without truncating mid-generation.
 export const GRANT_CONTENT_MAX_TOKENS = 8000;
 
+// Room for a corrected rewrite to hold the full original: about one token per 3 characters of the
+// content, plus headroom, never below the floor. Course lessons run well past the old fixed limits.
+export function rewriteMaxTokens(content: string, floor = 1500): number {
+  return Math.min(12000, Math.max(floor, Math.ceil(String(content ?? '').length / 3) + 600));
+}
+
 // ─── Static framework knowledge ──────────────────────────────────────────────
 // Framework meanings are stable IP — defined here so agents always have full
 // context even if Supabase is temporarily unavailable.
