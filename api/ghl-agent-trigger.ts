@@ -1382,28 +1382,15 @@ async function runSimone(): Promise<string|null> {
   return await runAgentToCSQ('simone','Simone Laurent','Client Delivery',lessonTask(lesson),'course_architecture',`${VOICE_DNA}\n\n${SIMONE_CODE}\n\n${buildCourseReading(modules,lessons,lesson,source)}`,'normal',0,null,COURSE_LESSON_MAX_TOKENS,SIMONE_MODEL);
 }
 async function runTheo(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  // Each day except Friday, Theo writes the deck for the next approved lesson that has no deck yet.
+  // Every day, Theo writes the deck for the next approved lesson that has no deck yet.
   // His code and all of his reading live in api/_lib/theoCourse.ts.
-  if (dayOfWeek!=='Friday') {
-    const { modules, lessons } = await fetchCourse();
-    const approvedLessons = await fetchApprovedLessons();
-    const lesson = await pickNextDeckLesson(lessons, approvedLessons);
-    if (lesson) {
-      const lessonText = approvedLessonText(lesson, approvedLessons) ?? '';
-      return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery',deckTask(lesson),'presentation_design',`${VOICE_DNA}\n\n${THEO_CODE}\n\n${buildDeckReading(modules,lessons,lesson,lessonText)}`,'normal',0,null,THEO_COURSE_MAX_TOKENS,THEO_MODEL);
-    }
-  }
-  const deliveryData = await fetchClientDeliveryData();
-  const assetType=dayOfWeek==='Monday'?'diagnostic_readout_template':dayOfWeek==='Friday'?'framework_visualization':'daily_presentation_asset';
-  const assetInstructions:Record<string,string>={
-    diagnostic_readout_template:`Slide structure for delivering Strategic Diagnostic™ or Executive Diagnostic™ results. Slides: executive summary, findings by pillar, DRU AI Transformation Pathway™ stage placement, recommendations, next steps.`,
-    framework_visualization:`One-page visual representation of a DRU proprietary framework. Layout concept, key elements, color application (Navy/Gold/Magenta), typography guidance.`,
-    daily_presentation_asset:`One slide concept for the highest-priority presentation need today. Specify type, layout, content, visual direction.`
-  };
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery','daily_presentation_design','presentation_design',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Theo Nguyen, Presentation Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nBrand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body).\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULE: You are producing design specs and briefs — that is real work. But do not describe any asset as deployed, client-facing, or in active use unless the delivery data above confirms clients exist who would use it. Design in progress is honest. Fake deployment status is not.\n\nASSET TYPE: ${assetType}\n${assetInstructions[assetType]}\n**Today's Production Priority** — Single most important asset to advance today.\n\nFormat: 250 words or fewer. Write in first person as Theo.`,'normal',0,null,1500);
+  // When every approved lesson already has a deck, he has nothing to write that day.
+  const { modules, lessons } = await fetchCourse();
+  const approvedLessons = await fetchApprovedLessons();
+  const lesson = await pickNextDeckLesson(lessons, approvedLessons);
+  if (!lesson) return null;
+  const lessonText = approvedLessonText(lesson, approvedLessons) ?? '';
+  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery',deckTask(lesson),'presentation_design',`${VOICE_DNA}\n\n${THEO_CODE}\n\n${buildDeckReading(modules,lessons,lesson,lessonText)}`,'normal',0,null,THEO_COURSE_MAX_TOKENS,THEO_MODEL);
 }
 async function runAmelia(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
