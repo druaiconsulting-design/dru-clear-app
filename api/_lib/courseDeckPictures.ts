@@ -5,7 +5,7 @@
 // to the slide's number. Build PDF reads them from there.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { parseDeck } from './courseDeckPdf.js';
+import { parseDeck, normalizeLayout } from './courseDeckPdf.js';
 import type { Deck } from './courseDeckPdf.js';
 
 export const DECK_BUCKET = 'course-decks';
@@ -81,4 +81,29 @@ export async function loadPictureDataUrls(sb: SupabaseClient, lessonId: string, 
     out[slide] = `data:${f.mime};base64,${Buffer.from(await data.arrayBuffer()).toString('base64')}`;
   }
   return out;
+}
+
+// DeAnna's layout choices for a lesson's slides, by slide number. A slide that has no entry uses the layout Theo wrote.
+// They are kept in one small file beside the pictures: <lesson id>/layouts.json.
+export async function loadLayouts(sb: SupabaseClient, lessonId: string): Promise<Record<number, string>> {
+  const { data } = await sb.storage.from(DECK_BUCKET).download(`${lessonId}/layouts.json`);
+  if (!data) return {};
+  try {
+    const raw = JSON.parse(await data.text());
+    const out: Record<number, string> = {};
+    for (const [k, v] of Object.entries(raw ?? {})) {
+      const id = normalizeLayout(String(v));
+      if (id && Number.isInteger(Number(k))) out[Number(k)] = id;
+    }
+    return out;
+  } catch { return {}; }
+}
+
+// Saves one slide's layout. An empty layout takes DeAnna's choice away, so the slide goes back to Theo's.
+export async function saveLayout(sb: SupabaseClient, lessonId: string, slide: number, layout: string): Promise<void> {
+  const cur = await loadLayouts(sb, lessonId);
+  const id = normalizeLayout(layout);
+  if (id) cur[slide] = id; else delete cur[slide];
+  const { error } = await sb.storage.from(DECK_BUCKET).upload(`${lessonId}/layouts.json`, Buffer.from(JSON.stringify(cur)), { contentType: 'application/json', upsert: true });
+  if (error) throw new Error(`The layout could not be saved: ${error.message}`);
 }

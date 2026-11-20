@@ -26,7 +26,22 @@ export type DeckSlide = {
   title: string;
   lines: string[];
   visual: string;
+  layout: string; // Theo's choice from the Layout line, or '' when he wrote none
 };
+
+// The slide layouts the template draws. Theo names one on each content slide; DeAnna can change it on his card.
+export const LAYOUTS: { id: string; label: string }[] = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'full-picture', label: 'Full picture' },
+  { id: 'big-statement', label: 'Big statement' },
+  { id: 'steps', label: 'Steps' },
+  { id: 'comparison', label: 'Comparison' },
+  { id: 'key-number', label: 'Key number' },
+];
+export function normalizeLayout(v: string): string {
+  const id = String(v ?? '').toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-+|-+$/g, '');
+  return LAYOUTS.some(l => l.id === id) ? id : '';
+}
 export type Deck = { heading: string; slides: DeckSlide[] };
 
 const clean = (s: string) => s.replace(/\*\*/g, '').replace(/__/g, '').replace(/^\s*#{1,6}\s*/, '').trim();
@@ -56,20 +71,22 @@ export function parseDeck(text: string): Deck {
 }
 
 function finish(c: { number: number; rest: string; body: string[] }): DeckSlide {
-  let field: 'title' | 'text' | 'visual' | null = null;
+  let field: 'title' | 'text' | 'visual' | 'layout' | null = null;
   let title = '';
+  let layout = '';
   const lines: string[] = [];
   let visual = '';
   for (const line of c.body) {
     const t = clean(line);
-    const lbl = t.match(/^(title|on[- ]screen text|visual direction)\s*:\s*(.*)$/i);
+    const lbl = t.match(/^(title|on[- ]screen text|visual direction|layout)\s*:\s*(.*)$/i);
     if (lbl) {
       const name = lbl[1].toLowerCase();
-      field = name === 'title' ? 'title' : name.startsWith('on') ? 'text' : 'visual';
+      field = name === 'title' ? 'title' : name.startsWith('on') ? 'text' : name === 'layout' ? 'layout' : 'visual';
       const rest = lbl[2].trim();
       if (field === 'title') title = rest;
       else if (field === 'text' && rest) lines.push(stripBullet(rest));
       else if (field === 'visual') visual = rest;
+      else if (field === 'layout') layout = normalizeLayout(rest);
       continue;
     }
     if (!t) continue;
@@ -79,12 +96,12 @@ function finish(c: { number: number; rest: string; body: string[] }): DeckSlide 
   }
   const kind: DeckSlide['kind'] = /answer/i.test(c.rest) ? 'answer' : /test your knowledge/i.test(c.rest) ? 'quiz' : 'content';
   if (!title) title = c.rest.replace(/test your knowledge/i, '').replace(/^[·:\-—–\s]+/, '').replace(/answer/i, '').trim() || (kind === 'quiz' ? 'Test your knowledge' : kind === 'answer' ? 'Answer' : `Slide ${c.number}`);
-  return { number: c.number, kind, title, lines, visual };
+  return { number: c.number, kind, title, lines, visual, layout };
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function slideHtml(sl: DeckSlide, index: number, total: number, heading: string, pic?: string): string {
+function slideHtml(sl: DeckSlide, index: number, total: number, heading: string, pic?: string, layout = 'standard'): string {
   const art = pic ? `<div class="art" style="background-image:url(${pic})"></div>` : '';
   const hp = pic ? ' has-pic' : '';
   const num = `<div class="num">${index + 1}</div>`;
@@ -103,12 +120,50 @@ function slideHtml(sl: DeckSlide, index: number, total: number, heading: string,
     const [first, ...rest] = sl.lines;
     return `<section class="s dark${hp}"><div class="tag gold">Test your knowledge · Answer</div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="ans fit">${first ? `<p class="right">${esc(first)}</p>` : ''}${rest.map(l => `<p>${esc(l)}</p>`).join('')}</div>${art}${foot}</section>`;
   }
+  if (layout === 'full-picture' && pic) {
+    const first = sl.lines[0] ? `<p>${esc(sl.lines[0])}</p>` : '';
+    return `<section class="s fullpic" style="background-image:url(${pic})"><div class="band"><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="bandtxt fit">${first}</div></div>${foot}</section>`;
+  }
+  if (layout === 'big-statement') {
+    const [main, ...rest] = sl.lines;
+    return `<section class="s stmtl${hp}"><div class="kick">${esc(sl.title)}</div><div class="stmt fit"><p class="main">${esc(main ?? sl.title)}</p>${rest.map(l => `<p class="small">${esc(l)}</p>`).join('')}</div>${art}${foot}</section>`;
+  }
+  if (layout === 'steps') {
+    const cls = sl.lines.length > 4 ? ' wrap' : '';
+    const cards = sl.lines.map((l, i) => `<div class="step"><span>${i + 1}</span><p>${esc(l)}</p></div>`).join('');
+    return `<section class="s stepsl${hp}"><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="steps fit${cls}">${cards}</div>${art}${foot}</section>`;
+  }
+  if (layout === 'comparison') {
+    const left: string[] = [];
+    const right: string[] = [];
+    let side: 'L' | 'R' | null = null;
+    let prefixed = false;
+    for (const l of sl.lines) {
+      const lm = l.match(/^left\s*:\s*(.*)$/i);
+      const rm = l.match(/^right\s*:\s*(.*)$/i);
+      if (lm) { side = 'L'; prefixed = true; left.push(lm[1]); }
+      else if (rm) { side = 'R'; prefixed = true; right.push(rm[1]); }
+      else if (side === 'L') left.push(l);
+      else if (side === 'R') right.push(l);
+    }
+    if (!prefixed) {
+      const half = Math.ceil(sl.lines.length / 2);
+      left.push(...sl.lines.slice(0, half));
+      right.push(...sl.lines.slice(half));
+    }
+    const col = (cls: string, arr: string[]) => `<div class="col ${cls}"><h3>${esc(arr[0] ?? '')}</h3><ul>${arr.slice(1).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    return `<section class="s cmpl${hp}"><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="cols fit">${col('cl', left)}${col('cr', right)}</div>${art}${foot}</section>`;
+  }
+  if (layout === 'key-number') {
+    const [fig, ...rest] = sl.lines;
+    return `<section class="s knl${hp}"><div class="kick">${esc(sl.title)}</div><div class="kn fit"><p class="fig">${esc(fig ?? '')}</p>${rest.map(l => `<p class="cap">${esc(l)}</p>`).join('')}</div>${art}${foot}</section>`;
+  }
   const items = sl.lines.map(l => `<li>${esc(l)}</li>`).join('');
   return `<section class="s light${hp}"><div class="side"></div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><ul class="body fit">${items}</ul>${art}${foot}</section>`;
 }
 
-export function deckHtml(deck: Deck, pictures: Record<number, string> = {}): string {
-  const pages = deck.slides.map((s, i) => slideHtml(s, i, deck.slides.length, deck.heading, pictures[s.number])).join('\n');
+export function deckHtml(deck: Deck, pictures: Record<number, string> = {}, layouts: Record<number, string> = {}): string {
+  const pages = deck.slides.map((s, i) => slideHtml(s, i, deck.slides.length, deck.heading, pictures[s.number], normalizeLayout(layouts[s.number] ?? '') || s.layout || 'standard')).join('\n');
   return `<!doctype html><html><head><meta charset="utf-8">
 <style>
 @font-face { font-family: 'Playfair Display'; font-weight: 700; font-style: normal; src: url(data:font/woff2;base64,${PLAYFAIR_700_WOFF2}) format('woff2'); }
@@ -155,7 +210,46 @@ h1, h2 { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; line
 .has-pic { padding-right: 560px; }
 .has-pic .choices { grid-template-columns: 1fr; }
 .cover.has-pic h1, .cover.has-pic .sub { max-width: 640px; }
-.has-pic .num { background: #0A2342; padding: 4px 10px; border-radius: 4px; right: 20px; bottom: 20px; }
+.has-pic .num { background: #0A2342; color: #D4AF37 !important; padding: 4px 10px; border-radius: 4px; right: 20px; bottom: 20px; }
+.fullpic { background-size: cover; background-position: center; color: #FFFFFF; padding: 0; justify-content: flex-end; }
+.fullpic .band { background: rgba(10,35,66,0.93); padding: 34px 96px 64px 96px; }
+.fullpic h2 { font-size: 44px; color: #FFFFFF; }
+.fullpic .rule { width: 96px; height: 5px; background: #D4AF37; margin: 16px 0 16px; }
+.fullpic .bandtxt { font-size: 28px; line-height: 1.4; max-height: 90px; overflow: hidden; color: rgba(255,255,255,0.92); }
+.stmtl { background: #C2185B; color: #FFFFFF; justify-content: center; }
+.stmtl .kick { font-size: 16px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #FFFFFF; opacity: 0.85; border-bottom: 4px solid #D4AF37; align-self: flex-start; padding-bottom: 12px; margin-bottom: 34px; }
+.stmt { font-size: 36px; line-height: 1.4; max-height: 470px; overflow: hidden; }
+.stmt .main { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 1.75em; line-height: 1.18; margin-bottom: 0.5em; }
+.stmt .small { font-size: 0.6em; opacity: 0.92; margin-bottom: 0.3em; }
+.stepsl { background: #FBF6E4; color: #0A2342; }
+.stepsl h2 { font-size: 46px; }
+.stepsl .rule, .cmpl .rule { width: 96px; height: 5px; background: #D4AF37; margin: 22px 0 30px; }
+.steps { display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; align-items: flex-start; font-size: 26px; line-height: 1.35; }
+.steps.wrap { flex-wrap: wrap; align-content: flex-start; }
+.step { flex: 1 1 0; min-height: 230px; background: #FFFFFF; border-top: 6px solid #D4AF37; border-radius: 8px; padding: 24px 22px; box-shadow: 0 2px 10px rgba(10,35,66,0.08); }
+.steps.wrap .step { flex: 1 1 28%; }
+.step span { display: flex; width: 1.7em; height: 1.7em; border-radius: 50%; background: #0A2342; color: #D4AF37; font-weight: 700; align-items: center; justify-content: center; margin-bottom: 14px; }
+.step p { margin: 0; }
+.cmpl { background: #FAFAF8; color: #0A2342; }
+.cmpl h2 { font-size: 46px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; flex: 1; min-height: 0; overflow: hidden; align-items: start; font-size: 26px; line-height: 1.4; }
+.col { border-radius: 10px; padding: 26px 30px; }
+.col h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.25em; margin-bottom: 14px; }
+.col ul { list-style: none; }
+.col li { margin-bottom: 10px; padding-left: 24px; position: relative; }
+.col li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 9px; height: 9px; background: #D4AF37; transform: rotate(45deg); }
+.col.cl { background: #0A2342; color: #FFFFFF; }
+.col.cl h3 { color: #D4AF37; }
+.col.cr { background: #FFFFFF; border: 2px solid #0A2342; }
+.col.cr h3 { color: #C2185B; }
+.knl { background: #D4AF37; color: #0A2342; justify-content: center; }
+.knl .kick { font-size: 16px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; border-bottom: 4px solid #0A2342; align-self: flex-start; padding-bottom: 12px; margin-bottom: 28px; }
+.kn { font-size: 30px; line-height: 1.4; max-height: 480px; overflow: hidden; }
+.kn .fig { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 4.4em; line-height: 1.05; margin-bottom: 0.15em; }
+.kn .cap { font-size: 1em; margin-bottom: 0.25em; max-width: 900px; }
+.knl .num { color: #0A2342; }
+.stmtl .num, .stepsl .num, .cmpl .num { color: #D4AF37; }
+.stmtl .num { color: #FFFFFF; }
 .num { position: absolute; right: 56px; bottom: 24px; font-size: 14px; font-weight: 600; color: #D4AF37; }
 </style></head><body>
 ${pages}
@@ -185,7 +279,7 @@ const FIT_SCRIPT = `(() => {
   return changed;
 })()`;
 
-export async function buildDeckPdf(deck: Deck, pictures: Record<number, string> = {}): Promise<{ pdf: Buffer; pages: number; fontsLoaded: boolean; shrunk: number }> {
+export async function buildDeckPdf(deck: Deck, pictures: Record<number, string> = {}, layouts: Record<number, string> = {}): Promise<{ pdf: Buffer; pages: number; fontsLoaded: boolean; shrunk: number }> {
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath: await chromiumPath(),
@@ -194,7 +288,7 @@ export async function buildDeckPdf(deck: Deck, pictures: Record<number, string> 
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(deckHtml(deck, pictures), { waitUntil: 'load', timeout: 45000 });
+    await page.setContent(deckHtml(deck, pictures, layouts), { waitUntil: 'load', timeout: 45000 });
     await page.evaluate('document.fonts.ready');
     const fontsLoaded = await page.evaluate(`document.fonts.check('700 20px "Playfair Display"') && document.fonts.check('600 20px "Inter"')`) as boolean;
     // Titles and text that run past their space step down in size until they fit.

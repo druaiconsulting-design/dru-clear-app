@@ -1,9 +1,10 @@
 // api/course-deck-picture.ts
-// The pictures on a lesson deck's slides, from Theo Nguyen's deck card on the Approvals page.
+// The pictures and layouts on a lesson deck's slides, from Theo Nguyen's deck card on the Approvals page.
 //   GET  ?approval_id=…                              -> every slide on the card with its visual direction and its picture (if any)
 //   POST {action:'make',   approval_id, slide}       -> the Hub makes a picture from that slide's visual direction
 //   POST {action:'upload', approval_id, slide, data_url} -> DeAnna's own picture for that slide
 //   POST {action:'remove', approval_id, slide}       -> takes the picture off that slide
+//   POST {action:'layout', approval_id, slide, layout} -> DeAnna's layout for that slide (empty = back to Theo's choice)
 // Pictures are saved in the private course-decks folder and tied to the slide number. Each made picture is logged
 // on the Usage tab. Only DeAnna's admin login can call this.
 
@@ -11,7 +12,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { logActivity } from './_lib/hubShared.js';
 import { makePicture, parseDataUrl } from './_lib/studioImages.js';
-import { loadDeckCard, listPictures, savePicture, removePicture, DECK_BUCKET } from './_lib/courseDeckPictures.js';
+import { loadDeckCard, listPictures, savePicture, removePicture, loadLayouts, saveLayout, DECK_BUCKET } from './_lib/courseDeckPictures.js';
+import { LAYOUTS, normalizeLayout } from './_lib/courseDeckPdf.js';
 
 export const config = { maxDuration: 120 };
 
@@ -43,11 +45,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const paths = [...pics.values()].map(p => p.path);
       const signed = paths.length ? (await sb.storage.from(DECK_BUCKET).createSignedUrls(paths, 3600)).data ?? [] : [];
       const urlByPath = new Map(signed.map(s => [s.path, s.signedUrl]));
+      const chosen = await loadLayouts(sb, lesson.id);
       res.status(200).json({
         ok: true,
-        slides: deck.slides.map(s => {
+        layouts: LAYOUTS,
+        slides: deck.slides.map((s, i) => {
           const p = pics.get(s.number);
-          return { number: s.number, title: s.title, kind: s.kind, visual: s.visual, picture_url: p ? urlByPath.get(p.path) ?? null : null };
+          return {
+            number: s.number, title: s.title, kind: s.kind, visual: s.visual, picture_url: p ? urlByPath.get(p.path) ?? null : null,
+            layout_applies: i > 0 && s.kind === 'content',
+            theo_layout: s.layout || 'standard',
+            layout: chosen[s.number] || s.layout || 'standard',
+            layout_changed: !!chosen[s.number],
+          };
         }),
       });
       return;
@@ -61,6 +71,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (action === 'remove') {
       await removePicture(sb, lesson.id, slideNo);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (action === 'layout') {
+      const wanted = String(body.layout || '');
+      if (wanted && !normalizeLayout(wanted)) { res.status(400).json({ error: 'Choose one of the layouts on the list.' }); return; }
+      await saveLayout(sb, lesson.id, slideNo, wanted);
       res.status(200).json({ ok: true });
       return;
     }
@@ -90,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    res.status(400).json({ error: 'Choose make, upload or remove.' });
+    res.status(400).json({ error: 'Choose make, upload, remove or layout.' });
   } catch (e) {
     const message = (e as Error)?.message || 'That did not work.';
     console.error('[course-deck-picture] failed:', message);

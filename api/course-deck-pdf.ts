@@ -1,6 +1,6 @@
 // api/course-deck-pdf.ts
 // Builds the PDF for one lesson's deck from Theo Nguyen's deck script (the card on the Approvals page,
-// using DeAnna's edited version when she edited it), with the pictures she chose for its slides,
+// using DeAnna's edited version when she edited it), with the pictures and layouts she chose for its slides,
 // stores it in the private course-decks folder, and puts it in that lesson's Resources list titled
 // "Module 1 · Lesson 1 · Critical Thinking — Slides".
 // Pressing the button again replaces the earlier PDF and keeps the one Resources entry.
@@ -9,7 +9,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { buildDeckPdf } from './_lib/courseDeckPdf.js';
-import { loadDeckCard, loadPictureDataUrls, DECK_BUCKET } from './_lib/courseDeckPictures.js';
+import { loadDeckCard, loadPictureDataUrls, loadLayouts, DECK_BUCKET } from './_lib/courseDeckPictures.js';
 
 export const config = { maxDuration: 120 };
 
@@ -32,7 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { deck, moduleNumber, lessonNumber, lesson } = loaded.card;
 
     const pictures = await loadPictureDataUrls(sb, lesson.id, new Set(deck.slides.map(s => s.number)));
-    const built = await buildDeckPdf(deck, pictures);
+    const layouts = await loadLayouts(sb, lesson.id);
+    const built = await buildDeckPdf(deck, pictures, layouts);
 
     const path = `${lesson.id}.pdf`;
     const { error: upErr } = await sb.storage.from(DECK_BUCKET).upload(path, built.pdf, { contentType: 'application/pdf', upsert: true });

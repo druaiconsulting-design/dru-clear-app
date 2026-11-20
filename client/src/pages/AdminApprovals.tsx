@@ -741,8 +741,9 @@ export default function AdminApprovals() {
   // Build PDF on Theo's lesson deck cards: the Hub builds the slides and PDF and adds it to the lesson's Resources.
   const [deckBuild, setDeckBuild] = useState<Record<string, { state: "building" | "done" | "failed"; note: string }>>({});
   // Slide pictures on Theo's lesson deck cards: DeAnna picks the slides that get one; the Hub makes it from Theo's visual direction, or she uploads her own.
-  type DeckPicSlide = { number: number; title: string; kind: string; visual: string; picture_url: string | null };
-  const [deckPics, setDeckPics] = useState<Record<string, { open: boolean; loading: boolean; slides: DeckPicSlide[]; busy: Record<number, string>; error: string }>>({});
+  type DeckPicSlide = { number: number; title: string; kind: string; visual: string; picture_url: string | null; layout_applies: boolean; theo_layout: string; layout: string; layout_changed: boolean };
+  type DeckLayoutOption = { id: string; label: string };
+  const [deckPics, setDeckPics] = useState<Record<string, { open: boolean; loading: boolean; slides: DeckPicSlide[]; layouts: DeckLayoutOption[]; busy: Record<number, string>; error: string }>>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
   // Text DeAnna gives Kwame to close a stuck grant draft (needs_your_input),
@@ -914,14 +915,14 @@ export default function AdminApprovals() {
   const deckPicToken = async (): Promise<string> => (await supabase.auth.getSession()).data.session?.access_token ?? "";
 
   const loadDeckPics = async (approval: Approval): Promise<void> => {
-    setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: true, slides: prev[approval.id]?.slides ?? [], busy: {}, error: "" } }));
+    setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: true, slides: prev[approval.id]?.slides ?? [], layouts: prev[approval.id]?.layouts ?? [], busy: {}, error: "" } }));
     try {
       const r = await fetch(`/api/course-deck-picture?approval_id=${encodeURIComponent(approval.id)}`, { headers: { Authorization: `Bearer ${await deckPicToken()}` } });
       const b = await r.json();
       if (!r.ok || !b.ok) throw new Error(b.error || "The slides could not be loaded.");
-      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: b.slides, busy: {}, error: "" } }));
+      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: b.slides, layouts: b.layouts ?? [], busy: {}, error: "" } }));
     } catch (e) {
-      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: [], busy: {}, error: (e as Error).message } }));
+      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: [], layouts: [], busy: {}, error: (e as Error).message } }));
     }
   };
 
@@ -931,15 +932,15 @@ export default function AdminApprovals() {
     void loadDeckPics(approval);
   };
 
-  const deckPicAction = async (approval: Approval, slide: number, action: "make" | "upload" | "remove", dataUrl?: string): Promise<void> => {
-    const label = action === "make" ? "Making picture..." : action === "upload" ? "Saving..." : "Removing...";
+  const deckPicAction = async (approval: Approval, slide: number, action: "make" | "upload" | "remove" | "layout", dataUrl?: string, layout?: string): Promise<void> => {
+    const label = action === "make" ? "Making picture..." : action === "upload" || action === "layout" ? "Saving..." : "Removing...";
     setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], busy: { ...prev[approval.id].busy, [slide]: label }, error: "" } }));
     let error = "";
     try {
       const r = await fetch("/api/course-deck-picture", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${await deckPicToken()}` },
-        body: JSON.stringify({ approval_id: approval.id, slide, action, data_url: dataUrl }),
+        body: JSON.stringify({ approval_id: approval.id, slide, action, data_url: dataUrl, layout }),
       });
       const b = await r.json();
       if (!r.ok || !b.ok) throw new Error(b.error || "That did not work.");
@@ -947,7 +948,7 @@ export default function AdminApprovals() {
     try {
       const r = await fetch(`/api/course-deck-picture?approval_id=${encodeURIComponent(approval.id)}`, { headers: { Authorization: `Bearer ${await deckPicToken()}` } });
       const b = await r.json();
-      if (r.ok && b.ok) { setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], slides: b.slides, busy: {}, error } })); return; }
+      if (r.ok && b.ok) { setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], slides: b.slides, layouts: b.layouts ?? prev[approval.id].layouts, busy: {}, error } })); return; }
     } catch { /* keep the list as it was */ }
     setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], busy: {}, error } }));
   };
@@ -2716,7 +2717,7 @@ export default function AdminApprovals() {
 
                     {isCourseDeckCard(approval) && deckPics[approval.id]?.open && (
                       <div style={{ marginTop:"0.75rem", padding:"0.85rem", borderRadius:8, background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)" }}>
-                        <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#0A2342", margin:"0 0 0.6rem" }}>Slide pictures — only the slides you pick get one. Press Build PDF afterward.</p>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#0A2342", margin:"0 0 0.6rem" }}>Slides — pictures go only on the slides you pick, and each slide's layout is Theo's choice until you change it. Press Build PDF afterward.</p>
                         {deckPics[approval.id].loading && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.6)", margin:0 }}>Loading slides...</p>}
                         {deckPics[approval.id].error && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"#C2185B", margin:"0 0 0.6rem" }}>⚠ {deckPics[approval.id].error}</p>}
                         {deckPics[approval.id].slides.map(sl => {
@@ -2730,6 +2731,15 @@ export default function AdminApprovals() {
                               <div style={{ flex:1, minWidth:0 }}>
                                 <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", fontWeight:700, color:"#0A2342", margin:"0 0 0.2rem" }}>Slide {sl.number} · {sl.title}</p>
                                 <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.7)", margin:"0 0 0.5rem", lineHeight:1.4 }}>{sl.visual || "No visual direction on the card."}</p>
+                                {sl.layout_applies && (
+                                  <div style={{ display:"flex", gap:"0.4rem", alignItems:"center", margin:"0 0 0.5rem", flexWrap:"wrap" as const }}>
+                                    <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, color:"#0A2342" }}>Layout</span>
+                                    <select value={sl.layout} disabled={!!busy} onChange={e => deckPicAction(approval, sl.number, "layout", undefined, e.target.value === sl.theo_layout ? "" : e.target.value)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", padding:"0.3rem 0.5rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.25)", background:"#FFFFFF", color:"#0A2342" }}>
+                                      {deckPics[approval.id].layouts.map(o => <option key={o.id} value={o.id}>{o.label}{o.id === sl.theo_layout ? " (Theo's choice)" : ""}</option>)}
+                                    </select>
+                                    {sl.layout === "full-picture" && !sl.picture_url && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", color:"#C2185B" }}>Needs a picture, or it builds as Standard.</span>}
+                                  </div>
+                                )}
                                 <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                                   <button disabled={!!busy || !sl.visual} onClick={() => deckPicAction(approval, sl.number, "make")} style={{ ...btn, opacity: busy || !sl.visual ? 0.5 : 1 }}>{sl.picture_url ? "Remake picture" : "Make picture"}</button>
                                   <label style={{ ...btn, opacity: busy ? 0.5 : 1 }}>

@@ -26,16 +26,26 @@ Give each "test your knowledge" moment two slides of its own, placed where Simon
 
 Each slide holds a short title and a few lines of on-screen text, taken from Simone's lesson in Simone's words. The slide stays light, because the agent's voice carries the teaching. You also give each slide a visual direction: a plain sentence on the layout, image or graphic that belongs with it, using the brand colors and fonts.
 
+Choose a layout for each content slide so the deck has variety. The layouts are:
+- standard: a title with a few bullet lines. It suits most teaching slides.
+- full-picture: a picture fills the slide, with the title and one line over it. It suits a moment that a picture carries, and its visual direction describes that picture.
+- big-statement: one large line, with any other lines small beneath it. It suits the idea the learner takes with them.
+- steps: the on-screen lines become numbered cards in a row, three to five of them. It suits a process or a set of habits.
+- comparison: two columns. Write each line starting with "Left:" or "Right:". The first Left line is the left column's heading and the first Right line is the right column's heading, and the lines after each are its points. It suits two things set side by side.
+- key-number: one large figure with a caption beneath it. The first on-screen line is the figure, and the lines after it are the caption. It suits a single number or short phrase worth showing large.
+The cover slide and the "test your knowledge" slides keep their own layouts. Use standard for most slides and the other layouts where they fit, and use a different layout from the slide before it where you can.
+
 Write the deck script in this layout so the Hub can build its PDF from it. Start with the heading line you are given. Then write each slide as a block:
 
 Slide 1
 Title: the slide's title
+Layout: one of the layout names above
 On-screen text:
 - first line
 - second line
 Visual direction: one or two sentences
 
-A "test your knowledge" question slide opens with "Slide 7 · Test your knowledge", and its on-screen text lists the question and then the choices as A., B., C. and D. Its answer slide opens with "Slide 8 · Test your knowledge — Answer", and its on-screen text gives the right answer and the explanation.
+The cover slide and the "test your knowledge" slides leave out the Layout line. A "test your knowledge" question slide opens with "Slide 7 · Test your knowledge", and its on-screen text lists the question and then the choices as A., B., C. and D. Its answer slide opens with "Slide 8 · Test your knowledge — Answer", and its on-screen text gives the right answer and the explanation.
 
 Leave a blank line between slides. Write plain text, with the labels exactly as shown above.`;
 
