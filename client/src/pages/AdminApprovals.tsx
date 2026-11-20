@@ -740,6 +740,9 @@ export default function AdminApprovals() {
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
   // Build PDF on Theo's lesson deck cards: the Hub builds the slides and PDF and adds it to the lesson's Resources.
   const [deckBuild, setDeckBuild] = useState<Record<string, { state: "building" | "done" | "failed"; note: string }>>({});
+  // Slide pictures on Theo's lesson deck cards: DeAnna picks the slides that get one; the Hub makes it from Theo's visual direction, or she uploads her own.
+  type DeckPicSlide = { number: number; title: string; kind: string; visual: string; picture_url: string | null };
+  const [deckPics, setDeckPics] = useState<Record<string, { open: boolean; loading: boolean; slides: DeckPicSlide[]; busy: Record<number, string>; error: string }>>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
   // Text DeAnna gives Kwame to close a stuck grant draft (needs_your_input),
@@ -907,6 +910,55 @@ export default function AdminApprovals() {
 
   const isCourseDeckCard = (a: Approval): boolean =>
     a.agent_name === "Theo Nguyen" && /^course_deck M\d+ L\d+ — /.test(a.trigger_type ?? "") && (a.status === "approved" || a.status === "ready_to_use");
+
+  const deckPicToken = async (): Promise<string> => (await supabase.auth.getSession()).data.session?.access_token ?? "";
+
+  const loadDeckPics = async (approval: Approval): Promise<void> => {
+    setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: true, slides: prev[approval.id]?.slides ?? [], busy: {}, error: "" } }));
+    try {
+      const r = await fetch(`/api/course-deck-picture?approval_id=${encodeURIComponent(approval.id)}`, { headers: { Authorization: `Bearer ${await deckPicToken()}` } });
+      const b = await r.json();
+      if (!r.ok || !b.ok) throw new Error(b.error || "The slides could not be loaded.");
+      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: b.slides, busy: {}, error: "" } }));
+    } catch (e) {
+      setDeckPics(prev => ({ ...prev, [approval.id]: { open: true, loading: false, slides: [], busy: {}, error: (e as Error).message } }));
+    }
+  };
+
+  const toggleDeckPics = (approval: Approval): void => {
+    const cur = deckPics[approval.id];
+    if (cur?.open) { setDeckPics(prev => ({ ...prev, [approval.id]: { ...cur, open: false } })); return; }
+    void loadDeckPics(approval);
+  };
+
+  const deckPicAction = async (approval: Approval, slide: number, action: "make" | "upload" | "remove", dataUrl?: string): Promise<void> => {
+    const label = action === "make" ? "Making picture..." : action === "upload" ? "Saving..." : "Removing...";
+    setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], busy: { ...prev[approval.id].busy, [slide]: label }, error: "" } }));
+    let error = "";
+    try {
+      const r = await fetch("/api/course-deck-picture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await deckPicToken()}` },
+        body: JSON.stringify({ approval_id: approval.id, slide, action, data_url: dataUrl }),
+      });
+      const b = await r.json();
+      if (!r.ok || !b.ok) throw new Error(b.error || "That did not work.");
+    } catch (e) { error = (e as Error).message; }
+    try {
+      const r = await fetch(`/api/course-deck-picture?approval_id=${encodeURIComponent(approval.id)}`, { headers: { Authorization: `Bearer ${await deckPicToken()}` } });
+      const b = await r.json();
+      if (r.ok && b.ok) { setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], slides: b.slides, busy: {}, error } })); return; }
+    } catch { /* keep the list as it was */ }
+    setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], busy: {}, error } }));
+  };
+
+  const uploadDeckPic = (approval: Approval, slide: number, file: File | undefined): void => {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { setDeckPics(prev => ({ ...prev, [approval.id]: { ...prev[approval.id], error: "That picture is too large. Use one under 4 MB." } })); return; }
+    const reader = new FileReader();
+    reader.onload = () => { void deckPicAction(approval, slide, "upload", String(reader.result)); };
+    reader.readAsDataURL(file);
+  };
 
   const buildDeckPdfFor = async (approval: Approval): Promise<void> => {
     setDeckBuild(prev => ({ ...prev, [approval.id]: { state: "building", note: "" } }));
@@ -2649,6 +2701,11 @@ export default function AdminApprovals() {
                           {deckBuild[approval.id]?.state === "building" ? "Building PDF..." : "Build PDF"}
                         </button>
                       )}
+                      {isCourseDeckCard(approval) && editingId !== approval.id && (
+                        <button onClick={() => toggleDeckPics(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#0A2342", letterSpacing:"0.06em" }}>
+                          {deckPics[approval.id]?.open ? "Hide slide pictures" : "Slide pictures"}
+                        </button>
+                      )}
                       {(approval.output || approval.edited_output) && editingId !== approval.id && !isCorrections && (
                         <button onClick={() => downloadPDF(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>↓ PDF</button>
                       )}
@@ -2657,6 +2714,37 @@ export default function AdminApprovals() {
                       )}
                     </div>
 
+                    {isCourseDeckCard(approval) && deckPics[approval.id]?.open && (
+                      <div style={{ marginTop:"0.75rem", padding:"0.85rem", borderRadius:8, background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)" }}>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#0A2342", margin:"0 0 0.6rem" }}>Slide pictures — only the slides you pick get one. Press Build PDF afterward.</p>
+                        {deckPics[approval.id].loading && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.6)", margin:0 }}>Loading slides...</p>}
+                        {deckPics[approval.id].error && <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"#C2185B", margin:"0 0 0.6rem" }}>⚠ {deckPics[approval.id].error}</p>}
+                        {deckPics[approval.id].slides.map(sl => {
+                          const busy = deckPics[approval.id].busy[sl.number];
+                          const btn = { fontFamily:"'Montserrat', sans-serif", fontSize:"0.58rem", fontWeight:700, padding:"0.35rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.25)", background:"#FFFFFF", color:"#0A2342" } as const;
+                          return (
+                            <div key={sl.number} style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", padding:"0.6rem 0", borderTop:"1px solid rgba(10,35,66,0.08)" }}>
+                              <div style={{ width:64, height:96, flex:"none", borderRadius:4, background:"rgba(10,35,66,0.06)", border:"1px solid rgba(10,35,66,0.12)", overflow:"hidden" }}>
+                                {sl.picture_url && <img src={sl.picture_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />}
+                              </div>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.7rem", fontWeight:700, color:"#0A2342", margin:"0 0 0.2rem" }}>Slide {sl.number} · {sl.title}</p>
+                                <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", color:"rgba(10,35,66,0.7)", margin:"0 0 0.5rem", lineHeight:1.4 }}>{sl.visual || "No visual direction on the card."}</p>
+                                <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" as const, alignItems:"center" }}>
+                                  <button disabled={!!busy || !sl.visual} onClick={() => deckPicAction(approval, sl.number, "make")} style={{ ...btn, opacity: busy || !sl.visual ? 0.5 : 1 }}>{sl.picture_url ? "Remake picture" : "Make picture"}</button>
+                                  <label style={{ ...btn, opacity: busy ? 0.5 : 1 }}>
+                                    Upload my own
+                                    <input type="file" accept="image/jpeg,image/png,image/webp" disabled={!!busy} style={{ display:"none" }} onChange={e => { uploadDeckPic(approval, sl.number, e.target.files?.[0]); e.target.value = ""; }} />
+                                  </label>
+                                  {sl.picture_url && <button disabled={!!busy} onClick={() => deckPicAction(approval, sl.number, "remove")} style={{ ...btn, opacity: busy ? 0.5 : 1 }}>Remove</button>}
+                                  {busy && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", color:"#B8941F", fontWeight:700 }}>{busy}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     {isCourseDeckCard(approval) && deckBuild[approval.id] && deckBuild[approval.id].state !== "building" && (
                       <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", margin:"0.6rem 0 0", color: deckBuild[approval.id].state === "failed" ? "#C2185B" : "#0A2342" }}>
                         {deckBuild[approval.id].state === "failed" ? "⚠ " : "✓ "}{deckBuild[approval.id].note}

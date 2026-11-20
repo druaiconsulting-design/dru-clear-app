@@ -84,29 +84,31 @@ function finish(c: { number: number; rest: string; body: string[] }): DeckSlide 
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function slideHtml(sl: DeckSlide, index: number, total: number, heading: string): string {
+function slideHtml(sl: DeckSlide, index: number, total: number, heading: string, pic?: string): string {
+  const art = pic ? `<div class="art" style="background-image:url(${pic})"></div>` : '';
+  const hp = pic ? ' has-pic' : '';
   const num = `<div class="num">${index + 1}</div>`;
   const foot = `<div class="foot">DRU AI Consulting</div>${num}`;
   if (index === 0 && sl.kind === 'content') {
     const sub = sl.lines.map(l => `<p>${esc(l)}</p>`).join('');
-    return `<section class="s cover"><div class="bar"></div><div class="kicker">${esc(heading || 'From Confusion to Confidence with AI™')}</div><h1 class="fit-title">${esc(sl.title)}</h1><div class="rule"></div><div class="sub fit">${sub}</div>${foot}</section>`;
+    return `<section class="s cover${hp}"><div class="bar"></div><div class="kicker">${esc(heading || 'From Confusion to Confidence with AI™')}</div><h1 class="fit-title">${esc(sl.title)}</h1><div class="rule"></div><div class="sub fit">${sub}</div>${art}${foot}</section>`;
   }
   if (sl.kind === 'quiz') {
     const choiceRe = /^([A-D])[.)]\s*(.*)$/i;
     const question = sl.lines.filter(l => !choiceRe.test(l)).map(l => `<p>${esc(l)}</p>`).join('');
     const choices = sl.lines.map(l => l.match(choiceRe)).filter(Boolean).map(m => `<div class="choice"><span>${esc((m as RegExpMatchArray)[1].toUpperCase())}</span><div>${esc((m as RegExpMatchArray)[2])}</div></div>`).join('');
-    return `<section class="s dark"><div class="tag mag">Test your knowledge</div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="q fit">${question}</div><div class="choices">${choices}</div>${foot}</section>`;
+    return `<section class="s dark${hp}"><div class="tag mag">Test your knowledge</div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="q fit">${question}</div><div class="choices">${choices}</div>${art}${foot}</section>`;
   }
   if (sl.kind === 'answer') {
     const [first, ...rest] = sl.lines;
-    return `<section class="s dark"><div class="tag gold">Test your knowledge · Answer</div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="ans fit">${first ? `<p class="right">${esc(first)}</p>` : ''}${rest.map(l => `<p>${esc(l)}</p>`).join('')}</div>${foot}</section>`;
+    return `<section class="s dark${hp}"><div class="tag gold">Test your knowledge · Answer</div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><div class="ans fit">${first ? `<p class="right">${esc(first)}</p>` : ''}${rest.map(l => `<p>${esc(l)}</p>`).join('')}</div>${art}${foot}</section>`;
   }
   const items = sl.lines.map(l => `<li>${esc(l)}</li>`).join('');
-  return `<section class="s light"><div class="side"></div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><ul class="body fit">${items}</ul>${foot}</section>`;
+  return `<section class="s light${hp}"><div class="side"></div><h2 class="fit-title">${esc(sl.title)}</h2><div class="rule"></div><ul class="body fit">${items}</ul>${art}${foot}</section>`;
 }
 
-export function deckHtml(deck: Deck): string {
-  const pages = deck.slides.map((s, i) => slideHtml(s, i, deck.slides.length, deck.heading)).join('\n');
+export function deckHtml(deck: Deck, pictures: Record<number, string> = {}): string {
+  const pages = deck.slides.map((s, i) => slideHtml(s, i, deck.slides.length, deck.heading, pictures[s.number])).join('\n');
   return `<!doctype html><html><head><meta charset="utf-8">
 <style>
 @font-face { font-family: 'Playfair Display'; font-weight: 700; font-style: normal; src: url(data:font/woff2;base64,${PLAYFAIR_700_WOFF2}) format('woff2'); }
@@ -149,6 +151,11 @@ h1, h2 { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; line
 .foot { position: absolute; left: 96px; bottom: 26px; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; }
 .light .foot { left: 120px; }
 .cover .foot { left: 130px; }
+.art { position: absolute; right: 0; top: 0; bottom: 0; width: 480px; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.has-pic { padding-right: 560px; }
+.has-pic .choices { grid-template-columns: 1fr; }
+.cover.has-pic h1, .cover.has-pic .sub { max-width: 640px; }
+.has-pic .num { background: #0A2342; padding: 4px 10px; border-radius: 4px; right: 20px; bottom: 20px; }
 .num { position: absolute; right: 56px; bottom: 24px; font-size: 14px; font-weight: 600; color: #D4AF37; }
 </style></head><body>
 ${pages}
@@ -178,7 +185,7 @@ const FIT_SCRIPT = `(() => {
   return changed;
 })()`;
 
-export async function buildDeckPdf(deck: Deck): Promise<{ pdf: Buffer; pages: number; fontsLoaded: boolean; shrunk: number }> {
+export async function buildDeckPdf(deck: Deck, pictures: Record<number, string> = {}): Promise<{ pdf: Buffer; pages: number; fontsLoaded: boolean; shrunk: number }> {
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath: await chromiumPath(),
@@ -187,7 +194,7 @@ export async function buildDeckPdf(deck: Deck): Promise<{ pdf: Buffer; pages: nu
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(deckHtml(deck), { waitUntil: 'load', timeout: 45000 });
+    await page.setContent(deckHtml(deck, pictures), { waitUntil: 'load', timeout: 45000 });
     await page.evaluate('document.fonts.ready');
     const fontsLoaded = await page.evaluate(`document.fonts.check('700 20px "Playfair Display"') && document.fonts.check('600 20px "Inter"')`) as boolean;
     // Titles and text that run past their space step down in size until they fit.

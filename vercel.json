@@ -25,6 +25,9 @@
     "api/course-deck-pdf.ts": {
       "maxDuration": 120
     },
+    "api/course-deck-picture.ts": {
+      "maxDuration": 120
+    },
     "api/ryan-crm-report.ts": {
       "maxDuration": 300
     },
