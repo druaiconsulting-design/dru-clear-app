@@ -738,6 +738,8 @@ export default function AdminApprovals() {
   const [rejectingId, setRejectingId]         = useState<string | null>(null);
   const [correctionNote, setCorrectionNote]   = useState("");
   const [publishStatus, setPublishStatus]     = useState<Record<string, "posting" | "posted" | "failed">>({});
+  // Build PDF on Theo's lesson deck cards: the Hub builds the slides and PDF and adds it to the lesson's Resources.
+  const [deckBuild, setDeckBuild] = useState<Record<string, { state: "building" | "done" | "failed"; note: string }>>({});
   const [leadDirection, setLeadDirection]     = useState<Record<string, string>>({});
   const [questions, setQuestions]             = useState<Record<string, QuestionState>>({});
   // Text DeAnna gives Kwame to close a stuck grant draft (needs_your_input),
@@ -902,6 +904,27 @@ export default function AdminApprovals() {
     const rejectedChannel = supabase.channel("csq-rejected-realtime").on("postgres_changes", { event: "*", schema: "public", table: "chief_of_staff_queue" }, () => fetchRejectedItems()).subscribe();
     return () => { supabase.removeChannel(channel); supabase.removeChannel(commentsChannel); supabase.removeChannel(rejectedChannel); };
   }, []);
+
+  const isCourseDeckCard = (a: Approval): boolean =>
+    a.agent_name === "Theo Nguyen" && /^course_deck M\d+ L\d+ — /.test(a.trigger_type ?? "") && (a.status === "approved" || a.status === "ready_to_use");
+
+  const buildDeckPdfFor = async (approval: Approval): Promise<void> => {
+    setDeckBuild(prev => ({ ...prev, [approval.id]: { state: "building", note: "" } }));
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const r = await fetch("/api/course-deck-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+        body: JSON.stringify({ approval_id: approval.id }),
+      });
+      const b = await r.json();
+      if (!r.ok || !b.ok) throw new Error(b.error || "The PDF could not be built.");
+      setDeckBuild(prev => ({ ...prev, [approval.id]: { state: "done", note: `${b.pages} slides built and added to Resources as "${b.title}"` } }));
+      if (b.url) window.open(b.url, "_blank");
+    } catch (e) {
+      setDeckBuild(prev => ({ ...prev, [approval.id]: { state: "failed", note: (e as Error).message } }));
+    }
+  };
 
   const downloadPDF = (approval: Approval): void => {
     try {
@@ -2621,6 +2644,11 @@ export default function AdminApprovals() {
                       {approval.status !== "pending" && editingId !== approval.id && (
                         <button onClick={() => handleArchive(approval.id)} disabled={saving === approval.id} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em" }}>Archive</button>
                       )}
+                      {isCourseDeckCard(approval) && editingId !== approval.id && (
+                        <button onClick={() => buildDeckPdfFor(approval)} disabled={deckBuild[approval.id]?.state === "building"} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity: deckBuild[approval.id]?.state === "building" ? 0.6 : 1 }}>
+                          {deckBuild[approval.id]?.state === "building" ? "Building PDF..." : "Build PDF"}
+                        </button>
+                      )}
                       {(approval.output || approval.edited_output) && editingId !== approval.id && !isCorrections && (
                         <button onClick={() => downloadPDF(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(212,175,55,0.5)", background:"transparent", color:"#D4AF37", letterSpacing:"0.06em" }}>↓ PDF</button>
                       )}
@@ -2628,6 +2656,12 @@ export default function AdminApprovals() {
                         <button onClick={() => downloadDOCX(approval)} style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.4)", background:"transparent", color:"#0A2342", letterSpacing:"0.06em" }}>↓ DOCX</button>
                       )}
                     </div>
+
+                    {isCourseDeckCard(approval) && deckBuild[approval.id] && deckBuild[approval.id].state !== "building" && (
+                      <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.65rem", margin:"0.6rem 0 0", color: deckBuild[approval.id].state === "failed" ? "#C2185B" : "#0A2342" }}>
+                        {deckBuild[approval.id].state === "failed" ? "⚠ " : "✓ "}{deckBuild[approval.id].note}
+                      </p>
+                    )}
 
                     {/* Slot picker — appears under the buttons when "Approve + Schedule" is toggled open */}
                     {schedulerOpenId === approval.id && (

@@ -123,7 +123,7 @@ async function runIsabellaCorrectionText(item: CSQItem, currentContent: string, 
     const output = await callAnthropic(
       `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${item.agent_name}, working for DRU AI Consulting. Your previous submission for task "${item.task}" was returned with corrections:\nCORRECTION NOTES: ${correctionNotes}\nYOUR PREVIOUS OUTPUT: ${currentContent}\nProduce a corrected version that applies exactly what the correction notes above require -- whether that's a trademark symbol, a voice/banned-word fix, a factual correction, or a framework-attribution fix. Full rules for all of these are in the knowledge base above.\nOutput ONLY the corrected content. No compliance notes or metadata.`,
       rewriteMaxTokens(currentContent),
-      item.agent_name === 'Simone Laurent' || String(item.task).startsWith('course_video') ? SIMONE_MODEL : 'claude-haiku-4-5-20251001'
+      item.agent_name === 'Simone Laurent' || String(item.task).startsWith('course_video') || String(item.task).startsWith('course_deck') ? SIMONE_MODEL : 'claude-haiku-4-5-20251001'
     );
     return output || null;
   } catch (error) {

@@ -14,6 +14,7 @@ import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, 
 import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
 import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
 import { fetchApprovedLessons, approvedLessonText, pickNextVideoLesson, buildVideoReading, videoTask, AMELIA_CODE, AMELIA_COURSE_MAX_TOKENS, AMELIA_MODEL } from './_lib/ameliaCourse.js';
+import { THEO_CODE, THEO_COURSE_MAX_TOKENS, THEO_MODEL, deckTask, fetchApprovedDecks, approvedDeckText, pickNextDeckLesson, buildDeckReading } from './_lib/theoCourse.js';
 
 interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
 interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
@@ -1227,11 +1228,21 @@ async function runSimone(): Promise<string|null> {
 async function runTheo(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
+  // Each day except Friday, Theo writes the deck for the next approved lesson that has no deck yet.
+  // His code and all of his reading live in api/_lib/theoCourse.ts.
+  if (dayOfWeek!=='Friday') {
+    const { modules, lessons } = await fetchCourse();
+    const approvedLessons = await fetchApprovedLessons();
+    const lesson = await pickNextDeckLesson(lessons, approvedLessons);
+    if (lesson) {
+      const lessonText = approvedLessonText(lesson, approvedLessons) ?? '';
+      return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery',deckTask(lesson),'presentation_design',`${VOICE_DNA}\n\n${THEO_CODE}\n\n${buildDeckReading(modules,lessons,lesson,lessonText)}`,'normal',0,null,THEO_COURSE_MAX_TOKENS,THEO_MODEL);
+    }
+  }
   const deliveryData = await fetchClientDeliveryData();
-  const assetType=dayOfWeek==='Monday'?'diagnostic_readout_template':dayOfWeek==='Wednesday'?'course_module_slides':dayOfWeek==='Friday'?'framework_visualization':'daily_presentation_asset';
+  const assetType=dayOfWeek==='Monday'?'diagnostic_readout_template':dayOfWeek==='Friday'?'framework_visualization':'daily_presentation_asset';
   const assetInstructions:Record<string,string>={
     diagnostic_readout_template:`Slide structure for delivering Strategic Diagnostic™ or Executive Diagnostic™ results. Slides: executive summary, findings by pillar, DRU AI Transformation Pathway™ stage placement, recommendations, next steps.`,
-    course_module_slides:`Slide structure for one course module (5-8 slides). Title, learning objectives, 3 content slides with visual direction, one activity slide, summary/CTA.`,
     framework_visualization:`One-page visual representation of a DRU proprietary framework. Layout concept, key elements, color application (Navy/Gold/Magenta), typography guidance.`,
     daily_presentation_asset:`One slide concept for the highest-priority presentation need today. Specify type, layout, content, visual direction.`
   };
@@ -1244,10 +1255,12 @@ async function runAmelia(): Promise<string|null> {
   if (dayOfWeek!=='Friday') {
     const { modules, lessons } = await fetchCourse();
     const approved = await fetchApprovedLessons();
-    const lesson = await pickNextVideoLesson(lessons, approved);
+    const approvedDecks = await fetchApprovedDecks();
+    const lesson = await pickNextVideoLesson(lessons, approved, approvedDecks);
     if (lesson) {
       const lessonText = approvedLessonText(lesson, approved) ?? '';
-      return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery',videoTask(lesson),'video_production',`${VOICE_DNA}\n\n${AMELIA_CODE}\n\n${buildVideoReading(modules,lessons,lesson,lessonText)}`,'normal',0,null,AMELIA_COURSE_MAX_TOKENS,AMELIA_MODEL);
+      const deckText = approvedDeckText(lesson, approvedDecks) ?? '';
+      return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery',videoTask(lesson),'video_production',`${VOICE_DNA}\n\n${AMELIA_CODE}\n\n${buildVideoReading(modules,lessons,lesson,lessonText,deckText)}`,'normal',0,null,AMELIA_COURSE_MAX_TOKENS,AMELIA_MODEL);
     }
   }
   const deliveryData = await fetchClientDeliveryData();

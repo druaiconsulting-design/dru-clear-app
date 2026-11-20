@@ -15,6 +15,7 @@ import { RYAN_JOB_DESCRIPTION } from './_lib/ryanJob.js';
 import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, findNamedLesson, fetchLessonSource, buildCourseReading, lessonTask, lessonHeading } from './_lib/simoneCourse.js';
 import type { CourseLesson } from './_lib/simoneCourse.js';
 import { fetchApprovedLessons, approvedLessonText, buildVideoReading, videoTask, AMELIA_CODE, AMELIA_COURSE_MAX_TOKENS } from './_lib/ameliaCourse.js';
+import { THEO_CODE, THEO_COURSE_MAX_TOKENS, THEO_MODEL, deckTask, fetchApprovedDecks, approvedDeckText, buildDeckReading } from './_lib/theoCourse.js';
 
 const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
   raymond:     `You are Raymond Holloway, sole Chief of Staff for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. ${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA} You run the entire command layer in a single consolidated review: executive-level strategic oversight, priority assessment, packaging for the daily briefing, time-sensitive flags for DeAnna, and operations command.`,
@@ -307,11 +308,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         res.status(200).json({ success: false, reason: "lesson_not_approved", agent_name: agentName, message: `Simone's ${lessonHeading(named)} is not approved yet, so Amelia has no approved lesson to write a video script from.` });
         return;
       }
+      const approvedDecks = await fetchApprovedDecks();
+      const deckText = approvedDeckText(named, approvedDecks);
+      if (!deckText) {
+        res.status(200).json({ success: false, reason: "deck_not_approved", agent_name: agentName, message: `Theo's deck for ${lessonHeading(named)} is not approved yet, so Amelia has no approved deck to write a video script from.` });
+        return;
+      }
       ameliaLesson = named;
-      ameliaReading = `\n\n${buildVideoReading(course.modules, course.lessons, named, lessonText)}`;
+      ameliaReading = `\n\n${buildVideoReading(course.modules, course.lessons, named, lessonText, deckText)}`;
     }
   }
-  const baseSystemPrompt = ameliaLesson ? `${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA}\n\n${AMELIA_CODE}` : AGENT_SYSTEM_PROMPTS[agent_id];
+  // Theo writes a lesson's deck script from the lesson Simone wrote once DeAnna has approved it
+  // (api/_lib/theoCourse.ts). When DeAnna names a lesson that is not approved yet, she is told so.
+  let theoLesson: CourseLesson | null = null;
+  let theoReading = "";
+  if (agent_id === "theo") {
+    const course = await fetchCourse();
+    const named = findNamedLesson(String(task), course.lessons);
+    if (named) {
+      const approvedLessons = await fetchApprovedLessons();
+      const lessonText = approvedLessonText(named, approvedLessons);
+      if (!lessonText) {
+        res.status(200).json({ success: false, reason: "lesson_not_approved", agent_name: agentName, message: `Simone's ${lessonHeading(named)} is not approved yet, so Theo has no approved lesson to write a deck from.` });
+        return;
+      }
+      theoLesson = named;
+      theoReading = `\n\n${buildDeckReading(course.modules, course.lessons, named, lessonText)}`;
+    }
+  }
+  const baseSystemPrompt = ameliaLesson ? `${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA}\n\n${AMELIA_CODE}` : theoLesson ? `${GENIUS_MODE} ${TRADEMARK_RULES} ${VOICE_DNA}\n\n${THEO_CODE}` : AGENT_SYSTEM_PROMPTS[agent_id];
 
   if (!agentName || !baseSystemPrompt) { res.status(400).json({ error: `Unknown agent: ${agent_id}` }); return; }
 
@@ -408,12 +433,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       courseReading = `\n\n${buildCourseReading(course.modules, course.lessons, simoneLesson, source)}`;
     } else if (ameliaLesson) {
       courseReading = ameliaReading;
+    } else if (theoLesson) {
+      courseReading = theoReading;
     }
     const taskText = `${systemPrompt}${courseReading}\n\nTASK (on-demand request from DeAnna via AI Twin): ${task}`;
     const agentContent: string | ContentBlockItem[] = attachmentBlocks.length > 0
       ? [...attachmentBlocks, { type: "text", text: taskText }]
       : taskText;
-    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : ameliaLesson ? AMELIA_COURSE_MAX_TOKENS : 2000, agent_id === "simone" ? SIMONE_MODEL : SONNET_AGENTS.has(agent_id) ? "claude-sonnet-5-5" : "claude-haiku-4-5-20251001");
+    const output = await callAnthropic(agentContent, agent_id === "simone" ? COURSE_LESSON_MAX_TOKENS : ameliaLesson ? AMELIA_COURSE_MAX_TOKENS : theoLesson ? THEO_COURSE_MAX_TOKENS : 2000, agent_id === "simone" ? SIMONE_MODEL : theoLesson ? THEO_MODEL : SONNET_AGENTS.has(agent_id) ? "claude-sonnet-5-5" : "claude-haiku-4-5-20251001");
     console.log(`[twin-on-demand] ${agentName} output generated (${output.length} chars)`);
 
     // Step 2 — Write to CSQ
@@ -421,7 +448,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       agent_id,
       agent_name: agentName,
       division,
-      task: simoneLesson ? lessonTask(simoneLesson) : ameliaLesson ? videoTask(ameliaLesson) : "on_demand_request",
+      task: simoneLesson ? lessonTask(simoneLesson) : ameliaLesson ? videoTask(ameliaLesson) : theoLesson ? deckTask(theoLesson) : "on_demand_request",
       category,
       raw_output: output,
       priority: "high",

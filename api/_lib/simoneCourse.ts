@@ -107,10 +107,10 @@ export function lessonHeading(l: CourseLesson): string {
   return `Module ${l.module_number} · Lesson ${l.lesson_number} · ${l.title}`;
 }
 
-// A card's readable title from its task label ("course_lesson M1 L1 — Critical Thinking" or
-// "course_video M1 L1 — Critical Thinking"), or null when the task is not a course label.
+// A card's readable title from its task label ("course_lesson M1 L1 — Critical Thinking", "course_video ..." or
+// "course_deck M1 L1 — Critical Thinking"), or null when the task is not a course label.
 export function courseCardLabel(task: string): string | null {
-  const m = String(task ?? '').match(/^course_(?:lesson|video) M(\d+) L(\d+) — (.+)$/);
+  const m = String(task ?? '').match(/^course_(?:lesson|video|deck) M(\d+) L(\d+) — (.+)$/);
   return m ? `Module ${m[1]} · Lesson ${m[2]} · ${m[3]}` : null;
 }
 

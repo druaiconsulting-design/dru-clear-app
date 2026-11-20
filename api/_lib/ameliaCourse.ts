@@ -1,19 +1,21 @@
 // api/_lib/ameliaCourse.ts
 // Amelia Santos writes the video script for each lesson of "From Confusion to Confidence with AI™".
-// She reads the lesson Simone Laurent wrote once DeAnna has approved it (the approved card in the
-// Hub, using DeAnna's edited version when she edited it), together with the live course records.
+// She reads the lesson Simone Laurent wrote and the deck Theo Nguyen wrote for it, each once DeAnna has
+// approved it (the approved card in the Hub, using DeAnna's edited version when she edited it),
+// together with the live course records.
 // The scheduled run (ghl-agent-trigger.ts and ac-agent-trigger.ts) and the on-demand run
 // (twin-on-demand.ts) work from the same words and the same live course.
 
 import { sbGet, lessonHeading, lessonTask } from './simoneCourse.js';
 import type { CourseModule, CourseLesson } from './simoneCourse.js';
+import { approvedDeckText } from './theoCourse.js';
 
 export const AMELIA_COURSE_MAX_TOKENS = 4000;
 export const AMELIA_MODEL = 'claude-sonnet-5-5';
 
 export const AMELIA_CODE = `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
 
-You produce the video for each lesson of the course From Confusion to Confidence with AI™. Simone Laurent writes each lesson, DeAnna approves it, and you write its video script from the approved lesson.
+You produce the video for each lesson of the course From Confusion to Confidence with AI™. Simone Laurent writes each lesson, Theo Nguyen writes its slide deck, DeAnna approves both, and you write the video script from the approved lesson and the approved deck.
 
 Each lesson is DeAnna's leadership lesson with AI worked into it. DeAnna brings the emotional intelligence of the leadership lessons, and Simone brings how AI works with each lesson. Your script carries both, as Simone wrote them.
 
@@ -21,7 +23,9 @@ The video script is the lesson and its "test your knowledge" moments. An agent's
 
 When the lesson is the last of its module, the script closes with the module's CLEAR self-check and The Shift, as Simone wrote them.
 
-Write the script in this order: the heading line you are given with the module, lesson and subject, then the spoken lesson with the "test your knowledge" moments where they fall.`;
+Theo's deck is what the learner sees while the agent speaks. Your script says which slide is on screen at each moment, by its number and title, in a short line before the spoken lines for that slide, for example "On screen: Slide 3 · Title". The spoken lines match what that slide shows. Each "test your knowledge" moment follows Theo's two slides for it: the question slide stays on screen while the learner answers, and the answer slide comes on as the reveal.
+
+Write the script in this order: the heading line you are given with the module, lesson and subject, then the spoken lesson with the "test your knowledge" moments where they fall, each part marked with the slide on screen.`;
 
 export function videoTask(l: CourseLesson): string {
   return `course_video M${l.module_number} L${l.lesson_number} — ${l.title}`;
@@ -46,17 +50,17 @@ export function approvedLessonText(lesson: CourseLesson, approved: Map<string, s
   return approved.get(lessonTask(lesson)) ?? null;
 }
 
-// The next lesson in course order that is approved and has no video script card yet. Cards that
-// Isabella rejected do not count.
-export async function pickNextVideoLesson(lessons: CourseLesson[], approved: Map<string, string>): Promise<CourseLesson | null> {
+// The next lesson in course order whose lesson and deck are both approved and that has no video
+// script card yet. Cards that Isabella rejected do not count.
+export async function pickNextVideoLesson(lessons: CourseLesson[], approved: Map<string, string>, approvedDecks: Map<string, string>): Promise<CourseLesson | null> {
   const rows = await sbGet(`chief_of_staff_queue?agent_id=eq.amelia&task=like.${encodeURIComponent('course_video M')}*&status=neq.rejected&select=task`);
   const have = new Set(rows.map(r => String(r.task)));
-  return lessons.find(l => approvedLessonText(l, approved) !== null && !have.has(videoTask(l))) ?? null;
+  return lessons.find(l => approvedLessonText(l, approved) !== null && approvedDeckText(l, approvedDecks) !== null && !have.has(videoTask(l))) ?? null;
 }
 
-// Everything Amelia reads for one lesson: the live course list, the lesson in hand and the
-// approved lesson text.
-export function buildVideoReading(modules: CourseModule[], lessons: CourseLesson[], lesson: CourseLesson, lessonText: string): string {
+// Everything Amelia reads for one lesson: the live course list, the lesson in hand, the approved
+// lesson text and the approved deck.
+export function buildVideoReading(modules: CourseModule[], lessons: CourseLesson[], lesson: CourseLesson, lessonText: string, deckText: string): string {
   const outline = modules.map(m => {
     const own = lessons.filter(l => l.module_id === m.id);
     return [`Module ${m.module_number}: ${m.title}`, ...own.map(l => `  Lesson ${l.lesson_number}: ${l.title}`)].join('\n');
@@ -67,5 +71,6 @@ export function buildVideoReading(modules: CourseModule[], lessons: CourseLesson
     `Open the script with this heading line: ${lessonHeading(lesson)}`,
     `THE LESSON YOU ARE WRITING THE VIDEO FOR: Module ${lesson.module_number}, ${lesson.module_title} — Lesson ${lesson.lesson_number} of ${lesson.module_lesson_count}: ${lesson.title}.${last ? ' This is the last lesson of the module.' : ''}`,
     `THE APPROVED LESSON, AS SIMONE LAURENT WROTE IT:\n${lessonText}`,
+    `THE APPROVED DECK, AS THEO NGUYEN WROTE IT:\n${deckText}`,
   ].join('\n\n');
 }
