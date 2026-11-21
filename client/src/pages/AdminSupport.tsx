@@ -165,7 +165,7 @@ export default function AdminSupport() {
         const res = await fetch("/api/support-draft-reply", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ticket_id: tid, correction_note: why }),
+          body: JSON.stringify({ ticket_id: tid, correction_note: why, previous_draft: card.edited_output || card.output || "" }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));

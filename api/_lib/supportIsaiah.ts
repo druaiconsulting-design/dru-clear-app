@@ -87,11 +87,19 @@ export async function isPasswordResetEmail(t: SupportTicket): Promise<boolean> {
   return /^\s*yes\b/i.test(answer);
 }
 
-export async function writeFullReply(t: SupportTicket, preface: string): Promise<string> {
+// A revision carries Isaiah's earlier draft and DeAnna's corrective feedback on it. They sit at the end
+// of what he reads, so he rewrites that draft to follow her feedback exactly.
+export interface ReplyRevision { previousDraft: string; feedback: string }
+
+export function buildRevisionReading(r: ReplyRevision): string {
+  return `\n\nYour earlier draft of this reply:\n${r.previousDraft}\n\nDeAnna's corrective feedback on that draft:\n${r.feedback}\n\nWrite the reply again. Apply DeAnna's corrective feedback exactly as she wrote it, and keep the rest of your earlier draft as it is.`;
+}
+
+export async function writeFullReply(t: SupportTicket, preface: string, revision?: ReplyRevision): Promise<string> {
   const prompt = `${preface}\n\n${ISAIAH_EMAIL_REPLY_CODE}\n\n${buildEmailReplyReading({
     fromName: t.fromName, fromEmail: t.fromEmail, toAddress: t.toAddress, subject: t.subject, body: t.body,
     memberName: t.memberName, memberTier: t.memberTier,
-  })}`;
+  })}${revision ? buildRevisionReading(revision) : ""}`;
   const text = (await callIsaiah(prompt, EMAIL_REPLY_MAX_TOKENS)).replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
   if (!text) throw new Error("Isaiah returned an empty reply");
   return text;
@@ -150,10 +158,11 @@ export async function setTicketStatus(ticketId: string, status: string): Promise
 
 // Isaiah writes the full reply and it waits in Waiting on you. Returns false when the daily spend cap stops it.
 // A correctionNote (DeAnna's corrective feedback on his earlier draft) marks the new draft as his correction.
-export async function draftReplyForReview(t: SupportTicket, preface: string, correctionNote?: string): Promise<boolean> {
+export async function draftReplyForReview(t: SupportTicket, preface: string, correctionNote?: string, previousDraft?: string): Promise<boolean> {
   const spend = await checkAndReserveSpend();
   if (!spend.ok) return false;
-  const draft = await writeFullReply(t, preface);
+  const revision = correctionNote && previousDraft ? { previousDraft, feedback: correctionNote } : undefined;
+  const draft = await writeFullReply(t, preface, revision);
   await createReplyCard(t, draft, "pending", correctionNote);
   await setTicketStatus(t.id, "awaiting_approval");
   return true;
