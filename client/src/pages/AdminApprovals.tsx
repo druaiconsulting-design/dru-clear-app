@@ -93,7 +93,7 @@ const PDF_CATEGORIES = new Set([
 
 const APPROVAL_CATEGORIES = new Set([
   "social", "email", "community_comment_reply", "cc_upsell_outreach", "ac_upsell_outreach",
-  "CC Post Triggers", "lead_intelligence", "community_post", "social_response",
+  "CC Post Triggers", "lead_intelligence", "community_post", "social_response", "support_reply",
   "travis_video_production", "video_script", "business_outlook_corrections", "sd_report",
 ]);
 
@@ -151,11 +151,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   video_script:"Video Script",
   sd_report:"Client Delivery · SD/ED Reports",
   crm_review:"CRM Review",
+  support_reply:"Support Replies",
 };
 
 const CATEGORY_ORDER = [
   "business_outlook_corrections","daily_briefing","revenue_growth","crm_review","content_brand","marketing",
-  "legal_finance","ai_governance","hr","client_delivery","sd_report","customer_support",
+  "legal_finance","ai_governance","hr","client_delivery","sd_report","customer_support","support_reply",
   "community_connection","community_post","social","proposals_press","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
   "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
 ];
@@ -284,6 +285,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
+  if (approval.category === "support_reply")            return { heading: "Customer's Email", content: approval.original_content || approval.task_brief || null };
   if (approval.category === "travis_video_production")  return { heading: "Script Brief",     content: approval.task_brief || null };
   if (approval.category === "video_script")             return { heading: "Treatment",        content: approval.task_brief || null };
   return { heading: "Contributors", content: approval.task_brief || null };
@@ -300,6 +302,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
   if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
   if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
+  if (approval.category === "support_reply")            return `${approval.agent_name}'s Reply Draft`;
   if (approval.category === "travis_video_production")  return "Caption & Copy";
   if (approval.category === "video_script")             return "Script";
   return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
@@ -307,6 +310,7 @@ function getDraftHeading(approval: Approval): string {
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
   if (approval.category === "email")                   return status === "posted" ? "✓ Sent"                : status === "posting" ? "Sending..."         : "⚠ Send Failed";
+  if (approval.category === "support_reply")           return status === "posted" ? "✓ Reply Sent"          : status === "posting" ? "Sending reply..."   : "⚠ Send Failed";
   if (approval.category === "outreach")                return status === "posted" ? "✓ Sent to Lead"       : status === "posting" ? "Sending..."         : "⚠ Send Failed";
   if (approval.category === "lead_intelligence")       return status === "posted" ? "✓ Routed to GHL"       : status === "posting" ? "Routing..."         : "⚠ Route Failed";
   if (approval.division === "Client Delivery")         return status === "posted" ? "✓ PDF Downloaded"      : status === "posting" ? "Generating PDF..."   : "⚠ PDF Failed";
@@ -430,6 +434,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
     const platform = approval.platform ?? "Social";
     return { text: `${platform} Response`, color: PLATFORM_COLORS[platform] ?? "#0A2342" };
   }
+  if (approval.category === "support_reply")               return { text: "Support Reply",      color: "#2D5A8E" };
   if (approval.category === "travis_video_production")     return { text: "🎬 Travis Video",    color: "#1A5276" };
   if (approval.category === "video_script")                return { text: "📝 Video Script",    color: "#1A5276" };
   if (approval.category === "daily_briefing")              return { text: "Daily Briefing",     color: "#D4AF37" };
@@ -1552,6 +1557,19 @@ export default function AdminApprovals() {
     } catch { return false; }
   };
 
+  // Fires Isaiah's approved reply to a support@ / info@ email. The server reads who receives it and
+  // which address it comes from out of the approval row, so only the card id is sent from here.
+  const fireSupportReply = async (approval: Approval): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/ghl-support-reply-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approval_id: approval.id }),
+      });
+      return res.ok;
+    } catch { return false; }
+  };
+
   // Fires approved social response reply back to Make.com → posts to platform
   const fireSocialReply = async (approval: Approval): Promise<boolean> => {
     try {
@@ -1650,6 +1668,12 @@ export default function AdminApprovals() {
       } catch { setPublishStatus(prev => ({ ...prev, [id]: "failed" })); }
     } else if (approval.division === "Client Delivery" || PDF_CATEGORIES.has(approval.category)) {
       setPublishStatus(prev => ({ ...prev, [id]: "posted" }));
+    } else if (approval.category === "support_reply") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireSupportReply(approval);
+      // A reply that did not send goes back to pending so it can be approved again.
+      if (!ok) await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "social_response") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await fireSocialReply(approval);
@@ -1805,6 +1829,11 @@ export default function AdminApprovals() {
     if (approval.category === "email") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
       const ok = await fireEmailDispatch({ ...approval, edited_output: editText });
+      setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
+    } else if (approval.category === "support_reply") {
+      setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
+      const ok = await fireSupportReply({ ...approval, edited_output: editText });
+      if (!ok) await supabase.from("approvals").update({ status: "pending" }).eq("id", id);
       setPublishStatus(prev => ({ ...prev, [id]: ok ? "posted" : "failed" }));
     } else if (approval.category === "social") {
       setPublishStatus(prev => ({ ...prev, [id]: "posting" }));
@@ -2649,7 +2678,7 @@ export default function AdminApprovals() {
                               onClick={() => handleApprove(approval.id)}
                               disabled={saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)}
                               style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1.25rem", borderRadius:6, cursor:"pointer", border:"none", background:"#D4AF37", color:"#0A2342", letterSpacing:"0.06em", opacity:(saving === approval.id || (isMulti && getSelectedPlatforms(approval.id).length === 0)) ? 0.6 : 1 }}>
-                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : approval.category === "social_response" ? "Send Reply ✓" : crmReportCard ? (crmCheckedJobs.length > 0 ? `Approve Checked ✓ (${crmCheckedJobs.length})` : "Approve (nothing checked)") : "Approve ✓"}
+                              {saving === approval.id ? "..." : isCCReply ? "Approve + Post →" : isCCPost ? "Approve + Post →" : isUpsell ? "Approve + Send →" : isLead ? "Approve + Route →" : isSocial ? "Approve + Publish →" : isTravisVideo ? "Approve + Upload →" : isVideoScript ? "Approve Script ✓" : (approval.category === "social_response" || approval.category === "support_reply") ? "Send Reply ✓" : crmReportCard ? (crmCheckedJobs.length > 0 ? `Approve Checked ✓ (${crmCheckedJobs.length})` : "Approve (nothing checked)") : "Approve ✓"}
                             </button>
                           )}
                           {/* Approve + Schedule — Social Media Post cards only (Darius/Nia/Yara), not Proposals & Press Release */}

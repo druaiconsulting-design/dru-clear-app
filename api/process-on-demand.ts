@@ -554,6 +554,55 @@ Respond with ONLY this JSON — no preamble: {"approved":true,"action":"route_to
   };
 }
 
+// ─── Support Reply card — Isaiah's draft for an email sent to support@ or info@ ──────────
+// The CSQ row's context holds the support_requests id. Everything needed to send the reply later
+// (who wrote, which address they wrote to, the GHL contact and message) is copied from that ticket
+// into the card's context here, on the server, so the send step never takes recipient data from the browser.
+
+async function insertSupportReplyCard(item: Record<string, unknown>, content: string, today: string): Promise<string | null> {
+  const ticketId = String(item.context ?? '');
+  const ticket = ticketId ? await dbGet("support_requests", ticketId) : null;
+  if (!ticket) {
+    console.error(`[on-demand] Support reply card: ticket ${ticketId || '(none)'} not found`);
+    return null;
+  }
+  const question = String(ticket.question ?? '');
+  const subjectMatch = question.match(/^Subject:\s*(.*)\n/);
+  const subject = (subjectMatch?.[1] ?? '').trim() || '(no subject)';
+  const message = subjectMatch ? question.slice(subjectMatch[0].length).trim() : question;
+  const fromEmail = String(ticket.member_email ?? '');
+  const fromName = String(ticket.member_name ?? '');
+  const toAddress = String(ticket.source_address ?? '');
+
+  const approvalId = await dbInsert("approvals", {
+    source:           "support_email",
+    trigger_type:     "support_email_reply",
+    agent_name:       item.agent_name,
+    agent_role:       item.division,
+    division:         item.division,
+    task_brief:       `Support Reply — ${fromName || fromEmail} | ${subject} | ${today}`,
+    original_content: `From: ${fromName ? `${fromName} <${fromEmail}>` : fromEmail}\nWritten to: ${toAddress}\nSubject: ${subject}\n\n${message}`,
+    output:           content,
+    status:           "pending",
+    notify_deanna:    true,
+    priority:         "high",
+    category:         "support_reply",
+    platform:         null,
+    title:            subject,
+    ghl_contact_id:   ticket.ghl_contact_id ?? null,
+    context:          JSON.stringify({
+      support_request_id: ticketId,
+      from_email:         fromEmail,
+      to_address:         toAddress,
+      subject,
+      ghl_contact_id:     ticket.ghl_contact_id ?? null,
+      ghl_message_id:     ticket.ghl_message_id ?? null,
+    }),
+  });
+  if (approvalId) await dbUpdate("support_requests", ticketId, { status: "awaiting_approval" });
+  return approvalId;
+}
+
 // ─── Step 4: Twin synthesis → Intelligence Hub (Sonnet) ──────────────────────
 
 async function runTwinSynthesisOnItem(
@@ -580,6 +629,12 @@ async function runTwinSynthesisOnItem(
     const complianceCutoffs = ['## COMPLIANCE AUDIT', 'COMPLIANCE AUDIT', '## Isabella', 'CORRECTION REQUIRED'];
     for (const cutoff of complianceCutoffs) { const idx = content.indexOf(cutoff); if (idx !== -1) content = content.slice(0, idx).trim(); }
     content = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+
+    // Isaiah's reply to an email sent to support@ or info@ — becomes a "Support Reply" card that
+    // shows the customer's message beside his draft. Approving it sends the reply (api/ghl-support-reply-dispatch.ts).
+    if (item.task === 'support_email_reply') {
+      return await insertSupportReplyCard(item, content, today);
+    }
 
     // Categories with a known social/platform label get tagged as such; everything
     // else gets a generic content_review card. Either way, the content is verbatim.
