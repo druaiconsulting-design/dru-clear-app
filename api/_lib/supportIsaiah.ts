@@ -157,6 +157,18 @@ export async function draftReplyForReview(t: SupportTicket, preface: string): Pr
   return true;
 }
 
+// The only web address an automatic reply may carry.
+const ALLOWED_ADDRESSES_IN_AUTO_REPLY = ["members.druaiconsulting.com"];
+
+// Returns every web or email address in the text that is not on the allowed list (a misspelling counts).
+export function unexpectedAddresses(text: string): string[] {
+  const found = text.match(/[a-z0-9][a-z0-9._-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,24}\b/gi) ?? [];
+  const bad = found
+    .map((a) => a.toLowerCase().replace(/^www\./, ""))
+    .filter((a) => !ALLOWED_ADDRESSES_IN_AUTO_REPLY.includes(a));
+  return Array.from(new Set(bad));
+}
+
 // Password reset emails: Isaiah writes the reply and it goes out right away. The ticket moves to Replied.
 // When the send does not go through, the reply waits in Waiting on you instead. Returns false when the
 // daily spend cap stops it (the caller then follows the usual path).
@@ -164,6 +176,14 @@ export async function autoReplyToPasswordReset(t: SupportTicket, preface: string
   const spend = await checkAndReserveSpend();
   if (!spend.ok) return false;
   const text = await writeFullReply(t, preface);
+  const unexpected = unexpectedAddresses(text);
+  if (unexpected.length > 0) {
+    // A misspelled or unknown web address must not reach a customer on its own: the reply waits for DeAnna.
+    console.warn(`[support] Password reset reply held for ticket ${t.id}: unexpected web address ${unexpected.join(", ")}`);
+    await createReplyCard(t, text, "pending");
+    await setTicketStatus(t.id, "awaiting_approval");
+    return true;
+  }
   const sent = await sendToSender(t, text);
   if (sent.ok) {
     try { await createReplyCard(t, text, "sent"); } catch (err) { console.error(`[support] Auto-reply record failed for ticket ${t.id}:`, err); }
