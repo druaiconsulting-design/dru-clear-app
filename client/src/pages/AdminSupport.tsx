@@ -39,6 +39,10 @@ function correctionNoteOf(card: SupportCard): string {
   try { return String(JSON.parse(card.context ?? "{}").correction_note ?? ""); } catch { return ""; }
 }
 
+function isRestored(card: SupportCard): boolean {
+  try { return Boolean(JSON.parse(card.context ?? "{}").restored_from); } catch { return false; }
+}
+
 function ticketIdOf(card: SupportCard): string {
   try { return String(JSON.parse(card.context ?? "{}").support_request_id ?? ""); } catch { return ""; }
 }
@@ -314,6 +318,9 @@ export default function AdminSupport() {
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
                   {correctionNoteOf(card) && (
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>Isaiah's correction</span>
+                  )}
+                  {isRestored(card) && (
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.1)", color: NAVY }}>Restored: this reply was already sent</span>
                   )}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: BLUE, color: "#FFFFFF" }}>Support Reply</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(card.created_at)}</span>

@@ -39,7 +39,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // Support Tickets closed on the Support Tickets page land here.
 interface ClosedTicket { id: string; created_at: string; member_name: string | null; member_email: string | null; question: string | null; source_address: string | null; }
-interface TicketCard { id: string; status: string; source: string | null; output: string; edited_output: string | null; context: string | null; }
+interface TicketCard {
+  id: string; status: string; source: string | null; output: string; edited_output: string | null; context: string | null;
+  agent_name: string | null; agent_role: string | null; division: string | null; title: string | null;
+  task_brief: string | null; original_content: string | null; ghl_contact_id: string | null;
+}
 
 function ticketIdFromCard(card: TicketCard): string {
   try { return String(JSON.parse(card.context ?? "{}").support_request_id ?? ""); } catch { return ""; }
@@ -118,7 +122,7 @@ export default function AdminArchived() {
   const fetchClosedTickets = async () => {
     const [t, c] = await Promise.all([
       supabase.from("support_requests").select("id,created_at,member_name,member_email,question,source_address").eq("category", "email").eq("status", "closed").order("created_at", { ascending: false }).limit(300),
-      supabase.from("approvals").select("id,status,source,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(600),
+      supabase.from("approvals").select("id,status,source,output,edited_output,context,agent_name,agent_role,division,title,task_brief,original_content,ghl_contact_id").eq("category", "support_reply").order("created_at", { ascending: false }).limit(600),
     ]);
     if (!t.error) setClosedTickets((t.data as ClosedTicket[]) ?? []);
     if (!c.error) setTicketCards((c.data as TicketCard[]) ?? []);
@@ -156,20 +160,44 @@ export default function AdminArchived() {
     setRestoring(null);
   };
 
-  // Restoring a ticket puts it back where it came from: a reply that was sent returns to Replied,
-  // a reply that was still waiting returns to Waiting on you, and a ticket with no reply returns as it was.
+  // Restoring a ticket always puts it back in Waiting on you. A reply that was already sent comes back as a
+  // new draft holding that same reply (marked as restored), so it can be edited and sent as a follow-up.
+  // The sent reply stays on record. A draft that was waiting returns as it was; a ticket with no reply returns empty.
   const restoreTicket = async (ticket: ClosedTicket) => {
     setRestoring(ticket.id);
     const card = ticketCards.find(c => ticketIdFromCard(c) === ticket.id);
     let status = "open";
-    if (card?.status === "approved") status = "replied";
-    else if (card?.status === "closed") {
+    if (card?.status === "approved") {
+      let ctx: Record<string, unknown> = {};
+      try { ctx = JSON.parse(card.context ?? "{}"); } catch { /* keep empty */ }
+      const { error } = await supabase.from("approvals").insert({
+        source: "support_email",
+        trigger_type: "support_email_reply",
+        agent_name: card.agent_name,
+        agent_role: card.agent_role,
+        division: card.division,
+        task_brief: card.task_brief,
+        original_content: card.original_content,
+        output: card.edited_output || card.output,
+        status: "pending",
+        notify_deanna: false,
+        priority: "high",
+        category: "support_reply",
+        platform: null,
+        title: card.title,
+        ghl_contact_id: card.ghl_contact_id,
+        context: JSON.stringify({ ...ctx, correction_note: null, restored_from: card.id }),
+      });
+      if (error) { console.error("Restore could not make the draft:", error); setRestoring(null); return; }
+      status = "awaiting_approval";
+    } else if (card?.status === "closed") {
       await supabase.from("approvals").update({ status: "pending" }).eq("id", card.id);
       status = "awaiting_approval";
     }
     await supabase.from("support_requests").update({ status }).eq("id", ticket.id);
     setClosedTickets(prev => prev.filter(t => t.id !== ticket.id));
     setRestoring(null);
+    window.dispatchEvent(new Event("support-tickets-changed"));
   };
 
   const toggleExpand = (id: string) => {
