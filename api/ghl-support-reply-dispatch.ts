@@ -11,49 +11,17 @@
 // Uses GHL_PRIVATE_INTEGRATIONS_KEY (plural), the same credential as api/ghl-newsletter-dispatch.ts.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { SUPPORT_FROM_ADDRESSES, findContactIdByEmail, sendSupportEmail } from "./_lib/ghlSupportSend.js";
 export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const GHL_API_BASE = "https://services.leadconnectorhq.com";
-const GHL_VERSION = "2021-07-28";
-const GHL_LOCATION_ID = "gl07I4JnbkGgW8zJprSz";
-const ALLOWED_FROM = ["support@support.druaiconsulting.com", "info@info.druaiconsulting.com"];
+const ALLOWED_FROM = SUPPORT_FROM_ADDRESSES;
 
 const sbHeaders = { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
 
 async function sb(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { ...sbHeaders, ...(init?.headers ?? {}) } });
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function toHtml(text: string): string {
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  const body = paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("\n");
-  return `<div style="font-family: Georgia, serif; font-size: 15px; line-height: 1.6; color: #0A2342;">${body}</div>`;
-}
-
-async function findContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ locationId: GHL_LOCATION_ID, email }),
-  });
-  if (!res.ok) { console.error(`[ghl-support-reply-dispatch] Contact lookup failed: ${res.status} ${await res.text()}`); return null; }
-  const data = await res.json();
-  return data?.contact?.id ?? null;
-}
-
-async function sendEmail(payload: Record<string, unknown>, apiKey: string): Promise<{ ok: boolean; status: number; detail: string }> {
-  const res = await fetch(`${GHL_API_BASE}/conversations/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify(payload),
-  });
-  return { ok: res.ok, status: res.status, detail: res.ok ? "" : await res.text() };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -101,19 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const contactId = ctx.ghl_contact_id || await findContactIdByEmail(fromEmail, apiKey);
     if (!contactId) { await giveBack(); res.status(502).json({ error: "No GHL contact found for the sender" }); return; }
 
-    const original = String(ctx.subject ?? "").trim();
-    const subject = /^re:/i.test(original) ? original : `Re: ${original || "your message"}`;
-    const base = { type: "Email", contactId, subject, html: toHtml(replyText), emailFrom: fromAddress };
-
-    // First try replying to the customer's own message so GHL threads it; if GHL does not accept that
-    // reference, send again from the same address without it. A reply never goes out from another address.
-    let result = ctx.ghl_message_id
-      ? await sendEmail({ ...base, replyMessageId: ctx.ghl_message_id }, apiKey)
-      : await sendEmail(base, apiKey);
-    if (!result.ok && ctx.ghl_message_id && result.status >= 400 && result.status < 500) {
-      console.warn(`[ghl-support-reply-dispatch] Threaded send refused (${result.status}): ${result.detail} — retrying without the message reference`);
-      result = await sendEmail(base, apiKey);
-    }
+    const result = await sendSupportEmail({
+      contactId,
+      fromAddress,
+      originalSubject: String(ctx.subject ?? ""),
+      replyText,
+      replyToMessageId: ctx.ghl_message_id,
+    }, apiKey);
 
     if (!result.ok) {
       console.error(`[ghl-support-reply-dispatch] Send failed for approval ${approvalId}: ${result.status} ${result.detail}`);
