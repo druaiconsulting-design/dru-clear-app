@@ -3,7 +3,7 @@
 // GHL's Inbound Email workflow posts the email here. This endpoint:
 //   1. checks the shared secret (x-support-key) so only GHL can post here
 //   2. skips mail from our own addresses, mailer robots and auto-replies
-//   3. saves the email as a ticket in support_requests (a repeated message id is saved once)
+//   3. saves the email as a ticket in support_requests (the same email posted twice is saved once; a follow-up in the same thread is a new ticket)
 //   4. password reset emails: Isaiah Carter replies right away with the real reset steps (no approval)
 //      and the ticket moves to Replied. Every other email gets Isaiah's instant reply (a short thank-you
 //      that says a reply follows within 24 hours), sent from the address they wrote to, in the same conversation.
@@ -13,7 +13,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading } from "./_lib/isaiahEmailReply.js";
 import {
   sb, callIsaiah, loadPreface, isPasswordResetEmail, autoReplyToPasswordReset,
@@ -149,6 +149,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  // GHL reuses one message id for every email in the same thread, so the id alone cannot tell a retry
+  // from a follow-up. The id plus the email's own words can.
+  const dedupeKey = `${messageId}:${createHash("sha256").update(`${subject}\n${body}`).digest("hex").slice(0, 24)}`;
+
   const member = await lookUpMember(fromEmail);
   const tooMany = (await recentTicketCount(fromEmail)) >= MAX_TICKETS_PER_SENDER_PER_HOUR;
 
@@ -166,10 +170,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       source_address: toAddress,
       ghl_contact_id: contactIdFrom(payload) || null,
       ghl_message_id: messageId,
+      dedupe_key: dedupeKey,
     }),
   });
 
   if (insert.status === 409) {
+    console.log(`[support-email-inbound] Skipped repeat of an email already saved (from ${fromEmail}, message ${messageId})`);
     res.status(200).json({ ok: true, duplicate: true });
     return;
   }
