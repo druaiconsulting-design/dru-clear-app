@@ -100,13 +100,13 @@ export default function AdminSupport() {
 
   // Approving marks the card approved, then asks the server to send. A reply that does not send
   // goes back to Waiting on you so it can be sent again.
-  const sendReply = async (card: SupportCard, editedText?: string) => {
+  const sendReply = async (card: SupportCard, editedText?: string): Promise<boolean> => {
     setBusyId(card.id);
     clearError(card.id);
     const update: Record<string, unknown> = { status: "approved" };
     if (editedText !== undefined) update.edited_output = editedText;
     const { error } = await supabase.from("approvals").update(update).eq("id", card.id);
-    if (error) { setError(card.id, "The reply could not be saved. Nothing was sent."); setBusyId(null); return; }
+    if (error) { setError(card.id, "The reply could not be saved. Nothing was sent."); setBusyId(null); return false; }
 
     let ok = false;
     try {
@@ -127,13 +127,25 @@ export default function AdminSupport() {
     }
     setBusyId(null);
     await changed();
+    return ok;
   };
 
+  // An edit is writing to the client. Once it sends, Isaiah's original draft and the reply DeAnna
+  // sent are saved together as one entry in his corrections, so he learns her writing from it.
+  // An edit that changes nothing saves nothing.
   const saveEditAndSend = async (card: SupportCard) => {
-    const why = note.trim();
-    if (!why || !editText.trim()) return;
-    await supabase.from("agent_corrections").insert({ agent_name: card.agent_name, correction_note: why, approval_id: card.id, source: "edit" });
-    await sendReply(card, editText);
+    const finalText = editText.trim();
+    if (!finalText) return;
+    const original = (card.edited_output || card.output || "").trim();
+    const sent = await sendReply(card, editText);
+    if (sent && finalText !== original) {
+      await supabase.from("agent_corrections").insert({
+        agent_name: card.agent_name,
+        correction_note: `${card.agent_name}'s original draft:\n${original}\n\nDeAnna's edited reply:\n${finalText}`,
+        approval_id: card.id,
+        source: "edit",
+      });
+    }
   };
 
   // Corrective feedback: the draft leaves the page, the reason is saved for Isaiah, and Isaiah writes a
@@ -345,8 +357,6 @@ export default function AdminSupport() {
                     <>
                       <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={10}
                         style={{ width: "100%", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, padding: "0.75rem", borderRadius: 8, border: "1px solid rgba(10,35,66,0.25)", color: NAVY, resize: "vertical" }} />
-                      <input value={note} onChange={e => setNote(e.target.value)} placeholder={`What should ${card.agent_name} do differently next time?`}
-                        style={{ width: "100%", marginTop: "0.6rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", padding: "0.6rem 0.75rem", borderRadius: 8, border: "1px solid rgba(10,35,66,0.25)", color: NAVY }} />
                     </>
                   ) : (
                     <div style={bodyText}>{text}</div>
@@ -374,7 +384,7 @@ export default function AdminSupport() {
                 )}
                 {editing && (
                   <>
-                    <button disabled={busy || !note.trim() || !editText.trim()} onClick={() => saveEditAndSend(card)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busy || !note.trim() || !editText.trim() ? 0.5 : 1 }}>{busy ? "Sending..." : "Save + Send Reply ✓"}</button>
+                    <button disabled={busy || !editText.trim()} onClick={() => saveEditAndSend(card)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busy || !editText.trim() ? 0.5 : 1 }}>{busy ? "Sending..." : "Save + Send Reply ✓"}</button>
                     <button disabled={busy} onClick={() => { setEditingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Cancel</button>
                   </>
                 )}
