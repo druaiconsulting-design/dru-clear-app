@@ -35,6 +35,10 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+function correctionNoteOf(card: SupportCard): string {
+  try { return String(JSON.parse(card.context ?? "{}").correction_note ?? ""); } catch { return ""; }
+}
+
 function ticketIdOf(card: SupportCard): string {
   try { return String(JSON.parse(card.context ?? "{}").support_request_id ?? ""); } catch { return ""; }
 }
@@ -128,8 +132,8 @@ export default function AdminSupport() {
     await sendReply(card, editText);
   };
 
-  // Rejecting teaches Isaiah (the reason is saved as a correction) and puts the ticket back as
-  // "no reply drafted" so it stays visible until it is closed.
+  // Corrective feedback: the draft leaves the page, the reason is saved for Isaiah, and Isaiah writes a
+  // corrected draft right away. The new draft shows in Waiting on you marked as his correction.
   const rejectCard = async (card: SupportCard) => {
     const why = note.trim();
     if (!why) return;
@@ -137,7 +141,24 @@ export default function AdminSupport() {
     await supabase.from("agent_corrections").insert({ agent_name: card.agent_name, correction_note: why, approval_id: card.id, source: "reject" });
     await supabase.from("approvals").update({ status: "rejected", archived: true }).eq("id", card.id);
     const tid = ticketIdOf(card);
-    if (tid) await supabase.from("support_requests").update({ status: "open" }).eq("id", tid);
+    if (tid) {
+      await supabase.from("support_requests").update({ status: "open" }).eq("id", tid);
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token ?? "";
+        const res = await fetch("/api/support-draft-reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ ticket_id: tid, correction_note: why }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(tid, `Your feedback is saved. ${String(body?.error ?? "Isaiah could not write the corrected draft yet.")} Press Have Isaiah write it to try again.`);
+        }
+      } catch {
+        setError(tid, "Your feedback is saved. Isaiah could not write the corrected draft yet. Press Have Isaiah write it to try again.");
+      }
+    }
     setRejectingId(null);
     setNote("");
     setBusyId(null);
@@ -291,10 +312,20 @@ export default function AdminSupport() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
                 <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>{card.title || "(no subject)"}</div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                  {correctionNoteOf(card) && (
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>Isaiah's correction</span>
+                  )}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: BLUE, color: "#FFFFFF" }}>Support Reply</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(card.created_at)}</span>
                 </div>
               </div>
+
+              {correctionNoteOf(card) && (
+                <div style={{ background: "rgba(212,175,55,0.14)", borderRadius: 10, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+                  <div style={{ ...panelLabel, color: NAVY, marginBottom: "0.25rem" }}>Your corrective feedback</div>
+                  <div style={bodyText}>{correctionNoteOf(card)}</div>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
                 <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
@@ -317,7 +348,7 @@ export default function AdminSupport() {
               </div>
 
               {rejecting && (
-                <input value={note} onChange={e => setNote(e.target.value)} placeholder={`Why is this reply being rejected? ${card.agent_name} learns from your answer.`}
+                <input value={note} onChange={e => setNote(e.target.value)} placeholder={`What should ${card.agent_name} fix? He rewrites the reply from your answer and learns from it.`}
                   style={{ width: "100%", marginTop: "1rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", padding: "0.6rem 0.75rem", borderRadius: 8, border: "1px solid rgba(194,24,91,0.5)", color: NAVY }} />
               )}
 
@@ -330,7 +361,7 @@ export default function AdminSupport() {
                   <>
                     <button disabled={busy} onClick={() => sendReply(card)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busy ? 0.6 : 1 }}>{busy ? "Sending..." : "Send Reply ✓"}</button>
                     <button disabled={busy} onClick={() => { setEditingId(card.id); setRejectingId(null); setEditText(text); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Edit</button>
-                    <button disabled={busy} onClick={() => { setRejectingId(card.id); setEditingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: PINK, border: `1px solid ${PINK}` }}>Reject</button>
+                    <button disabled={busy} onClick={() => { setRejectingId(card.id); setEditingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: PINK, border: `1px solid ${PINK}` }}>Corrective feedback</button>
                     <button disabled={busy} onClick={() => closeCard(card)} style={{ ...buttonBase, background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>Close ticket</button>
                   </>
                 )}
@@ -342,7 +373,7 @@ export default function AdminSupport() {
                 )}
                 {rejecting && (
                   <>
-                    <button disabled={busy || !note.trim()} onClick={() => rejectCard(card)} style={{ ...buttonBase, background: PINK, color: "#FFFFFF", border: "none", opacity: busy || !note.trim() ? 0.5 : 1 }}>{busy ? "..." : "Confirm Reject"}</button>
+                    <button disabled={busy || !note.trim()} onClick={() => rejectCard(card)} style={{ ...buttonBase, background: PINK, color: "#FFFFFF", border: "none", opacity: busy || !note.trim() ? 0.5 : 1 }}>{busy ? "Isaiah is rewriting..." : "Send corrective feedback"}</button>
                     <button disabled={busy} onClick={() => { setRejectingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Cancel</button>
                   </>
                 )}

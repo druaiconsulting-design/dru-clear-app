@@ -1,6 +1,7 @@
 // api/support-draft-reply.ts
 // "Have Isaiah write it": DeAnna presses this on a Support Tickets ticket that has no reply drafted.
-// Isaiah Carter writes the reply now and it appears in Waiting on you with Send Reply, Edit and Reject.
+// Isaiah Carter writes the reply now and it appears in Waiting on you with Send Reply, Edit and Corrective feedback.
+// After corrective feedback the page calls this too, with the feedback text, and the new draft is marked as his correction.
 // Only DeAnna's admin login can call it. A ticket is claimed once, so a double click writes one reply.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -19,6 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const ticketId = String(req.body?.ticket_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(ticketId)) { res.status(400).json({ ok: false, error: "ticket_id required" }); return; }
 
+  const correctionNote = String(req.body?.correction_note ?? "").trim().slice(0, 500) || undefined;
+
   // Claim the ticket: only one that is still "open" moves on.
   const claim = await sb(`support_requests?id=eq.${ticketId}&category=eq.email&status=eq.open`, {
     method: "PATCH",
@@ -34,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     const ticket = ticketFromRow(rows[0]);
     const preface = await loadPreface();
-    const drafted = await draftReplyForReview(ticket, preface);
+    const drafted = await draftReplyForReview(ticket, preface, correctionNote);
     if (!drafted) {
       await setTicketStatus(ticketId, "open");
       res.status(429).json({ ok: false, error: "Today's spend limit is reached. Try again tomorrow." });

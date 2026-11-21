@@ -109,7 +109,7 @@ export async function sendToSender(t: SupportTicket, text: string): Promise<{ ok
 
 // Writes a "Support Reply" card for the ticket. "pending" waits on DeAnna; "sent" records a reply
 // that already went out (Isaiah's automatic password reset reply).
-export async function createReplyCard(t: SupportTicket, text: string, kind: "pending" | "sent"): Promise<void> {
+export async function createReplyCard(t: SupportTicket, text: string, kind: "pending" | "sent", correctionNote?: string): Promise<void> {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
   const sender = t.fromName ? `${t.fromName} <${t.fromEmail}>` : t.fromEmail;
   const res = await sb("approvals", {
@@ -137,6 +137,7 @@ export async function createReplyCard(t: SupportTicket, text: string, kind: "pen
         subject: t.subject,
         ghl_contact_id: t.ghlContactId || null,
         ghl_message_id: t.ghlMessageId || null,
+        correction_note: correctionNote || null,
       }),
     }),
   });
@@ -148,11 +149,12 @@ export async function setTicketStatus(ticketId: string, status: string): Promise
 }
 
 // Isaiah writes the full reply and it waits in Waiting on you. Returns false when the daily spend cap stops it.
-export async function draftReplyForReview(t: SupportTicket, preface: string): Promise<boolean> {
+// A correctionNote (DeAnna's corrective feedback on his earlier draft) marks the new draft as his correction.
+export async function draftReplyForReview(t: SupportTicket, preface: string, correctionNote?: string): Promise<boolean> {
   const spend = await checkAndReserveSpend();
   if (!spend.ok) return false;
   const draft = await writeFullReply(t, preface);
-  await createReplyCard(t, draft, "pending");
+  await createReplyCard(t, draft, "pending", correctionNote);
   await setTicketStatus(t.id, "awaiting_approval");
   return true;
 }
