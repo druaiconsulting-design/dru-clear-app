@@ -24,6 +24,7 @@ import AdminOrg from "./pages/AdminOrg";
 import AdminVideoHub from "./pages/AdminVideoHub";
 import AdminMicroDramaStudio from "./pages/AdminMicroDramaStudio";
 import AdminApprovals from "./pages/AdminApprovals";
+import AdminSupport from "./pages/AdminSupport";
 import AdminReport from "./pages/AdminReport";
 import SdReportPrint from "./pages/SdReportPrint";
 import EdReportPrint from "./pages/EdReportPrint";
@@ -270,6 +271,11 @@ function Router() {
     setTitle("Intelligence Hub · DRU CLEAR™");
     if (!isLoggedIn || !isAdmin) return <AdminLogin />;
     return <AdminApprovals />;
+  }
+  if (path === "/admin-support" || path === "/admin-support/") {
+    setTitle("Support Tickets · DRU CLEAR™");
+    if (!isLoggedIn || !isAdmin) return <AdminLogin />;
+    return <AdminSupport />;
   }
   if (path === "/admin-report" || path === "/admin-report/") {
     setTitle("Client Report · DRU CLEAR™");

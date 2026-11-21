@@ -1,3 +1,5 @@
+import { useSupportCount } from '../lib/useSupportCount'
+
 interface AdminSidebarProps {
   collapsed: boolean
   currentPath: string
@@ -10,6 +12,7 @@ interface NavItem {
   label: string
   path: string
   external?: boolean
+  badge?: 'support'
 }
 
 interface Section {
@@ -25,6 +28,7 @@ const SECTIONS: Section[] = [
       { icon: '🏛️', label: 'Dashboard',        path: '/admin-approvals' },
       { icon: '👥', label: 'Members',          path: '/admin-member-intelligence' },
       { icon: '📝', label: 'Diagnostics',      path: '/admin-diagnostics' },
+      { icon: '🎫', label: 'Support Tickets',  path: '/admin-support', badge: 'support' },
     ],
   },
   {
@@ -83,6 +87,7 @@ function isActive(itemPath: string, currentPath: string): boolean {
 }
 
 export default function AdminSidebar({ collapsed, currentPath, mobileOpen = false, onMobileClose }: AdminSidebarProps) {
+  const supportCount = useSupportCount()
   const SIDEBAR_W   = 264
   const COLLAPSED_W = 64
 
@@ -140,9 +145,24 @@ export default function AdminSidebar({ collapsed, currentPath, mobileOpen = fals
           overflow: 'hidden',
           whiteSpace: 'nowrap',
           marginTop: 2,
+          position: 'relative',
         }}>
         <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
         {showText && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
+        {item.badge === 'support' && supportCount > 0 && (
+          <span
+            aria-label={`${supportCount} support tickets waiting`}
+            style={{
+              background: '#E53935', color: '#FFFFFF',
+              fontFamily: 'Montserrat, sans-serif', fontSize: 10, fontWeight: 700,
+              minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, lineHeight: 1,
+              ...(showText ? {} : { position: 'absolute', top: 2, right: 6 }),
+            }}>
+            {supportCount > 99 ? '99+' : supportCount}
+          </span>
+        )}
       </button>
     )
   }

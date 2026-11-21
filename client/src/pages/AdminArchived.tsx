@@ -86,6 +86,7 @@ export default function AdminArchived() {
       .from("approvals")
       .select("*")
       .eq("archived", true)
+      .or("category.is.null,category.neq.support_reply")
       .or("status.in.(ready_to_use,read,rejected,needs_your_input),category.eq.sd_report")
       .order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch archived:", error);

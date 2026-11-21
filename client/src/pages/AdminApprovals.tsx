@@ -812,7 +812,7 @@ export default function AdminApprovals() {
   };
 
   const fetchApprovals = async () => {
-    const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("approvals").select("*").eq("archived", false).or("category.is.null,category.neq.support_reply").order("created_at", { ascending: false });
     if (error) console.error("Failed to fetch approvals:", error);
     else setApprovals((data as Approval[]) || []);
     setLoading(false);
