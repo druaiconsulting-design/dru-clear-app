@@ -4,32 +4,29 @@
 //   1. checks the shared secret (x-support-key) so only GHL can post here
 //   2. skips mail from our own addresses, mailer robots and auto-replies
 //   3. saves the email as a ticket in support_requests (a repeated message id is saved once)
-//   4. sends the sender Isaiah Carter's instant reply (a short thank-you that says a reply follows within
-//      24 hours) from the address they wrote to, in the same conversation
-//   5. has Isaiah Carter draft the full reply and puts it in the Approvals page as a "Support Reply"
-//      card. These emails come to DeAnna directly, so the other agents' review steps are skipped.
-//      Nothing more is sent to the customer until DeAnna approves the card.
+//   4. password reset emails: Isaiah Carter replies right away with the real reset steps (no approval)
+//      and the ticket moves to Replied. Every other email gets Isaiah's instant reply (a short thank-you
+//      that says a reply follows within 24 hours), sent from the address they wrote to, in the same conversation.
+//   5. every other email: Isaiah drafts the full reply and it waits on the Support Tickets page for DeAnna.
+//      Nothing more is sent to the customer until she approves it.
 // If the daily spend cap is reached, the ticket stays "open" and Isaiah's daily support report lists it.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 import { timingSafeEqual } from "node:crypto";
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from "./_lib/agentKnowledge.js";
-import { ISAIAH_EMAIL_REPLY_CODE, EMAIL_REPLY_MAX_TOKENS, buildEmailReplyReading, ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading } from "./_lib/isaiahEmailReply.js";
-import { findContactIdByEmail, sendSupportEmail } from "./_lib/ghlSupportSend.js";
-import { checkAndReserveSpend } from "./_lib/onDemandGuards.js";
+import { ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading } from "./_lib/isaiahEmailReply.js";
+import {
+  sb, callIsaiah, loadPreface, isPasswordResetEmail, autoReplyToPasswordReset,
+  draftReplyForReview, sendToSender, type SupportTicket,
+} from "./_lib/supportIsaiah.js";
 
 export const config = { maxDuration: 300 };
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 const ALLOWED_ADDRESSES = ["support@support.druaiconsulting.com", "info@info.druaiconsulting.com"];
 const OWN_DOMAINS = ["support.druaiconsulting.com", "info.druaiconsulting.com", "noreply.druaiconsulting.com"];
 const MAX_TICKETS_PER_SENDER_PER_HOUR = 3;
 const MAX_BODY_CHARS = 8000;
-
-const sbHeaders = { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
 
 function keyMatches(given: string, expected: string): boolean {
   if (!given || !expected) return false;
@@ -59,32 +56,6 @@ function looksAutomated(fromEmail: string, subject: string): boolean {
   return /^(auto:|automatic reply|auto-reply|autoreply|out of office|undeliverable|delivery status notification|mail delivery failed|returned mail)/.test(subj);
 }
 
-async function sb(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { ...sbHeaders, ...(init?.headers ?? {}) } });
-}
-
-async function logUsage(model: string, inputTokens: number, outputTokens: number, durationMs: number): Promise<void> {
-  const rate = model.startsWith("claude-sonnet-5") ? { in: 2, out: 10 } : model.startsWith("claude-sonnet") ? { in: 3, out: 15 } : { in: 1, out: 5 };
-  const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
-  await sb("model_usage_log", { method: "POST", body: JSON.stringify({ source_file: "support-email-inbound", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) }).catch(() => {});
-}
-
-async function callIsaiah(prompt: string, maxTokens: number): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const model = "claude-haiku-4-5-20251001";
-  const startedAt = Date.now();
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json();
-  await logUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt);
-  return String(data.content?.[0]?.text ?? "").trim();
-}
-
 async function lookUpMember(email: string): Promise<{ id: string | null; name: string | null; tier: string | null }> {
   try {
     const res = await sb(`profiles?email=eq.${encodeURIComponent(email.toLowerCase())}&select=id,first_name,last_name,tier&limit=1`);
@@ -106,107 +77,47 @@ async function recentTicketCount(email: string): Promise<number> {
   return Array.isArray(rows) ? rows.length : 0;
 }
 
-interface Ticket {
-  id: string;
-  ghlContactId: string;
-  ghlMessageId: string;
-  fromName: string | null;
-  fromEmail: string;
-  toAddress: string;
-  subject: string;
-  body: string;
-  memberName: string | null;
-  memberTier: string | null;
-}
-
 // Isaiah's instant reply: a short thank-you sent right away so the person knows their email arrived.
 // A failure here is logged and never stops the full reply from being drafted.
-async function sendInstantReply(t: Ticket, preface: string): Promise<void> {
+async function sendInstantReply(t: SupportTicket, preface: string): Promise<void> {
   try {
-    const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
-    if (!apiKey) throw new Error("GHL_PRIVATE_INTEGRATIONS_KEY not set");
     const text = await callIsaiah(`${preface}\n\n${ISAIAH_INSTANT_REPLY_CODE}\n\n${buildInstantReplyReading({ fromName: t.fromName, subject: t.subject, body: t.body })}`, INSTANT_REPLY_MAX_TOKENS);
     if (!text) throw new Error("Isaiah returned an empty instant reply");
-    const contactId = t.ghlContactId || await findContactIdByEmail(t.fromEmail, apiKey);
-    if (!contactId) throw new Error("No GHL contact found for the sender");
-    const result = await sendSupportEmail({ contactId, fromAddress: t.toAddress, originalSubject: t.subject, replyText: text, replyToMessageId: t.ghlMessageId }, apiKey);
-    if (!result.ok) throw new Error(`GHL send failed: ${result.status} ${result.detail}`);
+    const sent = await sendToSender(t, text);
+    if (!sent.ok) throw new Error(sent.detail);
     console.log(`[support-email-inbound] Instant reply sent from ${t.toAddress} for ticket ${t.id}`);
   } catch (err) {
     console.error(`[support-email-inbound] Instant reply failed for ticket ${t.id}:`, err);
   }
 }
 
-// Isaiah drafts the full reply and it goes straight into the Approvals page as a "Support Reply" card.
-// These emails come to DeAnna directly, so the review steps other agents go through are skipped.
-// If the daily spend cap is reached, the ticket stays "open" and Isaiah's daily support report lists it.
-async function draftAndSendToReview(t: Ticket, preface: string): Promise<void> {
-  const spend = await checkAndReserveSpend();
-  if (!spend.ok) {
-    console.warn(`[support-email-inbound] Daily spend cap reached — ticket ${t.id} stays open for the daily report`);
-    return;
-  }
-
-  try {
-    const prompt = `${preface}\n\n${ISAIAH_EMAIL_REPLY_CODE}\n\n${buildEmailReplyReading({
-      fromName: t.fromName, fromEmail: t.fromEmail, toAddress: t.toAddress, subject: t.subject, body: t.body,
-      memberName: t.memberName, memberTier: t.memberTier,
-    })}`;
-    const draft = (await callIsaiah(prompt, EMAIL_REPLY_MAX_TOKENS)).replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
-    if (!draft) throw new Error("Isaiah returned an empty draft");
-
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
-    const sender = t.fromName ? `${t.fromName} <${t.fromEmail}>` : t.fromEmail;
-    const cardRes = await sb("approvals", {
-      method: "POST",
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        source: "support_email",
-        trigger_type: "support_email_reply",
-        agent_name: "Isaiah Carter",
-        agent_role: "Customer Support",
-        division: "Customer Support",
-        task_brief: `Support Reply — ${t.fromName || t.fromEmail} | ${t.subject} | ${today}`,
-        original_content: `From: ${sender}\nWritten to: ${t.toAddress}\nSubject: ${t.subject}\n\n${t.body}`,
-        output: draft,
-        status: "pending",
-        notify_deanna: true,
-        priority: "high",
-        category: "support_reply",
-        platform: null,
-        title: t.subject,
-        ghl_contact_id: t.ghlContactId || null,
-        context: JSON.stringify({
-          support_request_id: t.id,
-          from_email: t.fromEmail,
-          to_address: t.toAddress,
-          subject: t.subject,
-          ghl_contact_id: t.ghlContactId || null,
-          ghl_message_id: t.ghlMessageId || null,
-        }),
-      }),
-    });
-    if (!cardRes.ok) throw new Error(`Approvals write failed: ${cardRes.status} ${await cardRes.text()}`);
-
-    await sb(`support_requests?id=eq.${t.id}`, { method: "PATCH", body: JSON.stringify({ status: "awaiting_approval" }) });
-    console.log(`[support-email-inbound] Support Reply card created for ticket ${t.id}`);
-  } catch (err) {
-    console.error(`[support-email-inbound] draft failed for ticket ${t.id}:`, err);
-  }
-}
-
-// Runs after the webhook has been answered: the instant reply first, then the full draft.
-async function handleTicket(t: Ticket): Promise<void> {
+// Runs after the webhook has been answered.
+async function handleTicket(t: SupportTicket): Promise<void> {
   let preface = "";
   try {
-    const [knowledge, corrections] = await Promise.all([getAgentKnowledge(), getAgentCorrections("Isaiah Carter")]);
-    preface = `${GENIUS_MODE}\n\n${knowledge}\n\n${VOICE_DNA}${corrections}`;
+    preface = await loadPreface();
   } catch (err) {
     console.error(`[support-email-inbound] Could not load Isaiah's knowledge for ticket ${t.id}:`, err);
     return;
   }
+
+  // Password reset emails get Isaiah's reply right away, in place of the instant reply.
+  try {
+    if (await isPasswordResetEmail(t)) {
+      if (await autoReplyToPasswordReset(t, preface)) return;
+    }
+  } catch (err) {
+    console.error(`[support-email-inbound] Password reset reply failed for ticket ${t.id}:`, err);
+  }
+
   await sendInstantReply(t, preface);
-  await draftAndSendToReview(t, preface);
+  try {
+    if (!(await draftReplyForReview(t, preface))) {
+      console.warn(`[support-email-inbound] Daily spend cap reached — ticket ${t.id} stays open for the daily report`);
+    }
+  } catch (err) {
+    console.error(`[support-email-inbound] draft failed for ticket ${t.id}:`, err);
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {

@@ -7,7 +7,7 @@ import { SUPPORT_COUNT_REFRESH_MS } from "../lib/useSupportCount";
 // waits here for DeAnna. Approving sends it through GHL into the same conversation (api/ghl-support-reply-dispatch.ts).
 
 interface SupportCard {
-  id: string; created_at: string; status: string; agent_name: string;
+  id: string; created_at: string; status: string; agent_name: string; source: string | null;
   title: string | null; original_content: string | null;
   output: string; edited_output: string | null; context: string | null;
 }
@@ -16,6 +16,7 @@ interface Ticket {
   id: string; created_at: string; status: string;
   member_name: string | null; member_email: string | null;
   question: string | null; source_address: string | null;
+  ghl_contact_id: string | null; ghl_message_id: string | null;
 }
 
 const NAVY = "#0A2342";
@@ -60,11 +61,13 @@ export default function AdminSupport() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [openReplied, setOpenReplied] = useState<Set<string>>(new Set());
+  const [ownReplyId, setOwnReplyId] = useState<string | null>(null);
+  const [ownText, setOwnText] = useState("");
 
   const load = useCallback(async () => {
     const [c, t] = await Promise.all([
-      supabase.from("approvals").select("id,created_at,status,agent_name,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
-      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address").eq("category", "email").order("created_at", { ascending: false }).limit(300),
+      supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
+      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id").eq("category", "email").order("created_at", { ascending: false }).limit(300),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
     else setCards((c.data as SupportCard[]) ?? []);
@@ -144,6 +147,97 @@ export default function AdminSupport() {
   const closeTicket = async (ticket: Ticket) => {
     setBusyId(ticket.id);
     await supabase.from("support_requests").update({ status: "closed" }).eq("id", ticket.id);
+    setBusyId(null);
+    await changed();
+  };
+
+  // Closing a ticket sends it to the Archived page (Support Tickets section). A Support Reply card
+  // that was still waiting is marked closed so it leaves Waiting on you.
+  const closeCard = async (card: SupportCard) => {
+    setBusyId(card.id);
+    await supabase.from("approvals").update({ status: "closed" }).eq("id", card.id);
+    const tid = ticketIdOf(card);
+    if (tid) await supabase.from("support_requests").update({ status: "closed" }).eq("id", tid);
+    setBusyId(null);
+    await changed();
+  };
+
+  // "Have Isaiah write it": the server has Isaiah write the reply, then it shows up in Waiting on you.
+  const haveIsaiahWrite = async (ticket: Ticket) => {
+    setBusyId(ticket.id);
+    clearError(ticket.id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      const res = await fetch("/api/support-draft-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ticket_id: ticket.id }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(ticket.id, String(body?.error ?? "Isaiah could not write the reply. Try again."));
+      }
+    } catch {
+      setError(ticket.id, "Isaiah could not write the reply. Try again.");
+    }
+    setBusyId(null);
+    await changed();
+  };
+
+  // "Write my own reply": DeAnna's words are saved as an approved Support Reply card and sent through
+  // the same send step as Isaiah's replies, from the address the person wrote to.
+  const sendOwnReply = async (ticket: Ticket) => {
+    const text = ownText.trim();
+    if (!text) return;
+    setBusyId(ticket.id);
+    clearError(ticket.id);
+    const { subject, message } = splitQuestion(ticket.question);
+    const sender = ticket.member_name ? `${ticket.member_name} <${ticket.member_email}>` : (ticket.member_email ?? "");
+    const { data: row, error } = await supabase.from("approvals").insert({
+      source: "support_email_manual",
+      trigger_type: "support_email_manual_reply",
+      agent_name: "DeAnna R. Upshaw",
+      agent_role: "CEO",
+      division: "Customer Support",
+      task_brief: `Support Reply — ${ticket.member_name || ticket.member_email} | ${subject}`,
+      original_content: `From: ${sender}\nWritten to: ${ticket.source_address ?? ""}\nSubject: ${subject}\n\n${message}`,
+      output: text,
+      status: "approved",
+      notify_deanna: false,
+      priority: "high",
+      category: "support_reply",
+      title: subject,
+      ghl_contact_id: ticket.ghl_contact_id,
+      context: JSON.stringify({
+        support_request_id: ticket.id,
+        from_email: ticket.member_email,
+        to_address: ticket.source_address,
+        subject,
+        ghl_contact_id: ticket.ghl_contact_id,
+        ghl_message_id: ticket.ghl_message_id,
+      }),
+    }).select("id").single();
+    if (error || !row) { setError(ticket.id, "Your reply could not be saved. Nothing was sent."); setBusyId(null); return; }
+
+    let ok = false;
+    try {
+      const res = await fetch("/api/ghl-support-reply-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approval_id: row.id }),
+      });
+      ok = res.ok;
+    } catch { ok = false; }
+
+    if (!ok) {
+      await supabase.from("approvals").update({ status: "rejected", archived: true }).eq("id", row.id);
+      await supabase.from("support_requests").update({ status: "open" }).eq("id", ticket.id);
+      setError(ticket.id, "Your reply did not send. The ticket is still in Waiting on you.");
+    } else {
+      setOwnReplyId(null);
+      setOwnText("");
+    }
     setBusyId(null);
     await changed();
   };
@@ -237,6 +331,7 @@ export default function AdminSupport() {
                     <button disabled={busy} onClick={() => sendReply(card)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busy ? 0.6 : 1 }}>{busy ? "Sending..." : "Send Reply ✓"}</button>
                     <button disabled={busy} onClick={() => { setEditingId(card.id); setRejectingId(null); setEditText(text); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Edit</button>
                     <button disabled={busy} onClick={() => { setRejectingId(card.id); setEditingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: PINK, border: `1px solid ${PINK}` }}>Reject</button>
+                    <button disabled={busy} onClick={() => closeCard(card)} style={{ ...buttonBase, background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>Close ticket</button>
                   </>
                 )}
                 {editing && (
@@ -273,10 +368,28 @@ export default function AdminSupport() {
                 <div style={bodyText}>{`From: ${sender}\nWritten to: ${ticket.source_address ?? ""}\nSubject: ${subject}\n\n${message}`}</div>
               </div>
               <div style={{ marginTop: "0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>
-                Isaiah has no reply drafted for this email. Close the ticket once you have handled it.
+                Isaiah has no reply drafted for this email.
               </div>
-              <div style={{ marginTop: "1rem" }}>
-                <button disabled={busyId === ticket.id} onClick={() => closeTicket(ticket)} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)", opacity: busyId === ticket.id ? 0.6 : 1 }}>{busyId === ticket.id ? "..." : "Close ticket"}</button>
+              {ownReplyId === ticket.id && (
+                <textarea value={ownText} onChange={e => setOwnText(e.target.value)} rows={8} placeholder="Type your reply. It goes to the person from the address they wrote to."
+                  style={{ width: "100%", marginTop: "1rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, padding: "0.75rem", borderRadius: 8, border: "1px solid rgba(10,35,66,0.25)", color: NAVY, resize: "vertical" }} />
+              )}
+              {errorById[ticket.id] && (
+                <div style={{ marginTop: "0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: PINK }}>⚠ {errorById[ticket.id]}</div>
+              )}
+              <div style={{ display: "flex", gap: "0.6rem", marginTop: "1rem", flexWrap: "wrap" }}>
+                {ownReplyId !== ticket.id ? (
+                  <>
+                    <button disabled={busyId === ticket.id} onClick={() => haveIsaiahWrite(ticket)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busyId === ticket.id ? 0.6 : 1 }}>{busyId === ticket.id ? "Isaiah is writing..." : "Have Isaiah write it"}</button>
+                    <button disabled={busyId === ticket.id} onClick={() => { setOwnReplyId(ticket.id); setOwnText(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Write my own reply</button>
+                  </>
+                ) : (
+                  <>
+                    <button disabled={busyId === ticket.id || !ownText.trim()} onClick={() => sendOwnReply(ticket)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busyId === ticket.id || !ownText.trim() ? 0.5 : 1 }}>{busyId === ticket.id ? "Sending..." : "Send Reply ✓"}</button>
+                    <button disabled={busyId === ticket.id} onClick={() => { setOwnReplyId(null); setOwnText(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Cancel</button>
+                  </>
+                )}
+                <button disabled={busyId === ticket.id} onClick={() => closeTicket(ticket)} style={{ ...buttonBase, background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>Close ticket</button>
               </div>
             </div>
           );
@@ -300,8 +413,9 @@ export default function AdminSupport() {
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.5)" }}>{sender}</div>
                 </div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ticket.status === "replied" ? "#2E7D32" : GOLD, color: ticket.status === "replied" ? "#FFFFFF" : NAVY }}>{ticket.status === "replied" ? "✓ Reply Sent" : "Sending reply..."}</span>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ticket.status === "replied" ? "#2E7D32" : GOLD, color: ticket.status === "replied" ? "#FFFFFF" : NAVY }}>{ticket.status === "replied" ? (card?.source === "support_email_auto" ? "✓ Auto-reply sent" : "✓ Reply Sent") : "Sending reply..."}</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(ticket.created_at)}</span>
+                  <button disabled={busyId === ticket.id} onClick={(e) => { e.stopPropagation(); closeTicket(ticket); }} style={{ ...buttonBase, fontSize: "0.62rem", padding: "0.4rem 0.9rem", background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>{busyId === ticket.id ? "..." : "Close ticket"}</button>
                 </div>
               </div>
               {open && (

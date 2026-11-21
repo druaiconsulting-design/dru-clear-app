@@ -37,6 +37,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   grants:"Grants", other:"Other",
 };
 
+// Support Tickets closed on the Support Tickets page land here.
+interface ClosedTicket { id: string; created_at: string; member_name: string | null; member_email: string | null; question: string | null; source_address: string | null; }
+interface TicketCard { id: string; status: string; source: string | null; output: string; edited_output: string | null; context: string | null; }
+
+function ticketIdFromCard(card: TicketCard): string {
+  try { return String(JSON.parse(card.context ?? "{}").support_request_id ?? ""); } catch { return ""; }
+}
+
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -79,6 +87,10 @@ export default function AdminArchived() {
   const [grantsOpen, setGrantsOpen]       = useState(false);
   const [readyToUseOpen, setReadyToUseOpen] = useState(false);
   const [reportsOpen, setReportsOpen]     = useState(false);
+  const [ticketsOpen, setTicketsOpen]     = useState(false);
+  const [closedTickets, setClosedTickets] = useState<ClosedTicket[]>([]);
+  const [ticketCards, setTicketCards]     = useState<TicketCard[]>([]);
+  const [openTicketIds, setOpenTicketIds] = useState<Set<string>>(new Set());
   const [agentPhotoByName, setAgentPhotoByName] = useState<Record<string, string>>({});
 
   const fetchArchived = async () => {
@@ -103,7 +115,16 @@ export default function AdminArchived() {
     setAgentPhotoByName(byName);
   };
 
-  useEffect(() => { fetchArchived(); fetchAgentPhotos(); }, []);
+  const fetchClosedTickets = async () => {
+    const [t, c] = await Promise.all([
+      supabase.from("support_requests").select("id,created_at,member_name,member_email,question,source_address").eq("category", "email").eq("status", "closed").order("created_at", { ascending: false }).limit(300),
+      supabase.from("approvals").select("id,status,source,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(600),
+    ]);
+    if (!t.error) setClosedTickets((t.data as ClosedTicket[]) ?? []);
+    if (!c.error) setTicketCards((c.data as TicketCard[]) ?? []);
+  };
+
+  useEffect(() => { fetchArchived(); fetchAgentPhotos(); fetchClosedTickets(); }, []);
 
   // Grant Application Drafts get their own bucket by category, not status --
   // Sept 1, 2026 fix. A grant card can carry a status this page never knew
@@ -132,6 +153,22 @@ export default function AdminArchived() {
     const status = category === "grant_applications" ? "needs_your_input" : "pending";
     await supabase.from("approvals").update({ archived: false, status }).eq("id", id);
     setApprovals(prev => prev.filter(a => a.id !== id));
+    setRestoring(null);
+  };
+
+  // Restoring a ticket puts it back where it came from: a reply that was sent returns to Replied,
+  // a reply that was still waiting returns to Waiting on you, and a ticket with no reply returns as it was.
+  const restoreTicket = async (ticket: ClosedTicket) => {
+    setRestoring(ticket.id);
+    const card = ticketCards.find(c => ticketIdFromCard(c) === ticket.id);
+    let status = "open";
+    if (card?.status === "approved") status = "replied";
+    else if (card?.status === "closed") {
+      await supabase.from("approvals").update({ status: "pending" }).eq("id", card.id);
+      status = "awaiting_approval";
+    }
+    await supabase.from("support_requests").update({ status }).eq("id", ticket.id);
+    setClosedTickets(prev => prev.filter(t => t.id !== ticket.id));
     setRestoring(null);
   };
 
@@ -315,6 +352,61 @@ export default function AdminArchived() {
             {grantsOpen && (
               <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
                 {grantItems.map(approval => renderCard(approval))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Support Tickets — tickets closed on the Support Tickets page. */}
+        {!loading && closedTickets.length > 0 && (
+          <div style={{ marginBottom:"1.25rem" }}>
+            <button
+              onClick={() => setTicketsOpen(prev => !prev)}
+              style={{ width:"100%", background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.25)", borderRadius:10, padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:"#8A6E1A" }}>
+                Support Tickets ({closedTickets.length})
+              </span>
+              <span style={{ color:"rgba(212,175,55,0.6)", fontSize:"0.75rem" }}>{ticketsOpen ? "▲" : "▼"}</span>
+            </button>
+            {ticketsOpen && (
+              <div style={{ display:"flex", flexDirection:"column" as const, gap:"0.75rem", marginTop:"0.75rem" }}>
+                {closedTickets.map(ticket => {
+                  const q = ticket.question ?? "";
+                  const m = q.match(/^Subject:\s*(.*)\n/);
+                  const subject = (m?.[1] ?? "").trim() || "(no subject)";
+                  const message = m ? q.slice(m[0].length).trim() : q.trim();
+                  const sender = ticket.member_name ? `${ticket.member_name} <${ticket.member_email}>` : (ticket.member_email ?? "");
+                  const card = ticketCards.find(c => ticketIdFromCard(c) === ticket.id);
+                  const reply = card && card.status === "approved" ? (card.edited_output || card.output) : null;
+                  const open = openTicketIds.has(ticket.id);
+                  return (
+                    <div key={ticket.id} style={{ background:"#FFFFFF", border:"1px solid rgba(10,35,66,0.12)", borderLeft:"4px solid rgba(10,35,66,0.25)", borderRadius:10, padding:"0.9rem 1.1rem" }}>
+                      <div onClick={() => setOpenTicketIds(prev => { const next = new Set(prev); if (next.has(ticket.id)) next.delete(ticket.id); else next.add(ticket.id); return next; })}
+                        style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" as const, cursor:"pointer" }}>
+                        <div>
+                          <div style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.85rem", fontWeight:700, color:"#0A2342" }}>{subject}</div>
+                          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.5)" }}>{sender} · {timeAgo(ticket.created_at)}</div>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); restoreTicket(ticket); }} disabled={restoring === ticket.id}
+                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em", opacity:restoring === ticket.id ? 0.5 : 1 }}>
+                          {restoring === ticket.id ? "Restoring..." : "Restore"}
+                        </button>
+                      </div>
+                      {open && (
+                        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:"0.9rem", marginTop:"0.9rem" }}>
+                          <div style={{ background:"rgba(10,35,66,0.04)", borderRadius:8, padding:"0.9rem" }}>
+                            <div style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, color:"rgba(10,35,66,0.5)", marginBottom:"0.4rem" }}>Customer's Email</div>
+                            <div style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.78rem", lineHeight:1.6, color:"rgba(10,35,66,0.8)", whiteSpace:"pre-wrap" as const }}>{message}</div>
+                          </div>
+                          <div style={{ background:"rgba(45,90,142,0.06)", borderRadius:8, padding:"0.9rem" }}>
+                            <div style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, color:"#2D5A8E", marginBottom:"0.4rem" }}>{reply ? "Reply Sent" : "Reply"}</div>
+                            <div style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.78rem", lineHeight:1.6, color:"rgba(10,35,66,0.8)", whiteSpace:"pre-wrap" as const }}>{reply ?? "No reply was sent for this ticket."}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
