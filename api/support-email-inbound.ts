@@ -6,11 +6,10 @@
 //   3. saves the email as a ticket in support_requests (a repeated message id is saved once)
 //   4. sends the sender Isaiah Carter's instant reply (a short thank-you that says a reply follows within
 //      24 hours) from the address they wrote to, in the same conversation
-//   5. has Isaiah Carter draft the full reply, then sends it through the same review chain as every
-//      other on-demand agent (Isabella → Governance → Pipeline Review → a "Support Reply" card
-//      in the Approvals page). Nothing is sent to the customer until DeAnna approves the card.
-// If the review chain cannot start (daily spend cap reached, or another chain is still running),
-// the ticket stays "open" and Isaiah's daily support report lists it.
+//   5. has Isaiah Carter draft the full reply and puts it in the Approvals page as a "Support Reply"
+//      card. These emails come to DeAnna directly, so the other agents' review steps are skipped.
+//      Nothing more is sent to the customer until DeAnna approves the card.
+// If the daily spend cap is reached, the ticket stays "open" and Isaiah's daily support report lists it.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
@@ -18,13 +17,12 @@ import { timingSafeEqual } from "node:crypto";
 import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from "./_lib/agentKnowledge.js";
 import { ISAIAH_EMAIL_REPLY_CODE, EMAIL_REPLY_MAX_TOKENS, buildEmailReplyReading, ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading } from "./_lib/isaiahEmailReply.js";
 import { findContactIdByEmail, sendSupportEmail } from "./_lib/ghlSupportSend.js";
-import { acquireLockWithRetries, releaseLock, checkAndReserveSpend } from "./_lib/onDemandGuards.js";
+import { checkAndReserveSpend } from "./_lib/onDemandGuards.js";
 
 export const config = { maxDuration: 300 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const BASE_URL = "https://app.druaiconsulting.com";
 
 const ALLOWED_ADDRESSES = ["support@support.druaiconsulting.com", "info@info.druaiconsulting.com"];
 const OWN_DOMAINS = ["support.druaiconsulting.com", "info.druaiconsulting.com", "noreply.druaiconsulting.com"];
@@ -139,61 +137,61 @@ async function sendInstantReply(t: Ticket, preface: string): Promise<void> {
   }
 }
 
-// Isaiah drafts the reply, then the review chain takes over. Returns quietly on any gate
-// that stops the draft; the ticket stays "open" for Isaiah's daily report in that case.
+// Isaiah drafts the full reply and it goes straight into the Approvals page as a "Support Reply" card.
+// These emails come to DeAnna directly, so the review steps other agents go through are skipped.
+// If the daily spend cap is reached, the ticket stays "open" and Isaiah's daily support report lists it.
 async function draftAndSendToReview(t: Ticket, preface: string): Promise<void> {
   const spend = await checkAndReserveSpend();
   if (!spend.ok) {
     console.warn(`[support-email-inbound] Daily spend cap reached — ticket ${t.id} stays open for the daily report`);
     return;
   }
-  const gotLock = await acquireLockWithRetries("Isaiah Carter (support email)", 5, 15000);
-  if (!gotLock) {
-    console.warn(`[support-email-inbound] Another chain is still running — ticket ${t.id} stays open for the daily report`);
-    return;
-  }
 
-  let chainFired = false;
   try {
     const prompt = `${preface}\n\n${ISAIAH_EMAIL_REPLY_CODE}\n\n${buildEmailReplyReading({
       fromName: t.fromName, fromEmail: t.fromEmail, toAddress: t.toAddress, subject: t.subject, body: t.body,
       memberName: t.memberName, memberTier: t.memberTier,
     })}`;
-    const draft = await callIsaiah(prompt, EMAIL_REPLY_MAX_TOKENS);
+    const draft = (await callIsaiah(prompt, EMAIL_REPLY_MAX_TOKENS)).replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
     if (!draft) throw new Error("Isaiah returned an empty draft");
 
-    const csqRes = await sb("chief_of_staff_queue", {
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+    const sender = t.fromName ? `${t.fromName} <${t.fromEmail}>` : t.fromEmail;
+    const cardRes = await sb("approvals", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
-        agent_id: "isaiah",
+        source: "support_email",
+        trigger_type: "support_email_reply",
         agent_name: "Isaiah Carter",
+        agent_role: "Customer Support",
         division: "Customer Support",
-        task: "support_email_reply",
-        category: "issue_resolution",
-        raw_output: draft,
-        priority: "high",
+        task_brief: `Support Reply — ${t.fromName || t.fromEmail} | ${t.subject} | ${today}`,
+        original_content: `From: ${sender}\nWritten to: ${t.toAddress}\nSubject: ${t.subject}\n\n${t.body}`,
+        output: draft,
         status: "pending",
-        retry_count: 0,
-        context: t.id,
-        raymond_notes: `Email reply draft for support ticket ${t.id}`,
+        notify_deanna: true,
+        priority: "high",
+        category: "support_reply",
+        platform: null,
+        title: t.subject,
+        ghl_contact_id: t.ghlContactId || null,
+        context: JSON.stringify({
+          support_request_id: t.id,
+          from_email: t.fromEmail,
+          to_address: t.toAddress,
+          subject: t.subject,
+          ghl_contact_id: t.ghlContactId || null,
+          ghl_message_id: t.ghlMessageId || null,
+        }),
       }),
     });
-    if (!csqRes.ok) throw new Error(`CSQ write failed: ${csqRes.status} ${await csqRes.text()}`);
-    const csqId = (await csqRes.json())?.[0]?.id as string | undefined;
-    if (!csqId) throw new Error("CSQ write returned no id");
+    if (!cardRes.ok) throw new Error(`Approvals write failed: ${cardRes.status} ${await cardRes.text()}`);
 
-    // The chain releases the lock on every exit once it starts.
-    chainFired = true;
-    const chainRes = await fetch(`${BASE_URL}/api/process-on-demand`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-cron-secret": process.env.CRON_SECRET ?? "" },
-      body: JSON.stringify({ csq_id: csqId }),
-    }).catch((err) => { chainFired = false; throw err; });
-    console.log(`[support-email-inbound] review chain responded ${chainRes.status} for ticket ${t.id}`);
+    await sb(`support_requests?id=eq.${t.id}`, { method: "PATCH", body: JSON.stringify({ status: "awaiting_approval" }) });
+    console.log(`[support-email-inbound] Support Reply card created for ticket ${t.id}`);
   } catch (err) {
     console.error(`[support-email-inbound] draft failed for ticket ${t.id}:`, err);
-    if (!chainFired) await releaseLock();
   }
 }
 
