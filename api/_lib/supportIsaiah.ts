@@ -66,7 +66,10 @@ export async function callIsaiah(prompt: string, maxTokens: number): Promise<str
     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
   });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 300);
+    throw new Error(`Anthropic error ${res.status}: ${detail}`);
+  }
   const data = await res.json();
   await logUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt);
   return String(data.content?.[0]?.text ?? "").trim();
