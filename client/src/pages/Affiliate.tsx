@@ -92,7 +92,7 @@ export default function Affiliate() {
         {/* Suggest a Tool */}
         <div style={{ marginTop: "1.5rem", textAlign: "center" as const, padding: "1.25rem", background: "rgba(10,35,66,0.02)", border: "1px dashed rgba(10,35,66,0.15)", borderRadius: 10 }}>
           <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>More tools being added regularly. Have a tool you'd like DeAnna to review?</p>
-          <a href="mailto:info@druaiconsulting.com" style={{ display: "inline-block", marginTop: "0.5rem", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none" }}>
+          <a href="mailto:info@info.druaiconsulting.com" style={{ display: "inline-block", marginTop: "0.5rem", color: "#D4AF37", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" as const, textDecoration: "none" }}>
             Suggest a Tool →
           </a>
         </div>
