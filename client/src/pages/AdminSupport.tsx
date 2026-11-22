@@ -3,8 +3,10 @@ import AdminLayout from "../components/AdminLayout";
 import { supabase } from "../lib/supabase";
 import { SUPPORT_COUNT_REFRESH_MS } from "../lib/useSupportCount";
 
-// Support Tickets: every email sent to support@ or info@ lives here. Isaiah Carter's reply to each one
-// waits here for DeAnna. Approving sends it through GHL into the same conversation (api/ghl-support-reply-dispatch.ts).
+// Support Tickets: every email sent to support@ or info@, every Support Hub request and every website chat ticket lives here.
+// Isaiah Carter's reply to each English ticket waits here for DeAnna. Yara Mansour handles tickets in Spanish, French and Arabic:
+// the page shows what the person wrote with Yara's English translation, Yara's draft is in English, and when DeAnna sends it
+// Yara translates it into the person's language. Approving sends it through GHL into the same conversation (api/ghl-support-reply-dispatch.ts).
 
 interface SupportCard {
   id: string; created_at: string; status: string; agent_name: string; source: string | null;
@@ -18,10 +20,11 @@ interface Ticket {
   question: string | null; source_address: string | null;
   ghl_contact_id: string | null; ghl_message_id: string | null;
   category: string; file_url: string | null;
+  language: string | null; question_en: string | null;
 }
 
 // Every message after a ticket's first one: the client's follow-ups, Isaiah's replies, DeAnna's replies.
-interface TicketMessage { id: string; ticket_id: string; direction: "client" | "isaiah" | "deanna"; body: string; created_at: string }
+interface TicketMessage { id: string; ticket_id: string; direction: "client" | "isaiah" | "yara" | "deanna"; body: string; body_en: string | null; created_at: string }
 
 // Isaiah Carter's weekly ticket report (api/support-weekly-report.ts). Each Saturday's report is one row.
 interface CountLine { label: string; count: number }
@@ -60,6 +63,13 @@ function hubCategoryOf(ticket: Ticket | undefined): string {
   return ticket && ticket.category && ticket.category !== "email" ? ticket.category : "";
 }
 
+const LANGUAGE_LABELS: Record<string, string> = { es: "Spanish", fr: "French", ar: "Arabic" };
+
+// A ticket in Spanish, French or Arabic is Yara Mansour's. English tickets are Isaiah Carter's.
+function agentOf(ticket: Ticket | undefined): string {
+  return ticket && ticket.language && ticket.language !== "en" ? "Yara" : "Isaiah";
+}
+
 function ticketIdOf(card: SupportCard): string {
   try { return String(JSON.parse(card.context ?? "{}").support_request_id ?? ""); } catch { return ""; }
 }
@@ -94,8 +104,8 @@ export default function AdminSupport() {
   const load = useCallback(async () => {
     const [c, t, m, r] = await Promise.all([
       supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
-      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url").order("created_at", { ascending: false }).limit(300),
-      supabase.from("ticket_messages").select("id,ticket_id,direction,body,created_at").order("created_at", { ascending: true }).limit(3000),
+      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url,language,question_en").order("created_at", { ascending: false }).limit(300),
+      supabase.from("ticket_messages").select("id,ticket_id,direction,body,body_en,created_at").order("created_at", { ascending: true }).limit(3000),
       supabase.from("support_weekly_reports").select("id,period_start,period_end,ticket_count,created_at,closed_at,counts,topics").order("period_end", { ascending: false }).limit(104),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
@@ -194,10 +204,10 @@ export default function AdminSupport() {
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setError(tid, `Your feedback is saved. ${String(body?.error ?? "Isaiah could not write the corrected draft yet.")} Press Have Isaiah write it to try again.`);
+          setError(tid, `Your feedback is saved. ${String(body?.error ?? "The corrected draft could not be written yet.")} Press the Have ${card.agent_name.split(" ")[0]} write it button to try again.`);
         }
       } catch {
-        setError(tid, "Your feedback is saved. Isaiah could not write the corrected draft yet. Press Have Isaiah write it to try again.");
+        setError(tid, `Your feedback is saved. The corrected draft could not be written yet. Press the Have ${card.agent_name.split(" ")[0]} write it button to try again.`);
       }
     }
     setRejectingId(null);
@@ -248,10 +258,10 @@ export default function AdminSupport() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(ticket.id, String(body?.error ?? "Isaiah could not write the reply. Try again."));
+        setError(ticket.id, String(body?.error ?? `${agentOf(ticket)} could not write the reply. Try again.`));
       }
     } catch {
-      setError(ticket.id, "Isaiah could not write the reply. Try again.");
+      setError(ticket.id, `${agentOf(ticket)} could not write the reply. Try again.`);
     }
     setBusyId(null);
     await changed();
@@ -335,19 +345,21 @@ export default function AdminSupport() {
   const speaker = {
     client: { name: "Client", bg: "rgba(10,35,66,0.06)", color: NAVY },
     isaiah: { name: "Isaiah Carter", bg: "rgba(45,90,142,0.12)", color: BLUE },
+    yara: { name: "Yara Mansour", bg: "rgba(45,90,142,0.12)", color: BLUE },
     deanna: { name: "You", bg: "rgba(212,175,55,0.22)", color: NAVY },
   } as const;
   const conversation = (ticket: Ticket) => {
     const { message } = splitQuestion(ticket.question);
     const sender = ticket.member_name ? `${ticket.member_name} <${ticket.member_email}>` : (ticket.member_email ?? "");
-    const items: { id: string; direction: keyof typeof speaker; body: string; created_at: string }[] = [
-      { id: `first-${ticket.id}`, direction: "client", body: message, created_at: ticket.created_at },
+    const items: { id: string; direction: keyof typeof speaker; body: string; body_en: string | null; created_at: string }[] = [
+      { id: `first-${ticket.id}`, direction: "client", body: message, body_en: ticket.question_en, created_at: ticket.created_at },
       ...(messagesByTicket.get(ticket.id) ?? []),
     ];
+    const translated = !!ticket.language && ticket.language !== "en";
     return (
       <div>
         <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.5)", marginBottom: "0.6rem" }}>
-          {sender}{ticket.source_address ? ` · wrote to ${ticket.source_address}` : ""}
+          {sender}{ticket.source_address ? ` · wrote to ${ticket.source_address}` : ""}{translated ? ` · wrote in ${LANGUAGE_LABELS[ticket.language as string] ?? ticket.language}` : ""}
         </div>
         {items.map(item => {
           const who = speaker[item.direction] ?? speaker.client;
@@ -357,7 +369,13 @@ export default function AdminSupport() {
                 <span style={{ ...panelLabel, color: who.color, marginBottom: 0 }}>{who.name}</span>
                 <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(item.created_at)}</span>
               </div>
-              <div style={bodyText}>{item.body}</div>
+              <div style={bodyText} dir={translated && item.direction !== "deanna" ? "auto" : undefined}>{item.body}</div>
+              {translated && item.body_en && (
+                <div style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px dashed rgba(10,35,66,0.2)" }}>
+                  <div style={{ ...panelLabel, color: BLUE, marginBottom: "0.2rem" }}>{item.direction === "client" ? "Yara's English translation" : "English version"}</div>
+                  <div style={bodyText}>{item.body_en}</div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -366,9 +384,16 @@ export default function AdminSupport() {
   };
 
   // A small label that shows a Support Hub request's category next to the ticket. Emails carry no label.
-  const hubPill = (category: string) => category ? (
-    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.08)", color: NAVY }}>Support Hub · {category}</span>
-  ) : null;
+  const hubPill = (category: string, language?: string | null) => (
+    <>
+      {category ? (
+        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.08)", color: NAVY }}>{category === "chat" ? "Website Chat" : `Support Hub · ${category}`}</span>
+      ) : null}
+      {language && language !== "en" ? (
+        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(45,90,142,0.14)", color: BLUE }}>{LANGUAGE_LABELS[language] ?? language} · Yara</span>
+      ) : null}
+    </>
+  );
   // The file a member attached is private. A short-lived link is made when DeAnna presses the button.
   const openAttachedFile = async (path: string) => {
     const { data, error } = await supabase.storage.from("support-files").createSignedUrl(path, 600);
@@ -400,7 +425,7 @@ export default function AdminSupport() {
         <div style={{ marginBottom: "1.5rem" }}>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>Support Tickets</h1>
           <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>
-            Every email sent to support@ and info@, and every Support Hub request. Isaiah Carter's reply waits here for you.
+            Every email sent to support@ and info@, every Support Hub request and every website chat ticket. Isaiah Carter's reply waits here for you on English tickets, and Yara Mansour's reply waits here on Spanish, French and Arabic tickets.
           </p>
         </div>
 
@@ -430,12 +455,12 @@ export default function AdminSupport() {
                 <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>{card.title || "(no subject)"}</div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
                   {correctionNoteOf(card) && (
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>Isaiah's correction</span>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>{card.agent_name.split(" ")[0]}'s correction</span>
                   )}
                   {isRestored(card) && (
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.1)", color: NAVY }}>Restored: this reply was already sent</span>
                   )}
-                  {hubPill(hubCategoryOf(ticketById.get(ticketIdOf(card))))}
+                  {hubPill(hubCategoryOf(ticketById.get(ticketIdOf(card))), ticketById.get(ticketIdOf(card))?.language)}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: BLUE, color: "#FFFFFF" }}>Support Reply</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(card.created_at)}</span>
                 </div>
@@ -455,7 +480,7 @@ export default function AdminSupport() {
                   {fileLink(ticketById.get(ticketIdOf(card)))}
                 </div>
                 <div style={{ background: "rgba(45,90,142,0.06)", borderRadius: 10, padding: "1rem" }}>
-                  <div style={{ ...panelLabel, color: BLUE }}>{card.agent_name}'s Reply Draft</div>
+                  <div style={{ ...panelLabel, color: BLUE }}>{card.agent_name}'s Reply Draft{agentOf(ticketById.get(ticketIdOf(card))) === "Yara" ? " (English, translated when you send)" : ""}</div>
                   {editing ? (
                     <>
                       <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={10}
@@ -468,7 +493,7 @@ export default function AdminSupport() {
               </div>
 
               {rejecting && (
-                <input value={note} onChange={e => setNote(e.target.value)} placeholder={`What should ${card.agent_name} fix? He rewrites the reply from your answer and learns from it.`}
+                <input value={note} onChange={e => setNote(e.target.value)} placeholder={`What should ${card.agent_name} fix? The reply is rewritten from your answer and ${card.agent_name} learns from it.`}
                   style={{ width: "100%", marginTop: "1rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", padding: "0.6rem 0.75rem", borderRadius: 8, border: "1px solid rgba(194,24,91,0.5)", color: NAVY }} />
               )}
 
@@ -493,7 +518,7 @@ export default function AdminSupport() {
                 )}
                 {rejecting && (
                   <>
-                    <button disabled={busy || !note.trim()} onClick={() => rejectCard(card)} style={{ ...buttonBase, background: PINK, color: "#FFFFFF", border: "none", opacity: busy || !note.trim() ? 0.5 : 1 }}>{busy ? "Isaiah is rewriting..." : "Send corrective feedback"}</button>
+                    <button disabled={busy || !note.trim()} onClick={() => rejectCard(card)} style={{ ...buttonBase, background: PINK, color: "#FFFFFF", border: "none", opacity: busy || !note.trim() ? 0.5 : 1 }}>{busy ? `${card.agent_name.split(" ")[0]} is rewriting...` : "Send corrective feedback"}</button>
                     <button disabled={busy} onClick={() => { setRejectingId(null); setNote(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Cancel</button>
                   </>
                 )}
@@ -510,7 +535,7 @@ export default function AdminSupport() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
                 <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>{subject}</div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-                  {hubPill(hubCategoryOf(ticket))}
+                  {hubPill(hubCategoryOf(ticket), ticket.language)}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>No reply drafted</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(lastActivity(ticket))}</span>
                 </div>
@@ -521,10 +546,10 @@ export default function AdminSupport() {
                 {fileLink(ticket)}
               </div>
               <div style={{ marginTop: "0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>
-                Isaiah has no reply drafted for this email.
+                {agentOf(ticket)} has no reply drafted for this {ticket.category === "chat" ? "chat ticket" : "message"}.
               </div>
               {ownReplyId === ticket.id && (
-                <textarea value={ownText} onChange={e => setOwnText(e.target.value)} rows={8} placeholder="Type your reply. It goes to the person from the address they wrote to."
+                <textarea value={ownText} onChange={e => setOwnText(e.target.value)} rows={8} placeholder={agentOf(ticket) === "Yara" ? "Type your reply in English. Yara translates it into the person's language and it goes to them from the address they wrote to." : "Type your reply. It goes to the person from the address they wrote to."}
                   style={{ width: "100%", marginTop: "1rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", lineHeight: 1.6, padding: "0.75rem", borderRadius: 8, border: "1px solid rgba(10,35,66,0.25)", color: NAVY, resize: "vertical" }} />
               )}
               {errorById[ticket.id] && (
@@ -533,7 +558,7 @@ export default function AdminSupport() {
               <div style={{ display: "flex", gap: "0.6rem", marginTop: "1rem", flexWrap: "wrap" }}>
                 {ownReplyId !== ticket.id ? (
                   <>
-                    <button disabled={busyId === ticket.id} onClick={() => haveIsaiahWrite(ticket)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busyId === ticket.id ? 0.6 : 1 }}>{busyId === ticket.id ? "Isaiah is writing..." : "Have Isaiah write it"}</button>
+                    <button disabled={busyId === ticket.id} onClick={() => haveIsaiahWrite(ticket)} style={{ ...buttonBase, background: GOLD, color: NAVY, border: "none", opacity: busyId === ticket.id ? 0.6 : 1 }}>{busyId === ticket.id ? `${agentOf(ticket)} is writing...` : `Have ${agentOf(ticket)} write it`}</button>
                     <button disabled={busyId === ticket.id} onClick={() => { setOwnReplyId(ticket.id); setOwnText(""); }} style={{ ...buttonBase, background: "transparent", color: NAVY, border: "1px solid rgba(10,35,66,0.3)" }}>Write my own reply</button>
                   </>
                 ) : (
@@ -566,7 +591,7 @@ export default function AdminSupport() {
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.5)" }}>{sender}</div>
                 </div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-                  {hubPill(hubCategoryOf(ticket))}
+                  {hubPill(hubCategoryOf(ticket), ticket.language)}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ticket.status === "replied" ? "#2E7D32" : GOLD, color: ticket.status === "replied" ? "#FFFFFF" : NAVY }}>{ticket.status === "replied" ? (card?.source === "support_email_auto" ? "✓ Auto-reply sent" : "✓ Reply Sent") : "Sending reply..."}</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(lastActivity(ticket))}</span>
                   <button disabled={busyId === ticket.id} onClick={(e) => { e.stopPropagation(); closeTicket(ticket); }} style={{ ...buttonBase, fontSize: "0.62rem", padding: "0.4rem 0.9rem", background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>{busyId === ticket.id ? "..." : "Close ticket"}</button>
@@ -578,7 +603,7 @@ export default function AdminSupport() {
                   {conversation(ticket)}
                   {(messagesByTicket.get(ticket.id) ?? []).every(m => m.direction === "client") && card && (
                     <div style={{ background: "rgba(45,90,142,0.12)", borderRadius: 10, padding: "0.75rem 0.9rem" }}>
-                      <div style={{ ...panelLabel, color: BLUE, marginBottom: "0.3rem" }}>Isaiah Carter</div>
+                      <div style={{ ...panelLabel, color: BLUE, marginBottom: "0.3rem" }}>{card.agent_name}</div>
                       <div style={bodyText}>{card.edited_output || card.output}</div>
                     </div>
                   )}

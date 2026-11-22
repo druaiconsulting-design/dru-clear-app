@@ -40,6 +40,7 @@ interface TicketRow {
 const HUB_AREAS = ["Account & Billing", "Course Access", "Community", "Frameworks", "Other"];
 
 function whereFromLabel(t: TicketRow): string {
+  if (t.category === "chat") return "Website chat";
   if (t.category && t.category !== "email") return `Support Hub: ${t.category}`;
   const address = (t.source_address ?? "").toLowerCase();
   if (address.startsWith("support@")) return "support@ emails";
@@ -71,7 +72,7 @@ function tally(labels: string[], order: string[], keepZero: string[]): CountLine
 }
 
 export function countTickets(tickets: TicketRow[]): WeeklyCounts {
-  const whereOrder = ["support@ emails", "info@ emails", ...HUB_AREAS.map((a) => `Support Hub: ${a}`)];
+  const whereOrder = ["support@ emails", "info@ emails", ...HUB_AREAS.map((a) => `Support Hub: ${a}`), "Website chat"];
   const tierOrder = ["Free", "Navigator", "Accelerator", "No account on file"];
   const outcomeOrder = ["Replied", "Closed", "Still waiting on you"];
   return {
