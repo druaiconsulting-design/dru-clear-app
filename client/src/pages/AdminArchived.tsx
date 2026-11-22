@@ -38,7 +38,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 // Support Tickets closed on the Support Tickets page land here.
-interface ClosedTicket { id: string; created_at: string; member_name: string | null; member_email: string | null; question: string | null; source_address: string | null; }
+interface ClosedTicket { id: string; created_at: string; member_name: string | null; member_email: string | null; question: string | null; source_address: string | null; category?: string | null; }
 interface TicketCard {
   id: string; status: string; source: string | null; output: string; edited_output: string | null; context: string | null;
   agent_name: string | null; agent_role: string | null; division: string | null; title: string | null;
@@ -121,7 +121,7 @@ export default function AdminArchived() {
 
   const fetchClosedTickets = async () => {
     const [t, c] = await Promise.all([
-      supabase.from("support_requests").select("id,created_at,member_name,member_email,question,source_address").eq("category", "email").eq("status", "closed").order("created_at", { ascending: false }).limit(300),
+      supabase.from("support_requests").select("id,created_at,member_name,member_email,question,source_address,category").eq("status", "closed").order("created_at", { ascending: false }).limit(300),
       supabase.from("approvals").select("id,status,source,output,edited_output,context,agent_name,agent_role,division,title,task_brief,original_content,ghl_contact_id").eq("category", "support_reply").order("created_at", { ascending: false }).limit(600),
     ]);
     if (!t.error) setClosedTickets((t.data as ClosedTicket[]) ?? []);
@@ -413,7 +413,7 @@ export default function AdminArchived() {
                         style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" as const, cursor:"pointer" }}>
                         <div>
                           <div style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.85rem", fontWeight:700, color:"#0A2342" }}>{subject}</div>
-                          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.5)" }}>{sender} · {timeAgo(ticket.created_at)}</div>
+                          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.7rem", color:"rgba(10,35,66,0.5)" }}>{sender} · {timeAgo(ticket.created_at)}{ticket.category && ticket.category !== "email" ? ` · Support Hub · ${ticket.category}` : ""}</div>
                         </div>
                         <button onClick={(e) => { e.stopPropagation(); restoreTicket(ticket); }} disabled={restoring === ticket.id}
                           style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 1rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(10,35,66,0.15)", background:"transparent", color:"rgba(10,35,66,0.4)", letterSpacing:"0.06em", opacity:restoring === ticket.id ? 0.5 : 1 }}>

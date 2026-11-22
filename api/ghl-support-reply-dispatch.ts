@@ -1,17 +1,16 @@
 // api/ghl-support-reply-dispatch.ts
 // Sends an approved "Support Reply" card — Isaiah's reply to an email that came in at
-// support@support.druaiconsulting.com or info@info.druaiconsulting.com — through GHL into the
-// same conversation, from the address the person wrote to.
+// support@support.druaiconsulting.com or info@info.druaiconsulting.com, or to a Support Hub request —
+// through the GHL workflow for the address the person wrote to, so it arrives from that address.
 //
 // Fires from AdminApprovals.tsx when a Support Reply card is approved. The browser sends only the
 // approval id. Who receives the reply, which address it comes from, and the subject are read from
 // the approval row on the server (written by api/process-on-demand.ts), and the card must already be
 // marked approved. A ticket claims its reply once, so a repeated call never sends a second email.
-//
-// Uses GHL_PRIVATE_INTEGRATIONS_KEY (plural), the same credential as api/ghl-newsletter-dispatch.ts.
+// A failed send puts the ticket back in "Waiting on you"; nothing is ever sent from the noreply address.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { SUPPORT_FROM_ADDRESSES, findContactIdByEmail, sendSupportEmail } from "./_lib/ghlSupportSend.js";
+import { SUPPORT_FROM_ADDRESSES, sendSupportEmail } from "./_lib/ghlSupportSend.js";
 export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
@@ -29,9 +28,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const approvalId = String(req.body?.approval_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) { res.status(400).json({ error: "approval_id required" }); return; }
-
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
-  if (!apiKey) { res.status(500).json({ error: "GHL_PRIVATE_INTEGRATIONS_KEY not set" }); return; }
 
   const aRes = await sb(`approvals?id=eq.${approvalId}&select=id,category,status,output,edited_output,context&limit=1`);
   const approval = aRes.ok ? (await aRes.json())?.[0] : null;
@@ -66,16 +62,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const giveBack = async () => { await sb(`support_requests?id=eq.${ticketId}`, { method: "PATCH", body: JSON.stringify({ status: "awaiting_approval" }) }); };
 
   try {
-    const contactId = ctx.ghl_contact_id || await findContactIdByEmail(fromEmail, apiKey);
-    if (!contactId) { await giveBack(); res.status(502).json({ error: "No GHL contact found for the sender" }); return; }
-
     const result = await sendSupportEmail({
-      contactId,
+      toEmail: fromEmail,
       fromAddress,
       originalSubject: String(ctx.subject ?? ""),
       replyText,
-      replyToMessageId: ctx.ghl_message_id,
-    }, apiKey);
+    });
 
     if (!result.ok) {
       console.error(`[ghl-support-reply-dispatch] Send failed for approval ${approvalId}: ${result.status} ${result.detail}`);

@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const previousDraft = String(req.body?.previous_draft ?? "").trim().slice(0, 6000) || undefined;
 
   // Claim the ticket: only one that is still "open" moves on.
-  const claim = await sb(`support_requests?id=eq.${ticketId}&category=eq.email&status=eq.open`, {
+  const claim = await sb(`support_requests?id=eq.${ticketId}&status=eq.open`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({ status: "drafting" }),

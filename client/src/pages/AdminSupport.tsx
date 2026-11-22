@@ -17,6 +17,7 @@ interface Ticket {
   member_name: string | null; member_email: string | null;
   question: string | null; source_address: string | null;
   ghl_contact_id: string | null; ghl_message_id: string | null;
+  category: string; file_url: string | null;
 }
 
 const NAVY = "#0A2342";
@@ -41,6 +42,11 @@ function correctionNoteOf(card: SupportCard): string {
 
 function isRestored(card: SupportCard): boolean {
   try { return Boolean(JSON.parse(card.context ?? "{}").restored_from); } catch { return false; }
+}
+
+// Support Hub requests carry the member's category (Account & Billing, Course Access, ...). Emails carry "email".
+function hubCategoryOf(ticket: Ticket | undefined): string {
+  return ticket && ticket.category && ticket.category !== "email" ? ticket.category : "";
 }
 
 function ticketIdOf(card: SupportCard): string {
@@ -75,7 +81,7 @@ export default function AdminSupport() {
   const load = useCallback(async () => {
     const [c, t] = await Promise.all([
       supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
-      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id").eq("category", "email").order("created_at", { ascending: false }).limit(300),
+      supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url").order("created_at", { ascending: false }).limit(300),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
     else setCards((c.data as SupportCard[]) ?? []);
@@ -285,6 +291,18 @@ export default function AdminSupport() {
   const cardByTicket = new Map<string, SupportCard>();
   cards.forEach(c => { const tid = ticketIdOf(c); if (tid && !cardByTicket.has(tid)) cardByTicket.set(tid, c); });
   const repliedTickets = tickets.filter(t => t.status === "replied" || t.status === "replying");
+  const ticketById = new Map<string, Ticket>();
+  tickets.forEach(t => ticketById.set(t.id, t));
+
+  // A small label that shows a Support Hub request's category next to the ticket. Emails carry no label.
+  const hubPill = (category: string) => category ? (
+    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.08)", color: NAVY }}>Support Hub · {category}</span>
+  ) : null;
+  const fileLink = (ticket: Ticket | undefined) => ticket?.file_url ? (
+    <div style={{ marginTop: "0.5rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>
+      <a href={ticket.file_url} target="_blank" rel="noreferrer" style={{ color: BLUE }}>Attached file</a>
+    </div>
+  ) : null;
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.06em",
@@ -301,7 +319,7 @@ export default function AdminSupport() {
         <div style={{ marginBottom: "1.5rem" }}>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: NAVY, fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>Support Tickets</h1>
           <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>
-            Every email sent to support@ and info@. Isaiah Carter's reply waits here for you.
+            Every email sent to support@ and info@, and every Support Hub request. Isaiah Carter's reply waits here for you.
           </p>
         </div>
 
@@ -334,6 +352,7 @@ export default function AdminSupport() {
                   {isRestored(card) && (
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.1)", color: NAVY }}>Restored: this reply was already sent</span>
                   )}
+                  {hubPill(hubCategoryOf(ticketById.get(ticketIdOf(card))))}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: BLUE, color: "#FFFFFF" }}>Support Reply</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(card.created_at)}</span>
                 </div>
@@ -350,6 +369,7 @@ export default function AdminSupport() {
                 <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
                   <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Customer's Email</div>
                   <div style={bodyText}>{card.original_content}</div>
+                  {fileLink(ticketById.get(ticketIdOf(card)))}
                 </div>
                 <div style={{ background: "rgba(45,90,142,0.06)", borderRadius: 10, padding: "1rem" }}>
                   <div style={{ ...panelLabel, color: BLUE }}>{card.agent_name}'s Reply Draft</div>
@@ -407,6 +427,7 @@ export default function AdminSupport() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
                 <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>{subject}</div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                  {hubPill(hubCategoryOf(ticket))}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>No reply drafted</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(ticket.created_at)}</span>
                 </div>
@@ -414,6 +435,7 @@ export default function AdminSupport() {
               <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
                 <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Customer's Email</div>
                 <div style={bodyText}>{`From: ${sender}\nWritten to: ${ticket.source_address ?? ""}\nSubject: ${subject}\n\n${message}`}</div>
+                {fileLink(ticket)}
               </div>
               <div style={{ marginTop: "0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>
                 Isaiah has no reply drafted for this email.
@@ -461,6 +483,7 @@ export default function AdminSupport() {
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.5)" }}>{sender}</div>
                 </div>
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                  {hubPill(hubCategoryOf(ticket))}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ticket.status === "replied" ? "#2E7D32" : GOLD, color: ticket.status === "replied" ? "#FFFFFF" : NAVY }}>{ticket.status === "replied" ? (card?.source === "support_email_auto" ? "✓ Auto-reply sent" : "✓ Reply Sent") : "Sending reply..."}</span>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(ticket.created_at)}</span>
                   <button disabled={busyId === ticket.id} onClick={(e) => { e.stopPropagation(); closeTicket(ticket); }} style={{ ...buttonBase, fontSize: "0.62rem", padding: "0.4rem 0.9rem", background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>{busyId === ticket.id ? "..." : "Close ticket"}</button>

@@ -6,7 +6,7 @@
 //   3. saves the email as a ticket in support_requests (the same email posted twice is saved once; a follow-up in the same thread is a new ticket)
 //   4. password reset emails: Isaiah Carter replies right away with the real reset steps (no approval)
 //      and the ticket moves to Replied. Every other email gets Isaiah's instant reply (a short thank-you
-//      that says a reply follows within 24 hours), sent from the address they wrote to, in the same conversation.
+//      that says a reply follows within 24 hours), sent from the address they wrote to through that address's GHL workflow.
 //   5. every other email: Isaiah drafts the full reply and it waits on the Support Tickets page for DeAnna.
 //      Nothing more is sent to the customer until she approves it.
 // If the daily spend cap is reached, the ticket stays "open" and Isaiah's daily support report lists it.
@@ -14,11 +14,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading } from "./_lib/isaiahEmailReply.js";
-import {
-  sb, callIsaiah, loadPreface, isPasswordResetEmail, autoReplyToPasswordReset,
-  draftReplyForReview, sendToSender, type SupportTicket,
-} from "./_lib/supportIsaiah.js";
+import { sb, handleTicket } from "./_lib/supportIsaiah.js";
 
 export const config = { maxDuration: 300 };
 
@@ -75,49 +71,6 @@ async function recentTicketCount(email: string): Promise<number> {
   if (!res.ok) return 0;
   const rows = await res.json();
   return Array.isArray(rows) ? rows.length : 0;
-}
-
-// Isaiah's instant reply: a short thank-you sent right away so the person knows their email arrived.
-// A failure here is logged and never stops the full reply from being drafted.
-async function sendInstantReply(t: SupportTicket, preface: string): Promise<void> {
-  try {
-    const text = await callIsaiah(`${preface}\n\n${ISAIAH_INSTANT_REPLY_CODE}\n\n${buildInstantReplyReading({ fromName: t.fromName, subject: t.subject, body: t.body })}`, INSTANT_REPLY_MAX_TOKENS);
-    if (!text) throw new Error("Isaiah returned an empty instant reply");
-    const sent = await sendToSender(t, text);
-    if (!sent.ok) throw new Error(sent.detail);
-    console.log(`[support-email-inbound] Instant reply sent from ${t.toAddress} for ticket ${t.id}`);
-  } catch (err) {
-    console.error(`[support-email-inbound] Instant reply failed for ticket ${t.id}:`, err);
-  }
-}
-
-// Runs after the webhook has been answered.
-async function handleTicket(t: SupportTicket): Promise<void> {
-  let preface = "";
-  try {
-    preface = await loadPreface();
-  } catch (err) {
-    console.error(`[support-email-inbound] Could not load Isaiah's knowledge for ticket ${t.id}:`, err);
-    return;
-  }
-
-  // Password reset emails get Isaiah's reply right away, in place of the instant reply.
-  try {
-    if (await isPasswordResetEmail(t)) {
-      if (await autoReplyToPasswordReset(t, preface)) return;
-    }
-  } catch (err) {
-    console.error(`[support-email-inbound] Password reset reply failed for ticket ${t.id}:`, err);
-  }
-
-  await sendInstantReply(t, preface);
-  try {
-    if (!(await draftReplyForReview(t, preface))) {
-      console.warn(`[support-email-inbound] Daily spend cap reached — ticket ${t.id} stays open for the daily report`);
-    }
-  } catch (err) {
-    console.error(`[support-email-inbound] draft failed for ticket ${t.id}:`, err);
-  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {

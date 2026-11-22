@@ -7,8 +7,9 @@ import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections } from "
 import {
   ISAIAH_EMAIL_REPLY_CODE, EMAIL_REPLY_MAX_TOKENS, buildEmailReplyReading,
   ISAIAH_RESET_CHECK_CODE, RESET_CHECK_MAX_TOKENS, buildResetCheckReading,
+  ISAIAH_INSTANT_REPLY_CODE, INSTANT_REPLY_MAX_TOKENS, buildInstantReplyReading,
 } from "./isaiahEmailReply.js";
-import { findContactIdByEmail, sendSupportEmail } from "./ghlSupportSend.js";
+import { sendSupportEmail } from "./ghlSupportSend.js";
 import { checkAndReserveSpend } from "./onDemandGuards.js";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
@@ -105,14 +106,11 @@ export async function writeFullReply(t: SupportTicket, preface: string, revision
   return text;
 }
 
-// Sends text to the person from the address they wrote to, in the same conversation.
+// Sends text to the person from the address they wrote to (support@ or info@), through the GHL workflow
+// for that address. It never falls back to another address: a failed send is reported to the caller.
 export async function sendToSender(t: SupportTicket, text: string): Promise<{ ok: boolean; detail: string }> {
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
-  if (!apiKey) return { ok: false, detail: "GHL_PRIVATE_INTEGRATIONS_KEY not set" };
-  const contactId = t.ghlContactId || await findContactIdByEmail(t.fromEmail, apiKey);
-  if (!contactId) return { ok: false, detail: "No GHL contact found for the sender" };
-  const result = await sendSupportEmail({ contactId, fromAddress: t.toAddress, originalSubject: t.subject, replyText: text, replyToMessageId: t.ghlMessageId }, apiKey);
-  return { ok: result.ok, detail: result.ok ? "sent" : `GHL send failed: ${result.status} ${result.detail}` };
+  const result = await sendSupportEmail({ toEmail: t.fromEmail, fromAddress: t.toAddress, originalSubject: t.subject, replyText: text });
+  return { ok: result.ok, detail: result.ok ? "sent" : `Send failed (${result.status || "no answer"}): ${result.detail}` };
 }
 
 // Writes a "Support Reply" card for the ticket. "pending" waits on DeAnna; "sent" records a reply
@@ -206,4 +204,48 @@ export async function autoReplyToPasswordReset(t: SupportTicket, preface: string
     await setTicketStatus(t.id, "awaiting_approval");
   }
   return true;
+}
+
+// Isaiah's instant reply: a short thank-you sent right away so the person knows their message arrived.
+// A failure here is logged and never stops the full reply from being drafted.
+async function sendInstantReply(t: SupportTicket, preface: string): Promise<void> {
+  try {
+    const text = await callIsaiah(`${preface}\n\n${ISAIAH_INSTANT_REPLY_CODE}\n\n${buildInstantReplyReading({ fromName: t.fromName, subject: t.subject, body: t.body })}`, INSTANT_REPLY_MAX_TOKENS);
+    if (!text) throw new Error("Isaiah returned an empty instant reply");
+    const sent = await sendToSender(t, text);
+    if (!sent.ok) throw new Error(sent.detail);
+    console.log(`[support] Instant reply sent from ${t.toAddress} for ticket ${t.id}`);
+  } catch (err) {
+    console.error(`[support] Instant reply failed for ticket ${t.id}:`, err);
+  }
+}
+
+// Runs for every new ticket, from an email (api/support-email-inbound.ts) or the Support Hub
+// (api/support-hub-submit.ts), after the request has been answered.
+export async function handleTicket(t: SupportTicket): Promise<void> {
+  let preface = "";
+  try {
+    preface = await loadPreface();
+  } catch (err) {
+    console.error(`[support] Could not load Isaiah's knowledge for ticket ${t.id}:`, err);
+    return;
+  }
+
+  // Password reset requests get Isaiah's reply right away, in place of the instant reply.
+  try {
+    if (await isPasswordResetEmail(t)) {
+      if (await autoReplyToPasswordReset(t, preface)) return;
+    }
+  } catch (err) {
+    console.error(`[support] Password reset reply failed for ticket ${t.id}:`, err);
+  }
+
+  await sendInstantReply(t, preface);
+  try {
+    if (!(await draftReplyForReview(t, preface))) {
+      console.warn(`[support] Daily spend cap reached — ticket ${t.id} stays open for the daily report`);
+    }
+  } catch (err) {
+    console.error(`[support] draft failed for ticket ${t.id}:`, err);
+  }
 }
