@@ -220,7 +220,6 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   ],
   "Customer Support": [
     { agent_id:"isaiah",    agent_name:"Isaiah Carter",     role:"Problem Resolution" },
-    { agent_id:"priscilla", agent_name:"Priscilla Okonkwo", role:"Multi-Channel Communication" },
   ],
   "Command": [
     { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" },

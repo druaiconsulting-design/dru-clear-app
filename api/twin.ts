@@ -77,7 +77,7 @@ khalid→Khalid Hassan (Disclaimers) | sofia→Sofia Petrov (Privacy) | james→
 naomi→Naomi Williams (TBA) | aiden→Aiden Park (Onboarding) | fatima→Fatima Al-Rashid (TBA)
 keisha→Keisha Thompson (New Client Awareness) | marco→Marco Silva (TBA) | leila→Leila Nasser (TBA) | jordan→Jordan Hayes (TBA)
 simone→Simone Laurent (Course Architect) | theo→Theo Nguyen (Presentations) | amelia→Amelia Santos (Video)
-isaiah→Isaiah Carter (Support) | priscilla→Priscilla Okonkwo (Comms)
+isaiah→Isaiah Carter (Support)
 zoe→Zoe Beaumont (Community Leader) | micah→Micah Santos (Member Experience)
 dominique→Dominique Carter (DRU CLEAR™ · Clarity & Alignment) | elijah→Elijah Brooks (DRU CLEAR™ · Leadership & Results)
 solange→Solange Dupont (5D Leadership™ · Self & People) | isaiah_webb→Isaiah Webb (5D Leadership™ · Team & Visionary)

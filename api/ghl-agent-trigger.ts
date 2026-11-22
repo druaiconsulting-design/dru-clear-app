@@ -56,7 +56,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
   cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
-  cron_priscilla_comms_daily:     { agent_id: 'priscilla',agent_name: 'Priscilla Okonkwo', division: 'Customer Support', task: 'daily_multichannel_comms',      pipeline: 'p8_priscilla' },
 
   lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'score_new_lead' },
   contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura',  division: 'Revenue, Growth & Sales', task: 'process_contact_update' },
@@ -1416,48 +1415,6 @@ async function runAmelia(): Promise<string|null> {
   return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery','daily_video_production','video_production',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent view counts, engagement rates, or video performance metrics. No real video data exists yet — say so if relevant.\n2. If clients in journey = 0, testimonial frameworks are prep work only — label them as such, not as active production.\n3. You are producing creative briefs and scripts — that is real, valuable work. Just be honest about what stage the business is at.\n\nVIDEO TYPE: ${videoType}\n${videoInstructions[videoType]}\n**Production Checklist** — Three technical requirements for today's video type.\n**Today's Priority** — Single most important video asset to advance today.\n\nFormat: 250 words or fewer. Write in first person as Amelia.`,'normal',0,null,1500,'claude-sonnet-5-5');
 }
 
-// P8
-// Pulls real support ticket data from Supabase for Priscilla.
-// She reports actual ticket volume and open issues — never invented metrics.
-async function fetchSupportData(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'Support data unavailable.';
-  try {
-    const [allRes, openRes, recentRes] = await Promise.all([
-      fetch(`${url}/rest/v1/support_requests?select=id,category,status,member_tier,created_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/support_requests?status=eq.open&select=id,category,member_name,member_tier,question,created_at&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/support_requests?select=id,category,status,member_name,member_tier,question,created_at&order=created_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-    ]);
-    const [all, open, recent]: [any[], any[], any[]] = await Promise.all([allRes.json(), openRes.json(), recentRes.json()]);
-    const openList = Array.isArray(open) && open.length > 0
-      ? open.map((t: any) => `  - [${t.member_tier ?? 'unknown tier'}] ${t.member_name ?? 'Unknown'}: ${(t.question || '').slice(0, 100)} (category: ${t.category ?? 'general'})`).join('\n')
-      : '  (none)';
-    const recentList = Array.isArray(recent) && recent.length > 0
-      ? recent.map((t: any) => `  - ${t.status?.toUpperCase()} | ${t.category ?? 'general'} | ${t.member_tier ?? 'unknown tier'} | ${t.created_at?.slice(0,10)}`).join('\n')
-      : '  (none)';
-    const lines = [
-      'REAL SUPPORT DATA — use only these numbers, never invent ticket counts, metrics, or response rates:',
-      `Total support requests (all time): ${Array.isArray(all) ? all.length : 0}`,
-      `Open tickets: ${Array.isArray(open) ? open.length : 0}`,
-      `Open ticket details:\n${openList}`,
-      `5 most recent tickets:\n${recentList}`,
-    ];
-    return lines.join('\n');
-  } catch {
-    return 'Support data unavailable.';
-  }
-}
-
-async function runPriscilla(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const supportData = await fetchSupportData();
-  const previousWork = await getCrossRead(['priscilla'], 1);
-  const prevSection = previousWork ? `WHAT YOU COVERED YESTERDAY (do not repeat):\n${previousWork}` : 'No previous output on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('priscilla','Priscilla Okonkwo','Customer Support','daily_multichannel_comms','multichannel_comms',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Priscilla Okonkwo, Multi-Channel Communication Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCHANNELS: Email (druaiconsulting@gmail.com), SMS (GHL A2P 10DLC), Portal notifications (app.druaiconsulting.com), LinkedIn DM.\n\nREAL SUPPORT DATA (use only this — do not invent response rates, open rates, or communication metrics):\n${supportData}\n\n${prevSection}\n\nHARD RULES:\n1. Do not invent channel metrics. If no real data exists for a channel, do not report a percentage or rate for it.\n2. If total support requests = 0, open with: \"No client communications on record yet.\" Then give ONE new comms infrastructure item not covered yesterday.\n3. If there ARE tickets, use their category and tier to inform which channel needs attention and what template would help.\n4. Do not rewrite the same channel health table or template set every day. Check the previous output above — only surface what is genuinely new.\n\nFormat: 200 words or fewer. Write in first person as Priscilla.`,'normal',0,null,1500);
-}
-
 async function runAaliyahCCOutreach(signalType: string, contactEmail: string, contactFirstName: string, contactPhone: string): Promise<void> {
   const webhookUrl = AALIYAH_CC_ROUTING[signalType];
   if (!webhookUrl) { console.warn(`[aaliyah_cc] Unknown signal type: ${signalType}`); return; }
@@ -1624,7 +1581,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p8_priscilla'){const id=await runPriscilla();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (payload.trigger_type==='cc_upsell_signal'){
     const {signal_type,email,first_name,phone}=payload as any;
     await runAaliyahCCOutreach(signal_type,email,first_name,phone);
