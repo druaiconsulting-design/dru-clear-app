@@ -86,7 +86,7 @@ export function ThankYouPurchase({ lead, tier, calendarUrl, onContinue }: {
         Continue to Share Your Results →
       </button>
       <div style={{ textAlign: "center" }}>
-        <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>Questions? <a href="mailto:support@replies.druaiconsulting.com" style={{ color: "#D4AF37" }}>support@replies.druaiconsulting.com</a></p>
+        <p style={{ color: "rgba(230,230,230,0.4)", fontSize: "0.65rem" }}>Questions? <a href="mailto:support@support.druaiconsulting.com" style={{ color: "#D4AF37" }}>support@support.druaiconsulting.com</a></p>
       </div>
     </div>
   );

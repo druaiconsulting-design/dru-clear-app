@@ -62,7 +62,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { label: "Smart notification dot - full state sequence", sub: "Unread: red pulsing - Read: gold glow - Completed: streak - 7-day: gold border glow" },
       { label: "Streak tracking - Supabase persistent", sub: "current_streak - longest_streak - total_completions" },
       { label: "Mark Completed button - gold on completion", sub: "Blue to gold with glow + checkmark - streak fires" },
-      { label: "Need Support - mailto with pre-filled subject", sub: "Opens email client - support@druaiconsulting.com" },
+      { label: "Need Support - mailto with pre-filled subject", sub: "Opens email client - support@support.druaiconsulting.com" },
       { label: "Client Intelligence Dashboard - LIVE", sub: "submissions table - pillar scores stored - 6 stat cards - filter bar - 13-col table - color-coded heat map - CSV export" },
     ],
   },

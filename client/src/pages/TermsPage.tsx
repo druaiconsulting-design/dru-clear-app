@@ -46,8 +46,8 @@ export default function TermsPage() {
           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(230,230,230,0.6)", lineHeight: 1.7, marginBottom: 6 }}>
             Contact DRU AI Consulting prior to completing your purchase if you have any questions regarding these terms.
           </p>
-          <a href="mailto:support@druaiconsulting.com" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.04em", textDecoration: "none" }}>
-            support@druaiconsulting.com
+          <a href="mailto:support@support.druaiconsulting.com" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.75rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.04em", textDecoration: "none" }}>
+            support@support.druaiconsulting.com
           </a>
         </div>
 

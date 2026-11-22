@@ -46,7 +46,7 @@ function PortalAvatar({ user, avatarOverride }: { user: any; avatarOverride?: st
 // ── Support Modal — stays dark as overlay ─────────────────────────────────────
 function SupportModal({ onClose, userEmail }: { onClose: () => void; userEmail?: string }) {
   const [copied, setCopied] = useState(false);
-  const supportEmail = "support@druaiconsulting.com";
+  const supportEmail = "support@support.druaiconsulting.com";
   const mailtoHref = `mailto:${supportEmail}?subject=${encodeURIComponent("Support Request — DRU CLEAR™ Member")}`;
   const handleCopy = () => {
     navigator.clipboard.writeText(supportEmail).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }).catch(() => {});

@@ -133,8 +133,8 @@ function FrameworkThankYouPage({
         {/* Support */}
         <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.4)", fontSize: "0.68rem", textAlign: "center", lineHeight: 1.6 }}>
           Questions?{" "}
-          <a href="mailto:support@druaiconsulting.com" style={{ color: "#D4AF37", textDecoration: "underline" }}>
-            support@druaiconsulting.com
+          <a href="mailto:support@support.druaiconsulting.com" style={{ color: "#D4AF37", textDecoration: "underline" }}>
+            support@support.druaiconsulting.com
           </a>
         </p>
 
