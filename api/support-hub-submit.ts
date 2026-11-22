@@ -58,10 +58,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!question) { res.status(400).json({ ok: false, error: "Please write your question." }); return; }
   if (question.length > MAX_QUESTION_CHARS) { res.status(400).json({ ok: false, error: `Please keep your question under ${MAX_QUESTION_CHARS} characters.` }); return; }
 
-  // An attached file counts only when it is in this member's own folder of the support-files bucket.
+  // An attached file counts only when it sits in this member's own folder of the private support-files bucket.
+  // The ticket keeps the file's path; the Support Tickets page opens it with a short-lived private link.
   const requestedFile = String(req.body?.file_url ?? "");
-  const ownFilePrefix = `${supabaseUrl}/storage/v1/object/public/support-files/${memberId}/`;
-  const fileUrl = requestedFile.startsWith(ownFilePrefix) && requestedFile.length < 600 ? requestedFile : null;
+  const fileUrl = requestedFile.startsWith(`${memberId}/`) && requestedFile.length < 300 && !requestedFile.includes("..") ? requestedFile : null;
 
   // 2. The member's name and tier from their profile.
   let memberName: string | null = null;

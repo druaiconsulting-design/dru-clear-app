@@ -298,9 +298,15 @@ export default function AdminSupport() {
   const hubPill = (category: string) => category ? (
     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(10,35,66,0.08)", color: NAVY }}>Support Hub · {category}</span>
   ) : null;
+  // The file a member attached is private. A short-lived link is made when DeAnna presses the button.
+  const openAttachedFile = async (path: string) => {
+    const { data, error } = await supabase.storage.from("support-files").createSignedUrl(path, 600);
+    if (error || !data?.signedUrl) { window.alert("The attached file could not be opened."); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
   const fileLink = (ticket: Ticket | undefined) => ticket?.file_url ? (
     <div style={{ marginTop: "0.5rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>
-      <a href={ticket.file_url} target="_blank" rel="noreferrer" style={{ color: BLUE }}>Attached file</a>
+      <button onClick={() => openAttachedFile(ticket.file_url as string)} style={{ background: "none", border: "none", padding: 0, color: BLUE, textDecoration: "underline", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit" }}>Open attached file</button>
     </div>
   ) : null;
 
