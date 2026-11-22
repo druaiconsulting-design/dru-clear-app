@@ -219,7 +219,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"amelia",  agent_name:"Amelia Santos",    role:"Training Video Producer" },
   ],
   "Customer Support": [
-    { agent_id:"isaiah",    agent_name:"Isaiah Carter",     role:"Issue Resolution" },
+    { agent_id:"isaiah",    agent_name:"Isaiah Carter",     role:"Problem Resolution" },
     { agent_id:"priscilla", agent_name:"Priscilla Okonkwo", role:"Multi-Channel Communication" },
   ],
   "Command": [
