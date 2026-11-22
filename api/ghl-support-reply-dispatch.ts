@@ -1,5 +1,5 @@
 // api/ghl-support-reply-dispatch.ts
-// Sends an approved "Support Reply" card — Isaiah's reply to an email that came in at
+// Sends an approved "Support Reply" card — Isaiah's reply (or Yara's, for a ticket in Spanish, French or Arabic) to an email that came in at
 // support@support.druaiconsulting.com or info@info.druaiconsulting.com, or to a Support Hub request —
 // through the GHL workflow for the address the person wrote to, so it arrives from that address.
 //
@@ -11,6 +11,8 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SUPPORT_FROM_ADDRESSES, sendSupportEmail } from "./_lib/ghlSupportSend.js";
+import { translateFromEnglish } from "./_lib/supportIsaiah.js";
+import { isSupportLanguage } from "./_lib/yaraEmailReply.js";
 export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
@@ -62,11 +64,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const giveBack = async () => { await sb(`support_requests?id=eq.${ticketId}`, { method: "PATCH", body: JSON.stringify({ status: "awaiting_approval" }) }); };
 
   try {
+    // A ticket in Spanish, French or Arabic: DeAnna approved the reply in English, and Yara translates it into the
+    // person's language before it is sent. The ticket keeps both versions.
+    const langRes = await sb(`support_requests?id=eq.${ticketId}&select=language&limit=1`);
+    const rawLanguage = langRes.ok ? (await langRes.json())?.[0]?.language : "en";
+    const language = isSupportLanguage(rawLanguage) ? rawLanguage : "en";
+    let sendText = replyText;
+    if (language !== "en") {
+      try {
+        sendText = await translateFromEnglish(replyText, language);
+      } catch (err) {
+        console.error(`[ghl-support-reply-dispatch] Yara could not translate the reply for approval ${approvalId}:`, err);
+        await giveBack();
+        res.status(502).json({ error: "Yara could not translate the reply. It is back in Waiting on you." });
+        return;
+      }
+    }
+
     const result = await sendSupportEmail({
       toEmail: fromEmail,
       fromAddress,
       originalSubject: String(ctx.subject ?? ""),
-      replyText,
+      replyText: sendText,
     });
 
     if (!result.ok) {
@@ -83,7 +102,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const changedByDeanna = approval.source === "support_email_manual" || (!!approval.edited_output && String(approval.edited_output).trim() !== String(approval.output ?? "").trim());
       await sb("ticket_messages", {
         method: "POST",
-        body: JSON.stringify({ ticket_id: ticketId, direction: changedByDeanna ? "deanna" : "isaiah", body: replyText.slice(0, 20000), dedupe_key: `reply:${approvalId}` }),
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          direction: changedByDeanna ? "deanna" : language === "en" ? "isaiah" : "yara",
+          body: sendText.slice(0, 20000),
+          body_en: language === "en" ? null : replyText.slice(0, 20000),
+          dedupe_key: `reply:${approvalId}`,
+        }),
       });
     } catch (err) {
       console.error(`[ghl-support-reply-dispatch] Could not save the sent reply to the conversation (ticket ${ticketId}):`, err);

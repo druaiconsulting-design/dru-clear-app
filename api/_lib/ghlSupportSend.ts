@@ -47,7 +47,7 @@ function areaLabelFor(fromAddress: string): string | null {
 }
 
 // "Re: Support: <their subject>" for support@, "Re: Info: <their subject>" for info@. Support Hub requests already
-// carry their area ("Support Hub: Course Access"), so they only get "Re:" in front.
+// carry their area ("Support Hub: Course Access"), so they only get "Re:" in front. So do website chat tickets ("Support Website Chat").
 export function replySubject(originalSubject: string, fromAddress = ""): string {
   let core = originalSubject.trim();
   for (;;) {
@@ -56,6 +56,8 @@ export function replySubject(originalSubject: string, fromAddress = ""): string 
     core = next.trim();
   }
   if (!core) core = "your message";
+  // Tickets opened from the website chat read "Re: Support Website Chat" with no area in front.
+  if (/^support website chat\b/i.test(core)) return `Re: ${core}`;
   const area = areaLabelFor(fromAddress);
   if (!area || /^support hub\s*:/i.test(core) || new RegExp(`^${area}\\s*:`, "i").test(core)) return `Re: ${core}`;
   return `Re: ${area}: ${core}`;
