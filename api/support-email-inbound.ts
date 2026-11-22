@@ -3,7 +3,7 @@
 // GHL's Inbound Email workflow posts the email here. This endpoint:
 //   1. checks the shared secret (x-support-key) so only GHL can post here
 //   2. skips mail from our own addresses, mailer robots and auto-replies
-//   3. an email that answers an earlier ticket (same email thread, or same sender, address and subject within 30 days)
+//   3. an email that answers an earlier ticket (same email thread, or same sender, address and subject, with activity in the last 10 days)
 //      is added to that ticket, the ticket moves back to Waiting on you (a closed ticket reopens), Isaiah drafts his next reply
 //      from the whole conversation, and no second instant reply goes out. Any other email is saved as a new ticket in
 //      support_requests (the same email posted twice is saved once).
@@ -26,7 +26,7 @@ const ALLOWED_ADDRESSES = ["support@support.druaiconsulting.com", "info@info.dru
 const OWN_DOMAINS = ["support.druaiconsulting.com", "info.druaiconsulting.com", "noreply.druaiconsulting.com"];
 const MAX_TICKETS_PER_SENDER_PER_HOUR = 3;
 const MAX_BODY_CHARS = 8000;
-const FOLLOW_UP_WINDOW_DAYS = 30;           // an email with no thread match joins a ticket of the same sender and subject written within this many days
+const FOLLOW_UP_WINDOW_DAYS = 10;           // a ticket takes follow-ups for this many days after its last activity
 const MAX_FOLLOW_UP_DRAFTS_PER_TICKET_PER_HOUR = 5;
 
 function keyMatches(given: string, expected: string): boolean {
@@ -94,23 +94,42 @@ function subjectOfQuestion(question: unknown): string {
   return (m?.[1] ?? "").trim();
 }
 
+// A ticket only takes follow-ups for 10 days after its last activity (the client's email, Isaiah's reply or yours).
+// After that the same email thread or subject starts a new ticket.
+async function activeWithinWindow(rows: Record<string, unknown>[]): Promise<Record<string, unknown> | null> {
+  if (rows.length === 0) return null;
+  const cutoff = Date.now() - FOLLOW_UP_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const ids = rows.map((r) => String(r.id)).join(",");
+  const res = await sb(`ticket_messages?ticket_id=in.(${ids})&select=ticket_id,created_at&order=created_at.desc&limit=500`);
+  const last = new Map<string, number>();
+  if (res.ok) {
+    for (const m of (await res.json()) as { ticket_id: string; created_at: string }[]) {
+      if (!last.has(m.ticket_id)) last.set(m.ticket_id, new Date(m.created_at).getTime());
+    }
+  }
+  for (const r of rows) {
+    const activity = Math.max(new Date(String(r.created_at)).getTime(), last.get(String(r.id)) ?? 0);
+    if (activity >= cutoff) return r;
+  }
+  return null;
+}
+
 // Finds the ticket an email belongs to. First the email thread (GHL's message id is the same for every email
-// in a thread, from the same sender). Then the same sender, the same address and the same subject, written
-// within the last 30 days. No match means a new ticket.
+// in a thread, from the same sender). Then the same sender, the same address and the same subject.
+// Either way the ticket must have had activity within the last 10 days. No match means a new ticket.
 async function findTicketForFollowUp(fromEmail: string, toAddress: string, messageId: string, subject: string): Promise<Record<string, unknown> | null> {
   const enc = encodeURIComponent;
-  const byThread = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&ghl_message_id=eq.${enc(messageId)}&select=*&order=created_at.desc&limit=1`);
+  const byThread = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&ghl_message_id=eq.${enc(messageId)}&select=*&order=created_at.desc&limit=20`);
   if (byThread.ok) {
-    const row = (await byThread.json())?.[0];
-    if (row) return row;
+    const hit = await activeWithinWindow((await byThread.json()) as Record<string, unknown>[]);
+    if (hit) return hit;
   }
   const wanted = normalizeSubject(subject);
   if (!wanted || wanted === "(no subject)") return null;
-  const since = new Date(Date.now() - FOLLOW_UP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const recent = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&source_address=eq.${enc(toAddress)}&created_at=gte.${since}&select=*&order=created_at.desc&limit=50`);
+  const recent = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&source_address=eq.${enc(toAddress)}&select=*&order=created_at.desc&limit=50`);
   if (!recent.ok) return null;
   const rows = (await recent.json()) as Record<string, unknown>[];
-  return rows.find((r) => normalizeSubject(subjectOfQuestion(r.question)) === wanted) ?? null;
+  return activeWithinWindow(rows.filter((r) => normalizeSubject(subjectOfQuestion(r.question)) === wanted));
 }
 
 async function recentClientMessageCount(ticketId: string): Promise<number> {

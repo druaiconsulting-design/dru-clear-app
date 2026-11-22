@@ -255,7 +255,7 @@ export default async function handler(req: any, res: any): Promise<void> {
       console.error('[chat-agent] AI error:', err);
       res.status(500).json({
         success: false,
-        response: 'Thank you for your message! Please visit assessment.druaiconsulting.com to get started, or email us at support@druaiconsulting.com.',
+        response: 'Thank you for your message! Please visit assessment.druaiconsulting.com to get started, or email us at support@support.druaiconsulting.com.',
       });
     }
     return;
