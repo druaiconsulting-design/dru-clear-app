@@ -56,7 +56,6 @@ const AGENT_ROUTES: Record<string, AgentRoute> = {
   cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
   cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
   cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
-  cron_isaiah_support_daily:      { agent_id: 'isaiah',   agent_name: 'Isaiah Carter',     division: 'Customer Support', task: 'daily_issue_resolution',        pipeline: 'p8_isaiah' },
   cron_priscilla_comms_daily:     { agent_id: 'priscilla',agent_name: 'Priscilla Okonkwo', division: 'Customer Support', task: 'daily_multichannel_comms',      pipeline: 'p8_priscilla' },
 
   lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'score_new_lead' },
@@ -1418,8 +1417,8 @@ async function runAmelia(): Promise<string|null> {
 }
 
 // P8
-// Pulls real support ticket data from Supabase for Isaiah and Priscilla.
-// Both agents report actual ticket volume and open issues — never invented metrics.
+// Pulls real support ticket data from Supabase for Priscilla.
+// She reports actual ticket volume and open issues — never invented metrics.
 async function fetchSupportData(): Promise<string> {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1450,14 +1449,6 @@ async function fetchSupportData(): Promise<string> {
   }
 }
 
-async function runIsaiah(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const supportData = await fetchSupportData();
-  const previousWork = await getCrossRead(['isaiah'], 1);
-  const prevSection = previousWork ? `WHAT YOU COVERED YESTERDAY (do not repeat):\n${previousWork}` : 'No previous output on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('isaiah','Isaiah Carter','Customer Support','daily_issue_resolution','issue_resolution',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL SUPPORT DATA (use only this — do not invent tickets, issues, or resolution counts):\n${supportData}\n\n${prevSection}\n\nHARD RULES:\n1. Base every statement on the real support data above. Do not invent ticket categories, volumes, or resolution flows that don't correspond to actual open tickets.\n2. If open tickets = 0 and total requests = 0, open with: \"No support tickets on record. Queue is clear.\" Then give ONE new infrastructure prep item not covered yesterday.\n3. If there ARE open tickets, address each one by name, category, and member tier. State the resolution action.\n4. Do not rewrite the same four resolution flows every day. If the protocols haven't changed and there are no real tickets, say so.\n5. Only surface genuinely new infrastructure improvements — check the previous output above before writing.\n\nFormat: 200 words or fewer. Write in first person as Isaiah.`,'normal',0,null,1500);
-}
 async function runPriscilla(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
   const supportData = await fetchSupportData();
@@ -1633,7 +1624,6 @@ Write the complete article. This is the full PDF content — not a summary or ou
   else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p8_isaiah'){const id=await runIsaiah();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p8_priscilla'){const id=await runPriscilla();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (payload.trigger_type==='cc_upsell_signal'){
     const {signal_type,email,first_name,phone}=payload as any;

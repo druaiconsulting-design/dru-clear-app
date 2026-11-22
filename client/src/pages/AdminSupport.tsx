@@ -23,6 +23,14 @@ interface Ticket {
 // Every message after a ticket's first one: the client's follow-ups, Isaiah's replies, DeAnna's replies.
 interface TicketMessage { id: string; ticket_id: string; direction: "client" | "isaiah" | "deanna"; body: string; created_at: string }
 
+// Isaiah Carter's weekly ticket report (api/support-weekly-report.ts). Each Saturday's report is one row.
+interface CountLine { label: string; count: number }
+interface WeeklyReport {
+  id: string; period_start: string; period_end: string; ticket_count: number; created_at: string;
+  counts: { where_from?: CountLine[]; tiers?: CountLine[]; outcomes?: CountLine[] } | null;
+  topics: string;
+}
+
 const NAVY = "#0A2342";
 const GOLD = "#D4AF37";
 const BLUE = "#2D5A8E";
@@ -71,7 +79,8 @@ export default function AdminSupport() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"waiting" | "replied">("waiting");
+  const [reports, setReports] = useState<WeeklyReport[]>([]);
+  const [tab, setTab] = useState<"waiting" | "replied" | "weekly">("waiting");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,10 +92,11 @@ export default function AdminSupport() {
   const [ownText, setOwnText] = useState("");
 
   const load = useCallback(async () => {
-    const [c, t, m] = await Promise.all([
+    const [c, t, m, r] = await Promise.all([
       supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
       supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url").order("created_at", { ascending: false }).limit(300),
       supabase.from("ticket_messages").select("id,ticket_id,direction,body,created_at").order("created_at", { ascending: true }).limit(3000),
+      supabase.from("support_weekly_reports").select("id,period_start,period_end,ticket_count,created_at,counts,topics").order("period_end", { ascending: false }).limit(104),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
     else setCards((c.data as SupportCard[]) ?? []);
@@ -94,6 +104,8 @@ export default function AdminSupport() {
     else setTickets((t.data as Ticket[]) ?? []);
     if (m.error) console.error("Failed to load ticket messages:", m.error);
     else setMessages((m.data as TicketMessage[]) ?? []);
+    if (r.error) console.error("Failed to load weekly reports:", r.error);
+    else setReports((r.data as WeeklyReport[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -381,6 +393,7 @@ export default function AdminSupport() {
         <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
           <button onClick={() => setTab("waiting")} style={tabStyle(tab === "waiting")}>Waiting on you ({waitingCount})</button>
           <button onClick={() => setTab("replied")} style={tabStyle(tab === "replied")}>Replied ({repliedTickets.length})</button>
+          <button onClick={() => setTab("weekly")} style={tabStyle(tab === "weekly")}>Weekly report</button>
         </div>
 
         {loading && (
@@ -556,6 +569,43 @@ export default function AdminSupport() {
                   )}
                 </div>
               )}
+            </div>
+          );
+        })}
+
+        {!loading && tab === "weekly" && reports.length === 0 && (
+          <div style={{ textAlign: "center", padding: "3rem", color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>No weekly report yet. Isaiah Carter writes one every Saturday at 2:00 PM CST.</div>
+        )}
+
+        {!loading && tab === "weekly" && reports.map(report => {
+          const dayText = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
+          const sections: { title: string; lines: CountLine[] }[] = [
+            { title: "Where it came from", lines: report.counts?.where_from ?? [] },
+            { title: "Who wrote in", lines: report.counts?.tiers ?? [] },
+            { title: "How tickets ended", lines: report.counts?.outcomes ?? [] },
+          ];
+          return (
+            <div key={report.id} style={cardShell}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>Week of {dayText(report.period_start)} to {dayText(report.period_end)}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)" }}>{report.ticket_count} {report.ticket_count === 1 ? "ticket" : "tickets"} · written by Isaiah Carter</div>
+              </div>
+              <div style={{ background: "rgba(45,90,142,0.08)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ ...panelLabel, color: BLUE }}>Common topics</div>
+                <div style={bodyText}>{report.topics}</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+                {sections.map(section => (
+                  <div key={section.title} style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "0.9rem 1rem" }}>
+                    <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>{section.title}</div>
+                    {section.lines.map(line => (
+                      <div key={line.label} style={{ display: "flex", justifyContent: "space-between", gap: "1rem", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(10,35,66,0.8)", padding: "0.15rem 0" }}>
+                        <span>{line.label}</span><span style={{ fontWeight: 700 }}>{line.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           );
         })}
