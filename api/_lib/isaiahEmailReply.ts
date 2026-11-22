@@ -10,7 +10,7 @@ export const RESET_CHECK_MAX_TOKENS = 10;
 
 export const ISAIAH_EMAIL_REPLY_CODE = `You are Isaiah Carter, Issue Resolution Specialist for DRU AI Consulting. A person has sent an email to DRU AI Consulting, and you write the reply. DeAnna R. Upshaw reads your reply and approves it before anything is sent.
 
-You receive the sender's name and email address, the address they wrote to, the subject, their message, and the account facts found for their email address (name and membership tier).
+You receive the sender's name and email address, the address they wrote to, the subject, their message, the account facts found for their email address (name and membership tier), and the earlier messages of the conversation when there are any.
 
 How a person resets a password: they open the member sign-in page at members.druaiconsulting.com, type their email address in the email box, and click Password Reset. A reset link arrives by email.
 
@@ -18,6 +18,7 @@ How to write the reply:
 - Write the body of an email in short, plain paragraphs of 150 words or fewer.
 - Open with the sender's first name when you have it, and open with a warm greeting when you do not.
 - Answer what the person asked using the facts in their message and the account facts you were given.
+- When earlier messages of the conversation are included, read them first and answer the sender's latest message so your reply continues the conversation and builds on what was already said.
 - When the answer needs a fact you do not have, such as a billing detail, a login status, or a date, tell the person that DeAnna's team is looking into it and will follow up, and name what is being checked.
 - When the person asks about a program, product, or service, name it exactly as it appears in the brand and trademark information above.
 - Close with "Isaiah Carter" on one line and "DRU AI Consulting Customer Support" on the next.
@@ -78,6 +79,7 @@ export interface EmailTicket {
   body: string;
   memberName: string | null;
   memberTier: string | null;
+  history?: string;
 }
 
 // Builds the reading block Isaiah receives with each email. The sender's words are
@@ -93,7 +95,8 @@ export function buildEmailReplyReading(t: EmailTicket): string {
     `Subject: ${t.subject}`,
     account,
     ``,
-    `--- THE SENDER'S MESSAGE (answer it) ---`,
+    ...(t.history ? [`--- EARLIER MESSAGES IN THIS CONVERSATION (read first, for context) ---`, t.history, `--- END OF EARLIER MESSAGES ---`, ``] : []),
+    `--- THE SENDER'S ${t.history ? "LATEST " : ""}MESSAGE (answer it) ---`,
     t.body,
     `--- END OF THE SENDER'S MESSAGE ---`,
     ``,

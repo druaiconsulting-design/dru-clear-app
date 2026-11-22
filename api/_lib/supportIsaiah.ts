@@ -31,6 +31,8 @@ export interface SupportTicket {
   body: string;
   memberName: string | null;
   memberTier: string | null;
+  // The earlier messages of the conversation, when there are any. Filled in when Isaiah drafts a reply.
+  history?: string;
 }
 
 // Builds a SupportTicket from a support_requests row (the question column holds "Subject: ...\n\nbody").
@@ -99,7 +101,7 @@ export function buildRevisionReading(r: ReplyRevision): string {
 export async function writeFullReply(t: SupportTicket, preface: string, revision?: ReplyRevision): Promise<string> {
   const prompt = `${preface}\n\n${ISAIAH_EMAIL_REPLY_CODE}\n\n${buildEmailReplyReading({
     fromName: t.fromName, fromEmail: t.fromEmail, toAddress: t.toAddress, subject: t.subject, body: t.body,
-    memberName: t.memberName, memberTier: t.memberTier,
+    memberName: t.memberName, memberTier: t.memberTier, history: t.history,
   })}${revision ? buildRevisionReading(revision) : ""}`;
   const text = (await callIsaiah(prompt, EMAIL_REPLY_MAX_TOKENS)).replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
   if (!text) throw new Error("Isaiah returned an empty reply");
@@ -154,16 +156,100 @@ export async function setTicketStatus(ticketId: string, status: string): Promise
   await sb(`support_requests?id=eq.${ticketId}`, { method: "PATCH", body: JSON.stringify({ status }) });
 }
 
+// ── The conversation inside a ticket ──────────────────────────────────────────
+// The ticket's first message is kept in support_requests.question. Every message after it
+// (the client's follow-ups, Isaiah's replies, DeAnna's replies) is a row in ticket_messages.
+export type MessageDirection = "client" | "isaiah" | "deanna";
+
+export async function recordMessage(
+  ticketId: string, direction: MessageDirection, body: string,
+  opts?: { ghlMessageId?: string; dedupeKey?: string },
+): Promise<"saved" | "duplicate" | "failed"> {
+  try {
+    const res = await sb("ticket_messages", {
+      method: "POST",
+      body: JSON.stringify({
+        ticket_id: ticketId, direction, body: body.slice(0, 20000),
+        ghl_message_id: opts?.ghlMessageId || null, dedupe_key: opts?.dedupeKey || null,
+      }),
+    });
+    if (res.status === 409) return "duplicate";
+    if (!res.ok) {
+      console.error(`[support] Could not save a ${direction} message on ticket ${ticketId}: ${res.status} ${await res.text()}`);
+      return "failed";
+    }
+    return "saved";
+  } catch (err) {
+    console.error(`[support] Could not save a ${direction} message on ticket ${ticketId}:`, err);
+    return "failed";
+  }
+}
+
+const HISTORY_LABEL: Record<string, string> = { client: "The client wrote", isaiah: "Isaiah Carter replied", deanna: "DeAnna replied" };
+const HISTORY_ENTRY_CHARS = 1500;
+const HISTORY_TOTAL_CHARS = 6000;
+
+// Reads the whole conversation and splits it: the client's latest message (the one to answer) and
+// everything else, in order, as a block of earlier messages. A ticket with no saved messages beyond
+// its first one answers that first message with no earlier messages.
+export async function loadConversation(t: SupportTicket): Promise<{ latest: string; history: string }> {
+  try {
+    const [qRes, mRes] = await Promise.all([
+      sb(`support_requests?id=eq.${t.id}&select=question&limit=1`),
+      sb(`ticket_messages?ticket_id=eq.${t.id}&select=direction,body&order=created_at.asc&limit=200`),
+    ]);
+    if (!qRes.ok || !mRes.ok) return { latest: t.body, history: "" };
+    const question = String((await qRes.json())?.[0]?.question ?? "");
+    const rows = (await mRes.json()) as { direction: MessageDirection; body: string }[];
+    const m = question.match(/^Subject:\s*(.*)\n/);
+    const opening = (m ? question.slice(m[0].length) : question).trim() || t.body;
+    const items: { direction: MessageDirection; body: string }[] = [{ direction: "client", body: opening }, ...rows];
+    let latestIdx = 0;
+    items.forEach((it, i) => { if (it.direction === "client") latestIdx = i; });
+    const earlier = items.filter((_, i) => i !== latestIdx).map((it) => `${HISTORY_LABEL[it.direction] ?? it.direction}:\n${it.body.trim().slice(0, HISTORY_ENTRY_CHARS)}`);
+    const kept: string[] = [];
+    let total = 0;
+    for (let i = earlier.length - 1; i >= 0; i--) {
+      if (total + earlier[i].length > HISTORY_TOTAL_CHARS && kept.length > 0) break;
+      kept.unshift(earlier[i]);
+      total += earlier[i].length;
+    }
+    return { latest: items[latestIdx].body.trim() || t.body, history: kept.join("\n\n") };
+  } catch (err) {
+    console.error(`[support] Could not read the conversation for ticket ${t.id}:`, err);
+    return { latest: t.body, history: "" };
+  }
+}
+
 // Isaiah writes the full reply and it waits in Waiting on you. Returns false when the daily spend cap stops it.
 // A correctionNote (DeAnna's corrective feedback on his earlier draft) marks the new draft as his correction.
 export async function draftReplyForReview(t: SupportTicket, preface: string, correctionNote?: string, previousDraft?: string): Promise<boolean> {
   const spend = await checkAndReserveSpend();
   if (!spend.ok) return false;
   const revision = correctionNote && previousDraft ? { previousDraft, feedback: correctionNote } : undefined;
-  const draft = await writeFullReply(t, preface, revision);
-  await createReplyCard(t, draft, "pending", correctionNote);
+  // Isaiah reads the whole conversation and answers the client's latest message.
+  const convo = await loadConversation(t);
+  const reading: SupportTicket = { ...t, body: convo.latest, history: convo.history };
+  const draft = await writeFullReply(reading, preface, revision);
+  await createReplyCard(reading, draft, "pending", correctionNote);
   await setTicketStatus(t.id, "awaiting_approval");
   return true;
+}
+
+// A client answered an email thread that already has a ticket. Isaiah drafts his next reply from the whole
+// conversation and it waits on DeAnna. No instant reply goes out for a follow-up. When the draft cannot be
+// written (spend cap or an error), the ticket returns to "open" so it shows as waiting with no reply drafted.
+export async function handleFollowUp(t: SupportTicket): Promise<void> {
+  try {
+    const preface = await loadPreface();
+    if (!(await draftReplyForReview(t, preface))) {
+      console.warn(`[support] Daily spend cap reached — follow-up on ticket ${t.id} stays open for the daily report`);
+      await setTicketStatus(t.id, "open");
+    }
+  } catch (err) {
+    console.error(`[support] Follow-up draft failed for ticket ${t.id}:`, err);
+    await setTicketStatus(t.id, "open");
+  }
 }
 
 // The only web address an automatic reply may carry.
@@ -196,6 +282,7 @@ export async function autoReplyToPasswordReset(t: SupportTicket, preface: string
   const sent = await sendToSender(t, text);
   if (sent.ok) {
     try { await createReplyCard(t, text, "sent"); } catch (err) { console.error(`[support] Auto-reply record failed for ticket ${t.id}:`, err); }
+    await recordMessage(t.id, "isaiah", text);
     await setTicketStatus(t.id, "replied");
     console.log(`[support] Password reset reply sent from ${t.toAddress} for ticket ${t.id}`);
   } else {
@@ -214,6 +301,7 @@ async function sendInstantReply(t: SupportTicket, preface: string): Promise<void
     if (!text) throw new Error("Isaiah returned an empty instant reply");
     const sent = await sendToSender(t, text);
     if (!sent.ok) throw new Error(sent.detail);
+    await recordMessage(t.id, "isaiah", text);
     console.log(`[support] Instant reply sent from ${t.toAddress} for ticket ${t.id}`);
   } catch (err) {
     console.error(`[support] Instant reply failed for ticket ${t.id}:`, err);

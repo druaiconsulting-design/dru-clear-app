@@ -3,7 +3,10 @@
 // GHL's Inbound Email workflow posts the email here. This endpoint:
 //   1. checks the shared secret (x-support-key) so only GHL can post here
 //   2. skips mail from our own addresses, mailer robots and auto-replies
-//   3. saves the email as a ticket in support_requests (the same email posted twice is saved once; a follow-up in the same thread is a new ticket)
+//   3. an email that answers an earlier ticket (same email thread, or same sender, address and subject within 30 days)
+//      is added to that ticket, the ticket moves back to Waiting on you (a closed ticket reopens), Isaiah drafts his next reply
+//      from the whole conversation, and no second instant reply goes out. Any other email is saved as a new ticket in
+//      support_requests (the same email posted twice is saved once).
 //   4. password reset emails: Isaiah Carter replies right away with the real reset steps (no approval)
 //      and the ticket moves to Replied. Every other email gets Isaiah's instant reply (a short thank-you
 //      that says a reply follows within 24 hours), sent from the address they wrote to through that address's GHL workflow.
@@ -14,7 +17,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { waitUntil } from "@vercel/functions";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { sb, handleTicket } from "./_lib/supportIsaiah.js";
+import { sb, handleTicket, handleFollowUp, recordMessage, ticketFromRow } from "./_lib/supportIsaiah.js";
 
 export const config = { maxDuration: 300 };
 
@@ -23,6 +26,8 @@ const ALLOWED_ADDRESSES = ["support@support.druaiconsulting.com", "info@info.dru
 const OWN_DOMAINS = ["support.druaiconsulting.com", "info.druaiconsulting.com", "noreply.druaiconsulting.com"];
 const MAX_TICKETS_PER_SENDER_PER_HOUR = 3;
 const MAX_BODY_CHARS = 8000;
+const FOLLOW_UP_WINDOW_DAYS = 30;           // an email with no thread match joins a ticket of the same sender and subject written within this many days
+const MAX_FOLLOW_UP_DRAFTS_PER_TICKET_PER_HOUR = 5;
 
 function keyMatches(given: string, expected: string): boolean {
   if (!given || !expected) return false;
@@ -73,6 +78,49 @@ async function recentTicketCount(email: string): Promise<number> {
   return Array.isArray(rows) ? rows.length : 0;
 }
 
+// "Re: Fwd: Reset password" and "reset password" are the same subject.
+function normalizeSubject(subject: string): string {
+  let out = subject.trim();
+  for (;;) {
+    const next = out.replace(/^(re|fw|fwd|aw|sv)\s*:\s*/i, "");
+    if (next === out) break;
+    out = next;
+  }
+  return out.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function subjectOfQuestion(question: unknown): string {
+  const m = String(question ?? "").match(/^Subject:\s*(.*)\n/);
+  return (m?.[1] ?? "").trim();
+}
+
+// Finds the ticket an email belongs to. First the email thread (GHL's message id is the same for every email
+// in a thread, from the same sender). Then the same sender, the same address and the same subject, written
+// within the last 30 days. No match means a new ticket.
+async function findTicketForFollowUp(fromEmail: string, toAddress: string, messageId: string, subject: string): Promise<Record<string, unknown> | null> {
+  const enc = encodeURIComponent;
+  const byThread = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&ghl_message_id=eq.${enc(messageId)}&select=*&order=created_at.desc&limit=1`);
+  if (byThread.ok) {
+    const row = (await byThread.json())?.[0];
+    if (row) return row;
+  }
+  const wanted = normalizeSubject(subject);
+  if (!wanted || wanted === "(no subject)") return null;
+  const since = new Date(Date.now() - FOLLOW_UP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const recent = await sb(`support_requests?member_email=eq.${enc(fromEmail)}&source_address=eq.${enc(toAddress)}&created_at=gte.${since}&select=*&order=created_at.desc&limit=50`);
+  if (!recent.ok) return null;
+  const rows = (await recent.json()) as Record<string, unknown>[];
+  return rows.find((r) => normalizeSubject(subjectOfQuestion(r.question)) === wanted) ?? null;
+}
+
+async function recentClientMessageCount(ticketId: string): Promise<number> {
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const res = await sb(`ticket_messages?ticket_id=eq.${ticketId}&direction=eq.client&created_at=gte.${since}&select=id`);
+  if (!res.ok) return 0;
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
 
@@ -105,6 +153,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // GHL reuses one message id for every email in the same thread, so the id alone cannot tell a retry
   // from a follow-up. The id plus the email's own words can.
   const dedupeKey = `${messageId}:${createHash("sha256").update(`${subject}\n${body}`).digest("hex").slice(0, 24)}`;
+
+  // The same email posted again (a retry) is never saved twice.
+  const already = await sb(`support_requests?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&select=id&limit=1`);
+  if (already.ok && ((await already.json()) as unknown[]).length > 0) {
+    console.log(`[support-email-inbound] Skipped repeat of an email already saved (from ${fromEmail}, message ${messageId})`);
+    res.status(200).json({ ok: true, duplicate: true });
+    return;
+  }
+
+  // A client answering an email thread adds to that ticket and the ticket moves back to "Waiting on you".
+  const existing = await findTicketForFollowUp(fromEmail, toAddress, messageId, subject);
+  if (existing) {
+    const ticketId = String(existing.id);
+    const tooManyFollowUps = (await recentClientMessageCount(ticketId)) >= MAX_FOLLOW_UP_DRAFTS_PER_TICKET_PER_HOUR;
+
+    // The message is saved first, so a repeat of the same email (a retry) stops here and changes nothing.
+    const saved = await recordMessage(ticketId, "client", body, { ghlMessageId: messageId, dedupeKey });
+    if (saved === "duplicate") {
+      res.status(200).json({ ok: true, duplicate: true });
+      return;
+    }
+    if (saved === "failed") {
+      res.status(500).json({ error: "Follow-up save failed" });
+      return;
+    }
+
+    // The ticket moves back to Waiting on you (a closed ticket reopens). A ticket that is being drafted
+    // or sent this moment is left alone; the message is saved either way.
+    const reopen = await sb(`support_requests?id=eq.${ticketId}&status=not.in.(replying,drafting)`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ status: tooManyFollowUps ? "open" : "drafting" }),
+    });
+    const reopened = reopen.ok ? await reopen.json() : [];
+    const didReopen = Array.isArray(reopened) && reopened.length > 0;
+    const canDraft = didReopen && !tooManyFollowUps;
+
+    res.status(200).json({ ok: true, ticket_id: ticketId, follow_up: true, drafting: canDraft });
+
+    if (!canDraft && !didReopen) {
+      console.warn(`[support-email-inbound] Follow-up saved on ticket ${ticketId} without a draft (ticket is being drafted or sent)`);
+      return;
+    }
+
+    const base = ticketFromRow(existing);
+    waitUntil((async () => {
+      // The earlier draft is out of date now that the client has written again.
+      await sb(`approvals?category=eq.support_reply&status=eq.pending&context=like.*${ticketId}*`, { method: "PATCH", body: JSON.stringify({ status: "closed" }) }).catch(() => {});
+      if (!canDraft) {
+        console.warn(`[support-email-inbound] Follow-up saved on ticket ${ticketId} without a draft (too many follow-ups this hour)`);
+        return;
+      }
+      await handleFollowUp({
+        ...base,
+        ghlContactId: contactIdFrom(payload) || base.ghlContactId,
+        ghlMessageId: messageId,
+        fromName: fromName ?? base.fromName,
+        toAddress,
+        body,
+      });
+    })());
+    return;
+  }
 
   const member = await lookUpMember(fromEmail);
   const tooMany = (await recentTicketCount(fromEmail)) >= MAX_TICKETS_PER_SENDER_PER_HOUR;

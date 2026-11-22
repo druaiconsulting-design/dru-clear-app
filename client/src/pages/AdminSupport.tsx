@@ -20,6 +20,9 @@ interface Ticket {
   category: string; file_url: string | null;
 }
 
+// Every message after a ticket's first one: the client's follow-ups, Isaiah's replies, DeAnna's replies.
+interface TicketMessage { id: string; ticket_id: string; direction: "client" | "isaiah" | "deanna"; body: string; created_at: string }
+
 const NAVY = "#0A2342";
 const GOLD = "#D4AF37";
 const BLUE = "#2D5A8E";
@@ -66,6 +69,7 @@ const buttonBase: React.CSSProperties = { fontFamily: "'Montserrat', sans-serif"
 export default function AdminSupport() {
   const [cards, setCards] = useState<SupportCard[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"waiting" | "replied">("waiting");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -79,14 +83,17 @@ export default function AdminSupport() {
   const [ownText, setOwnText] = useState("");
 
   const load = useCallback(async () => {
-    const [c, t] = await Promise.all([
+    const [c, t, m] = await Promise.all([
       supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
       supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url").order("created_at", { ascending: false }).limit(300),
+      supabase.from("ticket_messages").select("id,ticket_id,direction,body,created_at").order("created_at", { ascending: true }).limit(3000),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
     else setCards((c.data as SupportCard[]) ?? []);
     if (t.error) console.error("Failed to load tickets:", t.error);
     else setTickets((t.data as Ticket[]) ?? []);
+    if (m.error) console.error("Failed to load ticket messages:", m.error);
+    else setMessages((m.data as TicketMessage[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -293,6 +300,48 @@ export default function AdminSupport() {
   const repliedTickets = tickets.filter(t => t.status === "replied" || t.status === "replying");
   const ticketById = new Map<string, Ticket>();
   tickets.forEach(t => ticketById.set(t.id, t));
+  const messagesByTicket = new Map<string, TicketMessage[]>();
+  messages.forEach(m => { const list = messagesByTicket.get(m.ticket_id) ?? []; list.push(m); messagesByTicket.set(m.ticket_id, list); });
+  // A reopened ticket shows when it last had activity, not when it first arrived.
+  const lastActivity = (ticket: Ticket): string => {
+    const list = messagesByTicket.get(ticket.id);
+    return list && list.length > 0 ? list[list.length - 1].created_at : ticket.created_at;
+  };
+
+  // The whole conversation top to bottom: the client's first email, then every message after it,
+  // each labeled Client, Isaiah Carter or You.
+  const speaker = {
+    client: { name: "Client", bg: "rgba(10,35,66,0.06)", color: NAVY },
+    isaiah: { name: "Isaiah Carter", bg: "rgba(45,90,142,0.12)", color: BLUE },
+    deanna: { name: "You", bg: "rgba(212,175,55,0.22)", color: NAVY },
+  } as const;
+  const conversation = (ticket: Ticket) => {
+    const { message } = splitQuestion(ticket.question);
+    const sender = ticket.member_name ? `${ticket.member_name} <${ticket.member_email}>` : (ticket.member_email ?? "");
+    const items: { id: string; direction: keyof typeof speaker; body: string; created_at: string }[] = [
+      { id: `first-${ticket.id}`, direction: "client", body: message, created_at: ticket.created_at },
+      ...(messagesByTicket.get(ticket.id) ?? []),
+    ];
+    return (
+      <div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.5)", marginBottom: "0.6rem" }}>
+          {sender}{ticket.source_address ? ` · wrote to ${ticket.source_address}` : ""}
+        </div>
+        {items.map(item => {
+          const who = speaker[item.direction] ?? speaker.client;
+          return (
+            <div key={item.id} style={{ background: who.bg, borderRadius: 10, padding: "0.75rem 0.9rem", marginBottom: "0.6rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", marginBottom: "0.3rem" }}>
+                <span style={{ ...panelLabel, color: who.color, marginBottom: 0 }}>{who.name}</span>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(item.created_at)}</span>
+              </div>
+              <div style={bodyText}>{item.body}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // A small label that shows a Support Hub request's category next to the ticket. Emails carry no label.
   const hubPill = (category: string) => category ? (
@@ -373,8 +422,8 @@ export default function AdminSupport() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
                 <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
-                  <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Customer's Email</div>
-                  <div style={bodyText}>{card.original_content}</div>
+                  <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Conversation</div>
+                  {ticketById.get(ticketIdOf(card)) ? conversation(ticketById.get(ticketIdOf(card)) as Ticket) : <div style={bodyText}>{card.original_content}</div>}
                   {fileLink(ticketById.get(ticketIdOf(card)))}
                 </div>
                 <div style={{ background: "rgba(45,90,142,0.06)", borderRadius: 10, padding: "1rem" }}>
@@ -435,12 +484,12 @@ export default function AdminSupport() {
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
                   {hubPill(hubCategoryOf(ticket))}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: GOLD, color: NAVY }}>No reply drafted</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(ticket.created_at)}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(lastActivity(ticket))}</span>
                 </div>
               </div>
               <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
-                <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Customer's Email</div>
-                <div style={bodyText}>{`From: ${sender}\nWritten to: ${ticket.source_address ?? ""}\nSubject: ${subject}\n\n${message}`}</div>
+                <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Conversation</div>
+                {conversation(ticket)}
                 {fileLink(ticket)}
               </div>
               <div style={{ marginTop: "0.75rem", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(10,35,66,0.55)" }}>
@@ -491,20 +540,20 @@ export default function AdminSupport() {
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
                   {hubPill(hubCategoryOf(ticket))}
                   <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ticket.status === "replied" ? "#2E7D32" : GOLD, color: ticket.status === "replied" ? "#FFFFFF" : NAVY }}>{ticket.status === "replied" ? (card?.source === "support_email_auto" ? "✓ Auto-reply sent" : "✓ Reply Sent") : "Sending reply..."}</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(ticket.created_at)}</span>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", color: "rgba(10,35,66,0.45)" }}>{timeAgo(lastActivity(ticket))}</span>
                   <button disabled={busyId === ticket.id} onClick={(e) => { e.stopPropagation(); closeTicket(ticket); }} style={{ ...buttonBase, fontSize: "0.62rem", padding: "0.4rem 0.9rem", background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>{busyId === ticket.id ? "..." : "Close ticket"}</button>
                 </div>
               </div>
               {open && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
-                  <div style={{ background: "rgba(10,35,66,0.04)", borderRadius: 10, padding: "1rem" }}>
-                    <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Customer's Email</div>
-                    <div style={bodyText}>{message}</div>
-                  </div>
-                  <div style={{ background: "rgba(45,90,142,0.06)", borderRadius: 10, padding: "1rem" }}>
-                    <div style={{ ...panelLabel, color: BLUE }}>Reply Sent</div>
-                    <div style={bodyText}>{card ? (card.edited_output || card.output) : "The reply text is not available."}</div>
-                  </div>
+                <div style={{ marginTop: "1rem" }}>
+                  <div style={{ ...panelLabel, color: "rgba(10,35,66,0.5)" }}>Conversation</div>
+                  {conversation(ticket)}
+                  {(messagesByTicket.get(ticket.id) ?? []).every(m => m.direction === "client") && card && (
+                    <div style={{ background: "rgba(45,90,142,0.12)", borderRadius: 10, padding: "0.75rem 0.9rem" }}>
+                      <div style={{ ...panelLabel, color: BLUE, marginBottom: "0.3rem" }}>Isaiah Carter</div>
+                      <div style={bodyText}>{card.edited_output || card.output}</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const approvalId = String(req.body?.approval_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) { res.status(400).json({ error: "approval_id required" }); return; }
 
-  const aRes = await sb(`approvals?id=eq.${approvalId}&select=id,category,status,output,edited_output,context&limit=1`);
+  const aRes = await sb(`approvals?id=eq.${approvalId}&select=id,category,status,source,output,edited_output,context&limit=1`);
   const approval = aRes.ok ? (await aRes.json())?.[0] : null;
   if (!approval || approval.category !== "support_reply") { res.status(404).json({ error: "Support reply card not found" }); return; }
   if (approval.status !== "approved") { res.status(409).json({ error: "Card is not approved" }); return; }
@@ -77,6 +77,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     await sb(`support_requests?id=eq.${ticketId}`, { method: "PATCH", body: JSON.stringify({ status: "replied" }) });
+
+    // The sent reply joins the ticket's conversation. It counts as DeAnna's when she wrote or changed it.
+    try {
+      const changedByDeanna = approval.source === "support_email_manual" || (!!approval.edited_output && String(approval.edited_output).trim() !== String(approval.output ?? "").trim());
+      await sb("ticket_messages", {
+        method: "POST",
+        body: JSON.stringify({ ticket_id: ticketId, direction: changedByDeanna ? "deanna" : "isaiah", body: replyText.slice(0, 20000), dedupe_key: `reply:${approvalId}` }),
+      });
+    } catch (err) {
+      console.error(`[ghl-support-reply-dispatch] Could not save the sent reply to the conversation (ticket ${ticketId}):`, err);
+    }
     console.log(`[ghl-support-reply-dispatch] Reply sent from ${fromAddress} (approval ${approvalId}, ticket ${ticketId})`);
     res.status(200).json({ success: true });
   } catch (err) {
