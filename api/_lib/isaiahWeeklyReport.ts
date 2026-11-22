@@ -142,7 +142,11 @@ export async function generateWeeklyReport(now: Date = new Date()): Promise<Week
   const preface = await loadPreface();
   const today = dayLabel(end);
   const prompt = `${preface}\n\nToday's date is ${today}.\n\n${ISAIAH_WEEKLY_REPORT_CODE}\n\n${buildWeeklyReading(start, end, tickets, counts)}`;
-  const topics = (await callIsaiah(prompt, WEEKLY_REPORT_MAX_TOKENS)).replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1").trim();
+  // The page shows plain text, so heading marks, bold marks and divider lines are taken out.
+  const topics = (await callIsaiah(prompt, WEEKLY_REPORT_MAX_TOKENS))
+    .replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1")
+    .replace(/^#{1,6}\s*/gm, "").replace(/^\s*-{3,}\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n").trim();
   if (!topics) throw new Error("Isaiah returned an empty report");
 
   const insert = await sb("support_weekly_reports", {
