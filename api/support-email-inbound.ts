@@ -78,11 +78,12 @@ async function recentTicketCount(email: string): Promise<number> {
   return Array.isArray(rows) ? rows.length : 0;
 }
 
-// "Re: Fwd: Reset password" and "reset password" are the same subject.
+// "Re: Fwd: Reset password", "Re: Support: Reset password" and "reset password" are the same subject.
+// (Isaiah's replies carry the area, Support: or Info:, at the front of the subject.)
 function normalizeSubject(subject: string): string {
   let out = subject.trim();
   for (;;) {
-    const next = out.replace(/^(re|fw|fwd|aw|sv)\s*:\s*/i, "");
+    const next = out.replace(/^(re|fw|fwd|aw|sv|support|info)\s*:\s*/i, "");
     if (next === out) break;
     out = next;
   }

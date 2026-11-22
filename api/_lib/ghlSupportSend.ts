@@ -38,9 +38,27 @@ export interface SupportEmail {
   replyText: string;
 }
 
-export function replySubject(originalSubject: string): string {
-  const original = originalSubject.trim();
-  return /^re:/i.test(original) ? original : `Re: ${original || "your message"}`;
+// The area the person wrote to, shown at the front of the subject they see.
+function areaLabelFor(fromAddress: string): string | null {
+  const address = fromAddress.trim().toLowerCase();
+  if (address === "support@support.druaiconsulting.com") return "Support";
+  if (address === "info@info.druaiconsulting.com") return "Info";
+  return null;
+}
+
+// "Re: Support: <their subject>" for support@, "Re: Info: <their subject>" for info@. Support Hub requests already
+// carry their area ("Support Hub: Course Access"), so they only get "Re:" in front.
+export function replySubject(originalSubject: string, fromAddress = ""): string {
+  let core = originalSubject.trim();
+  for (;;) {
+    const next = core.replace(/^re\s*:\s*/i, "");
+    if (next === core) break;
+    core = next.trim();
+  }
+  if (!core) core = "your message";
+  const area = areaLabelFor(fromAddress);
+  if (!area || /^support hub\s*:/i.test(core) || new RegExp(`^${area}\\s*:`, "i").test(core)) return `Re: ${core}`;
+  return `Re: ${area}: ${core}`;
 }
 
 export async function sendSupportEmail(e: SupportEmail): Promise<{ ok: boolean; status: number; detail: string }> {
@@ -55,7 +73,7 @@ export async function sendSupportEmail(e: SupportEmail): Promise<{ ok: boolean; 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: toEmail, subject: replySubject(e.originalSubject), message: toHtml(e.replyText) }),
+      body: JSON.stringify({ email: toEmail, subject: replySubject(e.originalSubject, e.fromAddress), message: toHtml(e.replyText) }),
       signal: controller.signal,
     });
     if (!res.ok) {

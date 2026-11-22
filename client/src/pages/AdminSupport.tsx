@@ -26,7 +26,7 @@ interface TicketMessage { id: string; ticket_id: string; direction: "client" | "
 // Isaiah Carter's weekly ticket report (api/support-weekly-report.ts). Each Saturday's report is one row.
 interface CountLine { label: string; count: number }
 interface WeeklyReport {
-  id: string; period_start: string; period_end: string; ticket_count: number; created_at: string;
+  id: string; period_start: string; period_end: string; ticket_count: number; created_at: string; closed_at: string | null;
   counts: { where_from?: CountLine[]; tiers?: CountLine[]; outcomes?: CountLine[] } | null;
   topics: string;
 }
@@ -80,7 +80,7 @@ export default function AdminSupport() {
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<WeeklyReport[]>([]);
-  const [tab, setTab] = useState<"waiting" | "replied" | "weekly">("waiting");
+  const [tab, setTab] = useState<"waiting" | "replied" | "weekly" | "archive">("waiting");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function AdminSupport() {
       supabase.from("approvals").select("id,created_at,status,agent_name,source,title,original_content,output,edited_output,context").eq("category", "support_reply").order("created_at", { ascending: false }).limit(300),
       supabase.from("support_requests").select("id,created_at,status,member_name,member_email,question,source_address,ghl_contact_id,ghl_message_id,category,file_url").order("created_at", { ascending: false }).limit(300),
       supabase.from("ticket_messages").select("id,ticket_id,direction,body,created_at").order("created_at", { ascending: true }).limit(3000),
-      supabase.from("support_weekly_reports").select("id,period_start,period_end,ticket_count,created_at,counts,topics").order("period_end", { ascending: false }).limit(104),
+      supabase.from("support_weekly_reports").select("id,period_start,period_end,ticket_count,created_at,closed_at,counts,topics").order("period_end", { ascending: false }).limit(104),
     ]);
     if (c.error) console.error("Failed to load support cards:", c.error);
     else setCards((c.data as SupportCard[]) ?? []);
@@ -204,6 +204,16 @@ export default function AdminSupport() {
     setNote("");
     setBusyId(null);
     await changed();
+  };
+
+  // Closing a weekly report moves it from the Weekly report tab to the Archive tab.
+  const closeReport = async (report: WeeklyReport) => {
+    setBusyId(report.id);
+    const closedAt = new Date().toISOString();
+    const { error } = await supabase.from("support_weekly_reports").update({ closed_at: closedAt }).eq("id", report.id);
+    if (error) console.error("Failed to close weekly report:", error);
+    else setReports(prev => prev.map(r => (r.id === report.id ? { ...r, closed_at: closedAt } : r)));
+    setBusyId(null);
   };
 
   const closeTicket = async (ticket: Ticket) => {
@@ -378,6 +388,10 @@ export default function AdminSupport() {
     background: active ? BLUE : "transparent", color: active ? "#FFFFFF" : "rgba(10,35,66,0.6)",
   });
 
+  const openReports = reports.filter(r => !r.closed_at);
+  const archivedReports = reports.filter(r => r.closed_at).sort((a, b) => String(b.closed_at).localeCompare(String(a.closed_at)));
+  const shownReports = tab === "archive" ? archivedReports : openReports;
+
   const cardShell: React.CSSProperties = { background: "#FFFFFF", border: "1px solid rgba(10,35,66,0.12)", borderLeft: `4px solid ${BLUE}`, borderRadius: 12, padding: "1.25rem", marginBottom: "1.25rem" };
 
   return (
@@ -394,6 +408,7 @@ export default function AdminSupport() {
           <button onClick={() => setTab("waiting")} style={tabStyle(tab === "waiting")}>Waiting on you ({waitingCount})</button>
           <button onClick={() => setTab("replied")} style={tabStyle(tab === "replied")}>Replied ({repliedTickets.length})</button>
           <button onClick={() => setTab("weekly")} style={tabStyle(tab === "weekly")}>Weekly report</button>
+          <button onClick={() => setTab("archive")} style={tabStyle(tab === "archive")}>Archive ({archivedReports.length})</button>
         </div>
 
         {loading && (
@@ -573,11 +588,15 @@ export default function AdminSupport() {
           );
         })}
 
-        {!loading && tab === "weekly" && reports.length === 0 && (
-          <div style={{ textAlign: "center", padding: "3rem", color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>No weekly report yet. Isaiah Carter writes one every Saturday at 2:00 PM CST.</div>
+        {!loading && tab === "weekly" && openReports.length === 0 && (
+          <div style={{ textAlign: "center", padding: "3rem", color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>{archivedReports.length > 0 ? "Every weekly report is closed. Closed reports are in the Archive tab." : "No weekly report yet. Isaiah Carter writes one every Saturday at 2:00 PM CST."}</div>
         )}
 
-        {!loading && tab === "weekly" && reports.map(report => {
+        {!loading && tab === "archive" && archivedReports.length === 0 && (
+          <div style={{ textAlign: "center", padding: "3rem", color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>No archived reports yet. Close a weekly report and it moves here.</div>
+        )}
+
+        {!loading && (tab === "weekly" || tab === "archive") && shownReports.map(report => {
           const dayText = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
           const sections: { title: string; lines: CountLine[] }[] = [
             { title: "Where it came from", lines: report.counts?.where_from ?? [] },
@@ -588,7 +607,12 @@ export default function AdminSupport() {
             <div key={report.id} style={cardShell}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
                 <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.95rem", fontWeight: 700, color: NAVY }}>Week of {dayText(report.period_start)} to {dayText(report.period_end)}</div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)" }}>{report.ticket_count} {report.ticket_count === 1 ? "ticket" : "tickets"} · written by Isaiah Carter</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(10,35,66,0.5)" }}>{report.ticket_count} {report.ticket_count === 1 ? "ticket" : "tickets"} · written by Isaiah Carter{report.closed_at ? ` · closed ${dayText(report.closed_at)}` : ""}</div>
+                  {!report.closed_at && (
+                    <button disabled={busyId === report.id} onClick={() => closeReport(report)} style={{ ...buttonBase, fontSize: "0.62rem", padding: "0.4rem 0.9rem", background: "transparent", color: "rgba(10,35,66,0.55)", border: "1px solid rgba(10,35,66,0.2)" }}>{busyId === report.id ? "..." : "Close report"}</button>
+                  )}
+                </div>
               </div>
               <div style={{ background: "rgba(45,90,142,0.08)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
                 <div style={{ ...panelLabel, color: BLUE }}>Common topics</div>
