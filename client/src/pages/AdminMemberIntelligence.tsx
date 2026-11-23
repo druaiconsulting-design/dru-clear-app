@@ -179,7 +179,7 @@ export default function AdminMemberIntelligence() {
           </select>
           <select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)}
             style={{ background:'#FFFFFF', border:'1px solid rgba(10,35,66,0.2)', borderRadius:6, padding:'0.55rem 0.875rem', color:'#0A2342', fontFamily:"'Montserrat', sans-serif", fontSize:'0.7rem', fontWeight:700, cursor:'pointer', outline:'none' }}>
-            <option value="points">Sort: Clarity Points™</option>
+            <option value="points">Sort: Clarity Points</option>
             <option value="name">Sort: Name</option>
             <option value="level">Sort: Community Level</option>
             <option value="pathway">Sort: Pathway Stage</option>

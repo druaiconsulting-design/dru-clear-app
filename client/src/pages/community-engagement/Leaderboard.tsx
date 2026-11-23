@@ -113,7 +113,7 @@ export default function Leaderboard({
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '14px', fontWeight: '700', color: '#0A2342' }}>{p?.toLocaleString() ?? '—'}</div>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '10px', color: 'rgba(10,35,66,0.4)' }}>
-            {view === 'weekly' ? 'this week' : 'Clarity Points™'}
+            {view === 'weekly' ? 'this week' : 'Clarity Points'}
           </div>
         </div>
 
@@ -148,7 +148,7 @@ export default function Leaderboard({
             <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', marginBottom: '8px' }}>DRU AI LEADERSHIP ECOSYSTEM™</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>Clarity Points™ Leaderboard</h1>
+                <h1 style={{ fontFamily: "'Cinzel', serif", color: '#0A2342', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '700', letterSpacing: '0.5px', lineHeight: '1.2' }}>Clarity Points Leaderboard</h1>
                 <p style={{ color: 'rgba(10,35,66,0.45)', fontFamily: "'Montserrat', sans-serif", fontSize: '14px', marginTop: '8px' }}>Earn points by posting, commenting, and engaging with the community.</p>
               </div>
               <div style={{ display: 'flex', background: '#F1EFE8', borderRadius: '8px', padding: '3px', gap: '2px', alignSelf: 'flex-start', flexShrink: 0 }}>
@@ -192,7 +192,7 @@ export default function Leaderboard({
               ))
             ) : rows.length === 0 ? (
               <div style={{ padding: '48px 20px', textAlign: 'center', fontFamily: "'Montserrat', sans-serif", fontSize: '13px', color: 'rgba(10,35,66,0.35)' }}>
-                No members ranked yet — start posting to earn Clarity Points™
+                No members ranked yet — start posting to earn Clarity Points
               </div>
             ) : (
               rows.map(row => renderRow(row, row.id === userId))

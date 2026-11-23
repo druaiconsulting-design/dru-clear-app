@@ -80,7 +80,7 @@ export default function AdminLeaderboard() {
               DRU AI LEADERSHIP ECOSYSTEM™
             </div>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: '#0A2342', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
-              Clarity Points™ Leaderboard
+              Clarity Points Leaderboard
             </h1>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(10,35,66,0.45)', fontSize: '0.75rem', marginTop: '4px', margin: 0 }}>
               Click any member to preview their card exactly as they see it

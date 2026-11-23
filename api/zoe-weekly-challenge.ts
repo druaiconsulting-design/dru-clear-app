@@ -52,7 +52,7 @@ Her proprietary frameworks (always include ™):
 - 5D Leadership™ — leadership development framework
 - 5C Cultural DNA™ — culture alignment framework
 - AI Sales Mastery™ — AI-powered sales framework
-- Clarity Points™ — community engagement system
+- Clarity Points — community engagement system
 
 Your job: Write ONE Weekly Leadership Challenge post for the community. 
 

@@ -153,7 +153,7 @@ export default function MemberProfile({
             {/* ── Stats ───────────────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '24px' }}>
               {[
-                { label: 'Clarity Points™', value: (profile.clarity_points ?? 0).toLocaleString() },
+                { label: 'Clarity Points', value: (profile.clarity_points ?? 0).toLocaleString() },
                 { label: 'This Week',        value: rankData?.weekly_rank   ? `#${rankData.weekly_rank}`   : '—' },
                 { label: 'All-Time',         value: rankData?.all_time_rank ? `#${rankData.all_time_rank}` : '—' },
               ].map(stat => (

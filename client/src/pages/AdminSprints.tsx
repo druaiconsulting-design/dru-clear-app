@@ -114,7 +114,7 @@ const SPRINTS: { number: string; title: string; status: string; items: SprintIte
       { done: true, label: "L1 — Start Here checklist", sub: "7 steps · agent-written static content · completion tracked in Supabase" },
       { done: true, label: "L1 — Lesson player", sub: "Bunny Stream video · right lessons panel · module/lesson outline · ✓ Completed button" },
       { done: true, label: "L1 — Acc Monthly Videos page", sub: "Monthly Leadership Lab! archive · Accelerator-gated · Navigator sees upgrade CTA" },
-      { done: true, label: "L1 — Leaderboard", sub: "Reads existing community_leaderboard view · Clarity Points™ · Connected → Changemaker levels" },
+      { done: true, label: "L1 — Leaderboard", sub: "Reads existing community_leaderboard view · Clarity Points · Connected → Changemaker levels" },
       { done: true, label: "L1 — Resources section", sub: "Framework PDFs · AI Insights Archive · Tool Guides · Weekly PDF (Accelerator only)" },
       { done: true, label: "L1 — Support Hub", sub: "Chat widget OR email form · decision at build time" },
       { done: true, label: "L1 — PWA config + members.druaiconsulting.com domain + QA", sub: "manifest.json · service worker · Vercel Pro deployment · full QA pass" },
