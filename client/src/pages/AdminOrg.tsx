@@ -159,9 +159,10 @@ export default function AdminOrg() {
 
         {/* Header */}
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
-          <div>
+          <div style={{ flex: 1, textAlign: "center" as const }}>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
-            <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.75rem" }}>{agentCount || 55} agents · {divisions.length || 11} divisions · DeAnna → AI Twin → Raymond → {agentCount || 55} Agents · All agents: Think at the top 0.1% level, at a genius level</p>
+            {/* Counts: the agents table plus Raymond, Priya, Travis and the AI Twin (typed in this page); divisions plus the Video Production Team box */}
+            <p style={{ color: "#D4AF37", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.02em" }}>{agentCount ? agentCount + 4 : 60} agents · {divisions.length ? divisions.length + 1 : 12} divisions · All agents: Think with exceptional insight and intellectual rigor.</p>
           </div>
           <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Profit Pulse</div>
         </div>
@@ -280,13 +281,13 @@ export default function AdminOrg() {
           </div>
         )}
 
-        <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8 }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem", color: "rgba(212,175,55,0.8)", margin: 0 }}>
-            ★ Division Leaders · Isabella Moreno auto-blocks all outputs violating Trademark Classes 35 · 41 · 42 · All agents: Think at the top 0.1% level, at a genius level · DRU AI Consulting © 2026
+        <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 8 }}>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: "#8A6E1A", margin: 0 }}>
+            ★ Division Leaders · AI Governance monitors trademark classes 35, 41, and 42.
           </p>
         </div>
 
-        <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.3)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.6rem" }}>
+        <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.75)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600 }}>
           © 2026 DRU AI Consulting · All Rights Reserved
         </footer>
       </main>
