@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
-import OrgChart from "./OrgChart";
+import { supabase } from "../lib/supabase";
+import EmpireOrgChart from "./EmpireOrgChart";
 
 // The admin account of the Intelligence Hub. Only this account sees the chart.
 const ADMIN_ID = "4db9a4ac-e0a3-4b17-be1c-732d5731bd29";
@@ -18,7 +18,7 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
-export default function App() {
+export default function EmpireApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState("");
@@ -61,7 +61,7 @@ export default function App() {
 
   if (checking) return null;
 
-  if (session && isAdmin) return <OrgChart onSignOut={signOut} />;
+  if (session && isAdmin) return <EmpireOrgChart onSignOut={signOut} />;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem", background: "#FAFAF8" }}>

@@ -35,7 +35,19 @@
       "maxDuration": 300
     }
   },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "empire.druaiconsulting.com" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "empire.druaiconsulting.com" }],
+      "destination": "/empire-robots.txt"
+    },
     { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
     { "source": "/api/(.*)",          "destination": "/api/$1" },
     { "source": "/(.*)",              "destination": "/index.html" }

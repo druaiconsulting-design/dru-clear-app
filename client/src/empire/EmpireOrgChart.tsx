@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { supabase } from "../lib/supabase";
 
 // ─── Top section ──────────────────────────────────────────────────────────────
 // DeAnna, the AI Twin, Priya, Raymond, Travis, the Video Production Team list,
@@ -52,7 +52,7 @@ function initials(name: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-export default function OrgChart({ onSignOut }: { onSignOut: () => void }) {
+export default function EmpireOrgChart({ onSignOut }: { onSignOut: () => void }) {
   const [divisions, setDivisions] = useState<DivisionGroup[]>([]);
   const [agentCount, setAgentCount] = useState(0);
   const [loading, setLoading] = useState(true);
