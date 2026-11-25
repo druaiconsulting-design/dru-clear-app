@@ -1,7 +1,6 @@
 // DRU AI Leadership Ecosystem™ — api/_lib/camilaInputs.ts
 // Camila Flores' weekly strategy: what she reads, how she picks the week's theme and sources,
-// and the prompt she writes the brief from. Shared by api/ghl-agent-trigger.ts and
-// api/ac-agent-trigger.ts so both files run the identical job.
+// and the prompt she writes the brief from. Used by api/ghl-agent-trigger.ts.
 //
 // What Camila reads (raw words from the outside world, newest first, no date limit):
 //   Aaliyah's prospect leads · social comments and the replies drafted (Dominique, Solange,

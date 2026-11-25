@@ -145,7 +145,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   community_connection:"Community Connection", community_post:"CC Post", other:"Other",
   community_comment_reply:"CC Agent Reply", "CC Post Triggers":"CC Policy Violation",
   cc_upsell_outreach:"CC Upsell Signal",
-  community_opportunity:"CC Opportunity",
+  community_opportunity:"CC Opportunity", acc_opportunity:"ACC Opportunity",
   ac_upsell_outreach:"AC Upsell Outreach", grants:"Grants", grant_applications:"Grant Application Drafts",
   travis_video_production:"Travis Video Production",
   video_script:"Video Script",
@@ -158,7 +158,7 @@ const CATEGORY_ORDER = [
   "business_outlook_corrections","daily_briefing","revenue_growth","crm_review","content_brand","marketing",
   "legal_finance","ai_governance","hr","client_delivery","sd_report","customer_support","support_reply",
   "community_connection","community_post","social","proposals_press","travis_video_production","video_script","email","proposal","grants","grant_applications","content","other",
-  "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","ac_upsell_outreach",
+  "community_comment_reply","CC Post Triggers","cc_upsell_outreach","community_opportunity","acc_opportunity","ac_upsell_outreach",
 ];
 
 const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; role: string }[]> = {
@@ -282,6 +282,7 @@ function getOriginalColumn(approval: Approval): { heading: string; content: stri
   if (approval.category === "CC Post Triggers")        return { heading: "Member Info",     content: approval.task_brief || null };
   if (approval.category === "cc_upsell_outreach")      return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "community_opportunity")    return { heading: "Member & Signal", content: approval.task_brief || null };
+  if (approval.category === "acc_opportunity")          return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "ac_upsell_outreach")       return { heading: "Member & Signal", content: approval.task_brief || null };
   if (approval.category === "social_response")          return { heading: "Incoming Message", content: approval.original_content || approval.task_brief || null };
   if (approval.category === "support_reply")            return { heading: "Customer's Email", content: approval.original_content || approval.task_brief || null };
@@ -299,6 +300,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "CC Post Triggers")        return "Violation Report";
   if (approval.category === "cc_upsell_outreach")      return "Aaliyah Outreach Draft";
   if (approval.category === "community_opportunity")    return "Aaliyah Opportunity Brief";
+  if (approval.category === "acc_opportunity")          return "Aaliyah Opportunity Brief";
   if (approval.category === "ac_upsell_outreach")       return "Aaliyah AC Outreach Draft";
   if (approval.category === "social_response")          return `${approval.agent_name}'s Reply Draft`;
   if (approval.category === "support_reply")            return `${approval.agent_name}'s Reply Draft`;
@@ -428,6 +430,7 @@ function getBadgeInfo(approval: Approval): { text: string; color: string } {
   if (approval.category === "CC Post Triggers")            return { text: "CC Policy Violation",color: "#C2185B" };
   if (approval.category === "cc_upsell_outreach")          return { text: "CC Upsell Signal",   color: "#D4AF37" };
   if (approval.category === "community_opportunity")        return { text: "CC Opportunity",      color: "#C2185B" };
+  if (approval.category === "acc_opportunity")              return { text: "ACC Opportunity",     color: "#D4AF37" };
   if (approval.category === "ac_upsell_outreach")           return { text: "AC Upsell",           color: "#D4AF37" };
   if (approval.category === "social_response") {
     const platform = approval.platform ?? "Social";

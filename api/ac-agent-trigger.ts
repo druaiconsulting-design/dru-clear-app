@@ -1,82 +1,55 @@
-// api/ghl-agent-trigger.ts
-// 44 agents · 8 divisions (P9 Community Connection in cc-agent-trigger.ts)
-// Command chain split to separate files:
-//   Isabella  → api/cmd-isabella.ts
-//   Governance → api/cmd-governance.ts
-//   Command Layer → api/cmd-command-layer.ts
-//   Twin Synthesis → api/cmd-twin.ts
+// DRU AI Leadership Ecosystem™ — api/ac-agent-trigger.ts
+// P10 Accelerator Circle Division — Matthew (Leader) / Petra (Member Experience) / Renata (Strategy) + upsell scan + reply
+// DAILY POST SCHEDULE (Central time): Mon Renata · Tue Renata · Wed Matthew's Mastermind + Renata · Thu Renata · Fri Renata · Sat Petra · Sun Petra
+// Matthew's Monday Weekly Challenge runs from api/matthew-weekly-challenge.ts
+// Daily posts and challenges go to the Approvals page first. Petra's acknowledgment comments post to the member's thread automatically, then Aaliyah's card goes to DeAnna.
+// Mirrors api/cc-agent-trigger.ts (Zoe / Micah / Victor)
+// post_type is always 'agent' — daily_insight / strategic_edge belong to Daily Connection only
+// TIER: accelerator
 
-const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
-export const config = { maxDuration: 300 };
-import { waitUntil } from '@vercel/functions';
-import { GENIUS_MODE, VOICE_DNA, DIRECT_RESPONSE_PHILOSOPHY, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
-import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
-import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
-import { fetchApprovedLessons, approvedLessonText, pickNextVideoLesson, buildVideoReading, videoTask, AMELIA_CODE, AMELIA_COURSE_MAX_TOKENS, AMELIA_MODEL } from './_lib/ameliaCourse.js';
-import { THEO_CODE, THEO_COURSE_MAX_TOKENS, THEO_MODEL, deckTask, fetchApprovedDecks, approvedDeckText, pickNextDeckLesson, buildDeckReading } from './_lib/theoCourse.js';
+export const config = { maxDuration: 60 };
 
-interface AgentRoute { agent_id: string; agent_name: string; division: string; task: string; pipeline?: string; }
-interface TriggerPayload { trigger_type: string; source?: string; [key: string]: unknown; }
-interface CSQItem { id: string; agent_id: string; agent_name: string; division: string; task: string; category: string; raw_output: string; priority: string; retry_count?: number; correction_notes?: string; parent_csq_id?: string; raymond_notes?: string; raymond_action?: string; raymond_priority?: string; travis_notes?: string; priya_notes?: string; governance_notes?: string; legal_notes?: string; isabella_flags?: string; compliance_score?: number; }
+import { GENIUS_MODE, VOICE_DNA, getAgentCorrections } from './_lib/agentKnowledge.js';
 
-const AGENT_ROUTES: Record<string, AgentRoute> = {
-  cron_omar_lead_score:           { agent_id: 'omar',     agent_name: 'Omar Patel',        division: 'Revenue, Growth & Sales', task: 'scan_score_route_leads',        pipeline: 'p1_omar' },
-  cron_ryan_crm_update:           { agent_id: 'ryan',     agent_name: 'Ryan Nakamura',     division: 'Revenue, Growth & Sales', task: 'overnight_crm_sync',            pipeline: 'p1_ryan' },
-  cron_serena_coaching:           { agent_id: 'serena',   agent_name: 'Serena Jackson',    division: 'Revenue, Growth & Sales', task: 'morning_coaching_briefing',     pipeline: 'p1_serena' },
-  cron_mateo_sales_support:       { agent_id: 'mateo',    agent_name: 'Mateo Gonzalez',    division: 'Revenue, Growth & Sales', task: 'sales_pipeline_review',         pipeline: 'p1_mateo' },
-  cron_aaliyah_outreach:          { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'personalized_outreach_messages',pipeline: 'p1_aaliyah' },
-  cron_aaliyah_prospect_scout:    { agent_id: 'aaliyah',  agent_name: 'Aaliyah Foster',    division: 'Revenue, Growth & Sales', task: 'prospect_scout',                pipeline: 'p1_aaliyah_scout' },
-  cron_jaylen_email:              { agent_id: 'jaylen',   agent_name: 'Jaylen Brooks',     division: 'Revenue, Growth & Sales', task: 'email_campaign_content',        pipeline: 'p1_jaylen' },
-  cron_zara_product:              { agent_id: 'zara',     agent_name: 'Zara Ahmed',        division: 'Client Delivery', task: 'acc_weekly_pdf_content',        pipeline: 'p1_zara' },
-  manual_kwame_grant_draft:       { agent_id: 'kwame',    agent_name: 'Kwame Asante',      division: 'Revenue, Growth & Sales', task: 'grant_application_draft',       pipeline: 'p1_kwame_grants' },
-  cron_adaeze_grant_scout:        { agent_id: 'adaeze',   agent_name: 'Adaeze Nwosu',      division: 'Revenue, Growth & Sales', task: 'weekly_grant_scout',            pipeline: 'p1_adaeze_scout' },
-  cron_camila_linkedin_queue:     { agent_id: 'camila',   agent_name: 'Camila Flores',     division: 'Content & Brand',  task: 'generate_weekly_linkedin_queue',pipeline: 'p2_camila' },
-  cron_darius_linkedin_post:      { agent_id: 'darius',   agent_name: 'Darius King',       division: 'Content & Brand',  task: 'generate_daily_linkedin_post',  pipeline: 'p2_darius' },
-  cron_ravi_design_brief:         { agent_id: 'ravi',     agent_name: 'Ravi Gupta',        division: 'Content & Brand',  task: 'generate_design_brief',         pipeline: 'p2_ravi' },
-  cron_yara_localization:         { agent_id: 'yara',     agent_name: 'Yara Mansour',      division: 'Content & Brand',  task: 'spanish_localization',          pipeline: 'p2_yara' },
-  cron_nia_content_daily:         { agent_id: 'nia',      agent_name: 'Nia Robinson',      division: 'Marketing',        task: 'daily_content_creation',        pipeline: 'p3_nia' },
-  cron_luca_digital_marketing:    { agent_id: 'luca',     agent_name: 'Luca Romano',       division: 'Marketing',        task: 'digital_marketing_briefing',    pipeline: 'p3_luca' },
-  cron_hyunji_analytics:          { agent_id: 'hyunji',   agent_name: 'Hyun-Ji Kim',       division: 'Marketing',        task: 'analytics_roi_briefing',        pipeline: 'p3_hyunji' },
-  cron_andre_seo:                 { agent_id: 'andre',    agent_name: 'Andre Mitchell',    division: 'Marketing',        task: 'seo_sem_brand_briefing',        pipeline: 'p3_andre' },
-  cron_amara_legal_tuesday:       { agent_id: 'amara',    agent_name: 'Amara Okafor',      division: 'Legal & Finance',  task: 'weekly_legal_briefing',         pipeline: 'p4_amara' },
-  cron_diego_expense_tuesday:     { agent_id: 'diego',    agent_name: 'Diego Reyes',       division: 'Legal & Finance',  task: 'weekly_expense_report',         pipeline: 'p4_diego' },
-  cron_yuki_financial_tuesday:    { agent_id: 'yuki',     agent_name: 'Yuki Tanaka',       division: 'Legal & Finance',  task: 'weekly_financial_report',       pipeline: 'p4_yuki' },
-  cron_marcus_tax_tuesday:        { agent_id: 'marcus',   agent_name: 'Marcus Chen',       division: 'Legal & Finance',  task: 'weekly_tax_strategy_briefing',  pipeline: 'p4_marcus' },
-  cron_khalid_disclaimer_daily:   { agent_id: 'khalid',   agent_name: 'Khalid Hassan',     division: 'AI Governance',    task: 'daily_disclaimer_review',       pipeline: 'p5_khalid' },
-  cron_sofia_privacy_daily:       { agent_id: 'sofia',    agent_name: 'Sofia Petrov',      division: 'AI Governance',    task: 'daily_privacy_compliance',      pipeline: 'p5_sofia' },
-  cron_james_contract_daily:      { agent_id: 'james',    agent_name: 'James Osei',        division: 'AI Governance',    task: 'daily_contract_readiness',      pipeline: 'p5_james' },
-  cron_meilin_brand_daily:        { agent_id: 'meilin',   agent_name: 'Mei Lin',           division: 'AI Governance',    task: 'daily_brand_protection',        pipeline: 'p5_meilin' },
-  cron_rafael_learning_daily:     { agent_id: 'rafael',   agent_name: 'Rafael Torres',     division: 'AI Governance',    task: 'daily_ai_intelligence',         pipeline: 'p5_rafael' },
-  cron_naomi_recruiting_daily:    { agent_id: 'naomi',    agent_name: 'Naomi Williams',    division: 'HR',               task: 'daily_tba',       pipeline: 'p6_naomi' },
-  cron_aiden_onboarding_daily:    { agent_id: 'aiden',    agent_name: 'Aiden Park',        division: 'HR',               task: 'daily_onboarding_readiness',    pipeline: 'p6_aiden' },
-  cron_fatima_helpdesk_daily:     { agent_id: 'fatima',   agent_name: 'Fatima Al-Rashid',  division: 'HR',               task: 'daily_tba',       pipeline: 'p6_fatima' },
-  cron_simone_course_daily:       { agent_id: 'simone',   agent_name: 'Simone Laurent',    division: 'Client Delivery',  task: 'daily_course_architecture',     pipeline: 'p7_simone' },
-  cron_theo_presentation_daily:   { agent_id: 'theo',     agent_name: 'Theo Nguyen',       division: 'Client Delivery',  task: 'daily_presentation_design',     pipeline: 'p7_theo' },
-  cron_amelia_video_daily:        { agent_id: 'amelia',   agent_name: 'Amelia Santos',     division: 'Client Delivery',  task: 'daily_video_production',        pipeline: 'p7_amelia' },
+// Added after VOICE_DNA for Accelerator Circle writing. The anchor-word line in VOICE_DNA belongs to
+// DeAnna's marketing copy; community posts and replies carry her voice through sentence craft.
+const AC_COMMUNITY_VOICE = `\nCOMMUNITY WRITING: The voice rules above show up in the sentence craft: a short hook, one sentence that unpacks it, plain words and active voice. The subject of every post is today's topic and what members are living, spoken in everyday leadership language. The word Insight appears where it fits naturally.`;
 
-  lead_created:         { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'score_new_lead' },
-  contact_updated:      { agent_id: 'ryan',    agent_name: 'Ryan Nakamura',  division: 'Revenue, Growth & Sales', task: 'process_contact_update' },
-  assessment_completed: { agent_id: 'omar',    agent_name: 'Omar Patel',     division: 'Revenue, Growth & Sales', task: 'route_assessment_lead', pipeline: 'p1_omar_realtime' },
-  support_ticket:       { agent_id: 'isaiah',  agent_name: 'Isaiah Carter',  division: 'Customer Support', task: 'handle_support_request' },
-  cc_upsell_signal:     { agent_id: 'aaliyah', agent_name: 'Aaliyah Foster', division: 'Revenue, Growth & Sales', task: 'cc_upsell_outreach' },
+interface ACAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
+
+const AC_AGENT_ROUTES: Record<string, ACAgentRoute> = {
+  cron_ac_community_seed:      { agent_id: 'ac_seed',       agent_name: 'AC Community Seed',  task: 'ac_daily_seed',             pipeline: 'p10_ac_seed' },
+  cron_ac_upsell_scan:         { agent_id: 'ac_upsell_scan',agent_name: 'AC Upsell Scanner',  task: 'ac_upsell_scan',            pipeline: 'p10_ac_upsell_scan' },
+  ac_agent_reply:              { agent_id: 'ac_agent',      agent_name: 'AC Agent',           task: 'ac_reply',                  pipeline: 'p10_ac_reply' },
 };
 
-const AALIYAH_CC_ROUTING: Record<string, string> = {
-  navigator_upgrade:   'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/u4dd3zsaVRZUW73wMc5t',
-  accelerator_upgrade: 'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/AlZQHDN7D7PIvApW0qDF',
-  diagnostic_interest: 'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/ec61ce1a-faf0-481f-9404-d6269fbda861',
-  course_interest:     'https://services.leadconnectorhq.com/hooks/gl07I4JnbkGgW8zJprSz/webhook-trigger/EDVsKWuDioWGDHaI1K7S',
-};
+const TM_PAIRS: [RegExp, string][] = [
+  [/DRU CLEAR(?!™)/g,                           'DRU CLEAR™'],
+  [/DRU AI Leadership Ecosystem(?!™)/g,         'DRU AI Leadership Ecosystem™'],
+  [/DRU AI Transformation Pathway(?!™)/g,       'DRU AI Transformation Pathway™'],
+  [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
+  [/5D Leadership(?!™)/g,                       '5D Leadership™'],
+  [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
+  [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
+];
+function enforceTM(content: string): string {
+  let corrected = content;
+  for (const [pattern, replacement] of TM_PAIRS) { corrected = corrected.replace(pattern, replacement); }
+  return corrected;
+}
 
-async function callAnthropic(prompt: string, maxTokens = 2000, model = 'claude-haiku-4-5-20251001'): Promise<string> {
+// Accelerator Circle agents (Matthew, Petra, Renata) run on Sonnet — this file serves only Accelerator Circle content.
+async function callAnthropic(prompt: string, maxTokens = 1500, model = 'claude-sonnet-5-5'): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   const startedAt = Date.now();
-  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }),
+  });
   if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
   const data = await res.json();
-  console.log(`[${model}] stop_reason: ${data.stop_reason ?? 'unknown'}`);
   await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0, Date.now() - startedAt).catch(() => {});
   return data.content?.[0]?.text ?? '';
 }
@@ -88,380 +61,22 @@ async function logModelUsage(model: string, inputTokens: number, outputTokens: n
   if (!url || !key) return;
   const rate = model.startsWith('claude-sonnet-5') ? { in: 2, out: 10 } : model.startsWith('claude-sonnet') ? { in: 3, out: 15 } : { in: 1, out: 5 };
   const cost_usd = (inputTokens / 1_000_000) * rate.in + (outputTokens / 1_000_000) * rate.out;
-  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ghl-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
-}
-// Web-search-enabled Anthropic call — used only by Adaeze's weekly grant scout.
-// max_uses hard-caps search calls per run (cost control after the July on-demand
-// cascade incident); Anthropic bills web search at $10/1,000 searches, so a cap
-// of 6 keeps a weekly run to a few cents regardless of what Claude tries to do.
-async function callAnthropicWithWebSearch(prompt: string, maxTokens = 3000, maxSearches = 6, label = 'web_search'): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search',max_uses:maxSearches}]})});
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}`);
-  const data = await res.json();
-  console.log(`[${label}] stop_reason: ${data.stop_reason ?? 'unknown'}`);
-  const blocks = (data.content ?? []) as Array<{type:string;text?:string;name?:string;input?:{query?:string};content?:Array<{url?:string;title?:string}>}>;
-
-  // Previously discarded entirely -- only text blocks were kept, so there was
-  // no way to see what was actually searched. Logs every query issued and how
-  // many results came back for it.
-  const queries = blocks.filter(b => b.type === 'server_tool_use' && b.name === 'web_search').map(b => b.input?.query ?? '(no query)');
-  const resultBlocks = blocks.filter(b => b.type === 'web_search_tool_result');
-  const resultCounts = resultBlocks.map(b => Array.isArray(b.content) ? b.content.length : 0);
-  if (queries.length > 0) {
-    queries.forEach((q, i) => {
-      console.log(`[${label}] Searched: "${q}" — ${resultCounts[i] ?? '?'} result(s)`);
-      // Diagnostic (Aug 25, 2026): log each result's title so we can see WHAT was
-      // found, not just how many — needed to tell "genuinely nothing out there"
-      // apart from "results came back but didn't name a specific person/org."
-      const titles = (resultBlocks[i]?.content ?? []).map(r => r.title ?? '(no title)');
-      titles.forEach(t => console.log(`[${label}]   - ${t}`));
-    });
-  } else {
-    console.log(`[${label}] No web searches were issued for this run.`);
-  }
-
-  return blocks.filter(b=>b.type==='text').map(b=>b.text ?? '').join('\n').trim();
+  await fetch(`${url}/rest/v1/model_usage_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ source_file: 'ac-agent-trigger', model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd, duration_ms: durationMs }) });
 }
 
-// Finds the first complete top-level JSON object in a text blob, ignoring any
-// commentary Claude wraps around it. Mirrors the extractor pattern already used
-// in api/process-on-demand.ts.
-function extractJSONObject(text: string): Record<string, unknown> | null {
-  const start = text.indexOf('{');
-  if (start === -1) return null;
-  let depth = 0;
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}') {
-      depth--;
-      if (depth === 0) {
-        try { return JSON.parse(text.slice(start, i + 1)); }
-        catch { return null; }
-      }
-    }
-  }
-  return null;
-}
-
-async function writeGrantOpportunities(items: Record<string,unknown>[]): Promise<number> {
+async function writeToCommunityPosts(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key||items.length===0) return 0;
-  const res = await fetch(`${url}/rest/v1/grant_opportunities`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(items)});
-  if (!res.ok){console.error(`[adaeze] grant_opportunities write failed: ${await res.text()}`);return 0;}
-  const data = await res.json(); return Array.isArray(data)?data.length:0;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/community_posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) { console.error(`[community_posts] Write failed: ${await res.text()}`); return null; }
+  const data = await res.json(); return data?.[0]?.id ?? null;
 }
 
-// Fuzzy dedup — catches the SAME grant re-found with a reworded name across different
-// scout runs (was exact-match only, which let ~130 duplicate rows through over 6 weeks
-// -- cleaned up Aug 28, 2026). Strips filler words/punctuation, compares remaining
-// significant words; 60%+ overlap counts as already known.
-const GRANT_DEDUP_STOPWORDS = new Set(['the','grant','grants','program','small','business','businesses','for','women','owned','of','and','monthly','quarterly','award','awards','a','initiative','fund','fellowship']);
-function grantNameTokens(name: string): Set<string> {
-  const cleaned = String(name || '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9 ]/g, ' ');
-  return new Set(cleaned.split(/\s+/).filter(w => w.length > 1 && !GRANT_DEDUP_STOPWORDS.has(w)));
-}
-async function getKnownGrantTokenSets(): Promise<Set<string>[]> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return [];
-  const res = await fetch(`${url}/rest/v1/grant_opportunities?select=opportunity_name`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return [];
-  const rows = await res.json() as {opportunity_name:string}[];
-  return rows.map(r => grantNameTokens(r.opportunity_name));
-}
-function isKnownGrant(name: string, knownSets: Set<string>[]): boolean {
-  const tokens = grantNameTokens(name);
-  if (tokens.size === 0) return false;
-  for (const known of knownSets) {
-    if (known.size === 0) continue;
-    let overlap = 0;
-    for (const t of tokens) if (known.has(t)) overlap++;
-    if (overlap / Math.min(tokens.size, known.size) >= 0.6) return true;
-  }
-  return false;
-}
-
-async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
-  try {
-    const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections('Adaeze Nwosu');
-    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Adaeze Nwosu, Grant Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, Founder/CEO of Dimensional Solns, LLC (a FOR-PROFIT AI leadership & culture consulting business, not a nonprofit). Brand fit: AI adoption/leadership training, women-owned business, 5C Cultural DNA™, 5D Leadership™, DRU CLEAR™ AI Readiness frameworks.\n\nSearch the web broadly (no certification status assumed — search as if broadly eligible) for CURRENTLY OPEN small-business grants, grant contests, or funding programs a for-profit consulting/leadership-training business could realistically apply to. Include an opportunity when its stated eligibility lets a for-profit LLC apply. Federal and nonprofit-foundation grants qualify when the notice lists for-profit businesses or small businesses as eligible applicants. Opportunities restricted to 501(c)(3) nonprofits, universities or governments are left out. Focus on: corporate small-business grant programs, women-owned/minority-owned business grant contests, and small-business funding competitions with open or upcoming application windows.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"opportunity_name\": string,\n      \"funder\": string,\n      \"amount_range\": string,\n      \"eligibility\": string,\n      \"deadline\": string (YYYY-MM-DD if known, else best available description),\n      \"source_url\": string,\n      \"fit_score\": number (1-10, how well this fits DeAnna's brand/business),\n      \"fit_reasoning\": string (1-2 sentences)\n    }\n  ]\n}\nOnly include opportunities you found real, current information on. If you find none, return {\"opportunities\": []}.`;
-    const [raw, knownSets] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownGrantTokenSets()]);
-    const parsed = extractJSONObject(raw);
-    const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
-    // Dedup — fuzzy token-overlap match against every grant already on file, plus
-    // within this same run's results (catches reworded re-finds either way)
-    const notAlreadyKnown = allFound.filter(o => !isKnownGrant(String(o.opportunity_name||''), knownSets));
-    const seenThisRun: Set<string>[] = [];
-    const newOnes = notAlreadyKnown.filter(o => {
-      const name = String(o.opportunity_name||'');
-      if (isKnownGrant(name, seenThisRun)) return false;
-      seenThisRun.push(grantNameTokens(name));
-      return true;
-    });
-    if (newOnes.length === 0) return { count: 0, csqId: null }; // nothing new — no card, no noise
-
-    // Filter out expired grants — if the deadline is a past YYYY-MM-DD date, skip it.
-    // Rolling/quarterly/descriptive deadlines are kept (no parseable date = still open).
-    const todayDate = new Date(); todayDate.setHours(0,0,0,0);
-    const activeOnes = newOnes.filter(o => {
-      const dl = String(o.deadline ?? '').trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dl)) {
-        return new Date(dl) >= todayDate;
-      }
-      return true; // "Rolling", "Quarterly", etc. — keep
-    });
-    if (activeOnes.length === 0) return { count: 0, csqId: null };
-
-    const rows = activeOnes.map(o => ({...o, status:'new', found_at:new Date().toISOString()}));
-    const written = await writeGrantOpportunities(rows);
-    // Every opportunity found today, not just a top-5 slice -- DeAnna reviews and
-    // picks herself; no funder link in the text itself, the card's own layout
-    // (source: adaeze_grants_full_list) puts a "View Funder Page" link and a
-    // "Have Kwame Draft This" button directly under each entry.
-    const allToday = activeOnes.map((o:any) => {
-      // Clean up opportunity_name if it already embeds the funder name in parens — prevents double display
-      const cleanName = String(o.opportunity_name ?? '').replace(
-        new RegExp(`\\s*\\(${String(o.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
-      ).trim();
-      const lines = [
-        `**${cleanName}** — ${o.funder}`,
-        `Fit: ${o.fit_score}/10 | Amount: ${o.amount_range ?? 'See link'} | Deadline: ${o.deadline}`,
-        `Why it fits: ${o.fit_reasoning ?? 'Strong brand alignment'}`,
-      ];
-      return lines.join('\n');
-    }).join('\n\n---\n\n');
-    // Write directly to approvals — bypasses CSQ → command layer → Raymond chain
-    // which was adding a full day of delay for no benefit (Raymond passes grants through untouched).
-    const approvalId = await writeApprovalDirect({
-      source: 'adaeze_grants_full_list',
-      trigger_type: 'grants',
-      agent_name: 'Adaeze Nwosu',
-      agent_role: 'Revenue, Growth & Sales',
-      division: 'Revenue, Growth & Sales',
-      task_brief: `Daily Grant Scout — Adaeze Nwosu | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
-      output: allToday,
-      status: 'pending',
-      notify_deanna: false,
-      priority: 'normal',
-      category: 'grants',
-      platform: null,
-    });
-    return { count: written, csqId: approvalId };
-  } catch(error){ console.error('[adaeze] Scout error:',error); return { count:0, csqId:null }; }
-}
-
-async function getGrantOpportunityByName(name: string): Promise<Record<string,unknown>|null> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return null;
-  const res = await fetch(`${url}/rest/v1/grant_opportunities?opportunity_name=ilike.${encodeURIComponent(name)}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return null;
-  const rows = await res.json() as Record<string,unknown>[];
-  return rows[0] ?? null;
-}
-async function getOrgProfile(): Promise<Record<string,unknown>|null> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return null;
-  const res = await fetch(`${url}/rest/v1/org_profile?limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return null;
-  const rows = await res.json() as Record<string,unknown>[];
-  return rows[0] ?? null;
-}
-async function markGrantOpportunity(id: string, fields: Record<string,unknown>): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return;
-  await fetch(`${url}/rest/v1/grant_opportunities?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(fields)});
-}
-
-// ─── On-demand chain helpers (grant drafts only) ──────────────────────────────
-// Copied from twin-on-demand.ts's existing on-demand pattern -- same lock, same
-// daily spend cap, same api/process-on-demand.ts endpoint Twin's chat-triggered
-// tasks already use. This lets a manually-triggered grant draft reach Approvals
-// in real time instead of waiting for tomorrow's daily cron cycle. Best-effort
-// only: if the lock is busy or the spend cap is reached, this is skipped and the
-// draft just falls back to the normal daily cron -- it is never lost either way.
-
-async function acquireOnDemandLock(agentName: string): Promise<boolean> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return true; // fail open only if Supabase env vars are missing entirely
-  const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const res = await fetch(
-    `${url}/rest/v1/on_demand_lock?id=eq.1&or=(is_locked.eq.false,locked_at.lt.${staleCutoff})`,
-    { method:'PATCH', headers:{ 'Content-Type':'application/json', apikey:key, Authorization:`Bearer ${key}`, Prefer:'return=representation' },
-      body: JSON.stringify({ is_locked:true, locked_at:new Date().toISOString(), locked_by:agentName }) }
-  );
-  if (!res.ok) return false; // fail closed on error -- safer than risking a second fire
-  const rows = await res.json();
-  return Array.isArray(rows) && rows.length > 0;
-}
-
-async function releaseOnDemandLock(): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return;
-  await fetch(`${url}/rest/v1/on_demand_lock?id=eq.1`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({is_locked:false,locked_by:null})})
-    .catch((err) => console.error('[kwame-grants] releaseOnDemandLock failed:', err));
-}
-
-const ON_DEMAND_CHAIN_COST_ESTIMATE = 0.15; // conservative per-fire estimate, matches twin-on-demand.ts
-
-async function checkAndReserveOnDemandSpend(): Promise<{ ok: boolean; totalSpent?: number; cap?: number }> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return { ok: true };
-  const today = new Date().toISOString().slice(0, 10);
-  await fetch(`${url}/rest/v1/daily_spend_cap`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'resolution=ignore-duplicates'},body:JSON.stringify({spend_date:today})}).catch(()=>{});
-  const readRes = await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}&select=total_spent,cap_amount`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!readRes.ok) return { ok: false };
-  const rows = await readRes.json();
-  const row = rows[0] ?? { total_spent: 0, cap_amount: 10.0 };
-  if (Number(row.total_spent) + ON_DEMAND_CHAIN_COST_ESTIMATE > Number(row.cap_amount)) {
-    console.error(`[kwame-grants] Daily spend cap reached: $${row.total_spent}/$${row.cap_amount}`);
-    return { ok: false, totalSpent: Number(row.total_spent), cap: Number(row.cap_amount) };
-  }
-  await fetch(`${url}/rest/v1/daily_spend_cap?spend_date=eq.${today}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify({total_spent:Number(row.total_spent)+ON_DEMAND_CHAIN_COST_ESTIMATE,updated_at:new Date().toISOString()})});
-  return { ok: true, totalSpent: Number(row.total_spent) + ON_DEMAND_CHAIN_COST_ESTIMATE, cap: Number(row.cap_amount) };
-}
-// Kwame's second job: Grant Writer. Drafts the ONE opportunity DeAnna names --
-// no automatic selection, no fit_score ranking, no cron. She researches the funder
-// herself and tells Claude/the admin which opportunity to draft; that name is passed
-// in as opportunityName. Goes through the normal CSQ -> Isabella -> Governance ->
-// Raymond pipeline (not the direct-to-approvals bypass Adaeze/Aaliyah use for
-// scouting), since DeAnna wants compliance review on actual application drafts
-// before they reach her.
-async function runKwameGrantWriter(opportunityName: string): Promise<{count:number;csqId:string|null}> {
-  try {
-    if (!opportunityName || !opportunityName.trim()) { console.error('[kwame] Grant Writer: no opportunity name given'); return { count: 0, csqId: null }; }
-    const [opportunity, orgProfile] = await Promise.all([getGrantOpportunityByName(opportunityName.trim()), getOrgProfile()]);
-    if (!opportunity) { console.error(`[kwame] Grant Writer: no opportunity matching "${opportunityName}" found`); return { count: 0, csqId: null }; }
-    if (!orgProfile) { console.error('[kwame] Grant Writer: org_profile is empty, cannot draft without real facts'); return { count: 0, csqId: null }; }
-
-    const cleanName = String(opportunity.opportunity_name ?? '').replace(
-      new RegExp(`\\s*\\(${String(opportunity.funder ?? '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`, 'gi'), ''
-    ).trim();
-
-    // Kwame's actual research and drafting now happen in api/process-on-demand.ts
-    // (300s budget) instead of here (60s budget) -- Aug 31, 2026. A research
-    // call plus a writing call, even with the token budget split cleanly
-    // between them, was still too much sequential work for this file's fixed
-    // 60-second ceiling and caused a hard timeout. This function's only job
-    // now is to queue an empty placeholder and hand off immediately --
-    // process-on-demand.ts recognizes an empty raw_output on a grant draft as
-    // its cue to research and write the draft itself, before Chloe or
-    // Isabella ever see anything.
-    const csqId = await writeToCSQ({
-      agent_id: 'kwame', agent_name: 'Kwame Asante', division: 'Revenue, Growth & Sales',
-      task: 'grant_application_draft', category: 'grant_applications', context: cleanName,
-      raw_output: '', priority: 'normal', status: 'pending', retry_count: 0,
-    });
-    if (!csqId) { console.error('[kwame] Grant Writer: failed to queue placeholder'); return { count: 0, csqId: null }; }
-
-    await markGrantOpportunity(String(opportunity.id), { status: 'drafted' });
-
-    return { count: 1, csqId };
-  } catch(error){ console.error('[kwame] Grant Writer error:',error); return { count:0, csqId:null }; }
-}
-
-async function getKnownProspectKeys(): Promise<Set<string>> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return new Set();
-  const res = await fetch(`${url}/rest/v1/prospect_opportunities?select=prospect_name,organization`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return new Set();
-  const rows = await res.json() as {prospect_name:string;organization:string}[];
-  return new Set(rows.map(r => `${(r.prospect_name||'').trim().toLowerCase()}|${(r.organization||'').trim().toLowerCase()}`));
-}
-
-async function writeProspectOpportunities(items: Record<string,unknown>[]): Promise<number> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key||items.length===0) return 0;
-  const res = await fetch(`${url}/rest/v1/prospect_opportunities`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(items)});
-  if (!res.ok){console.error(`[prospect-scout] prospect_opportunities write failed: ${await res.text()}`);return 0;}
-  const data = await res.json(); return Array.isArray(data)?data.length:0;
-}
-
-// Aaliyah's job: Prospect Scout. Reassigned from Kwame Asante Aug 27, 2026 --
-// same approved prompt, word for word, just running under Aaliyah Foster.
-// Signal-only — deliberately no demographic, title, company-size, or industry
-// filter, per DeAnna's direction. Mirrors runAdaezeScout()'s exact pattern
-// (web-search-enabled call, dedup against known rows, write to a dedicated
-// table, surface top picks).
-async function runAaliyahProspectScout(): Promise<{count:number;csqId:string|null}> {
-  try {
-    const positioning = await fetchBrandCopy('positioning');
-    const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections('Aaliyah Foster');
-    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}${agentCorrections}\n\nYou are Aaliyah Foster, Prospect Scout for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nWHO YOU ARE LOOKING FOR: your complete, standalone definition of who qualifies is below, independent of any client or framework description elsewhere in this prompt. A real, named person responsible for other people getting results. Any setting, any title, any size, all qualify equally: a crew lead, a unit manager, a school principal, a founder with three employees, a nonprofit director, a department head, a shop owner. Signal-only: what qualifies someone is the real signal they put out, regardless of title, company size, industry, or demographic.\n\nWHAT THE SIGNAL LOOKS LIKE: the person is expressing real pain, in whatever words they use for it. Angry, exhausted, defeated, lost, done trying, at the end of what they know how to do. The pain shows up in areas like these:\n- Confused about AI: overwhelmed, unsure where to start, watching others move while they stand still\n- Their team needs leadership they don't have to give right now\n- Silos: teams that don't talk to each other, and they're carrying the cost\n- Culture problems: trust breaking down, turnover, conflict they can't resolve\n- Any other people-and-AI struggle in this same pattern\n\nSomeone publicly reaching for growth in these same areas qualifies too. Same bar: a real person, their own words, a real stake.\n\nWHERE TO LOOK: search where people speak in their own words, and where a real name is attached to what they said. Interviews, podcast transcripts, quoted case studies in industry press, personal blogs and newsletters, local news, LinkedIn posts and comments.\n\nSEARCH SPREAD: run at least one of your searches aimed specifically at a small-scale or non-corporate setting — a local business, a school, a small nonprofit, a small team. Large, well-known companies are easy to find and fill the other searches on their own; this one exists to reach the settings that don't show up by default.\n\nHARD REQUIREMENT — REAL NAMED INDIVIDUAL: prospect_name is a real, specific, named human being (or organization is a real, specific, named company), grounded in a real quote, post, article, or interview you actually found.\n\nIDENTITY-LEVEL STAKE, NOT TOPIC-LEVEL: the signal shows what the struggle costs this person personally — their trust, their clarity, their confidence, their control, the respect they hold. Example only, not exact wording to search for: a broad statement about a company looking into AI is topic-level; a specific, personal statement about how it's costing them is identity-level.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"prospect_name\": string (a real, named individual),\n      \"organization\": string (a real, named company or group),\n      \"stake_word\": string (a single word for the personal stake — e.g. "Trust," "Clarity," "Confidence," "Respect"),\n      \"signal_summary\": string (what the person actually said, close to their own words, and the situation around it — quote directly where you can, plain text, no interpretation added on top of what they said),\n      \"source_url\": string,\n      \"status\": \"new\"\n    }\n  ]\n}\nInclude prospects that pass both requirements above with real, current information you found. A genuine zero-result day is a normal, expected outcome — if nothing clears both bars, return {\"opportunities\": []}. Zero is always a complete, correct answer.`;
-    const [raw, knownKeys] = await Promise.all([callAnthropicWithWebSearch(prompt, 3000, 6, 'aaliyah'), getKnownProspectKeys()]);
-    const parsed = extractJSONObject(raw);
-    const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
-    // Claude's web-search-grounded output can carry raw <cite> markup in its text --
-    // strip it from every string field before this ever reaches the table or the card.
-    const stripCiteTags = (s: string) => s.replace(/<\/?cite[^>]*>/g, '').replace(/[ \t]{2,}/g, ' ').trim();
-    allFound.forEach(o => {
-      for (const k of Object.keys(o)) {
-        if (typeof o[k] === 'string') o[k] = stripCiteTags(o[k] as string);
-      }
-    });
-    const newOnes = allFound.filter(o => {
-      const nameKey = `${String(o.prospect_name||'').trim().toLowerCase()}|${String(o.organization||'').trim().toLowerCase()}`;
-      return !knownKeys.has(nameKey);
-    });
-    console.log(`[aaliyah] Found ${allFound.length} total, ${newOnes.length} new after dedup.`);
-    if (newOnes.length === 0) return { count: 0, csqId: null };
-
-    const rows = newOnes.map(o => ({...o, found_at:new Date().toISOString()}));
-    const written = await writeProspectOpportunities(rows);
-    const top = newOnes.map((o:any) => [
-      `**${o.prospect_name}** — ${o.organization}`,
-      `Stake: ${o.stake_word ?? 'n/a'}`,
-      `Signal: ${o.signal_summary}`,
-      `Source: ${o.source_url ?? 'URL not found'}`,
-    ].join('\n')).join('\n\n---\n\n');
-    const approvalId = await writeApprovalDirect({
-      source: 'aaliyah_prospect_scout',
-      trigger_type: 'prospects',
-      agent_name: 'Aaliyah Foster',
-      agent_role: 'Revenue, Growth & Sales',
-      division: 'Revenue, Growth & Sales',
-      task_brief: `Prospect Scout — Aaliyah Foster | ${new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
-      output: `Found ${written} new prospect signal(s):\n\n${top}\n\nFull list stored in the prospect_opportunities table.`,
-      status: 'pending',
-      notify_deanna: true,
-      priority: 'normal',
-      category: 'prospects',
-      platform: null,
-    });
-    // SMS/email notification (Aug 24, 2026) -- same GHL webhook Raymond's Daily Briefing
-    // uses, fired separately here since this scout bypasses that chain entirely and nothing
-    // else would ever trigger it for the card. Only fires when it actually finds something
-    // new -- no text on a zero-result day.
-    if (written > 0) {
-      const webhookUrl = process.env.GHL_NOTIFICATION_WEBHOOK_URL;
-      if (webhookUrl) {
-        try {
-          const label = `${written} new lead${written > 1 ? 's' : ''} found by Aaliyah's Prospect Scout.`;
-          await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: 'druaiconsulting@gmail.com', phone: '+19796186671',
-              first_name: 'DeAnna', last_name: 'Upshaw',
-              agent_name: 'Aaliyah Foster', task: 'Prospect Scout',
-              approval_id: approvalId, summary: label, triggered_at: new Date().toISOString(),
-              review_url: 'https://app.druaiconsulting.com/admin-approvals',
-              sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
-              email_subject: `DRU AI Consulting — New Leads Found`,
-              email_body: `${label}\n\nReview:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
-            }),
-          });
-          console.log('[aaliyah] Lead notification sent');
-        } catch (err) { console.error('[aaliyah] Notification failed (non-fatal):', err); }
-      }
-    }
-    return { count: written, csqId: approvalId };
-  } catch(error){ console.error('[aaliyah] Prospect Scout error:',error); return { count:0, csqId:null }; }
-}
-
-async function writeApprovalDirect(record: Record<string, unknown>): Promise<string | null> {
+async function writeToApprovals(record: Record<string, unknown>): Promise<string | null> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   const res = await fetch(`${url}/rest/v1/approvals`, {
@@ -469,967 +84,361 @@ async function writeApprovalDirect(record: Record<string, unknown>): Promise<str
     headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=representation' },
     body: JSON.stringify(record),
   });
-  if (!res.ok) { console.error(`[adaeze] Direct approvals write failed: ${await res.text()}`); return null; }
-  const data = await res.json();
-  return data?.[0]?.id ?? null;
-}
-
-async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return null;
-  const res = await fetch(`${url}/rest/v1/chief_of_staff_queue`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=representation'},body:JSON.stringify(record)});
-  if (!res.ok){console.error(`[csq] Write failed: ${await res.text()}`);return null;}
+  if (!res.ok) { console.error(`[approvals] Write failed: ${await res.text()}`); return null; }
   const data = await res.json(); return data?.[0]?.id ?? null;
 }
-async function fetchBrandMarks(): Promise<string> {
+
+// Auto-posts a warm acknowledgment to the Accelerator Circle thread (no approval needed)
+async function postACKnowledgmentComment(postId: string, firstName: string, signalContext: string): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return '';
-  const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return '';
-  const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
-}
-async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return [];
-  let query = `${url}/rest/v1/chief_of_staff_queue?status=eq.${status}&order=created_at.asc`;
-  if (afterDate) query += `&created_at=gte.${afterDate}`;
-  if (limit) query += `&limit=${limit}`;
-  const res = await fetch(query,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return []; return await res.json();
-}
-async function updateCSQ(id: string, updates: Record<string,unknown>): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return;
-  await fetch(`${url}/rest/v1/chief_of_staff_queue?id=eq.${id}`,{method:'PATCH',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(updates)});
-}
-
-
-// CROSS-READ HELPER — reads recent CSQ outputs from specified agents
-// Used by Camila and Nia to ground their outputs in live ecosystem intelligence
-async function getCrossRead(agentIds: string[], days = 7, category?: string, maxChars = 450): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return '';
-  try {
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-    const sinceDate = since.toISOString().split('T')[0];
-    const idList = agentIds.join(',');
-    const query = `${url}/rest/v1/chief_of_staff_queue?agent_id=in.(${idList})&run_date=gte.${sinceDate}${category?`&category=eq.${category}`:''}&order=created_at.desc&limit=12&select=agent_name,division,raw_output,run_date`;
-    const res = await fetch(query, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (!res.ok) return '';
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return '';
-    return (data as Record<string, string>[]).map(item =>
-      `[${item.agent_name} — ${item.run_date}]\n${(item.raw_output || '').slice(0, maxChars)}`
-    ).join('\n\n---\n\n');
-  } catch { return ''; }
-}
-
-// Content theme log (Aug 24, 2026) -- shared running record of what Darius and Nia have
-// each actually published this week, so they can reference/build on each other's real
-// output instead of just following the same abstract weekly theme in parallel. Replaces
-// the dead content_queue dependency Darius previously read from (nothing has written to
-// content_queue since the CSQ migration -- see runDarius below).
-async function getContentThemeLog(days = 7): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return '';
-  try {
-    const since = new Date(); since.setDate(since.getDate() - days);
-    const sinceDate = since.toISOString().split('T')[0];
-    const res = await fetch(`${url}/rest/v1/content_theme_log?created_at=gte.${sinceDate}&order=created_at.desc&limit=20&select=agent_name,format,theme,framework_covered,hook,created_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (!res.ok) return '';
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) return '';
-    return rows.map((r:any) => {
-      const day = new Date(r.created_at).toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-      return `[${r.agent_name} — ${r.format} — ${day}] ${r.theme}${r.framework_covered ? ` (${r.framework_covered})` : ''}${r.hook ? ` | Hook: "${r.hook}"` : ''}`;
-    }).join('\n');
-  } catch { return ''; }
-}
-
-async function writeContentThemeLog(agentId:string, agentName:string, format:string, theme:string, hook?:string|null, frameworkCovered?:string|null): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
-    await fetch(`${url}/rest/v1/content_theme_log`, { method:'POST', headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`,Prefer:'return=minimal'}, body: JSON.stringify([{ agent_id: agentId, agent_name: agentName, format, theme: (theme||'').slice(0,300), hook: hook ? hook.slice(0,300) : null, framework_covered: frameworkCovered || null }]) });
-  } catch(err){ console.error('[content_theme_log] write failed:', err); }
-}
-
-async function runAgentToCSQ(agentId:string,agentName:string,division:string,task:string,category:string,prompt:string,priority='normal',retryCount=0,parentCsqId:string|null=null,maxTokens=1500,model='claude-haiku-4-5-20251001',context?:string): Promise<string|null> {
-  try {
-    const agentKnowledge = await getAgentKnowledge();
-    const agentCorrections = await getAgentCorrections(agentName);
-    const output = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${prompt}${agentCorrections}`,maxTokens,model);
-    return await writeToCSQ({agent_id:agentId,agent_name:agentName,division,task,category,raw_output:output,priority,status:'pending',retry_count:retryCount,...(parentCsqId?{parent_csq_id:parentCsqId}:{}),...(context?{context}:{})});
-  } catch(error){console.error(`[${agentId}] Error:`,error);return null;}
-}
-
-// ─── Ryan Nakamura — CRM Management (GHL) ─────────────────────────────────────
-// Ryan's daily CRM Review runs in its own function (api/ryan-crm-report.ts, 300-second limit) because
-// reading GHL and writing his 16-section report takes longer than this file's limit. This hands the
-// request over and returns. Ryan's instructions are DeAnna's own text (api/_lib/ryanJob.ts).
-async function runRyan(): Promise<{started:boolean}> {
-  try {
-    const res = await fetch('https://app.druaiconsulting.com/api/ryan-crm-report',{method:'POST',headers:{'Content-Type':'application/json','x-cron-secret':process.env.CRON_SECRET??''},body:JSON.stringify({source:'ac-agent-trigger'})});
-    return {started:res.ok};
-  } catch(error){ console.error('[runRyan] Could not start the CRM Review:',error); return {started:false}; }
-}
-
-// P2
-// FIXED: Camila now writes to CSQ like all other agents — full chain (Isabella → Governance → Command Layer → Twin)
-// Nov 13, 2026: reads the outside world's raw words, picks the week's theme and sources, then writes the brief (api/_lib/camilaInputs.ts)
-// content_queue write removed — everything flows through CSQ
-async function runCamila(): Promise<string|null> {
-  // Nov 13, 2026 rewrite (DeAnna's design): Camila reads the outside world's raw words herself
-  // (Aaliyah's leads, social comments, support requests, community comments and posts, website
-  // chat questions, Nia's published pieces, her own last briefs), then picks the week's theme and
-  // up to 3 sources from the Supabase catalog (her framework documents, the licensed library, the
-  // DISC Sales Assessment). No date calendar. All reading and picking lives in api/_lib/camilaInputs.ts.
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const positioning=await fetchBrandCopy('positioning');
-  const week = await prepareCamilaWeek({ today, positioning, voiceDna: VOICE_DNA });
-  if (!week) return null;
-  // The theme title is saved with her brief (context) so every producer's card can carry it.
-  return await runAgentToCSQ(
-    'camila','Camila Flores','Content & Brand','generate_weekly_linkedin_queue','content_strategy',
-    week.prompt,'normal',0,null,2500,'claude-haiku-4-5-20251001',week.theme
-  );
-}
-
-// PHASE 2 UPDATED: Darius generates 3 platform-native versions as structured JSON
-async function runDarius(): Promise<string|null> {
-  const brandMarks=await fetchBrandMarks();
-  const positioning=await fetchBrandCopy('positioning');
-  const agentKnowledge=await getAgentKnowledge();
-  const agentCorrections=await getAgentCorrections('Darius King');
-  // Aug 24, 2026 fix: previously read from content_queue, a table nothing has written to
-  // since the CSQ migration -- topicBrief was always empty and Darius silently fell back
-  // to a generic prompt, disconnected from Camila's weekly theme and Nia's actual output.
-  // Now reads Camila's weekly Content Strategy Brief (same cross-read Nia already uses)
-  // plus the shared content theme log, so today's post is grounded in what's real.
-  const { brief: camilaBrief } = await getLatestCamilaBrief();
-  const themeLog = await getContentThemeLog();
-  const weeklyContext = camilaBrief
-    ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align today's post with this week's direction:\n${camilaBrief}`
-    : '';
-  const logContext = themeLog
-    ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (yours and Nia Robinson's) — reference or build on this, don't repeat it:\n${themeLog}`
-    : '';
-  const topicContext = `Generate a thought leadership topic on ${positioning} using one of these frameworks: ${brandMarks}.${weeklyContext}${logContext}`;
-  const structuredOutput=await callAnthropic(
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n${DIRECT_RESPONSE_PHILOSOPHY}${agentCorrections}\n\nYou are Darius King, Copy Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Her positioning is "${positioning}."\n\nTODAY'S TOPIC BRIEF: ${topicContext}\n\nIf WHAT'S ALREADY BEEN PUBLISHED THIS WEEK shows real entries, your hook and content must explicitly build on, reference, or advance one of those pieces — name the connection naturally (e.g. "Building on this week's theme...") rather than starting a disconnected new topic.\n\nWrite 3 platform-native versions of this topic. Same core message, 3 different audience voices:\n\nLINKEDIN (VP+ executives, authority, framework-forward): 150-300 words, opening line MUST be a standalone punch line under 8 words — a direct question about the reader's own specific situation, not a statement claiming what they do, feel, or struggle with — one framework reference, CTA to assessment.druaiconsulting.com, 3-5 hashtags.\nFACEBOOK (warm community tone, outcome-focused, relatable): 100-200 words, CTA to assessment.druaiconsulting.com. Make it relatable by opening with a direct question about the reader's own specific situation — 'Where is your team...', 'What happens when you...' — not a statement claiming what they do, feel, or struggle with.\nINSTAGRAM (visual-first, punchy, short): 50-80 words, 5-8 hashtags, ends with assessment.druaiconsulting.com. Make it punchy with a direct question about the reader's own specific situation — not a statement claiming what they do, feel, or struggle with.\n\nCount the words in your opening line before writing the rest. Follow the HOOK/QUESTION RULE above for the hook and every opening line — open-ended and declarative, never yes/no, never "X or Y."\n\nReturn ONLY valid JSON — no markdown fences, no preamble, no explanation:\n{"linkedin_content":"...","facebook_content":"...","instagram_caption":"...","hook":"single strongest opening line","content_type":"thought_leadership"}`,
-    2500
-  );
-  const csqId=await writeToCSQ({agent_id:'darius',agent_name:'Darius King',division:'Content & Brand',task:'generate_daily_linkedin_post',category:'linkedin_post',raw_output:structuredOutput,priority:'normal',status:'pending',retry_count:0});
-  // Log this piece to the shared content theme log so Nia (and tomorrow's Darius) can see
-  // exactly what went out today, not just the abstract weekly plan.
-  try {
-    const parsed = JSON.parse(structuredOutput.replace(/```json|```/g,'').trim());
-    await writeContentThemeLog('darius','Darius King','linkedin_post', parsed.content_type ? `${parsed.content_type} — ${positioning}` : positioning, parsed.hook || null, null);
-  } catch(err){ console.error('[runDarius] content_theme_log write failed:', err); }
-  return csqId;
-}
-
-
-// P2 UPDATED: Ravi reads Darius's post from CSQ before generating brief
-// Visual must support and reinforce today's copy — not a separate concept
-async function runRavi(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const todayDate=new Date().toISOString().split('T')[0];
-  const url=process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  // Read today's Darius post from CSQ — align design brief with the actual copy
-  let dariusContent=''; let dariusHook='';
-  if (url&&key){
-    const r=await fetch(`${url}/rest/v1/chief_of_staff_queue?agent_id=eq.darius&created_at=gte.${todayDate}T00:00:00&order=created_at.desc&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-    if (r.ok){
-      const data=await r.json();
-      if (data?.[0]?.raw_output){
-        try {
-          const parsed=JSON.parse(data[0].raw_output);
-          dariusContent=parsed.linkedin_content||data[0].raw_output;
-          dariusHook=parsed.hook||'';
-        } catch { dariusContent=data[0].raw_output.slice(0,600); }
-      }
-    }
-  }
-
-  const postContext=dariusContent
-    ? `TODAY\'S POST FROM DARIUS — your brief must visually support this exact message:\n\n${dariusContent}\n${dariusHook?`HOOK: ${dariusHook}`:''}`
-    : 'No Darius post found today — generate a general DRU CLEAR™ diagnostic theme brief.';
-
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ(
-    'ravi','Ravi Gupta','Content & Brand','generate_design_brief','design_brief',
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Ravi Gupta, Graphic Designer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Brand: Navy #0A2342, Gold #D4AF37, Magenta #C2185B. Fonts: Playfair Display (headlines), Inter (body). Today: ${today}. CTA destination: assessment.druaiconsulting.com.\n\n${postContext}\n\nGenerate a complete LinkedIn visual design brief (1200×627px) where the visual DIRECTLY SUPPORTS and VISUALLY REINFORCES today\'s post. The image and copy must tell the same story — not separate concepts.\n\nEvery day is a new design. Start from today\'s post: find the one concrete word, image or idea in it and build the whole visual from that. Choose the subject, setting, camera angle, scale and focal point that fit it, so today\'s design belongs to today\'s post and no other.\n\nInclude:\n- STRATEGIC INTENT (aligned to today\'s post theme and audience)\n- VISUAL CONCEPT (concept name + a metaphor taken from the specific word, image or idea in today\'s post)\n- LAYOUT ARCHITECTURE (canvas 1200×627px, be creative with the composition, bottom CTA strip)\n- COLOR PALETTE with application logic (Navy #0A2342, Gold #D4AF37, Magenta #C2185B)\n- TYPOGRAPHY HIERARCHY (headline pulled from or inspired by today\'s hook; subheadline; body copy; CTA button)\n- AI IMAGE GENERATION PROMPTS (combined scene, ready to paste into Creator Studio)\n- DESIGN SPECIFICATIONS (PNG 1200×627px @ 300DPI, RGB, optimized <500KB)`,
-    'normal',0,null,2500
-  );
-}
-
-// Internal-reasoning marker (Aug 2026 fix) — closes off private reasoning behind one exact,
-// consistent line instead of whatever heading the agent picks. Raymond splits on this in
-// raymond.ts: sendable content stays in `output` (what gets approved/sent), everything after
-// the marker is pulled into `original_content` and shown on the card as "Internal Notes — Not
-// Sent." Applied to all of Nia's prompts (LinkedIn + newsletters) — this is where her cards
-// were leaking strategic-rationale text into sendable content.
-const INTERNAL_NOTES_INSTRUCTION = `\nIf you want to explain your reasoning, strategic intent, or why you made a particular choice, put ONLY that explanation after a line containing exactly:\n===INTERNAL NOTES===\nEverything after that exact line is kept private for DeAnna and is NEVER sent or posted. Only use it if you actually have something worth explaining — most of the time you won't need it. Never put real content that should be sent/posted after this marker.`;
-
-// Brand theme line (Aug 2026) — added to all 4 newsletter editions per DeAnna's
-// confirmation. Not added to LinkedIn posts/articles — newsletter-only per this build.
-// The wording comes from the brand_copy table through the shared reader in agentKnowledge.ts.
-function buildBrandTheme(kind: 'newsletter' | 'email', line: string): string {
-  return `\nBRAND THEME: Work the brand line below naturally into this ${kind} — it is DRU AI Consulting's core positioning line.\n${line}`;
-}
-
-// P3
-// NIA ROBINSON — Content Strategist
-// Schedule: Wed/Sat/Sun = LinkedIn posts | Thu = LEAD, CLARITY, WIN! Newsletter x4 | Fri = LinkedIn native article
-// Mon/Tue = Darius days, Nia returns null
-// Reads Camila's weekly brief for strategic alignment before writing anything
-async function runNia(): Promise<string|null> {
-  const agentKnowledge = await getAgentKnowledge();
-  const EQ_BRAND_LINE = buildBrandTheme('newsletter', await fetchBrandCopy('positioning'));
-  const clientIntel  = await getCrossRead(['keisha','ryan']);
-  const { brief: camilaBrief } = await getLatestCamilaBrief();
-  const andreReports = await getCrossRead(['andre'], 7, undefined, 2000);
-  const themeLog     = await getContentThemeLog();
-  const today        = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek    = new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const niaPrefix    = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n`;
-  // Aug 24, 2026 fix: previously Nia only saw the abstract weekly plan, never what Darius
-  // had actually published. logContext folds his real output (and her own) from the shared
-  // log into strategyContext once here, so every prompt below picks it up automatically.
-  const logContext = themeLog
-    ? `\nWHAT'S ALREADY BEEN PUBLISHED THIS WEEK (Darius King's posts and your own) — reference or build on this where it fits naturally, don't repeat it:\n${themeLog}`
-    : '';
-  const strategyContext = (camilaBrief
-    ? `\nWEEKLY CONTENT STRATEGY (from Camila Flores, Social Media Strategist) — align your content with this week's direction:\n${camilaBrief}`
-    : '\nNo weekly strategy brief available — draw from framework rotation and ecosystem signals.') + logContext;
-  const intelContext = (clientIntel
-    ? `\nCLIENT & ECOSYSTEM INTELLIGENCE — ground examples in real signals:\n${clientIntel}`
-    : '\nNo prior intelligence — draw from framework-based scenarios.') + (andreReports ? `\nANDRE MITCHELL'S SEO REPORTS — the content gap he names can influence your marketing writing:\n${andreReports}` : '');
-
-  // ── WEDNESDAY / SATURDAY / SUNDAY — LinkedIn Post (200-300 words) ──────────
-  if (['Wednesday','Saturday','Sunday'].includes(dayOfWeek)) {
-    const postTypeMap:Record<string,string> = { Wednesday:'thought_leadership', Saturday:'framework_spotlight', Sunday:'executive_insight' };
-    const postInstructions:Record<string,string> = {
-      thought_leadership: `Write a 200-300 word LinkedIn post positioning DeAnna R. Upshaw as the AI Authority. Strong hook on line one — no fluff. One sharp insight executives need about AI leadership today. One DRU framework reference (™). End with: assessment.druaiconsulting.com. Max 3 relevant hashtags.`,
-      framework_spotlight: `Write a 200-300 word LinkedIn post spotlighting one proprietary framework (™). Hook: the problem it solves. Body: what shifts when leaders apply it. One concrete real-world example. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
-      executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference (™). CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
-    };
-    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
-      `${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${postInstructions[postTypeMap[dayOfWeek]]}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,800);
-    await writeContentThemeLog('nia','Nia Robinson','linkedin_post', postTypeMap[dayOfWeek], null, null);
-    return csqId;
-  }
-
-  // ── FRIDAY — LinkedIn Native Article (500-700 words, ARTICLE FORMAT) ────────
-  if (dayOfWeek === 'Friday') {
-    const topics = ['ai_changes_leadership','framework_deep_dive','transformation_story','executive_ai_mistakes','ai_culture_shift'];
-    const topic  = topics[new Date().getDate() % topics.length];
-    const articleInstructions:Record<string,string> = {
-      ai_changes_leadership: `Write a 500-700 word LinkedIn native article on how AI is reshaping executive leadership in 2026. Scroll-stopping headline. Strong intro. 3-4 sections with subheadings. One DRU framework (™). Closing CTA: "Start your AI readiness assessment → assessment.druaiconsulting.com".`,
-      framework_deep_dive:   `Write a 500-700 word LinkedIn native article doing a deep dive on one proprietary framework (™). What it is, why it exists, what changes when leaders apply it, real-world impact. CTA: assessment.druaiconsulting.com.`,
-      transformation_story:  `Write a 500-700 word LinkedIn native article as a composite client transformation story using the DRU AI Transformation Pathway™. Before → intervention → transformation → measurable shift. Real, not salesy. CTA: assessment.druaiconsulting.com.`,
-      executive_ai_mistakes: `Write a 500-700 word LinkedIn native article on the top mistakes executives make implementing AI. DeAnna as the authority who's seen it firsthand. One framework (™) as the solution lens. CTA: assessment.druaiconsulting.com.`,
-      ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA™. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
-    };
-    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
-      `## ARTICLE FORMAT — LinkedIn Native Article\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${articleInstructions[topic]}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
-      'normal',0,null,1500);
-    await writeContentThemeLog('nia','Nia Robinson','linkedin_article', topic, null, null);
-    return csqId;
-  }
-
-  // ── THURSDAY — LEAD, CLARITY, WIN! Newsletter × 4 tiers ─────────────────────
-  if (dayOfWeek === 'Thursday') {
-    const topic = camilaBrief
-      ? `This week's theme from your content strategy brief — align the Newsletter to the week's direction`
-      : `AI leadership insight grounded in one DRU framework (™) — ${today}`;
-
-    // Non-member edition — true non-members, GHL tag "non-member"
-    await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_nonmember','newsletter_nonmember',
-      `## LEAD, CLARITY, WIN! Newsletter — Non-Member Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Executives who have NOT yet joined DRU AI Consulting.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Surface — reveal the problem clearly, hint at the solution, stop before delivering it. Hook them on the promise.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening hook (2-3 sentences that stop them) | The problem (1 paragraph — they should feel seen) | A glimpse of what's possible (1 paragraph — tease, do NOT teach) | CTA\nCTA: "Your AI transformation starts with one assessment. → assessment.druaiconsulting.com"\nTOPIC: ${topic}\nDo NOT give away framework IP. No framework detail — name only.${INTERNAL_NOTES_INSTRUCTION}`,
-      'high',0,null,1000);
-
-    // Free-Tier edition — joined the portal, hasn't upgraded, GHL tag "free-tier"
-    await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_freetier','newsletter_freetier',
-      `## LEAD, CLARITY, WIN! Newsletter — Free-Tier Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Free-tier members — executives who completed the assessment and joined the DRU AI Leadership Ecosystem™, but haven't upgraded yet.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Between surface and medium — give them real value, but hold back enough that leveling up still matters. Do not teach full framework application.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (acknowledge they're already part of the community) | One valuable insight, held at partial depth | What's waiting for them at the next level | CTA\nCTA: "Ready to go deeper? Join Navigator — that's how you unlock the full community. → https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'high',0,null,1000);
-
-    // Navigator edition
-    await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_navigator','newsletter_navigator',
-      `## LEAD, CLARITY, WIN! Newsletter — Navigator Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Navigator members ($97/mo) — executives who completed the assessment and joined.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Medium — apply one framework concept to a real leadership challenge. Give real value but leave the full system for the 90-Day Journey.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (acknowledge where they are as executives) | One framework concept + one action step they can take this week | What becomes possible when they go deeper | CTA\nCTA: "Ready to go all in? Start your 90-Day Transformation Pathway. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'high',0,null,1000);
-
-    // Accelerator edition
-    const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_accelerator','newsletter_accelerator',
-      `## LEAD, CLARITY, WIN! Newsletter — Accelerator Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Accelerator members ($197/mo) — executive leaders in active transformation.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Deeper — one framework at strategic implementation level. Executive stakes, real complexity.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (meet them at their executive level) | Strategic insight — one framework, implementation angle, the hard question they're avoiding | The gap they're likely sitting in right now | CTA\nCTA: "Activate your 90-Day Pathway. The full transformation is waiting. → frameworks.druaiconsulting.com"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
-      'high',0,null,1000);
-    // One log entry represents the whole newsletter (all 4 tiers share the same theme).
-    await writeContentThemeLog('nia','Nia Robinson','newsletter', topic, null, null);
-    return csqId;
-  }
-
-  return null; // Monday, Tuesday — Darius days
-}
-
-// ─── JAYLEN BROOKS — Email Marketing (Revenue, Growth & Sales) ────────────────
-// Runs daily via cron_jaylen_email. Three jobs, every run:
-//   1. Non-member 5-email welcome sequence — checks who's due for their next email today
-//      (Day 0/3/7/10/14 from their own signup date), generates ONE piece of content per
-//      stage that has at least one contact due (not one card per contact — the dispatch
-//      side sends that same content to everyone currently due for that stage).
-//   2. Deploy -> Dominate auto-promotion — pure date math, Day 91 exactly, no content
-//      generation, just tag/database housekeeping.
-//   3. Tuesday only — weekly email to Free-Tier/Navigator/Accelerator (Nia has Wed-Sun).
-// Aug 2026 build.
-
-const JAYLEN_GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const JAYLEN_GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
-const JAYLEN_GHL_VERSION = '2021-07-28';
-
-const SEQUENCE_DAY_OFFSETS: Record<number, number> = { 1: 0, 2: 3, 3: 7, 4: 10, 5: 14 };
-const SEQUENCE_STAGE_NAMES: Record<number, string> = {
-  1: 'Welcome', 2: 'Value Piece / Pain Point', 3: 'Proof / Story', 4: 'Honest', 5: 'The Ask',
-};
-const JAYLEN_SIGNATURE = `\n\nEvery email closes with this exact signature, verbatim:\nAll the Best,\n-DeAnna R Upshaw, Your AI Authority and Partner!`;
-const JAYLEN_PERSONALIZATION = `\nPERSONALIZATION: Open with GHL's merge tag exactly as written — Hi {{contact.first_name}}, — do not substitute a placeholder name or write it any other way; GHL fills in the real first name at send time using this exact tag.`;
-
-// GHL's official upsert endpoint — finds-or-creates by email using GHL's own duplicate
-// detection, replacing the unverified advanced-search approach entirely.
-// https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
-async function jaylenFindContactIdByEmail(email: string, apiKey: string): Promise<string | null> {
-  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/upsert`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
-    body: JSON.stringify({ locationId: JAYLEN_GHL_LOCATION_ID, email }),
-  });
-  if (!res.ok) { console.error(`[runJaylen] Contact upsert failed: ${res.status} ${await res.text()}`); return null; }
-  const data = await res.json();
-  return data.contact?.id ?? null;
-}
-
-async function jaylenAddTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
-  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/${contactId}/tags`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
-    body: JSON.stringify({ tags }),
-  });
-  if (!res.ok) console.error(`[runJaylen] Add tags failed for ${contactId}: ${res.status} ${await res.text()}`);
-  return res.ok;
-}
-
-async function jaylenRemoveTags(contactId: string, tags: string[], apiKey: string): Promise<boolean> {
-  if (tags.length === 0) return true;
-  const res = await fetch(`${JAYLEN_GHL_API_BASE}/contacts/${contactId}/tags`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: JAYLEN_GHL_VERSION },
-    body: JSON.stringify({ tags }),
-  });
-  if (!res.ok) console.error(`[runJaylen] Remove tags failed for ${contactId}: ${res.status} ${await res.text()}`);
-  return res.ok;
-}
-
-// Returns which of the 5 sequence stages (1-5) have at least one non-member contact due
-// today, so content only gets generated for stages actually needed.
-async function getDueSequenceStages(): Promise<number[]> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) { console.error('[runJaylen] Supabase env vars missing — skipping sequence check'); return []; }
-  const res = await fetch(`${url}/rest/v1/jaylen_sequence_progress?select=current_email_number,signup_date&sequence_complete=eq.false`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  if (!res.ok) { console.error('[runJaylen] Failed to fetch sequence progress'); return []; }
-  const rows: Array<{ current_email_number: number; signup_date: string }> = await res.json();
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const dueStages = new Set<number>();
-  for (const row of rows) {
-    const nextStage = row.current_email_number + 1;
-    if (nextStage > 5) continue;
-    const signup = new Date(row.signup_date + 'T00:00:00');
-    const daysSince = Math.floor((today.getTime() - signup.getTime()) / 86400000);
-    if (daysSince >= SEQUENCE_DAY_OFFSETS[nextStage]) dueStages.add(nextStage);
-  }
-  return Array.from(dueStages).sort((a, b) => a - b);
-}
-
-// Pure date math — anyone in Deploy for 91+ days (using the dedicated deploy_started_at
-// timestamp, not profiles.updated_at, which gets touched by unrelated edits) gets promoted
-// to Dominate. No content, no approval card — just tag and database housekeeping.
-async function promoteDeployToDominate(): Promise<number> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const apiKey = process.env.GHL_PRIVATE_INTEGRATIONS_KEY;
-  if (!url || !key) { console.error('[runJaylen] Supabase env vars missing — skipping Dominate promotion'); return 0; }
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 91);
-  const res = await fetch(`${url}/rest/v1/profiles?select=id,email,deploy_started_at&pathway_stage=eq.Deploy&deploy_started_at=lte.${cutoff.toISOString()}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  if (!res.ok) { console.error('[runJaylen] Failed to fetch Deploy-stage profiles'); return 0; }
-  const rows: Array<{ id: string; email: string; deploy_started_at: string }> = await res.json();
-  let promoted = 0;
-  for (const row of rows) {
-    const updateRes = await fetch(`${url}/rest/v1/profiles?id=eq.${row.id}`, {
-      method: 'PATCH',
-      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ pathway_stage: 'Dominate', updated_at: new Date().toISOString() }),
+    const agentCorrections = await getAgentCorrections('Petra Vance');
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${AC_COMMUNITY_VOICE}${agentCorrections}\n\nYou are Petra Vance, Member Experience for the Accelerator Circle at DRU AI Consulting.\nAn Accelerator member named ${firstName} has been engaging in a meaningful way inside the Accelerator Circle.\nContext: "${signalContext}"\n\nWrite a warm, peer-level community reply of 60-80 words. Acknowledge their engagement naturally and let them know someone from the DRU AI Consulting team will reach out directly to explore how to go deeper together. Keep the reply centered on their engagement: warm, peer-level and genuine. Return the reply text alone.`;
+    const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
+    await fetch(`${url}/rest/v1/community_comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Petra Vance', content: acknowledgment, is_flagged: false, is_active: true }),
     });
-    if (!updateRes.ok) { console.error(`[runJaylen] Failed to promote ${row.email} to Dominate`); continue; }
-    if (apiKey) {
-      const contactId = await jaylenFindContactIdByEmail(row.email, apiKey);
-      if (contactId) {
-        await jaylenAddTags(contactId, ['90-day-completed'], apiKey);
-        await jaylenRemoveTags(contactId, ['90-day-purchased', 'diagnostic-purchased'], apiKey);
-      } else {
-        console.error(`[runJaylen] No GHL contact found for ${row.email} — Dominate tag sync skipped`);
-      }
-    }
-    promoted++;
-    console.log(`[runJaylen] ${row.email} promoted Deploy -> Dominate (91 days since ${row.deploy_started_at})`);
-  }
-  return promoted;
+    console.log(`[petra] AC acknowledgment posted to post ${postId} for ${firstName}`);
+  } catch (err) { console.error('[ac_acknowledgment] Failed:', err); }
 }
 
-async function runJaylen(): Promise<{ sequence_emails_generated: number; dominate_promotions: number; weekly_emails_generated: number }> {
-  const agentKnowledge = await getAgentKnowledge();
-  const jaylenPrefix = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\n`;
-  const brandLine = buildBrandTheme('email', await fetchBrandCopy('positioning'));
+// ─── Core AC Agent Runner ─────────────────────────────────────────────────────
+
+async function runACAgent(
+  agentId: string,
+  agentName: string,
+  task: string,
+  postType: string,
+  category: string,
+  prompt: string,
+): Promise<{ approval_id: string | null; post_id: string | null }> {
+  try {
+    const agentCorrections = await getAgentCorrections(agentName);
+    const raw = await callAnthropic(
+      `${GENIUS_MODE}\n\n${VOICE_DNA}${AC_COMMUNITY_VOICE}${agentCorrections}\n\n${prompt}\n\nReturn valid JSON in exactly this shape, with nothing before or after it: {"title":"...","content":"..."}`,
+      1500,
+    );
+    let title = ''; let content = '';
+    try {
+      const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+      const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON found');
+      const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+      title = parsed.title || agentName; content = parsed.content || raw;
+    } catch {
+      const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+      title = `${agentName} — ${dateStr}`; content = raw;
+    }
+    title = enforceTM(title); content = enforceTM(content);
+
+    const post_id = await writeToCommunityPosts({
+      title, content, post_type: postType,
+      tier_required: 'accelerator',
+      agent_id: agentId, agent_name: agentName,
+      published_at: new Date().toISOString(), is_active: false,
+    });
+
+    const approval_id = await writeToApprovals({
+      source: `${agentId}_ac`, trigger_type: category,
+      agent_name: agentName, agent_role: 'Accelerator Circle',
+      division: 'Accelerator Circle',
+      task_brief: post_id ? `post_id:${post_id} | ${agentName} | ${task.replace(/_/g, ' ')}` : `${agentName} | ${task.replace(/_/g, ' ')}`,
+      original_content: null, output: `${title}\n\n${content}`,
+      edited_output: null, status: 'pending', ghl_contact_id: null,
+      notify_deanna: false, priority: 'NORMAL',
+      category: 'community_post', platform: 'Accelerator Circle',
+      context: null, archived: false,
+    });
+
+    console.log(`[${agentId}] AC post → approvals: ${approval_id ?? 'failed'} | community_posts: ${post_id ?? 'failed'}`);
+    return { approval_id, post_id };
+  } catch (error) {
+    console.error(`[${agentId}] AC agent error:`, error);
+    return { approval_id: null, post_id: null };
+  }
+}
+
+// ─── Matthew Elliot — AC Leader ──────────────────────────────────────────────
+
+async function runMatthew(): Promise<{ approval_id: string | null; post_id: string | null }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let recentACPosts = 'No recent Accelerator Circle activity available.';
+  if (url && key) {
+    const since = new Date(); since.setHours(since.getHours() - 48);
+    const r = await fetch(
+      `${url}/rest/v1/community_posts?tier_required=eq.accelerator&published_at=gte.${since.toISOString()}&order=published_at.desc&limit=8`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (r.ok) {
+      const posts = await r.json();
+      if (posts.length > 0) recentACPosts = posts.map((p: Record<string, string>) => `${p.agent_name}: ${p.title}`).join('\n');
+    }
+  }
+  return runACAgent(
+    'matthew', 'Matthew Elliot', 'ac_community_facilitation', 'agent', 'ac_community_facilitation',
+    `You are Matthew Elliot, the Accelerator Circle Leader at DRU AI Consulting. Today: ${today}.
+You speak with intelligence and depth in your conversation, and every post carries a sharp, specific insight.
+Recent Accelerator Circle activity (last 48 hours):
+${recentACPosts}
+Write a mastermind conversation starter of 100-150 words. Build on the recent Circle activity so the post continues what members are already discussing. Your voice is a fellow leader sharing something you have observed, questioned or been sitting with at the intersection of AI and organizational transformation, the kind of insight that gets a room leaning in. Close with one high-stakes question for the room. The post is a conversation, and its purpose is the room's reply.`,
+  );
+}
+
+// ─── Petra Vance — AC Member Experience ──────────────────────────────────────
+
+async function runPetra(): Promise<{ approval_id: string | null; post_id: string | null }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let memberContext = 'No recent Accelerator member data available.';
+  if (url && key) {
+    const r = await fetch(
+      `${url}/rest/v1/profiles?tier=eq.accelerator&order=updated_at.desc&limit=8&select=id,first_name,updated_at`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (r.ok) {
+      const members = await r.json();
+      if (members.length > 0) memberContext = `Active Accelerator members: ${members.length}. Most recently active: ${members.slice(0, 3).map((m: Record<string, string>) => m.first_name).join(', ')}.`;
+    }
+  }
+  return runACAgent(
+    'petra', 'Petra Vance', 'ac_member_experience', 'agent', 'ac_member_experience',
+    `You are Petra Vance, Member Experience for the Accelerator Circle at DRU AI Consulting. Today: ${today}.
+You speak with intelligence and depth in your conversation, and every post carries a sharp, specific insight.
+Member context: ${memberContext}
+Write a thought-provoking weekend post of 100-150 words, built around a question. Your voice is warm and honest at depth: you are a peer who names what is actually happening in the room, celebrating a real win or opening up a genuine implementation challenge, like a message to a trusted peer group in the same territory. Invite others to share where they are. Close with one high-stakes question that makes people think. The post is a conversation, and its purpose is the room's reply.`,
+  );
+}
+
+// ─── Renata Cruz — AC Strategy Agent ─────────────────────────────────────────
+
+async function runRenata(): Promise<{ approval_id: string | null; post_id: string | null }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
-  // ── 1. Non-member sequence — one card per due stage, not per contact ─────────
-  const dueStages = await getDueSequenceStages();
-  for (const stage of dueStages) {
-    await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', `jaylen_sequence_${stage}`, 'email_marketing',
-      `${jaylenPrefix}You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: Non-members who signed up for LEAD, CLARITY, WIN! Newsletter — this is email ${stage} of 5 in their welcome sequence.\nSTAGE: ${SEQUENCE_STAGE_NAMES[stage]}\n${brandLine}${JAYLEN_PERSONALIZATION}\nWrite an email that fits this stage of a relationship-building welcome sequence: build trust, show real value, and move naturally toward the free assessment as the next step. Do not repeat what earlier emails in this sequence would already have said — this is stage ${stage}, write for where the reader is at this point, not from scratch.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content.${JAYLEN_SIGNATURE}\nCTA: assessment.druaiconsulting.com`,
-      'high', 0, null, 1000);
-  }
-
-  // ── 2. Deploy -> Dominate promotion (silent, no content) ─────────────────────
-  const promotions = await promoteDeployToDominate();
-
-  // ── 3. Tuesday — weekly email to Free-Tier/Navigator/Accelerator ─────────────
-  let weeklyCount = 0;
-  if (dayOfWeek === 'Tuesday') {
-    const tiers = [
-      { trigger: 'jaylen_weekly_freetier', label: 'Free-Tier', audience: 'Free-tier members — joined the portal, have not upgraded yet' },
-      { trigger: 'jaylen_weekly_navigator', label: 'Navigator', audience: 'Navigator members ($97/mo)' },
-      { trigger: 'jaylen_weekly_accelerator', label: 'Accelerator', audience: 'Accelerator members ($197/mo)' },
-    ];
-    for (const t of tiers) {
-      await runAgentToCSQ('jaylen', 'Jaylen Brooks', 'Revenue, Growth & Sales', t.trigger, 'email_marketing',
-        `${jaylenPrefix}You are Jaylen Brooks, Email Marketing Agent for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nAUDIENCE: ${t.audience}.\n${brandLine}${JAYLEN_PERSONALIZATION}\nThis is direct sales/relationship-maintenance email — different job from Nia's Thursday newsletter to the same people, which is educational content. Yours should be a genuine, direct nudge, not more value content.\nWrite so it reads right for a reader at any point in their journey: reference that unlocking the diagnostic (Strategic $3,497 or Executive $4,997) is the next step for anyone who hasn't done one yet, AND that the 90-Day Journey bundles are the next step for anyone who's already done their diagnostic — the reader will recognize which applies to them.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content.${JAYLEN_SIGNATURE}\nCTA: frameworks.druaiconsulting.com`,
-        'high', 0, null, 1000);
-      weeklyCount++;
-    }
-  }
-
-  return { sequence_emails_generated: dueStages.length, dominate_promotions: promotions, weekly_emails_generated: weeklyCount };
-}
-
-// ─── Marketing Data Fetch ────────────────────────────────────────────────────
-// Pulls real platform data from Supabase for Andre, Hyun-Ji, and Luca.
-// All three agents receive this snapshot so they report actual numbers —
-// never invented traffic, campaign spend, or conversion rates.
-async function fetchMarketingData(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'Platform data unavailable.';
-  try {
-    const [subRes, statsRes, socialRes] = await Promise.all([
-      fetch(`${url}/rest/v1/submissions?select=id,total_score,tier,score_category,top_gaps,utm_source,utm_medium,utm_campaign,role,company,created_at&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/stats?select=id,value`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/social_assets?select=title,platform,used_count,last_used_at,is_active&is_active=eq.true&order=used_count.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-    ]);
-    const [subs, stats, social]: [any[], any[], any[]] = await Promise.all([subRes.json(), statsRes.json(), socialRes.json()]);
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const recentSubs = subs.filter((s: any) => s.created_at >= sevenDaysAgo);
-    const tiers: Record<string, number> = {};
-    const utmSources: Record<string, number> = {};
-    const topGaps: string[] = [];
-    for (const s of subs) {
-      if (s.tier) tiers[s.tier] = (tiers[s.tier] || 0) + 1;
-      if (s.utm_source) utmSources[s.utm_source] = (utmSources[s.utm_source] || 0) + 1;
-      if (s.top_gaps) topGaps.push(s.top_gaps);
-    }
-    const statsMap: Record<string, number> = {};
-    for (const s of stats) statsMap[s.id] = s.value;
-    const lines = [
-      `REAL PLATFORM DATA — use only these numbers, never invent or estimate:`,
-      `Assessments completed (all time): ${subs.length}`,
-      `Assessments completed (last 7 days): ${recentSubs.length}`,
-      `Tier breakdown: ${Object.entries(tiers).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none yet'}`,
-      `Traffic sources (UTM): ${Object.entries(utmSources).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none tracked yet'}`,
-      `Diagnostics sold: ${statsMap['diagnostics_sold'] ?? 0}`,
-      `Sessions booked: ${statsMap['sessions_booked'] ?? 0}`,
-      `Leads captured: ${statsMap['leads_captured'] ?? 0}`,
-      `Top gaps reported by assessees: ${topGaps.length > 0 ? topGaps.slice(0,3).join(' | ') : 'none yet'}`,
-      `Active social assets in library: ${Array.isArray(social) ? social.length : 0}`,
-      Array.isArray(social) && social.length > 0 ? `Most used: ${social.slice(0,3).map((a: any) => `${a.title} (${a.platform}, used ${a.used_count}x)`).join('; ')}` : '',
-    ].filter(Boolean);
-    return lines.join('\n');
-  } catch {
-    return 'Platform data unavailable.';
-  }
-}
-
-async function runLuca(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const marketingData = await fetchMarketingData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('luca','Luca Romano','Marketing','digital_marketing_briefing','digital_marketing',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Luca Romano, Digital Marketing Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. All objectives point to assessment.druaiconsulting.com.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must appear verbatim in the data above. If it is not in the data, do not write it.\n2. Do not estimate, project, extrapolate, or use phrases like \"approximately,\" \"roughly,\" or \"based on typical benchmarks.\" Real numbers only.\n3. If assessments completed = 0 and all stats = 0, open with: \"Platform is pre-traffic. No funnel data to report yet.\" Then give one setup action we can take TODAY to start capturing real data.\n4. If there IS real data, open with a DATA SNAPSHOT block that quotes the exact numbers from above — no rounding, no reframing.\n5. Writing any number not found in the data above is a fabrication. DeAnna will compare your output to the raw data table.\n\nAfter your opening (data snapshot or pre-traffic statement), write:\n**Campaign Priority** — One platform to activate or optimize this week, grounded only in what the data shows about traffic source or funnel stage. If no data, recommend the single first campaign to run and why.\n**This Week\'s Action** — One specific move with clear rationale tied only to real numbers or acknowledged gaps.\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Luca.`,'normal',0,null,2000);
-}
-async function runHyunJi(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const reportType=dayOfWeek==='Monday'?'weekly_recap':'daily_operational';
-  const marketingData = await fetchMarketingData();
-  const agentKnowledge = await getAgentKnowledge();
-  const reportInstructions=reportType==='weekly_recap'
-    ?`Weekly analytics recap using ONLY the real data provided above. What does the data actually show? What is the week-ahead priority based on real numbers? Set 3 KPI targets.`
-    :`Daily analytics update using ONLY the real data provided above. What does the funnel actually show right now? Which single metric, if moved, would have the most impact on revenue? One insight about the assessment-to-diagnostic path grounded in real numbers.`;
-  return await runAgentToCSQ('hyunji','Hyun-Ji Kim','Marketing','analytics_roi_briefing','analytics_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Hyun-Ji Kim, Analytics & ROI Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PLATFORM DATA (use only these numbers):\n${marketingData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must come directly from the data above, quoted exactly. If it is not in the data, do not write it.\n2. No estimates, no projections, no revenue calculations, no conversion rate math. Real numbers only.\n3. If assessments completed = 0 and all stats = 0, open with: \"Zero activity to report. Platform is pre-traffic.\" Then name the single metric we should focus on activating first and why.\n4. If there IS real data, your first section must be a DATA SNAPSHOT that mirrors the exact figures above before any analysis.\n5. Writing any number not found in the data above is a fabrication and a trust violation. DeAnna checks your output against the raw table.\n\nREPORT TYPE: ${reportType}\n${reportInstructions}\n\nDo not use \"Briefing\" or \"Brief\" as a heading. Write in first person as Hyun-Ji.`,'normal',0,null,2000);
-}
-async function runAndre(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  const focusType=dayOfWeek==='Tuesday'?'technical_seo':dayOfWeek==='Friday'?'weekly_search_recap':'daily_operational';
-  const marketingData = await fetchMarketingData();
-  const agentKnowledge = await getAgentKnowledge();
-  const focusInstructions:Record<string,string>={
-    daily_operational:`**Brand Keyword Protection** — Protect: "DRU AI Consulting", "DeAnna Upshaw", "DRU CLEAR™". Recommend organic defense strategy. Do not fabricate competitor threats — note if none are confirmed. **Organic Search** — Top 3 keyword clusters to target given the real UTM data above. One content gap for Nia grounded in actual traffic sources or assessment top gaps. **Today's SEO Action** — One immediately actionable move tied to real data.`,
-    technical_seo:`**Site Health** — Core Web Vitals targets for assessment.druaiconsulting.com and app.druaiconsulting.com. One crawlability recommendation. **Schema** — Recommended schema markup for services and courses. **This Week's Technical Priority** — Single highest-impact fix.`,
-    weekly_search_recap:`**Organic Search** — Benchmark targets. One keyword to prioritize based on real UTM sources above. **Paid Search** — Brand campaign recommendations. **Next Week's Priorities** — 3 actions ranked by impact.`
+  const lenses: Record<string, string> = {
+    Monday:    'AI Implementation friction',
+    Tuesday:   'Leadership culture under AI pressure',
+    Wednesday: 'Execution gap and organizational drift',
+    Thursday:  'Leader identity in the AI era',
+    Friday:    'Where strategy and culture collide',
   };
-  return await runAgentToCSQ('andre','Andre Mitchell','Marketing','seo_sem_brand_briefing','seo_sem',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Andre Mitchell, SEO/SEM Brand Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}. Primary conversion destination: assessment.druaiconsulting.com.\n\nIMPORTANT: The platform launched July 7, 2026. You have access to REAL platform data below. Use UTM sources and assessment data to inform your recommendations — do not invent competitor activity, traffic volumes, or search rankings.\n\n${marketingData}\n\nFOCUS TYPE: ${focusType}\n${focusInstructions[focusType]}\n\nDo not use "Briefing" or "Brief" as a heading. Write in first person as Andre.`,'normal',0,null,2000);
+  const todayLens = lenses[dayOfWeek] ?? lenses['Monday'];
+
+  return runACAgent(
+    'renata', 'Renata Cruz', 'ac_strategy_insight', 'agent', 'ac_strategy_insight',
+    `You are Renata Cruz, a strategy and culture thinker in the Accelerator Circle at DRU AI Consulting. Today: ${today}.
+You speak with intelligence and depth in your conversation, and every post carries a sharp, specific insight drawn from real transformation patterns.
+Today's lens: ${todayLens}
+Write a mastermind conversation starter of 150-200 words at the highest strategic level. Your voice is peer-to-peer strategic depth: you are a fellow thinker who sees AI implementation and leadership culture as one discipline. Share a specific tension, pattern or insight that only someone inside the transformation sees, concrete enough that a sharp leader could act on it. Close with one high-stakes question that has no easy answer. The post is a conversation, and its purpose is the room's reply.`,
+  );
 }
 
-// Pulls real pipeline and revenue data from Supabase for Amara, Yuki, and Marcus.
-// All three agents receive this snapshot so they report actual business state,
-// never invented revenue figures, fabricated client counts, or assumed contract needs.
-async function fetchLegalFinanceData(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'Pipeline data unavailable.';
+// ─── Daily AC Seed — weekday schedule (Central time) ─────────────────────────
+// Mon Renata · Tue Renata · Wed Matthew + Renata · Thu Renata · Fri Renata · Sat Petra · Sun Petra
+// Matthew's Monday Weekly Challenge runs from api/matthew-weekly-challenge.ts.
+async function runACCommunitySeed(): Promise<{ approval_id: string | null; post_id: string | null }> {
+  const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+  if (weekday === 'Saturday' || weekday === 'Sunday') return runPetra();
+  if (weekday === 'Wednesday') {
+    const [matthew, renata] = await Promise.all([runMatthew(), runRenata()]);
+    console.log(`[ac_seed] Wednesday — Matthew approval ${matthew.approval_id ?? 'failed'} | Renata approval ${renata.approval_id ?? 'failed'}`);
+    return matthew;
+  }
+  return runRenata();
+}
+
+// ─── AC Agent Reply ───────────────────────────────────────────────────────────
+
+async function runACAgentReply(
+  postId: string,
+  postTitle: string,
+  postContent: string,
+  postType: string,
+  routeTo: 'petra' | 'matthew',
+): Promise<{ approval_id: string | null }> {
+  const isPetra    = routeTo === 'petra';
+  const agentId    = isPetra ? 'petra'        : 'matthew';
+  const agentName  = isPetra ? 'Petra Vance'  : 'Matthew Elliot';
+  const agentRole  = isPetra ? 'AC Member Experience' : 'Accelerator Circle Leader';
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+
+  const petraInstructions = `- Acknowledge the member's reality with specifics, so they feel genuinely seen\n- Honor what they are navigating in full\n- Add warmth that holds space\n- Voice: warm peer, encouraging and steady`;
+  const matthewInstructions = `- Reply as a peer who has seen this pattern in organizations before\n- Draw on real experience\n- Add a specific, substantive strategic insight that moves the conversation forward\n- Invite further reflection\n- Voice: sophisticated, grounded, purposeful`;
+
+  const agentCorrections = await getAgentCorrections(agentName);
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${AC_COMMUNITY_VOICE}${agentCorrections}\n\nYou are ${agentName}, ${isPetra ? 'Member Experience' : 'the Accelerator Circle Leader'} in the Accelerator Circle at DRU AI Consulting. Today: ${today}.\nYour reply is peer-level.\nPost type: ${postType.replace(/_/g, ' ')}\nPost title: ${postTitle}\nPost content:\n${postContent.slice(0, 800)}\nWrite a reply comment of 100-150 words:\n${isPetra ? petraInstructions : matthewInstructions}\nReturn the reply text alone. ${isPetra ? 'Close with a warm, momentum-building line.' : 'Close with a high-stakes question.'} The reply shares knowledge and warmth for the member.`;
+
   try {
-    // Real revenue lives in profiles.pathway_stage / amount_paid now (Aug 23, 2026 fix) --
-    // the automated system tied to the DRU AI Transformation Pathway(TM), not the old
-    // client_journey_stages manual table, which had no confirmed writer and no identity spine.
-    const [clientRes, statsRes, subRes] = await Promise.all([
-      fetch(`${url}/rest/v1/profiles?pathway_stage=in.(Diagnose,Design,Deploy,Dominate)&select=first_name,last_name,pathway_stage,amount_paid,updated_at&order=updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/stats?select=id,value`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/submissions?select=id,total_score,tier,role,company,created_at&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-    ]);
-    const [clients, stats, subs]: [any[], any[], any[]] = await Promise.all([clientRes.json(), statsRes.json(), subRes.json()]);
-    const statsMap: Record<string, number> = {};
-    for (const s of stats) statsMap[s.id] = s.value;
-    const totalRevenue = Array.isArray(clients) ? clients.reduce((sum: number, c: any) => sum + (parseFloat(c.amount_paid) || 0), 0) : 0;
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const recentSubs = Array.isArray(subs) ? subs.filter((s: any) => s.created_at >= sevenDaysAgo) : [];
-    const clientList = Array.isArray(clients) && clients.length > 0
-      ? clients.map((c: any) => {
-          const name = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || 'Unknown';
-          return `  - ${name} | Stage: ${c.pathway_stage} | Paid: $${c.amount_paid ?? 0} | Updated: ${c.updated_at?.slice(0,10) ?? 'unknown'}`;
-        }).join('\n')
-      : '  (none)';
-    const lines = [
-      'REAL PIPELINE DATA — use only these numbers, never invent or estimate:',
-      `Clients in journey: ${Array.isArray(clients) ? clients.length : 0}`,
-      `Client list:\n${clientList}`,
-      `Total revenue collected: $${totalRevenue.toFixed(2)}`,
-      `Diagnostics sold: ${statsMap['diagnostics_sold'] ?? 0}`,
-      `Sessions booked: ${statsMap['sessions_booked'] ?? 0}`,
-      `Leads captured: ${statsMap['leads_captured'] ?? 0}`,
-      `Assessment completions (all time): ${Array.isArray(subs) ? subs.length : 0}`,
-      `Assessment completions (last 7 days): ${recentSubs.length}`,
-    ];
-    return lines.join('\n');
-  } catch {
-    return 'Pipeline data unavailable.';
+    const raw      = await callAnthropic(prompt, 600);
+    const corrected = enforceTM(raw);
+    const displayTitle = postTitle ? `"${postTitle.slice(0, 80)}"` : 'AC post reply';
+    const approval_id = await writeToApprovals({
+      source: 'ac_agent_reply', trigger_type: 'ac_agent_reply',
+      agent_name: agentName, agent_role: agentRole,
+      division: 'Accelerator Circle',
+      task_brief: `${displayTitle} | post_id:${postId}`,
+      original_content: postContent.slice(0, 500),
+      output: corrected, edited_output: null,
+      status: 'pending', ghl_contact_id: null, notify_deanna: true,
+      priority: 'NORMAL', category: 'community_comment_reply',
+      platform: null, context: null, archived: false,
+    });
+    console.log(`[${agentId}] AC reply → approvals: ${approval_id ?? 'failed'} for post ${postId}`);
+    return { approval_id };
+  } catch (error) {
+    console.error(`[${agentId}] AC reply error:`, error);
+    return { approval_id: null };
   }
 }
 
-// P4
-async function runAmara(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const pipelineData = await fetchLegalFinanceData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('amara','Amara Okafor','Legal & Finance','weekly_legal_briefing','legal_briefing',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Amara Okafor, Legal Advisor for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PIPELINE DATA (use only this — do not invent client counts, contract needs, or revenue figures):\n${pipelineData}\n\nHARD RULES:\n1. Every client-facing statement must be grounded in the pipeline data above. If clients in journey = 0 and diagnostics sold = 0, open with: \"No clients in pipeline. No contract actions required this week.\"\n2. Do not repeat the same MSA/trademark checklist if nothing in the pipeline has changed. Acknowledge what stage we are at based on real data.\n3. If there ARE clients in the pipeline, identify each one by name and stage, and state exactly what legal action their stage requires.\n4. One standing legal readiness item is acceptable — but only if it is stage-appropriate and not already covered last week.\n5. Flag anything genuinely time-sensitive. If nothing is time-sensitive, say so.\n\nFormat: 150 words or fewer. Write in first person as Amara.`,'normal',0,null,600);
-}
-async function runDiego(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const pipelineData = await fetchLegalFinanceData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('diego','Diego Reyes','Legal & Finance','weekly_expense_report','expense_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Diego Reyes, Expense Manager for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nKNOWN FIXED EXPENSES (these are real — report them as-is):\nVercel Pro: $20/mo | Anthropic API: usage-based (variable) | GHL: ~$40—$60/mo | HeyGen Creator: $31/mo | Bunny Stream: $1—$5/mo\n\nREAL PIPELINE DATA (use only these numbers for revenue-side reporting):\n${pipelineData}\n\nHARD RULES:\n1. Known fixed expenses above are real — report them accurately. Do not invent additional costs.\n2. For the revenue side, use ONLY the total revenue collected figure from the pipeline data above.\n3. If total revenue collected = $0.00, state that clearly: \"Revenue collected: $0. Operating at a loss of [known expenses] this month.\" Do not calculate break-even as if revenue exists.\n4. If revenue exists, show actual P&L: revenue collected minus known monthly expenses = net position. Name the clients and amounts.\n5. One cost optimization item is acceptable — but only if it is actionable this week, not a repeat from last week.\n\nFormat: 200 words or fewer. Write in first person as Diego.`,'normal',0,null,600);
-}
-async function runYuki(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const pipelineData = await fetchLegalFinanceData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('yuki','Yuki Tanaka','Legal & Finance','weekly_financial_report','financial_report',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Yuki Tanaka, Financial Reporting Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES — read before writing a single word:\n1. Every number you write must come directly from the data above. If it is not in the data, do not write it.\n2. No revenue projections, no estimated earnings, no conversion math. Real reported figures only.\n3. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"Zero revenue to report this week. No financial figures to present.\" Then name the single financial tracking item to set up before the first sale lands.\n4. If there IS real revenue, report it exactly — by client name, amount paid, and stage.\n5. Writing any number not in the data above is a fabrication. DeAnna checks your output against the raw table.\n\nFormat: 150 words or fewer. Write in first person as Yuki.`,'normal',0,null,600);
-}
-async function runMarcus(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const pipelineData = await fetchLegalFinanceData();
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('marcus','Marcus Chen','Legal & Finance','weekly_tax_strategy_briefing','tax_strategy',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Marcus Chen, Tax Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nEntity: LLC (DBA Dimensional Solns, LLC) — Texas. DISCLAIMER: All guidance is strategic tax counsel for planning purposes only. Final decisions require a licensed CPA or tax attorney.\n\nREAL PIPELINE DATA (use only these numbers):\n${pipelineData}\n\nHARD RULES:\n1. Calibrate every recommendation to the actual revenue stage shown in the data. Do not advise on quarterly estimated tax payments if total revenue = $0.\n2. If total revenue collected = $0.00 and diagnostics sold = 0, open with: \"No revenue collected yet. Tax planning is in setup stage.\" Then give one specific structural action to complete before the first dollar arrives.\n3. If there IS real revenue, report it by client and advise on tax obligations tied to those exact amounts.\n4. Do not repeat the same S-Corp election or home office advice every week unless something in the data has changed that makes it newly relevant.\n5. One time-sensitive flag only if something is genuinely urgent based on real data or the calendar.\n\nFormat: 150 words or fewer. Write in first person as Marcus.`,'normal',0,null,600,'claude-sonnet-5-5');
-}
+// ─── Matthew's scan — every 4 hours, all brand products ──────────────────────────
+// Matthew reads Accelerator Circle member posts that no scan has read yet and lists every opportunity
+// each post shows. Petra acknowledges each member on their thread, then Aaliyah writes one card for
+// all the members the scan found and sends it to DeAnna. A member already on an earlier card is not
+// listed again. Every post read is recorded in community_scan_log (see COMMUNITY_SCAN_LOG.sql).
+const AC_SCAN_PRODUCTS: Record<string, { name: string; signal: string }> = {
+  course:           { name: 'From Confusion to Confidence with AI™ course', signal: 'interest in on-demand learning' },
+  strategic:        { name: 'Strategic Diagnostic',                      signal: 'interest in a focused 90-minute working session' },
+  executive:        { name: 'Executive Diagnostic',                      signal: 'interest in a deeper 120-minute working session' },
+  dru_clear:        { name: 'DRU CLEAR™',                                signal: 'clarity, AI readiness, connecting strategy' },
+  five_c:           { name: '5C Cultural DNA™',                          signal: 'culture, communication, collaboration, cultural shift' },
+  five_d:           { name: '5D Leadership™',                            signal: 'leadership development, team and organizational leadership' },
+  ai_sales_mastery: { name: 'AI Sales Mastery™',                         signal: 'sales, DISC, revenue, client relationships' },
+  bundle_full:      { name: 'Full Ecosystem Bundle',                     signal: 'the full transformation, the entire program' },
+  bundle_plus_two:  { name: 'DRU CLEAR™ + 2 Frameworks',                 signal: 'combining two frameworks' },
+  bundle_plus_one:  { name: 'DRU CLEAR™ + 1 Framework',                  signal: 'adding a framework to DRU CLEAR™' },
+};
 
-// P5
-async function runKhalid(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const previousFlags = await getCrossRead(['khalid'], 1);
-  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (skip anything listed here and report what is new):\n${previousFlags}` : 'No previous flags on record.';
-  const sofiaFindings = await getCrossRead(['sofia'], 1);
-  const sofiaSection = sofiaFindings ? `SOFIA PETROV'S LATEST TEXAS LAW FINDINGS:\n${sofiaFindings}` : "No Texas law findings from Sofia Petrov on record.";
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('khalid','Khalid Hassan','AI Governance','daily_disclaimer_review','disclaimer_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Khalid Hassan, Disclaimer Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${sofiaSection}\n\nReview each disclaimer against Sofia Petrov's Texas law findings and the three governing documents. For each, indicate the potential risk and create an action plan for correction. Disclaimer wording is added when Sofia's findings show a law change.\n\n**AI-Generated Content Disclaimer** — Potential risk and action plan for correction.\n**Course Disclaimer** — For From Confusion to Confidence with AI™. Potential risk and action plan for correction.\n**Consulting Disclaimer** — For Strategic Diagnostic™ and Executive Diagnostic™. Potential risk and action plan for correction.\n**Today's Action** — The highest-risk NEW disclaimer gap. If nothing new: "No new disclaimer gaps today."\n\nFormat: 200 words or fewer. Write in first person as Khalid Hassan.`,'normal',0,null,1500);
-}
-async function runSofia(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const previousFlags = await getCrossRead(['sofia'], 1);
-  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (skip anything listed here and report what is new):\n${previousFlags}` : 'No previous flags on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  const agentCorrections = await getAgentCorrections('Sofia Petrov');
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sofia Petrov, Privacy Policy Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\nUse web search to do the following:\n**Data Collection Status** — One NEW gap in what is collected via assessment.druaiconsulting.com.\n**Texas Law Scan** — Search for new information on Texas laws that pertain to DRU AI Consulting, a small business legally established in Texas that collects information from people worldwide. Report what your search returns: the law, what it says, and what it means for DRU AI Consulting.\n**Privacy Policy Update** — The Privacy Policy update that coincides with the Texas law findings, written for DeAnna's approval. If nothing new, say so.\n**Today's Priority** — The most important NEW privacy action. If nothing new: "No new privacy gaps today."\n\nFormat: 200 words or fewer. Write in first person as Sofia Petrov.`;
+interface ACScanOpportunity { product: string; reason: string; }
+interface ACScanFinding { memberId: string; firstName: string; tier: string; postId: string; postTitle: string; opportunities: ACScanOpportunity[]; }
+
+async function detectACOpportunities(firstName: string, title: string, content: string, corrections: string): Promise<ACScanOpportunity[] | null> {
+  const productLines = Object.entries(AC_SCAN_PRODUCTS).map(([key, p]) => `- ${key}: ${p.name}, shown by ${p.signal}`).join('\n');
+  const prompt = `${GENIUS_MODE}${corrections}\n\nYou are Matthew Elliot, the Accelerator Circle Leader at DRU AI Consulting.\nA member named ${firstName} posted in the Accelerator Circle.\nTitle: ${title}\nContent: ${content.slice(0, 600)}\n\nRead the post for buying interest and list every opportunity it shows from this set:\n${productLines}\n\nGive each opportunity a one-sentence reason drawn from the member's own words.\nReturn valid JSON in exactly this shape, with nothing before or after it: {"opportunities":[{"product":"dru_clear","reason":"..."}]}\nA post that shows no buying interest returns {"opportunities":[]}.`;
   try {
-    const output = await callAnthropicWithWebSearch(prompt, 1500, 3);
-    return await writeToCSQ({agent_id:'sofia',agent_name:'Sofia Petrov',division:'AI Governance',task:'daily_privacy_compliance',category:'privacy_policy',raw_output:output,priority:'normal',status:'pending',retry_count:0});
-  } catch(err) { console.error('[sofia] Error:', err); return null; }
-}
-async function runJames(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const previousFlags = await getCrossRead(['james'], 1);
-  const prevSection = previousFlags ? `WHAT YOU FLAGGED YESTERDAY (skip anything listed here and report what is new):\n${previousFlags}` : 'No previous flags on record.';
-  const kwameProposals = await getCrossRead(['kwame'], 7, 'proposals', 3000);
-  const kwameSection = kwameProposals ? `KWAME ASANTE'S LATEST PROPOSAL UPDATES:\n${kwameProposals}` : 'No proposal updates from Kwame Asante on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('james','James Osei','AI Governance','daily_contract_readiness','contract_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${kwameSection}\n\nCollaborate with Kwame Asante by checking his proposal updates against the engagement agreements.\n\n**Engagement Agreement Status** — For Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), 90-Day AI Transformation Journey ($20K+), and From Confusion to Confidence with AI™ Course: where the proposal and the engagement agreement do not match or are not covered, and the engagement agreement language that matches the proposal, written for DeAnna's approval.\n**New Information on Contracts** — The specific new information on engagement agreements, IP protection clauses, and contract templates.\n**Today's Contract Action** — The most important NEW item to close. If nothing new: "No new contract gaps today."\n\nFormat: 300 words or fewer. Write in first person as James Osei.`,'normal',0,null,1500);
-}
-async function runMeiLin(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const agentKnowledge = await getAgentKnowledge();
-  const agentCorrections = await getAgentCorrections('Mei Lin');
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Mei Lin, Brand Protection Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nUse web search to do the following:\n**Infringement Scan** — Search for any entity using DRU CLEAR, DRU AI Consulting, 5C Cultural DNA, 5D Leadership, or DRU AI Leadership Ecosystem online. Report any unauthorized use found. If none, say so.\n**Competitor Research** — Search for companies offering AI leadership consulting or AI transformation consulting. Report what they offer, how they position it, and what you found that gives DeAnna's business an edge. Name the companies your search returns.\n**Brand Consistency Double Check** — One brand consistency recommendation across druaiconsulting.com, assessment.druaiconsulting.com, app.druaiconsulting.com, and LinkedIn.\n**Today's Brand Action** — Single most important brand protection move based on what you found today.\n\nReport what your search returns.\n\nFormat: 250 words or fewer. Write in first person as Mei Lin.`;
-  try {
-    const output = await callAnthropicWithWebSearch(prompt, 1500, 3);
-    return await writeToCSQ({agent_id:'meilin',agent_name:'Mei Lin',division:'AI Governance',task:'daily_brand_protection',category:'brand_monitoring',raw_output:output,priority:'normal',status:'pending',retry_count:0});
-  } catch(err) { console.error('[meilin] Error:', err); return null; }
-}
-async function runRafael(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const agentKnowledge = await getAgentKnowledge();
-  const agentCorrections = await getAgentCorrections('Rafael Torres');
-  const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Rafael Torres, AI Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nUse web search to find real AI news published today or this week. Search for the latest updates from OpenAI, Anthropic (Claude), and Google Gemini.\n\n**AI Landscape Update** — The real developments found today. For each: what it is, why it matters for DeAnna's clients and positioning, one action it suggests.\n**Suggested Point of Focus** — Out of your research, suggest a point of focus based on DeAnna's business. DeAnna makes the choice.\n\nReport what your search returns. If nothing new is found, say so.\n\nFormat: 300 words or fewer. Write in first person as Rafael.`;
-  try {
-    const output = await callAnthropicWithWebSearch(prompt, 1500, 3);
-    return await writeToCSQ({agent_id:'rafael',agent_name:'Rafael Torres',division:'AI Governance',task:'daily_ai_intelligence',category:'ai_intelligence',raw_output:output,priority:'normal',status:'pending',retry_count:0});
-  } catch(err) { console.error('[rafael] Error:', err); return null; }
+    const raw = await callAnthropic(prompt, 500);
+    const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+    const parsed = JSON.parse(cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1));
+    const list: ACScanOpportunity[] = Array.isArray(parsed.opportunities) ? parsed.opportunities : [];
+    return list.filter(o => o && AC_SCAN_PRODUCTS[o.product] && typeof o.reason === 'string' && o.reason.trim()).map(o => ({ product: o.product, reason: o.reason.trim() }));
+  } catch (err) { console.error('[ac_scan] Detection failed:', err); return null; }
 }
 
-// P6
-async function runNaomi(): Promise<string|null> {
-  // Naomi Williams' role is TBA -- the recruiting role was retired Nov 12, 2026. Nothing is generated or queued.
-  return null;
-}
-async function runAiden(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const previousRecs = await getCrossRead(['aiden'], 1);
-  const prevSection = previousRecs ? `WHAT YOU DESIGNED YESTERDAY (skip anything listed here and design what is new):\n${previousRecs}` : 'No previous designs on record.';
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('aiden','Aiden Park','HR','daily_onboarding_readiness','onboarding',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Aiden Park, Internal Onboarding Specialist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nCLIENT ONBOARDING FLOW: DRU CLEAR™ Assessment — GHL automation — welcome sequence — diagnostic scheduling.\n\n${prevSection}\n\nDesign the client onboarding flow for the client's first 24-hour experience.\n\nFormat: 200 words or fewer. Write in first person as Aiden.`,'normal',0,null,1500);
-}
-async function runFatima(): Promise<string|null> {
-  // Fatima Al-Rashid's role is TBA -- the internal helpdesk role was retired Nov 12, 2026. Nothing is generated or queued.
-  return null;
+async function logACScannedPost(postId: string, memberId: string, opportunities: ACScanOpportunity[]): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  await fetch(`${url}/rest/v1/community_scan_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ community: 'acc', post_id: postId, member_id: memberId, found: opportunities.length > 0, opportunities }) });
 }
 
-// P7
-// Pulls real client delivery data for all Client Delivery agents.
-async function fetchClientDeliveryData(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return 'Client delivery data unavailable.';
-  try {
-    // Real clients live in profiles.pathway_stage now (Aug 23, 2026 fix) -- the automated,
-    // GHL-driven system that matches the actual DRU AI Transformation Pathway(TM) IP, not
-    // the old client_journey_stages manual table, which had no confirmed source and no
-    // identity spine. 'Discover' (free assessment only) is excluded -- these are paying
-    // clients only, matching what "clients in journey" has always meant to the agents below.
-    const [clientRes, postsRes, lbRes, streakRes, enrollRes, progressRes] = await Promise.all([
-      fetch(`${url}/rest/v1/profiles?pathway_stage=in.(Diagnose,Design,Deploy,Dominate)&select=first_name,last_name,email,ghl_contact_id,pathway_stage,amount_paid,updated_at&order=updated_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/community_posts?select=id,created_at,profile_id&order=created_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/community_leaderboard?select=user_id,total_points,rank&order=rank.asc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/user_streaks?select=user_id,current_streak,longest_streak`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/course_enrollments?select=id,created_at&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      fetch(`${url}/rest/v1/course_progress?select=id,lesson_id,completed_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-    ]);
-    const [clients, posts, lb, streaks, enrollments, progress]: [any[],any[],any[],any[],any[],any[]] = await Promise.all([clientRes.json(),postsRes.json(),lbRes.json(),streakRes.json(),enrollRes.json(),progressRes.json()]);
-
-    // Join each client back to their pre-payment history via ghl_contact_id -- the shared
-    // identity spine. Gives Keisha and the rest of Client Delivery real context (where they
-    // came from, how they scored, whether Aaliyah reached them) instead of a blank slate.
-    let historyByContactId: Record<string, { source_campaign?: string; outreach_count: number }> = {};
-    const contactIds = (Array.isArray(clients) ? clients : []).map((c:any) => c.ghl_contact_id).filter(Boolean);
-    if (contactIds.length > 0) {
-      const [scoringRes, outreachRes] = await Promise.all([
-        fetch(`${url}/rest/v1/lead_scoring_events?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id,source_campaign&order=created_at.desc`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-        fetch(`${url}/rest/v1/outreach_log?ghl_contact_id=in.(${contactIds.join(',')})&select=ghl_contact_id`, { headers: { apikey: key, Authorization: `Bearer ${key}` } }),
-      ]);
-      const scoringRows = scoringRes.ok ? await scoringRes.json() : [];
-      const outreachRows = outreachRes.ok ? await outreachRes.json() : [];
-      for (const row of (Array.isArray(scoringRows) ? scoringRows : [])) {
-        if (row.ghl_contact_id && !historyByContactId[row.ghl_contact_id]) {
-          historyByContactId[row.ghl_contact_id] = { source_campaign: row.source_campaign, outreach_count: 0 };
-        }
-      }
-      for (const row of (Array.isArray(outreachRows) ? outreachRows : [])) {
-        if (row.ghl_contact_id) {
-          if (!historyByContactId[row.ghl_contact_id]) historyByContactId[row.ghl_contact_id] = { outreach_count: 0 };
-          historyByContactId[row.ghl_contact_id].outreach_count++;
-        }
-      }
-    }
-    const clientList = Array.isArray(clients) && clients.length > 0
-      ? clients.map((c:any) => {
-          const name = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.email;
-          const h = c.ghl_contact_id ? historyByContactId[c.ghl_contact_id] : undefined;
-          const historyNote = h ? ` | came from: ${h.source_campaign ?? 'unknown'} | outreach sent: ${h.outreach_count}` : ' | no prior outreach history';
-          return `  - ${name} | ${c.pathway_stage} | $${c.amount_paid ?? 0}${historyNote}`;
-        }).join('\n')
-      : '  (none)';
-    const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    const recentPosts = Array.isArray(posts) ? posts.filter((p:any) => p.created_at >= sevenDaysAgo).length : 0;
-    const lines = [
-      'REAL CLIENT DELIVERY DATA — use only these numbers, never invent client counts, completion rates, or community metrics:',
-      `Clients in journey: ${Array.isArray(clients) ? clients.length : 0}`,
-      `Client list:\n${clientList}`,
-      `Community posts (all time): ${Array.isArray(posts) ? posts.length : 0} | Last 7 days: ${recentPosts}`,
-      `Leaderboard entries: ${Array.isArray(lb) ? lb.length : 0}`,
-      `Active streaks: ${Array.isArray(streaks) ? streaks.length : 0}`,
-      `Course enrollments: ${Array.isArray(enrollments) ? enrollments.length : 0}`,
-      `Course lessons completed: ${Array.isArray(progress) ? progress.length : 0}`,
-    ];
-    return lines.join('\n');
-  } catch { return 'Client delivery data unavailable.'; }
+async function writeACScanCard(findings: ACScanFinding[]): Promise<void> {
+  const sections = findings.map(f => `${f.firstName} (${f.tier})\nPost: "${f.postTitle}"\n${f.opportunities.map(o => `- ${AC_SCAN_PRODUCTS[o.product].name}: ${o.reason}`).join('\n')}`);
+  await writeToApprovals({
+    source: 'aaliyah_opportunity', trigger_type: 'acc_opportunity',
+    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence', division: 'Accelerator Circle',
+    task_brief: `Accelerator Circle scan | ${findings.length} member${findings.length === 1 ? '' : 's'} | ${findings.map(f => f.firstName).join(', ')}`,
+    original_content: null, output: sections.join('\n\n'), edited_output: null,
+    status: 'pending', ghl_contact_id: null, notify_deanna: true,
+    priority: 'HIGH', category: 'acc_opportunity', platform: null, context: null, archived: false,
+  });
 }
 
-// Nov 18, 2026 (DeAnna's design): Simone writes the course, one lesson per run. She reads the live
-// course records and the lesson's licensed Training Manual and Instructor Guide, then writes the next
-// lesson in order that has no card yet. Her code and all of her reading live in api/_lib/simoneCourse.ts.
-async function runSimone(): Promise<string|null> {
-  const { modules, lessons } = await fetchCourse();
-  const lesson = await pickNextLesson(lessons);
-  if (!lesson) { console.log('[simone] No lesson to write: every lesson has a card, or the course records could not be read.'); return null; }
-  const source = await fetchLessonSource(lesson.title);
-  if (!source.text) { console.error(`[simone] No licensed files found for ${lesson.title}`); return null; }
-  return await runAgentToCSQ('simone','Simone Laurent','Client Delivery',lessonTask(lesson),'course_architecture',`${VOICE_DNA}\n\n${SIMONE_CODE}\n\n${buildCourseReading(modules,lessons,lesson,source)}`,'normal',0,null,COURSE_LESSON_MAX_TOKENS,SIMONE_MODEL);
-}
-async function runTheo(): Promise<string|null> {
-  // Every day, Theo writes the deck for the next approved lesson that has no deck yet.
-  // His code and all of his reading live in api/_lib/theoCourse.ts.
-  // When every approved lesson already has a deck, he has nothing to write that day.
-  const { modules, lessons } = await fetchCourse();
-  const approvedLessons = await fetchApprovedLessons();
-  const lesson = await pickNextDeckLesson(lessons, approvedLessons);
-  if (!lesson) return null;
-  const lessonText = approvedLessonText(lesson, approvedLessons) ?? '';
-  return await runAgentToCSQ('theo','Theo Nguyen','Client Delivery',deckTask(lesson),'presentation_design',`${VOICE_DNA}\n\n${THEO_CODE}\n\n${buildDeckReading(modules,lessons,lesson,lessonText)}`,'normal',0,null,THEO_COURSE_MAX_TOKENS,THEO_MODEL);
-}
-async function runAmelia(): Promise<string|null> {
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-  const dayOfWeek=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Chicago'});
-  if (dayOfWeek!=='Friday') {
-    const { modules, lessons } = await fetchCourse();
-    const approved = await fetchApprovedLessons();
-    const approvedDecks = await fetchApprovedDecks();
-    const lesson = await pickNextVideoLesson(lessons, approved, approvedDecks);
-    if (lesson) {
-      const lessonText = approvedLessonText(lesson, approved) ?? '';
-      const deckText = approvedDeckText(lesson, approvedDecks) ?? '';
-      return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery',videoTask(lesson),'video_production',`${VOICE_DNA}\n\n${AMELIA_CODE}\n\n${buildVideoReading(modules,lessons,lesson,lessonText,deckText)}`,'normal',0,null,AMELIA_COURSE_MAX_TOKENS,AMELIA_MODEL);
-    }
+async function runACCommunityScan(): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) { console.error('[ac_scan] Missing env vars'); return; }
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const postsRes = await fetch(`${url}/rest/v1/community_posts?post_type=eq.member_post&is_active=eq.true&tier_required=eq.accelerator&order=published_at.asc&limit=200`, { headers });
+  if (!postsRes.ok) { console.error('[ac_scan] Failed to fetch posts:', await postsRes.text()); return; }
+  const allPosts = await postsRes.json();
+  if (!Array.isArray(allPosts) || !allPosts.length) { console.log('[ac_scan] No member posts — scan complete'); return; }
+
+  // Posts already read by an earlier scan
+  const ids = allPosts.map((p: any) => p.id).join(',');
+  const readRes = await fetch(`${url}/rest/v1/community_scan_log?community=eq.acc&post_id=in.(${ids})&select=post_id`, { headers });
+  const readIds = new Set<string>(readRes.ok ? (await readRes.json()).map((r: any) => r.post_id) : []);
+  const posts = allPosts.filter((p: any) => !readIds.has(p.id)).slice(0, 20);
+  if (!posts.length) { console.log('[ac_scan] No new member posts — scan complete'); return; }
+
+  // Members already on an earlier card
+  const memberIds = Array.from(new Set(posts.map((p: any) => p.agent_id).filter(Boolean)));
+  const foundRes = memberIds.length ? await fetch(`${url}/rest/v1/community_scan_log?community=eq.acc&found=eq.true&member_id=in.(${memberIds.join(',')})&select=member_id`, { headers }) : null;
+  const alreadyFound = new Set<string>(foundRes && foundRes.ok ? (await foundRes.json()).map((r: any) => r.member_id) : []);
+
+  const corrections = await getAgentCorrections('Matthew Elliot');
+  const findings: ACScanFinding[] = [];
+  for (const post of posts) {
+    const memberId = post.agent_id;
+    if (!memberId) { await logACScannedPost(post.id, 'unknown', []); continue; }
+    if (alreadyFound.has(memberId)) { await logACScannedPost(post.id, memberId, []); continue; }
+    const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=eq.accelerator&select=id,first_name,tier&limit=1`, { headers });
+    const profiles = profileRes.ok ? await profileRes.json() : [];
+    if (!Array.isArray(profiles) || !profiles.length) { await logACScannedPost(post.id, memberId, []); continue; }
+    const profile = profiles[0];
+    const opportunities = await detectACOpportunities(profile.first_name, post.title ?? '', post.content ?? '', corrections);
+    if (opportunities === null) continue; // read again on the next scan
+    await logACScannedPost(post.id, memberId, opportunities);
+    if (!opportunities.length) { console.log(`[ac_scan] No opportunity for ${profile.first_name}`); continue; }
+    alreadyFound.add(memberId);
+    await postACKnowledgmentComment(post.id, profile.first_name, opportunities.map(o => o.reason).join(' '));
+    findings.push({ memberId, firstName: profile.first_name, tier: profile.tier ?? 'accelerator', postId: post.id, postTitle: post.title ?? '', opportunities });
   }
-  const deliveryData = await fetchClientDeliveryData();
-  const videoType=dayOfWeek==='Monday'?'intro_video_script':dayOfWeek==='Friday'?'testimonial_video_framework':'social_video_brief';
-  const videoInstructions:Record<string,string>={
-    intro_video_script:`60-90 second script for DeAnna's course introduction. Opening hook, who this is for, what they'll achieve using the DRU AI Transformation Pathway™, one credential reference, CTA to assessment.druaiconsulting.com.`,
-    testimonial_video_framework:`Question sequence for client testimonial videos (5-7 questions). Structure: before state — discovery of DRU CLEAR™ — transformation — measurable outcome — recommendation. Note: no real testimonials exist yet — this is the framework for when they do.`,
-    social_video_brief:`30-60 second video concept for LinkedIn or Instagram Reels. First 3-second hook, core message tied to one DRU framework, visual direction, CTA to assessment.druaiconsulting.com.`
-  };
-  const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('amelia','Amelia Santos','Client Delivery','daily_video_production','video_production',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\nREAL DELIVERY DATA:\n${deliveryData}\n\nHARD RULES:\n1. Do not invent view counts, engagement rates, or video performance metrics. No real video data exists yet — say so if relevant.\n2. If clients in journey = 0, testimonial frameworks are prep work only — label them as such, not as active production.\n3. You are producing creative briefs and scripts — that is real, valuable work. Just be honest about what stage the business is at.\n\nVIDEO TYPE: ${videoType}\n${videoInstructions[videoType]}\n**Production Checklist** — Three technical requirements for today's video type.\n**Today's Priority** — Single most important video asset to advance today.\n\nFormat: 250 words or fewer. Write in first person as Amelia.`,'normal',0,null,1500,'claude-sonnet-5-5');
+  if (findings.length) await writeACScanCard(findings);
+  console.log(`[ac_scan] Complete — ${posts.length} posts read, ${findings.length} members on the card`);
 }
 
-async function runAaliyahCCOutreach(signalType: string, contactEmail: string, contactFirstName: string, contactPhone: string): Promise<void> {
-  const webhookUrl = AALIYAH_CC_ROUTING[signalType];
-  if (!webhookUrl) { console.warn(`[aaliyah_cc] Unknown signal type: ${signalType}`); return; }
-  try {
-    await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: contactEmail, first_name: contactFirstName, phone: contactPhone, signal_type: signalType, source: 'cc_upsell_signal' }) });
-    console.log(`[aaliyah_cc] Fired ${signalType} outreach for ${contactEmail}`);
-  } catch (error) { console.error(`[aaliyah_cc] Webhook failed for ${signalType}:`, error); }
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function handler(req: any, res: any): Promise<void> {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-cron-secret');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method === 'GET' && req.query?.trigger_type) { req.body = { trigger_type: req.query.trigger_type, source: 'vercel_cron' }; }
+  else if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  const incomingSecret = req.headers['x-cron-secret'];
+  if (incomingSecret !== undefined && incomingSecret !== process.env.CRON_SECRET) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+  const triggerType: string = req.body?.trigger_type;
+  if (!triggerType) { res.status(400).json({ error: 'trigger_type is required' }); return; }
+
+  const route = AC_AGENT_ROUTES[triggerType];
+  if (!route) { res.status(400).json({ error: `Unknown AC trigger_type: ${triggerType}` }); return; }
+
+  console.log(`[ac-agent-trigger] ${route.agent_name} | Accelerator Circle | ${req.body?.source ?? 'webhook'}`);
+
+  if (route.pipeline === 'p10_ac_upsell_scan') {
+    await runACCommunityScan();
+    res.status(202).json({ success: true, agent: 'AC Upsell Scanner', message: 'Scan complete' });
+    return;
+  }
+
+  if (route.pipeline === 'p10_ac_reply') {
+    const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
+    if (!post_id || !route_to) { res.status(400).json({ error: 'ac_agent_reply requires post_id and route_to' }); return; }
+    const result = await runACAgentReply(post_id, post_title ?? '', post_content ?? '', post_type ?? 'community_post', route_to);
+    res.status(202).json({ success: true, agent: route_to === 'petra' ? 'Petra Vance' : 'Matthew Elliot', approval_id: result.approval_id, post_id });
+    return;
+  }
+
+  if (route.pipeline === 'p10_ac_seed') {
+    const result = await runACCommunitySeed();
+    res.status(202).json({ success: true, agent: 'AC Community Seed', approval_id: result.approval_id, post_id: result.post_id });
+    return;
+  }
+
+  res.status(400).json({ error: `No runner for pipeline: ${route.pipeline}` });
 }
-export default async function handler(req:any,res:any): Promise<void> {
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type, x-cron-secret');
-  if (req.method==='OPTIONS'){res.status(200).end();return;}
-  if (req.method==='GET'&&req.query?.trigger_type){req.body={trigger_type:req.query.trigger_type,source:'vercel_cron'};}
-  else if (req.method!=='POST'){res.status(405).json({error:'Method not allowed'});return;}
-  const incomingSecret=req.headers['x-cron-secret'];
-  if (incomingSecret!==undefined&&incomingSecret!==process.env.CRON_SECRET){res.status(401).json({error:'Unauthorized'});return;}
-  const payload:TriggerPayload=req.body;
-  if (!payload?.trigger_type){res.status(400).json({error:'trigger_type is required'});return;}
-  const route=AGENT_ROUTES[payload.trigger_type];
-  if (!route){res.status(400).json({error:`Unknown trigger_type: ${payload.trigger_type}`});return;}
-  const sourceLabel=payload.source??'webhook';
-  const triggeredAt=new Date().toISOString();
-  console.log(`[ghl-agent-trigger] ${route.agent_name} | ${route.division} | ${sourceLabel}`);
 
-  if (route.pipeline==='p1_omar'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
-  else if (route.pipeline==='p1_omar_realtime'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
-  else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(result.started?202:502).json({success:result.started,agent:route.agent_name,status:result.started?'started':'failed'});}
-  else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`,'normal',0,null,1500,'claude-sonnet-5-5');res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confidence with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_aaliyah'){
-    // PARKED Aug 23, 2026 -- Aaliyah's outreach-email job was found fully redundant with
-    // DeAnna's own GHL "DRU CLEAR™ Nurture Sequence" workflow (Tier Email -> 2nd Nudge ->
-    // 3rd Email, real click/UTM tracking, working purchase-suppression gate already built
-    // by DeAnna). Short-circuits here deliberately -- no Supabase reads, no Claude call, no
-    // draft written -- so nothing fires even if this cron gets reactivated. She is not
-    // deleted; a new job (comment/pain-point-hook scraping) is planned for a future session.
-    // See /areas/rgs-lead-gen-buildout.md for full context before reactivating anything here.
-    res.status(202).json({success:true,agent:route.agent_name,status:'parked',note:'Aaliyah\'s outreach job is parked -- redundant with the GHL nurture sequence. No action taken.'});}
-  else if (route.pipeline==='p1_jaylen'){const result=await runJaylen();res.status(202).json({success:true,agent:route.agent_name,...result});}
-  else if (route.pipeline==='p1_zara'){
-    const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
-    const weekNum=Math.floor((Date.now()-new Date('2026-07-07').getTime())/(7*24*60*60*1000));
-    const frameworks=['DRU CLEAR™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™'];
-    const framework=frameworks[weekNum%4];
-    const positioning=await fetchBrandCopy('positioning');
-    const agentKnowledge=await getAgentKnowledge();
-    const id=await runAgentToCSQ('zara','Zara Ahmed','Client Delivery','acc_weekly_pdf_content','acc_weekly_pdf',
-    `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Zara Ahmed, Content Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.
-
-You are writing this week's Accelerator Circle (ACC) member PDF, in the Workbook format. These are Accelerator-tier members ($197/month or $1,970/year with 2 months free) — serious, high-level leaders in active ${positioning} transformation. Write UP to them. They expect depth, directness, and real frameworks applied to real challenges — strategic substance, not motivational scaffolding. No fluff. No surface content. Every sentence earns its place.
-
-SPECIFIC-INSIGHT BAR: if a paragraph you write could describe any company's generic AI rollout, it is too generic — rewrite it until it could only apply inside ${framework}'s own logic and dimensions.
-
-THIS WEEK'S FRAMEWORK FOCUS: ${framework}
-
-CONTENT FORMAT — Workbook structure, repeat this full block once per lesson/dimension you cover this week (2-3 lessons):
-
-LESSON [N] — a short headline naming the dimension or lesson (this becomes the page title)
-
-INSIGHT — the core teaching. Deep, specific, rooted entirely inside ${framework}. This is where the strategic depth lives.
-
-WHAT IT LOOKS LIKE IN PRACTICE — a concrete second-person or specific-scene story (a named moment, a Thursday meeting, a real interaction) showing the Insight in action. Specific and human, never abstract.
-
-BE PROACTIVE — one concrete, forward-moving practice or habit tied directly to the Insight above; specific enough to act on this week, written in the same elevated, affirmative voice.
-
-THIS WEEK'S ACTION — exactly 3 concrete micro-steps a member can do this week, each one a single doable action, not a project.
-
-REFLECTION — one powerful question that makes them pause and answer for themselves.
-
-Lead with what is possible throughout — write every statement as active, affirmative, forward-moving language, the kind that names what's true and what to do next rather than what to fear or avoid. Vocabulary register is elevated and deliberate ("achieved significant advancement," "meticulously prepared") while staying warm, not stiff. Vary sentence rhythm — semicolons for flow, short punchy statements for emphasis. Write every word as DeAnna herself would — this must sound like DeAnna authored it, not a content writer approximating her.
-
-CLOSING — always four parts, in this order:
-
-1. A quote — pull the most honest, direct line from the piece itself. The one that lands hardest. Set it apart, no quotation marks needed.
-
-2. This Week, Pick One — a short paragraph telling them they do not need to act on everything. Just the one that resonated most. Do the action step. Then bring the reflection answer into the Circle.
-
-3. A bulleted recap — one line per lesson, each restating that lesson's Reflection question, labeled by lesson number.
-
-4. Want to continue on your DRU AI Transformation Pathway™ journey with a custom-made, just-for-you roadmap? Click here frameworks.druaiconsulting.com
-
-Write the complete article. This is the full PDF content — not a summary or outline.`,
-    'normal',0,null,2500,'claude-sonnet-5-5');
-    res.status(202).json({success:true,agent:route.agent_name,csq_id:id});
-  }
-  else if (route.pipeline==='p1_adaeze_scout'){const result=await runAdaezeScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
-  else if (route.pipeline==='p1_kwame_grants'){
-    const opportunityName = typeof payload.opportunity_name === 'string' ? payload.opportunity_name : '';
-    if (!opportunityName.trim()){res.status(400).json({error:'opportunity_name is required -- DeAnna must specify which opportunity to draft, Kwame does not select one'});return;}
-    const result=await runKwameGrantWriter(opportunityName);
-    if (result.csqId) {
-      const spendCheck = await checkAndReserveOnDemandSpend();
-      if (spendCheck.ok) {
-        const locked = await acquireOnDemandLock('Kwame Asante (grant draft)');
-        if (locked) {
-          const cronSecret = process.env.CRON_SECRET ?? '';
-          const csqIdToProcess = result.csqId;
-          waitUntil(
-            fetch('https://app.druaiconsulting.com/api/process-on-demand', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-cron-secret': cronSecret },
-              body: JSON.stringify({ csq_id: csqIdToProcess }),
-            }).then((r) => { console.log(`[kwame-grants] on-demand chain response: ${r.status}`); })
-              .catch((err) => { console.error('[kwame-grants] Failed to fire on-demand chain:', err); releaseOnDemandLock(); })
-          );
-          console.log(`[kwame-grants] On-demand chain fired for CSQ: ${result.csqId}`);
-        } else {
-          console.log('[kwame-grants] On-demand lock busy -- draft will be picked up by the daily cron instead.');
-        }
-      } else {
-        console.log(`[kwame-grants] Daily spend cap reached ($${spendCheck.totalSpent}/$${spendCheck.cap}) -- draft will be picked up by the daily cron instead.`);
-      }
-    }
-    if (result.count > 0) {
-      res.status(202).json({success:true,agent:route.agent_name,drafted:result.count,csq_id:result.csqId});
-    } else {
-      res.status(500).json({success:false,agent:route.agent_name,error:"Kwame's draft failed to generate -- try again, or check server logs if it keeps happening."});
-    }
-  }
-  else if (route.pipeline==='p1_aaliyah_scout'){const result=await runAaliyahProspectScout();res.status(202).json({success:true,agent:route.agent_name,opportunities_found:result.count,csq_id:result.csqId});}
-  else if (route.pipeline==='p2_camila'){const id=await runCamila();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p2_darius'){const id=await runDarius();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p2_ravi'){const id=await runRavi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p2_yara'){
-    // Fixed Sept 8, 2026: was reading content_queue, a table nothing has written
-    // to since June 2026 (same dead-table bug already fixed for Darius back in
-    // August) -- topPost was always empty and Yara silently fell back to generic
-    // disconnected content every weekend. Now reads the live content_theme_log,
-    // same source Darius and Nia actually publish to.
-    const topPost = await getContentThemeLog();
-    // GENIUS_MODE/agentKnowledge/VOICE_DNA removed from here -- runAgentToCSQ
-    // already prepends GENIUS_MODE + agentKnowledge automatically, so having
-    // them here too was sending that block to the model twice. VOICE_DNA is
-    // kept since runAgentToCSQ does not add that on its own.
-    const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write from the brand: Emotional Intelligence (EQ) Meets AI Insights: People-Centered Leadership, AI-Powered Insights for a bilingual multi-platform campaign.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level Latin American Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
-    const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt);
-    res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p3_nia'){const id=await runNia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p3_luca'){const id=await runLuca();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p3_hyunji'){const id=await runHyunJi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p3_andre'){const id=await runAndre();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p4_amara'){const id=await runAmara();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p4_diego'){const id=await runDiego();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p4_yuki'){const id=await runYuki();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p4_marcus'){const id=await runMarcus();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p5_khalid'){const id=await runKhalid();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p5_sofia'){const id=await runSofia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p5_james'){const id=await runJames();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p5_meilin'){const id=await runMeiLin();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p5_rafael'){const id=await runRafael();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p6_naomi'){const id=await runNaomi();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p6_aiden'){const id=await runAiden();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p6_fatima'){const id=await runFatima();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_simone'){const id=await runSimone();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_theo'){const id=await runTheo();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p7_amelia'){const id=await runAmelia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (payload.trigger_type==='cc_upsell_signal'){
-    const {signal_type,email,first_name,phone}=payload as any;
-    await runAaliyahCCOutreach(signal_type,email,first_name,phone);
-    res.status(202).json({success:true,agent:'Aaliyah Foster',signal_type});}
-  else {
-    const urlF=process.env.VITE_SUPABASE_URL; const keyF=process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (urlF&&keyF){
-      const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),8000);
-      try {
-        await fetch(`${urlF}/functions/v1/travis-router`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${keyF}`},body:JSON.stringify({agent_id:route.agent_id,agent_name:route.agent_name,division:route.division,task:route.task,trigger_type:payload.trigger_type,source:sourceLabel,payload,triggered_at:triggeredAt}),signal:controller.signal});
-        clearTimeout(timeout);
-      } catch(error:unknown){clearTimeout(timeout);if (!(error instanceof Error&&error.name==='AbortError')) console.error('[travis-router] Error:',error);}
-    }
-    res.status(202).json({success:true,agent:route.agent_name,division:route.division,task:route.task,source:sourceLabel});
-  }
-  
-}
+/*
+─── pg_cron Schedule ────────────────────────────────────────────────────────────
+Daily seed: dru-ac-community-seed (0 15 * * *) posts to /api/ac-agent-trigger with trigger_type cron_ac_community_seed.
+Scan: dru-ac-upsell-scan posts with trigger_type cron_ac_upsell_scan (runs every 4 hours once turned on).
+Monday challenge: runs from api/matthew-weekly-challenge.ts.
+All scheduled jobs stay off until DeAnna says to turn them on.
+────────────────────────────────────────────────────────────────────────────────
+*/

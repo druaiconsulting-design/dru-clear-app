@@ -3,7 +3,7 @@
 // She reads the lesson Simone Laurent wrote and the deck Theo Nguyen wrote for it, each once DeAnna has
 // approved it (the approved card in the Hub, using DeAnna's edited version when she edited it),
 // together with the live course records.
-// The scheduled run (ghl-agent-trigger.ts and ac-agent-trigger.ts) and the on-demand run
+// The scheduled run (ghl-agent-trigger.ts) and the on-demand run
 // (twin-on-demand.ts) work from the same words and the same live course.
 
 import { sbGet, lessonHeading, lessonTask } from './simoneCourse.js';

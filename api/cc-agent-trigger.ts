@@ -1,5 +1,7 @@
 // DRU AI Leadership Ecosystem™ — api/cc-agent-trigger.ts
 // P9 Community Connection Division — Zoe (Leader) / Micah (Member Experience) / Victor (CC Strategy)
+// DAILY POST SCHEDULE (Central time): Mon Victor · Tue Victor · Wed Zoe's Mastermind + Victor · Thu Victor · Fri Victor · Sat Micah · Sun Micah
+// Zoe's Monday Weekly Leadership Challenge runs from api/zoe-weekly-challenge.ts
 // ARCHITECTURE v3: CC agents write DIRECTLY to approvals (bypass daily CSQ chain)
 // KNOWLEDGE INJECTION: getAgentKnowledge() inlined directly (no separate module)
 // UPDATED: SMRT agents removed (Dominique, Elijah, Solange, Isaiah Webb, Nadia now live in social-response-trigger.ts)
@@ -16,7 +18,7 @@ import { GENIUS_MODE, VOICE_DNA, getAgentCorrections, fetchBrandCopy } from './_
 interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pipeline: string; }
 
 const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
-  // ── Daily community seed — rotates Zoe / Micah / Victor (one post per day) ──
+  // ── Daily community seed — follows the weekday schedule in the header ──
   cron_community_seed:     { agent_id: 'community_seed', agent_name: 'Community Seed',  task: 'daily_community_seed',     pipeline: 'p9_community_seed' },
   // ── Sasha Kim — AI Sales Mastery™ DISC intelligence (Sun / Tue / Thu) ────────
   cron_sasha_sales_insight: { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
@@ -149,13 +151,17 @@ async function getProspectSignals(limit = 8): Promise<string> {
 const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Aaliyah found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — DISC and sales acceleration are one lens, not the only one.`;
 
 
-// Posts a warm, non-salesy acknowledgment directly to the community thread (no approval needed)
+// Added after VOICE_DNA for community writing. The anchor-word line in VOICE_DNA belongs to
+// DeAnna's marketing copy; community posts and replies carry her voice through sentence craft.
+const CC_COMMUNITY_VOICE = `\nCOMMUNITY WRITING: The voice rules above show up in the sentence craft: a short hook, one sentence that unpacks it, plain words and active voice. The subject of every post is today's topic and what members are living, spoken in everyday leadership language. The word Insight appears where it fits naturally.`;
+
+// Posts a warm acknowledgment directly to the community thread (no approval needed)
 async function postAcknowledgmentComment(postId: string, firstName: string, signalContext: string): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
     const agentCorrections = await getAgentCorrections('Micah Santos');
-    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Micah Santos, Member Experience Manager for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply (60-80 words). Acknowledge their engagement naturally. Let them know someone from the DRU AI Consulting team will reach out to share more. Keep the reply focused entirely on their engagement itself — warm, human, and community-focused, with no product, pricing, service, or link mentions. Write ONLY the reply text.`;
+    const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${CC_COMMUNITY_VOICE}${agentCorrections}\n\nYou are Micah Santos, Member Experience Specialist for DRU AI Consulting's community.\nA community member named ${firstName} has been engaging meaningfully with our AI leadership content.\nContext: "${signalContext}"\n\nWrite a warm, genuine community reply of 60-80 words. Acknowledge their engagement naturally and let them know someone from the DRU AI Consulting team will reach out to share more. Keep the reply centered on their engagement itself: warm, human and community-focused. Return the reply text alone.`;
     const acknowledgment = enforceTM(await callAnthropic(prompt, 200));
     await fetch(`${url}/rest/v1/community_comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ post_id: postId, member_id: null, agent_name: 'Micah Santos', content: acknowledgment, is_flagged: false, is_active: true }) });
     console.log(`[micah] Acknowledgment posted to post ${postId} for ${firstName}`);
@@ -236,11 +242,8 @@ async function getAgentKnowledge(): Promise<string> {
 
 async function runCCAgent(agentId: string, agentName: string, task: string, postType: string, category: string, prompt: string): Promise<{ approval_id: string | null; post_id: string | null }> {
   try {
-    const agentKnowledge = await getAgentKnowledge();
-    const positioning = await fetchBrandCopy('positioning');
     const agentCorrections = await getAgentCorrections(agentName);
-    const brandLine = `\nBRAND THEME: Where it fits naturally, let "${positioning}" — DRU AI Consulting's core positioning — come through in how you frame the insight. Never force it in as a tagline.`;
-    const raw = await callAnthropic(`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\n${prompt}${brandLine}\n\nReturn ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`, 1500);
+    const raw = await callAnthropic(`${GENIUS_MODE}\n\n${VOICE_DNA}${CC_COMMUNITY_VOICE}${agentCorrections}\n\n${prompt}\n\nReturn valid JSON in exactly this shape, with nothing before or after it: {"title":"...","content":"..."}`, 1500);
     let title = ''; let content = ''; let upsellSignal: string | null = null;
     try {
       const cleaned = raw.replace(/```json\s*|```/g, '').trim();
@@ -267,21 +270,25 @@ async function runCCAgent(agentId: string, agentName: string, task: string, post
   } catch (error) { console.error(`[${agentId}] CC agent error:`, error); return { approval_id: null, post_id: null }; }
 }
 
-// ─── Victor Reyes — CC Strategy (mirrors Renata Cruz in AC, Navigator depth) ──
+// ─── Victor Reyes — CC Strategy (mirrors Renata Cruz in the Accelerator Circle) ──
 async function runVictor(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
 
-  const focus: Record<string, { lens: string; framework: string }> = {
-    Monday:    { lens: 'AI implementation friction in a growing business',      framework: 'DRU AI Transformation Pathway™ — Deploy phase' },
-    Tuesday:   { lens: 'How AI pressure shows up in team culture',              framework: '5C Cultural DNA™ — Culture Transformation dimension' },
-    Wednesday: { lens: 'The gap between AI plans and what actually gets done',  framework: 'DRU CLEAR™ — Execution & Results' },
-    Thursday:  { lens: 'Who you are as a leader when AI changes the work',      framework: '5D Leadership™ — Organization & Visionary dimensions' },
-    Friday:    { lens: 'Where strategy and culture collide in AI adoption',     framework: 'Full DRU AI Leadership Ecosystem™ synthesis' },
+  const lenses: Record<string, string> = {
+    Monday:    'AI implementation friction in a growing business',
+    Tuesday:   'How AI pressure shows up in team culture',
+    Wednesday: 'The gap between AI plans and what actually gets done',
+    Thursday:  'Who you are as a leader when AI changes the work',
+    Friday:    'Where strategy and culture collide in AI adoption',
   };
-  const todayFocus = focus[dayOfWeek] ?? focus['Monday'];
+  const todayLens = lenses[dayOfWeek] ?? lenses['Monday'];
 
-  return runCCAgent('victor', 'Victor Reyes', 'cc_strategy_insight', 'agent', 'cc_strategy_insight', `You are Victor Reyes, a strategy and culture thinker inside the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nAUDIENCE: Business owners and leaders actively navigating AI in their businesses — practical people in the middle of it, not senior enterprise executives. Stay grounded and real. No jargon, no rarified language.\nTODAY'S LENS: ${todayFocus.lens}\nTODAY'S FRAMEWORK: ${todayFocus.framework}\nWrite a MASTERMIND CONVERSATION STARTER. 150-200 words. Voice: peer-to-peer strategic depth in plain language — you are a fellow business owner who sees how AI implementation and company culture are one inseparable challenge. Share a tension, a pattern, or an insight from inside the work. Apply today's framework naturally — as a lens, never a lesson. End with one genuine question that has no easy answer. No calls to action.`);
+  return runCCAgent('victor', 'Victor Reyes', 'cc_strategy_insight', 'agent', 'cc_strategy_insight', `You are Victor Reyes, a strategy and culture thinker in DRU AI Consulting's Community Connection. Today: ${today}.
+Service classes: all content sits within Classes 35, 41 and 42.
+Your readers are in the middle of leading through AI in real situations. They value plain, practical language and grounded, real conversation.
+Today's lens: ${todayLens}
+Write a mastermind conversation starter of 150-200 words. Your voice is peer-to-peer strategic depth in plain language: you are a fellow leader who sees AI implementation and company culture as one challenge. Share a tension, a pattern or an insight from inside the work, with today's lens as the topic. Close with a genuine question that has no easy answer. The post is a conversation, and its purpose is the room's reply.`);
 }
 
 // ─── Sasha Kim — AI Sales Mastery™ Intelligence (Sun / Tue / Thu) ────────────
@@ -432,13 +439,17 @@ Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":".
 async function runZoe(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  let recentPostsSummary = 'No recent community posts available.';
+  let recentPostsSummary = 'No recent community activity available.';
   if (url && key) {
     const since = new Date(); since.setHours(since.getHours() - 48);
     const r = await fetch(`${url}/rest/v1/community_posts?published_at=gte.${since.toISOString()}&order=published_at.desc&limit=10`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const posts = await r.json(); if (posts.length > 0) recentPostsSummary = posts.map((p: any) => `${p.agent_name}: ${p.title}`).join('\n'); }
   }
-  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'agent', 'community_edge', `You are Zoe Beaumont, a community leader and fellow business owner inside the DRU AI Leadership Ecosystem™. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nRECENT COMMUNITY ACTIVITY:\n${recentPostsSummary}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm peer-to-peer — you are a trusted peer reflecting on something real you've noticed, felt, or been sitting with. NOT a coach, NOT educational content. Like what you'd say to open a meaningful conversation at a mastermind table. Where relevant, build naturally off recent community activity to create continuity. End with one genuine question for the room. No calls to action.`);
+  return runCCAgent('zoe', 'Zoe Beaumont', 'daily_community_facilitation', 'agent', 'community_edge', `You are Zoe Beaumont, the leader of Community Connection at DRU AI Consulting. Today: ${today}.
+Service classes: all content sits within Classes 35, 41 and 42.
+Recent community activity (last 48 hours):
+${recentPostsSummary}
+Write a mastermind conversation starter of 100-150 words for people navigating AI in their work and leadership. Your voice is warm and peer-to-peer: you are a trusted peer reflecting on something real you have noticed, felt or been sitting with, the way you would open a meaningful conversation at a mastermind table. Build on the recent community activity so the conversation has continuity. Close with a genuine question for the room. The post is a conversation, and its purpose is the room's reply.`);
 }
 async function runMicah(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -448,14 +459,23 @@ async function runMicah(): Promise<{ approval_id: string | null; post_id: string
     const r = await fetch(`${url}/rest/v1/profiles?tier=in.(navigator,accelerator)&order=updated_at.desc&limit=5`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (r.ok) { const members = await r.json(); if (members.length > 0) memberContext = `Active members: ${members.length} navigator/accelerator subscribers.`; }
   }
-  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'agent', 'community_engagement', `You are Micah Santos, a member of the DRU AI Leadership Ecosystem™ community. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™ when referencing: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nSERVICE CLASSES: All content within Classes 35, 41, 42 only.\nMEMBER CONTEXT: ${memberContext}\nWrite a MASTERMIND CONVERSATION STARTER for a community of business owners navigating AI in their businesses. 100-150 words. Voice: warm and human — you are a fellow business owner who wants to celebrate wins, invite honesty, or open up something real you've been sitting with. NOT educational. NOT a coach post. Like a message you'd send to a group chat of people you trust. Invite others to share their own experience. End with one open, genuine question. No calls to action.`);
+  return runCCAgent('micah', 'Micah Santos', 'daily_member_experience', 'agent', 'community_engagement', `You are Micah Santos, the Member Experience Specialist in Community Connection at DRU AI Consulting. Today: ${today}.
+Service classes: all content sits within Classes 35, 41 and 42.
+Member context: ${memberContext}
+Write a thought-provoking weekend post of 100-150 words, built around a question. Your voice is warm and human: you are a fellow member who celebrates wins, invites honesty or opens up something real you have been sitting with, like a message to a group chat of people you trust. Invite others to share their own experience. Close with an open, genuine question that makes people think. The post is a conversation, and its purpose is the room's reply.`);
 }
 
-// ─── Daily Community Seed — rotates Zoe / Micah / Victor (one post per day) ──
+// ─── Daily Community Seed — weekday schedule (Central time) ──────────────────
+// Mon Victor · Tue Victor · Wed Zoe + Victor · Thu Victor · Fri Victor · Sat Micah · Sun Micah
+// Zoe's Monday Weekly Leadership Challenge runs from api/zoe-weekly-challenge.ts.
 async function runCommunitySeed(): Promise<{ approval_id: string | null; post_id: string | null }> {
-  const slot = new Date().getDate() % 3;
-  if (slot === 0) return runZoe();
-  if (slot === 1) return runMicah();
+  const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' });
+  if (weekday === 'Saturday' || weekday === 'Sunday') return runMicah();
+  if (weekday === 'Wednesday') {
+    const [zoe, victor] = await Promise.all([runZoe(), runVictor()]);
+    console.log(`[community_seed] Wednesday — Zoe approval ${zoe.approval_id ?? 'failed'} | Victor approval ${victor.approval_id ?? 'failed'}`);
+    return zoe;
+  }
   return runVictor();
 }
 
@@ -463,12 +483,12 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   const isZoe = routeTo === 'zoe';
   const agentId = isZoe ? 'zoe' : 'micah';
   const agentName = isZoe ? 'Zoe Beaumont' : 'Micah Santos';
-  const agentRole = isZoe ? 'Community Division Leader' : 'Member Experience Manager';
+  const agentRole = isZoe ? 'Community Division Leader' : 'Member Experience Specialist';
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-  const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor\n- Connect to a relevant DRU framework (DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™)\n- Add one strategic insight that elevates the conversation\n- Invite further reflection or engagement\n- Your voice: grounded, clear, purposeful`;
-  const micahInstructions = `- Acknowledge the member personally — make them feel genuinely seen\n- Validate their experience with specificity\n- Add warmth, encouragement, and a sense of belonging\n- Your voice: warm, engaged, human`;
+  const zoeInstructions = `- Step into the post with the authority of a community leader and the warmth of a mentor\n- Add a strategic insight that elevates the conversation\n- Invite further reflection or engagement\n- Your voice: grounded, clear, purposeful`;
+  const micahInstructions = `- Acknowledge the member personally, so they feel genuinely seen\n- Validate their experience with specifics\n- Add warmth, encouragement and a sense of belonging\n- Your voice: warm, engaged, human`;
   const agentCorrections = await getAgentCorrections(agentName);
-  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection Division Leader' : 'Member Experience Manager'} for DRU AI Consulting. Today: ${today}.\nTRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.\nPOST TYPE: ${postType.replace(/_/g, ' ')}\nPOST TITLE: ${postTitle}\nPOST CONTENT:\n${postContent.slice(0, 800)}\nWrite a reply comment (100-150 words):\n${isZoe ? zoeInstructions : micahInstructions}\nWrite ONLY the reply. ${isZoe ? 'End with a question or invitation.' : 'End with a warm, encouraging close.'} Pure education — no calls to action.`;
+  const prompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${CC_COMMUNITY_VOICE}${agentCorrections}\n\nYou are ${agentName}, ${isZoe ? 'Community Connection leader' : 'Member Experience Specialist'} for DRU AI Consulting. Today: ${today}.\nPost type: ${postType.replace(/_/g, ' ')}\nPost title: ${postTitle}\nPost content:\n${postContent.slice(0, 800)}\nWrite a reply comment of 100-150 words:\n${isZoe ? zoeInstructions : micahInstructions}\nReturn the reply text alone. ${isZoe ? 'Close with a question or an invitation.' : 'Close with a warm, encouraging line.'} The reply shares knowledge and warmth for the member.`;
   try {
     const raw = await callAnthropic(prompt, 600);
     const corrected = enforceTM(raw);
@@ -485,115 +505,100 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
   } catch (error) { console.error(`[${agentId}] Community reply error:`, error); return { approval_id: null }; }
 }
 
-// ─── Scan 1: Navigator → Accelerator upgrade ─────────────────────────────────
-async function hasRecentUpsellCard(memberId: string): Promise<boolean> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return false;
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const res = await fetch(`${url}/rest/v1/approvals?category=eq.community_opportunity&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  if (!res.ok) return false;
-  const data = await res.json(); return Array.isArray(data) && data.length > 0;
+// ─── Zoe's scan — every 4 hours, all brand products ──────────────────────────
+// Zoe reads Community Connection member posts that no scan has read yet and lists every opportunity
+// each post shows. Micah acknowledges each member on their thread, then Aaliyah writes one card for
+// all the members the scan found and sends it to DeAnna. A member already on an earlier card is not
+// listed again. Every post read is recorded in community_scan_log (see COMMUNITY_SCAN_LOG.sql).
+const CC_SCAN_PRODUCTS: Record<string, { name: string; signal: string }> = {
+  accelerator:      { name: 'Accelerator membership',                    signal: 'readiness for the deeper, peer-level work of the Accelerator Circle' },
+  course:           { name: 'From Confusion to Confidence with AI™ course', signal: 'interest in on-demand learning' },
+  strategic:        { name: 'Strategic Diagnostic',                      signal: 'interest in a focused 90-minute working session' },
+  executive:        { name: 'Executive Diagnostic',                      signal: 'interest in a deeper 120-minute working session' },
+  dru_clear:        { name: 'DRU CLEAR™',                                signal: 'clarity, AI readiness, connecting strategy' },
+  five_c:           { name: '5C Cultural DNA™',                          signal: 'culture, communication, collaboration, cultural shift' },
+  five_d:           { name: '5D Leadership™',                            signal: 'leadership development, team and organizational leadership' },
+  ai_sales_mastery: { name: 'AI Sales Mastery™',                         signal: 'sales, DISC, revenue, client relationships' },
+  bundle_full:      { name: 'Full Ecosystem Bundle',                     signal: 'the full transformation, the entire program' },
+  bundle_plus_two:  { name: 'DRU CLEAR™ + 2 Frameworks',                 signal: 'combining two frameworks' },
+  bundle_plus_one:  { name: 'DRU CLEAR™ + 1 Framework',                  signal: 'adding a framework to DRU CLEAR™' },
+};
+
+interface ScanOpportunity { product: string; reason: string; }
+interface ScanFinding { memberId: string; firstName: string; tier: string; postId: string; postTitle: string; opportunities: ScanOpportunity[]; }
+
+async function detectOpportunities(firstName: string, title: string, content: string, corrections: string): Promise<ScanOpportunity[] | null> {
+  const productLines = Object.entries(CC_SCAN_PRODUCTS).map(([key, p]) => `- ${key}: ${p.name}, shown by ${p.signal}`).join('\n');
+  const prompt = `${GENIUS_MODE}${corrections}\n\nYou are Zoe Beaumont, leader of Community Connection at DRU AI Consulting.\nA member named ${firstName} posted in the community.\nTitle: ${title}\nContent: ${content.slice(0, 600)}\n\nRead the post for buying interest and list every opportunity it shows from this set:\n${productLines}\n\nGive each opportunity a one-sentence reason drawn from the member's own words.\nReturn valid JSON in exactly this shape, with nothing before or after it: {"opportunities":[{"product":"dru_clear","reason":"..."}]}\nA post that shows no buying interest returns {"opportunities":[]}.`;
+  try {
+    const raw = await callAnthropic(prompt, 500);
+    const cleaned = raw.replace(/```json\s*|```/g, '').trim();
+    const parsed = JSON.parse(cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1));
+    const list: ScanOpportunity[] = Array.isArray(parsed.opportunities) ? parsed.opportunities : [];
+    return list.filter(o => o && CC_SCAN_PRODUCTS[o.product] && typeof o.reason === 'string' && o.reason.trim()).map(o => ({ product: o.product, reason: o.reason.trim() }));
+  } catch (err) { console.error('[community_scan] Detection failed:', err); return null; }
 }
-async function fireAaliyahUpsellCard(memberId: string, firstName: string, email: string | null, phone: string | null, signalReason: string, postTitle: string, postId: string, postContent: string): Promise<void> {
-  const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
-  const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  await postAcknowledgmentComment(postId, firstName, signalReason);
+
+async function logScannedPost(postId: string, memberId: string, opportunities: ScanOpportunity[]): Promise<void> {
+  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  await fetch(`${url}/rest/v1/community_scan_log`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}`, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ community: 'cc', post_id: postId, member_id: memberId, found: opportunities.length > 0, opportunities }) });
+}
+
+async function writeScanCard(findings: ScanFinding[]): Promise<void> {
+  const sections = findings.map(f => `${f.firstName} (${f.tier})\nPost: "${f.postTitle}"\n${f.opportunities.map(o => `- ${CC_SCAN_PRODUCTS[o.product].name}: ${o.reason}`).join('\n')}`);
   await writeToApprovals({
     source: 'aaliyah_opportunity', trigger_type: 'community_opportunity',
-    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
-    division: 'Community Connection',
-    task_brief: `${firstName} · Navigator → Accelerator | ${emailLine} | ${phoneLine}`,
-    original_content: `Post: "${postTitle}"\nSignal: ${signalReason}`,
-    output: `OPPORTUNITY — ${firstName}\n\nSignal: ${signalReason}\n\nPost: "${postTitle}"\n\nExcerpt: "${postContent.slice(0, 400)}"\n\n${emailLine} | ${phoneLine}\n\nAcknowledgment posted to their community thread. Ready for your personal outreach.`,
-    edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true,
+    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence', division: 'Community Connection',
+    task_brief: `Community Connection scan | ${findings.length} member${findings.length === 1 ? '' : 's'} | ${findings.map(f => f.firstName).join(', ')}`,
+    original_content: null, output: sections.join('\n\n'), edited_output: null,
+    status: 'pending', ghl_contact_id: null, notify_deanna: true,
     priority: 'HIGH', category: 'community_opportunity', platform: null, context: null, archived: false,
   });
-  console.log(`[aaliyah] Opportunity card written for ${firstName} | acknowledgment posted to post ${postId}`);
 }
 
-// ─── Scan 2: Framework & Bundle signals — all members ────────────────────────
-async function hasRecentFrameworkCard(memberId: string): Promise<boolean> {
+async function runCommunityScan(): Promise<void> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return false;
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const res = await fetch(`${url}/rest/v1/approvals?category=eq.community_opportunity&task_brief=ilike.*${memberId}*&created_at=gte.${sevenDaysAgo}&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  if (!res.ok) return false;
-  const data = await res.json(); return Array.isArray(data) && data.length > 0;
-}
-async function fireFrameworkBundleCard(memberId: string, firstName: string, tier: string, email: string | null, phone: string | null, signalReason: string, target: string, postTitle: string, postId: string, postContent: string): Promise<void> {
-  const offerMap: Record<string, { label: string }> = {
-    dru_clear:        { label: 'DRU CLEAR™' },
-    five_c:           { label: '5C Cultural DNA™' },
-    five_d:           { label: '5D Leadership™' },
-    ai_sales_mastery: { label: 'AI Sales Mastery™' },
-    bundle_full:      { label: 'Full Ecosystem Bundle' },
-    bundle_plus_two:  { label: 'DRU CLEAR™ + 2 Frameworks' },
-    bundle_plus_one:  { label: 'DRU CLEAR™ + 1 Framework' },
-  };
-  const offer = offerMap[target] ?? offerMap['dru_clear'];
-  const emailLine = email && !email.includes('not found') ? `Email: ${email}` : '⚠ Email not found';
-  const phoneLine = phone && !phone.includes('not found') ? `Phone: ${phone}` : '⚠ Phone not found';
-  await postAcknowledgmentComment(postId, firstName, signalReason);
-  await writeToApprovals({
-    source: 'cc_framework_scan', trigger_type: 'community_opportunity',
-    agent_name: 'Aaliyah Foster', agent_role: 'Opportunity Intelligence',
-    division: 'Community Connection',
-    task_brief: `${firstName} · ${tier} | Interest: ${offer.label} | ${emailLine} | ${phoneLine}`,
-    original_content: `Post: "${postTitle}"\nSignal: ${signalReason}`,
-    output: `OPPORTUNITY — ${firstName}\n\nFramework Interest: ${offer.label}\nSignal: ${signalReason}\n\nPost: "${postTitle}"\n\nExcerpt: "${postContent.slice(0, 400)}"\n\n${emailLine} | ${phoneLine}\n\nAcknowledgment posted to their community thread. Ready for your personal outreach.`,
-    edited_output: null, status: 'pending', ghl_contact_id: null, notify_deanna: true,
-    priority: 'HIGH', category: 'community_opportunity', platform: null, context: null, archived: false,
-  });
-  console.log(`[aaliyah] Framework opportunity card written for ${firstName} | ${offer.label} | acknowledgment posted to post ${postId}`);
-}
+  if (!url || !key) { console.error('[community_scan] Missing env vars'); return; }
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  // Community Connection posts are every post outside the Accelerator Circle
+  const postsRes = await fetch(`${url}/rest/v1/community_posts?post_type=eq.member_post&is_active=eq.true&or=(tier_required.is.null,tier_required.neq.accelerator)&order=published_at.asc&limit=200`, { headers });
+  if (!postsRes.ok) { console.error('[community_scan] Failed to fetch posts:', await postsRes.text()); return; }
+  const allPosts = await postsRes.json();
+  if (!Array.isArray(allPosts) || !allPosts.length) { console.log('[community_scan] No member posts — scan complete'); return; }
 
-async function runUpsellScan(): Promise<void> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) { console.error('[upsell_scan] Missing env vars'); return; }
-  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-  const postsRes = await fetch(`${url}/rest/v1/community_posts?post_type=eq.member_post&is_active=eq.true&published_at=gte.${threeHoursAgo}&order=published_at.desc&limit=20`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  if (!postsRes.ok) { console.error('[upsell_scan] Failed to fetch posts:', await postsRes.text()); return; }
-  const posts = await postsRes.json();
-  if (!Array.isArray(posts) || !posts.length) { console.log('[upsell_scan] No recent member posts — scan complete'); return; }
-  let signalsFound = 0;
-  const zoeCorrections = await getAgentCorrections('Zoe Beaumont');
+  // Posts already read by an earlier scan
+  const ids = allPosts.map((p: any) => p.id).join(',');
+  const readRes = await fetch(`${url}/rest/v1/community_scan_log?community=eq.cc&post_id=in.(${ids})&select=post_id`, { headers });
+  const readIds = new Set<string>(readRes.ok ? (await readRes.json()).map((r: any) => r.post_id) : []);
+  const posts = allPosts.filter((p: any) => !readIds.has(p.id)).slice(0, 20);
+  if (!posts.length) { console.log('[community_scan] No new member posts — scan complete'); return; }
 
+  // Members already on an earlier card
+  const memberIds = Array.from(new Set(posts.map((p: any) => p.agent_id).filter(Boolean)));
+  const foundRes = memberIds.length ? await fetch(`${url}/rest/v1/community_scan_log?community=eq.cc&found=eq.true&member_id=in.(${memberIds.join(',')})&select=member_id`, { headers }) : null;
+  const alreadyFound = new Set<string>(foundRes && foundRes.ok ? (await foundRes.json()).map((r: any) => r.member_id) : []);
+
+  const corrections = await getAgentCorrections('Zoe Beaumont');
+  const findings: ScanFinding[] = [];
   for (const post of posts) {
-    const memberId = post.agent_id; if (!memberId) continue;
-    const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=in.(navigator,accelerator)&select=id,first_name,email,phone,tier&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (!profileRes.ok) continue;
-    const profiles = await profileRes.json(); if (!Array.isArray(profiles) || !profiles.length) continue;
+    const memberId = post.agent_id;
+    if (!memberId) { await logScannedPost(post.id, 'unknown', []); continue; }
+    if (alreadyFound.has(memberId)) { await logScannedPost(post.id, memberId, []); continue; }
+    const profileRes = await fetch(`${url}/rest/v1/profiles?id=eq.${memberId}&tier=in.(navigator,accelerator)&select=id,first_name,tier&limit=1`, { headers });
+    const profiles = profileRes.ok ? await profileRes.json() : [];
+    if (!Array.isArray(profiles) || !profiles.length) { await logScannedPost(post.id, memberId, []); continue; }
     const profile = profiles[0];
-    const tier: string = profile.tier ?? 'navigator';
-
-    if (tier === 'navigator') {
-      const alreadyFlagged = await hasRecentUpsellCard(memberId);
-      if (!alreadyFlagged) {
-        const detectionPrompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${zoeCorrections}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA Navigator member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing Accelerator-ready signals?\nWrite the REASON in Zoe's voice, following the voice rules above. Everything else in the response format below must be EXACTLY as shown — no extra words, no preamble, no markdown, nothing before or after these tokens:\nUPSELL SIGNAL: YES | MEMBER_ID: ${memberId} | REASON: [one sentence, in voice]\nUPSELL SIGNAL: NO`;
-        const detection = await callAnthropic(detectionPrompt, 120);
-        if (detection.includes('UPSELL SIGNAL: YES')) {
-          const reasonMatch = detection.match(/REASON:\s*(.+)/); const reason = reasonMatch?.[1]?.trim() ?? 'Member showing Accelerator-ready engagement patterns';
-          await fireAaliyahUpsellCard(memberId, profile.first_name, profile.email ?? null, profile.phone ?? null, reason, post.title, post.id, post.content || '');
-          signalsFound++;
-        } else { console.log(`[upsell_scan] No Accelerator signal for ${profile.first_name}`); }
-      } else { console.log(`[upsell_scan] ${profile.first_name} — Accelerator card exists, skipping`); }
-    }
-
-    const alreadyFrameworkFlagged = await hasRecentFrameworkCard(memberId);
-    if (!alreadyFrameworkFlagged) {
-      const frameworkPrompt = `${GENIUS_MODE}\n\n${VOICE_DNA}${zoeCorrections}\n\nYou are Zoe Beaumont, Community Connection Division Leader.\nA ${tier} member named ${profile.first_name} posted:\nTITLE: ${post.title}\nCONTENT: ${(post.content || '').slice(0, 600)}\nIs this member showing buying signals for any DRU AI Consulting framework or bundle? Scan for signals of:\nFRAMEWORKS (a la carte):\n- dru_clear: DRU CLEAR™ ($7,500) — mentions clarity framework, AI readiness, connecting strategy\n- five_c: 5C Cultural DNA™ ($6,000) — mentions culture, communication, collaboration, cultural shift\n- five_d: 5D Leadership™ ($6,500) — mentions leadership development, team, organizational leadership\n- ai_sales_mastery: AI Sales Mastery™ ($6,000) — mentions sales, DISC, revenue, client relationships\nBUNDLES:\n- bundle_full: Full Ecosystem $26,000 — mentions full transformation, entire program, everything\n- bundle_plus_two: DRU CLEAR + 2 frameworks $19,500 — mentions combining two frameworks\n- bundle_plus_one: DRU CLEAR + 1 framework $13,500 — mentions adding a framework to DRU CLEAR\nPick the single strongest signal only. Write the REASON in Zoe's voice, following the voice rules above. Everything else in the response format below must be EXACTLY as shown — no extra words, no preamble, no markdown, nothing before or after these tokens. Respond in one of these formats:\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: dru_clear | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_c | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: five_d | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: ai_sales_mastery | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_full | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_two | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: YES | MEMBER_ID: ${memberId} | TARGET: bundle_plus_one | REASON: [one sentence, in voice]\nFRAMEWORK SIGNAL: NO`;
-      const frameworkDetection = await callAnthropic(frameworkPrompt, 150);
-      if (frameworkDetection.includes('FRAMEWORK SIGNAL: YES')) {
-        const reasonMatch  = frameworkDetection.match(/REASON:\s*(.+)/);
-        const targetMatch  = frameworkDetection.match(/TARGET:\s*(dru_clear|five_c|five_d|ai_sales_mastery|bundle_full|bundle_plus_two|bundle_plus_one)/);
-        const reason  = reasonMatch?.[1]?.trim()  ?? 'Member showing framework interest';
-        const target  = targetMatch?.[1]?.trim()  ?? 'dru_clear';
-        await fireFrameworkBundleCard(memberId, profile.first_name, tier, profile.email ?? null, profile.phone ?? null, reason, target, post.title, post.id, post.content || '');
-        signalsFound++;
-      } else { console.log(`[upsell_scan] No framework signal for ${profile.first_name}`); }
-    } else { console.log(`[upsell_scan] ${profile.first_name} — framework card exists, skipping`); }
+    const opportunities = await detectOpportunities(profile.first_name, post.title ?? '', post.content ?? '', corrections);
+    if (opportunities === null) continue; // read again on the next scan
+    await logScannedPost(post.id, memberId, opportunities);
+    if (!opportunities.length) { console.log(`[community_scan] No opportunity for ${profile.first_name}`); continue; }
+    alreadyFound.add(memberId);
+    await postAcknowledgmentComment(post.id, profile.first_name, opportunities.map(o => o.reason).join(' '));
+    findings.push({ memberId, firstName: profile.first_name, tier: profile.tier ?? 'navigator', postId: post.id, postTitle: post.title ?? '', opportunities });
   }
-  console.log(`[upsell_scan] Complete — ${posts.length} posts scanned, ${signalsFound} signals fired`);
+  if (findings.length) await writeScanCard(findings);
+  console.log(`[community_scan] Complete — ${posts.length} posts read, ${findings.length} members on the card`);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -618,7 +623,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   };
   const runner = runners[route.pipeline];
   if (!runner) {
-    if (route.pipeline === 'p9_upsell_scan') { await runUpsellScan(); res.status(202).json({ success: true, agent: 'Upsell Scanner', message: 'Scan complete' }); return; }
+    if (route.pipeline === 'p9_upsell_scan') { await runCommunityScan(); res.status(202).json({ success: true, agent: 'Upsell Scanner', message: 'Scan complete' }); return; }
     if (route.pipeline === 'p9_cc_reply') {
       const { post_id, post_title, post_content, post_type, route_to } = req.body ?? {};
       if (!post_id || !route_to) { res.status(400).json({ error: 'cc_agent_reply requires post_id and route_to' }); return; }

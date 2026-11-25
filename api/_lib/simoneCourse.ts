@@ -1,7 +1,7 @@
 // api/_lib/simoneCourse.ts
 // Simone Laurent writes the course "From Confusion to Confidence with AI™", one lesson at a time.
-// This file holds her code and everything she reads, so the scheduled run (ghl-agent-trigger.ts and
-// ac-agent-trigger.ts) and the on-demand run (twin-on-demand.ts) work from the same words and the
+// This file holds her code and everything she reads, so the scheduled run (ghl-agent-trigger.ts)
+// and the on-demand run (twin-on-demand.ts) work from the same words and the
 // same live course.
 //
 // What she reads on every run:

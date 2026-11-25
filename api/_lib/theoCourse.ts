@@ -3,7 +3,7 @@
 // He reads the lesson Simone Laurent wrote once DeAnna has approved it (the approved card in the Hub,
 // using DeAnna's edited version when she edited it), together with the live course records.
 // Amelia Santos then reads his approved deck, and the Hub builds the deck's PDF from his words
-// (api/course-deck-pdf.ts). The scheduled run (ghl-agent-trigger.ts and ac-agent-trigger.ts) and the
+// (api/course-deck-pdf.ts). The scheduled run (ghl-agent-trigger.ts) and the
 // on-demand run (twin-on-demand.ts) work from the same words and the same live course.
 
 import { sbGet, lessonHeading, lessonTask } from './simoneCourse.js';
