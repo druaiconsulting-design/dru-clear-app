@@ -129,7 +129,7 @@ const DIVISION_COLORS: Record<string, string> = {
   "Revenue, Growth & Sales":"#D4AF37", "Content & Brand":"#C2185B", "Marketing":"#163D6E",
   "Legal & Finance":"#8A6E1A", "AI Governance":"#7A0F38", "HR":"#2E6DAB",
   "Client Delivery":"#A68920", "Customer Support":"#C2185B", "Command":"#0A2342",
-  "Community Connection":"#2D5A8E",
+  "Community Connection":"#2D5A8E", "Social Media Response Team":"#C2185B",
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -225,16 +225,18 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"twin", agent_name:"DeAnna's AI Twin", role:"Master Orchestrator" },
   ],
   "Community Connection": [
-    { agent_id:"dominique",  agent_name:"Dominique",   role:"DRU CLEAR™ Insights" },
-    { agent_id:"elijah",     agent_name:"Elijah",      role:"Framework Lesson" },
-    { agent_id:"solange",    agent_name:"Solange",     role:"Action Challenge" },
-    { agent_id:"isaiah_webb",agent_name:"Isaiah Webb", role:"5D Leadership™" },
-    { agent_id:"nadia",      agent_name:"Nadia",       role:"Strategic Edge" },
     { agent_id:"victor",     agent_name:"Victor",      role:"Community Engagement" },
     { agent_id:"sasha",      agent_name:"Sasha",       role:"AI Sales Mastery™" },
     { agent_id:"tariq",      agent_name:"Tariq",       role:"Sales Content" },
     { agent_id:"zoe",        agent_name:"Zoe Beaumont",role:"CC Division Leader" },
     { agent_id:"micah",      agent_name:"Micah Santos",role:"Member Experience" },
+  ],
+  "Social Media Response Team": [
+    { agent_id:"solange",     agent_name:"Solange Dupont",   role:"Social Response  Entry Point" },
+    { agent_id:"dominique",   agent_name:"Dominique Carter", role:"DRU CLEAR™ Social Response" },
+    { agent_id:"isaiah_webb", agent_name:"Isaiah Webb",      role:"5D Leadership™ Social Response" },
+    { agent_id:"nadia",       agent_name:"Nadia Osei",       role:"5C Cultural DNA™ Social Response" },
+    { agent_id:"elijah",      agent_name:"Elijah Brooks",    role:"AI Sales Mastery™ Social Response" },
   ],
 };
 
