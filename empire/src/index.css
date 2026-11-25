@@ -1,0 +1,35 @@
+/* Base styles — the same starting point the Intelligence Hub uses, so the chart looks identical. */
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: #FAFAF8;
+  color: #E6E6E6;
+  font-family: 'Inter', sans-serif;
+  line-height: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, p, ul, ol { margin: 0; }
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+ul, ol { list-style: none; padding: 0; }
+
+img { display: block; max-width: 100%; height: auto; }
+
+#root { min-height: 100vh; }
