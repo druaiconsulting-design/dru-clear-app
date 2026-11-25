@@ -1,6 +1,6 @@
 // api/matthew-weekly-challenge.ts
 // Matthew Elliot — Accelerator Circle Weekly Challenge Post Generator
-// Called by pg_cron every Monday 15:00 UTC (9:00 AM Central, same hour as the Accelerator Circle daily post)
+// Scheduled for pg_cron every Monday 12:00 UTC (6:00 AM Central, the same time as Zoe's Weekly Leadership Challenge)
 // Flow: generate content → community_posts (inactive) + approvals (pending)
 // DeAnna approves in Intelligence Hub → "Approve + Post →" activates the post
 
