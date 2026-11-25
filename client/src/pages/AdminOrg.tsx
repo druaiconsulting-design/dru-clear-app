@@ -7,14 +7,11 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ─── Photo sources ────────────────────────────────────────────────────────────
-// All agent + exec photos live in the Supabase public bucket `agent-photos`.
-// Files that don't exist yet fall back to initials automatically and appear
-// as soon as they are uploaded — no code change, no deployment.
-const BUCKET = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/agents-photos`;
-const RAYMOND_PHOTO = `${BUCKET}/exec-raymond-holloway.png`;
-const TRAVIS_PHOTO  = `${BUCKET}/exec-travis-wealthy.png`;
-const PRIYA_PHOTO   = `${BUCKET}/exec-priya-sharma.png`;
+// ─── Top section ──────────────────────────────────────────────────────────────
+// DeAnna, the AI Twin, Priya, Raymond, Travis, the Video Production Team list,
+// the header line and the footer lines come from the org_chart_top table in
+// Supabase (one row per slot, readable only by the admin account). The empire
+// page (empire.druaiconsulting.com) reads the same table, so one edit updates both.
 
 interface AgentRow {
   id: string;
@@ -31,6 +28,17 @@ interface AgentRow {
   photo_url: string;
   what_they_do: string | null;
   what_they_do_detail: string | null;
+}
+
+interface TopRow {
+  slot: string;
+  title: string | null;
+  label: string | null;
+  line1: string | null;
+  line2: string | null;
+  pill: string | null;
+  photo_url: string | null;
+  items: string[] | null;
 }
 
 interface DivisionGroup {
@@ -54,6 +62,7 @@ export default function AdminOrg() {
   const [divisions, setDivisions] = useState<DivisionGroup[]>([]);
   const [agentCount, setAgentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [top, setTop] = useState<Record<string, TopRow>>({});
   const [photoErrors, setPhotoErrors] = useState<Record<string, boolean>>({});
   const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
   const [deAnnaErr,  setDeAnnaErr]  = useState(false);
@@ -63,6 +72,14 @@ export default function AdminOrg() {
 
   useEffect(() => {
     const loadAgents = async () => {
+      // Top section wording and photos — one row per slot in org_chart_top
+      const topRes = await supabase.from("org_chart_top").select("*");
+      if (topRes.error || !topRes.data) {
+        console.error("[AdminOrg] org_chart_top fetch failed:", topRes.error);
+      } else {
+        setTop(Object.fromEntries((topRes.data as TopRow[]).map(r => [r.slot, r])));
+      }
+
       const { data, error } = await supabase
         .from("agents")
         .select("*")
@@ -96,7 +113,7 @@ export default function AdminOrg() {
   }, []);
 
   // Travis's video team — they stay in their own divisions; this row only shows who works with him.
-  const VIDEO_TEAM = ["Darius King", "Nia Robinson", "Chloe Dubois", "Zara Ahmed", "Amelia Santos"];
+  const VIDEO_TEAM: string[] = top.video_team?.items ?? [];
   const videoTeam = VIDEO_TEAM
     .map(n => divisions.flatMap(d => d.agents).find(a => a.name === n))
     .filter((a): a is AgentRow => !!a);
@@ -160,9 +177,9 @@ export default function AdminOrg() {
         {/* Header */}
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div style={{ flex: 1, textAlign: "center" as const }}>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>DRU AI Consulting — AI Empire Org Chart</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>{top.header?.title}</h1>
             {/* Counts: the agents table plus Raymond, Priya, Travis and the AI Twin (typed in this page); divisions plus the Video Production Team box */}
-            <p style={{ color: "#D4AF37", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.02em" }}>{agentCount ? agentCount + 4 : 60} agents · {divisions.length ? divisions.length + 1 : 12} divisions · All agents: Think with exceptional insight and intellectual rigor.</p>
+            <p style={{ color: "#D4AF37", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.02em" }}>{agentCount ? agentCount + 4 : 60} agents · {divisions.length ? divisions.length + 1 : 12} divisions · {top.header?.line1}</p>
           </div>
           <div onClick={() => window.location.href = "/admin"} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 8, padding: "0.6rem 1.25rem", letterSpacing: "0.06em", cursor: "pointer" }}>← Profit Pulse</div>
         </div>
@@ -174,12 +191,12 @@ export default function AdminOrg() {
           <div style={{ display: "grid", gridTemplateColumns: "360px 20px 360px", justifyContent: "center" }}>
 
           <div style={{ gridColumn: 1, gridRow: 1, boxSizing: "border-box" as const, background: "#D4AF37", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12 }}>
-            {!deAnnaErr ? <img src="/deanna-avatar.jpg" alt="DeAnna R. Upshaw" onError={() => setDeAnnaErr(true)} style={circleStyle(56)} /> : <div style={fallback("👑", 56, "#0A2342")}>👑</div>}
+            {!deAnnaErr ? (top.deanna?.photo_url ? <img src={top.deanna.photo_url} alt={top.deanna.title ?? ""} onError={() => setDeAnnaErr(true)} style={circleStyle(56)} /> : null) : <div style={fallback("👑", 56, "#0A2342")}>👑</div>}
             <div>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>DeAnna R. Upshaw</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.85)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>CEO & Founder</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.85)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "1px 0 0" }}>Leadership & AI Authority</p>
-              <span style={{ display: "inline-block", marginTop: 5, fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, padding: "2px 8px", borderRadius: 20, background: "#0A2342", color: "#D4AF37" }}>Certified AI Agent Builder</span>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>{top.deanna?.title}</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.85)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>{top.deanna?.label}</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(255,255,255,0.85)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "1px 0 0" }}>{top.deanna?.line1}</p>
+              {top.deanna?.pill && <span style={{ display: "inline-block", marginTop: 5, fontFamily: "'Montserrat', sans-serif", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, padding: "2px 8px", borderRadius: 20, background: "#0A2342", color: "#D4AF37" }}>{top.deanna.pill}</span>}
             </div>
           </div>
 
@@ -193,10 +210,10 @@ export default function AdminOrg() {
             </div>
 
           <div style={{ gridColumn: 3, gridRow: 1, alignSelf: "center", boxSizing: "border-box" as const, background: "#C2185B", border: "2px solid #0A2342", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/deanna-professional.png" alt="DeAnna's AI Twin" style={circleStyle(52)} />
+            {top.twin?.photo_url && <img src={top.twin.photo_url} alt={top.twin.title ?? ""} style={circleStyle(52)} />}
             <div>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>✦ DeAnna's AI Twin</p>
-              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>DeAnna's Voice · Face of the Company</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>{top.twin?.title}</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif",color: "rgba(255,255,255,0.85)", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, margin: "2px 0 0" }}>{top.twin?.label}</p>
             </div>
           </div>
 
@@ -208,11 +225,11 @@ export default function AdminOrg() {
             <div style={{ gridColumn: 1, gridRow: 2, display: "flex", flexDirection: "column" as const, alignItems: "center" }}>
               <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
             <div style={{ width: "100%", boxSizing: "border-box" as const, background: "#FAFAF8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12 }}>
-              {!priyaErr ? <img src={PRIYA_PHOTO} alt="Priya Sharma" onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : <div style={fallback("PS", 44)}>PS</div>}
+              {!priyaErr ? (top.priya?.photo_url ? <img src={top.priya.photo_url} alt={top.priya.title ?? ""} onError={() => setPriyaErr(true)} style={{ ...circleStyle(44), border: "1px solid rgba(212,175,55,0.35)" }} /> : null) : <div style={fallback("PS", 44)}>PS</div>}
               <div>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Assistant · Inbox Command</p>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>Priya Sharma</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>Gmail super agent · Build in progress</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>{top.priya?.label}</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>{top.priya?.title}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(10,35,66,0.6)", fontSize: "0.58rem", margin: "1px 0 0" }}>{top.priya?.line1}</p>
               </div>
             </div>
             </div>
@@ -222,10 +239,10 @@ export default function AdminOrg() {
           <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
 
           <div style={{ background: "#0A2342", border: "2px solid rgba(212,175,55,0.7)", borderRadius: 12, padding: "0.75rem 2rem", display: "flex", alignItems: "center", gap: 12, minWidth: 300 }}>
-            {!raymondErr ? <img src={RAYMOND_PHOTO} alt="Raymond Holloway" onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : <div style={fallback("RH", 54)}>RH</div>}
+            {!raymondErr ? (top.raymond?.photo_url ? <img src={top.raymond.photo_url} alt={top.raymond.title ?? ""} onError={() => setRaymondErr(true)} style={{ ...circleStyle(54), border: "2px solid #D4AF37" }} /> : null) : <div style={fallback("RH", 54)}>RH</div>}
             <div>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Chief of Staff</p>
-              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>Raymond Holloway</p>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>{top.raymond?.label}</p>
+              <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>{top.raymond?.title}</p>
               <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length || 11} Divisions · {agentCount || 55} Agents</p>
             </div>
           </div>
@@ -236,11 +253,11 @@ export default function AdminOrg() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" as const, justifyContent: "center" }}>
 
             <div style={{ background: "#1B4D8E", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 10, padding: "0.65rem 1.5rem", display: "flex", alignItems: "center", gap: 12, minWidth: 270 }}>
-              {!travisErr ? <img src={TRAVIS_PHOTO} alt="Travis Wealthy" onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : <div style={fallback("TW", 48)}>TW</div>}
+              {!travisErr ? (top.travis?.photo_url ? <img src={top.travis.photo_url} alt={top.travis.title ?? ""} onError={() => setTravisErr(true)} style={{ ...circleStyle(48), border: "1px solid rgba(212,175,55,0.5)" }} /> : null) : <div style={fallback("TW", 48)}>TW</div>}
               <div>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>Executive Producer · Video Production</p>
-                <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>Travis Wealthy</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.9)", fontSize: "0.58rem", margin: "1px 0 0" }}>Video Pipeline · Script → render → publish</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>{top.travis?.label}</p>
+                <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>{top.travis?.title}</p>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.9)", fontSize: "0.58rem", margin: "1px 0 0" }}>{top.travis?.line1}</p>
               </div>
             </div>
 
@@ -251,7 +268,7 @@ export default function AdminOrg() {
             <>
               <div style={{ width: 2, height: 14, background: "rgba(212,175,55,0.5)" }} />
               <div style={{ border: "1px dashed rgba(27,77,142,0.55)", borderRadius: 10, padding: "0.5rem 0.75rem 0.75rem", maxWidth: 900 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 6px", textAlign: "center" as const }}>Video Production Team</p>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#1B4D8E", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 6px", textAlign: "center" as const }}>{top.video_team?.title}</p>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, justifyContent: "center" }}>
                   {videoTeam.map(agent => agentCard(agent, { photo: 44, flex: "1 1 200px", maxWidth: 260, showDivision: true }))}
                 </div>
@@ -283,12 +300,12 @@ export default function AdminOrg() {
 
         <div style={{ marginTop: "1rem", textAlign: "center" as const, padding: "0.75rem", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 8 }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: "#8A6E1A", margin: 0 }}>
-            ★ Division Leaders · AI Governance monitors trademark classes 35, 41, and 42.
+            {top.footer?.title}
           </p>
         </div>
 
         <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.75)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600 }}>
-          © 2026 DRU AI Consulting · All Rights Reserved · Revised 11/26
+          {top.footer?.line1}
         </footer>
       </main>
     </AdminLayout>
