@@ -33,6 +33,7 @@ interface TopRow {
   pill: string | null;
   photo_url: string | null;
   items: string[] | null;
+  agent_count: number | null;
 }
 
 interface DivisionGroup {
@@ -172,8 +173,8 @@ export default function EmpireOrgChart({ onSignOut }: { onSignOut: () => void })
         <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "1rem" }}>
           <div style={{ flex: 1, textAlign: "center" as const }}>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.2rem" }}>{top.header?.title}</h1>
-            {/* Counts: the agents table plus Raymond, Priya, Travis and the AI Twin (typed in this page); divisions plus the Video Production Team box */}
-            <p style={{ color: "#D4AF37", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.02em" }}>{agentCount ? agentCount + 4 : 60} agents · {divisions.length ? divisions.length + 1 : 12} divisions · {top.header?.line1}</p>
+            {/* Counts: the agent total is typed in the header row of org_chart_top (if empty, the agents table plus Raymond, Priya, Travis and the AI Twin); divisions plus the Video Production Team box */}
+            <p style={{ color: "#D4AF37", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.02em" }}>{top.header?.agent_count ?? (agentCount ? agentCount + 4 : 60)} agents · {divisions.length ? divisions.length + 1 : 12} divisions · {top.header?.line1}</p>
           </div>
         </div>
 
