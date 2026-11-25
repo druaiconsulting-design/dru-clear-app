@@ -244,7 +244,7 @@ export default function AdminOrg() {
             <div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, margin: "0 0 1px" }}>{top.raymond?.label}</p>
               <p style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>{top.raymond?.title}</p>
-              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{divisions.length ? divisions.length + 1 : 12} Divisions · {top.header?.agent_count ?? (agentCount ? agentCount + 4 : 60)} Agents</p>
+              <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.45)", fontSize: "0.58rem", margin: "1px 0 0" }}>{top.header?.agent_count ?? (agentCount ? agentCount + 4 : 60)} Agents · {divisions.length ? divisions.length + 1 : 12} Divisions</p>
             </div>
           </div>
 
