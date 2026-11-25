@@ -155,12 +155,17 @@ Generic = single emoji, one-word praise ("Amazing!", "Love this!", "So true!", "
 Substantive = any real question, pain point, shared struggle, curiosity, request for help, or insight that deserves a thoughtful response.
 
 STEP 3 — DRAFT RESPONSE:
-If generic: Write a warm 1-2 sentence human acknowledgment. Friendly and genuine. No CTA. No links. No framework names.
-If substantive: Write a 100-150 word response in the agent's voice. Reference ONE relevant IP framework by name only — never explain the full system. End with one genuine question or invitation to explore further. No CTA links. No prices. No soliciting.
+If generic: Write a warm 1-2 sentence human acknowledgment, friendly and genuine.
+If substantive: Write a 100-150 word response in the agent's voice. Mention the frameworks that fit the comment by name. Focus the reply on the person's question and the ideas that help them, and end with a genuine question or an invitation to explore further.
 
-TRADEMARK: Always write DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™ with ™.
+CALL TO ACTION (generic and substantive replies):
+Decide whether a call to action serves this person. When the exchange reads best as a conversation, the reply stays a conversation and carries no link. When a call to action serves the person, choose the link that fits what they shared and write the invitation in the agent's own words:
+- https://assessment.druaiconsulting.com for someone who wants a starting point or to see where they stand
+- https://www.druaiconsulting.com/learn-more-frameworks for someone curious about the frameworks
 
-Return ONLY valid JSON with no preamble or markdown:
+TRADEMARK: Write DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™ with ™.
+
+Return valid JSON alone, with the reply in these fields:
 {"agent":"...","is_generic":true,"reply_text":"..."}`;
 
   const raw = await callAnthropic(prompt, 400);
