@@ -288,7 +288,7 @@ export default function AdminOrg() {
         </div>
 
         <footer style={{ textAlign: "center" as const, padding: "1rem 0 0.5rem", color: "rgba(10,35,66,0.75)", fontFamily: "'Montserrat', sans-serif", fontSize: "0.7rem", fontWeight: 600 }}>
-          © 2026 DRU AI Consulting · All Rights Reserved
+          © 2026 DRU AI Consulting · All Rights Reserved · Revised 11/26
         </footer>
       </main>
     </AdminLayout>
