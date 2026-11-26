@@ -48,13 +48,13 @@ const TIER_SOURCE_MAP: Record<string, { table: 'non_members' | 'profiles'; tierV
   jaylen_weekly_accelerator: { table: 'profiles', tierValue: 'accelerator' },
 };
 
-async function getSupabaseTierContacts(trigger_type: string, apiKey: string): Promise<Array<{ id: string; firstName: string | null }>> {
+async function getSupabaseTierContacts(trigger_type: string, apiKey: string): Promise<Array<{ id: string; firstName: string | null; email: string }>> {
   const source = TIER_SOURCE_MAP[trigger_type];
   if (!source) return [];
 
   let rows: Array<{ email: string; first_name: string | null; ghl_contact_id?: string | null }> = [];
   if (source.table === 'non_members') {
-    const { data, error } = await supabase.from('non_members').select('email, first_name, ghl_contact_id').is('converted_at', null);
+    const { data, error } = await supabase.from('non_members').select('email, first_name, ghl_contact_id').is('converted_at', null).is('unsubscribed_at', null);
     if (error) { console.error('[ghl-newsletter-dispatch] non_members query failed:', error); return []; }
     rows = data ?? [];
   } else {
@@ -63,10 +63,10 @@ async function getSupabaseTierContacts(trigger_type: string, apiKey: string): Pr
     rows = data ?? [];
   }
 
-  const contactsOut: Array<{ id: string; firstName: string | null }> = [];
+  const contactsOut: Array<{ id: string; firstName: string | null; email: string }> = [];
   for (const row of rows) {
     const contactId = row.ghl_contact_id || await findContactIdByEmail(row.email, apiKey);
-    if (contactId) contactsOut.push({ id: contactId, firstName: row.first_name });
+    if (contactId) contactsOut.push({ id: contactId, firstName: row.first_name, email: row.email });
     else console.error(`[ghl-newsletter-dispatch] No GHL contact for ${row.email} — skipped`);
   }
   return contactsOut;
@@ -178,6 +178,57 @@ async function sendEmailToContact(contactId: string, subject: string, html: stri
   }
 }
 
+// UNSUBSCRIBE SYNC (Nov 26, 2026). When someone clicks the {{unsubscribe}} link in an email,
+// GHL records it on their contact record. Before every send we read that record: a contact is
+// unsubscribed if GHL's overall do-not-disturb is on (`dnd`) or the email channel's do-not-
+// disturb status (`dndSettings.email.status`) is active or permanent. The result is true
+// (unsubscribed), false (subscribed) or null (GHL could not be read — the caller skips the send
+// so nobody is emailed after unsubscribing just because GHL had a bad moment).
+async function isUnsubscribedInGhl(contactId: string, apiKey: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    });
+    if (!res.ok) { console.error(`[ghl-newsletter-dispatch] Unsubscribe check failed for contact ${contactId}: ${res.status} ${await res.text()}`); return null; }
+    const data = await res.json();
+    const contact = data.contact ?? {};
+    const emailStatus = String(contact.dndSettings?.email?.status ?? 'inactive').toLowerCase();
+    return contact.dnd === true || emailStatus === 'active' || emailStatus === 'permanent';
+  } catch (err) {
+    console.error(`[ghl-newsletter-dispatch] Unsubscribe check error for contact ${contactId}:`, err);
+    return null;
+  }
+}
+
+// Carries an unsubscribe from GHL into our own database. Members (profiles) keep their tier and
+// account — only newsletter_subscribed turns off. Non-members get an unsubscribed_at date, and
+// their welcome sequence is ended so no later stage goes to them either.
+async function recordUnsubscribe(email: string, table: 'non_members' | 'profiles' | 'sequence'): Promise<void> {
+  if (table === 'profiles') {
+    const { error } = await supabase.from('profiles').update({ newsletter_subscribed: false }).eq('email', email);
+    if (error) console.error(`[ghl-newsletter-dispatch] Failed to turn off newsletter flag for ${email}:`, error);
+    else console.log(`[ghl-newsletter-dispatch] ${email} unsubscribed in GHL — member newsletter flag turned off`);
+    return;
+  }
+  const { error: nmError } = await supabase.from('non_members').update({ unsubscribed_at: new Date().toISOString() }).eq('email', email).is('unsubscribed_at', null);
+  if (nmError) console.error(`[ghl-newsletter-dispatch] Failed to stamp unsubscribed_at for ${email}:`, nmError);
+  const { error: seqError } = await supabase.from('jaylen_sequence_progress').update({ sequence_complete: true }).eq('email', email);
+  if (seqError) console.error(`[ghl-newsletter-dispatch] Failed to end sequence for ${email}:`, seqError);
+  else console.log(`[ghl-newsletter-dispatch] ${email} unsubscribed in GHL — non-member marked unsubscribed, sequence ended`);
+}
+
+// Checks GHL, then either sends or records the unsubscribe and skips. Returns 'sent', 'failed'
+// or 'unsubscribed' so the callers can report all three.
+async function sendIfSubscribed(
+  contactId: string, email: string, table: 'non_members' | 'profiles' | 'sequence',
+  subject: string, html: string, apiKey: string
+): Promise<'sent' | 'failed' | 'unsubscribed'> {
+  const unsubscribed = await isUnsubscribedInGhl(contactId, apiKey);
+  if (unsubscribed === null) return 'failed';
+  if (unsubscribed) { await recordUnsubscribe(email, table); return 'unsubscribed'; }
+  return (await sendEmailToContact(contactId, subject, html, apiKey)) ? 'sent' : 'failed';
+}
+
 // Re-computes who's currently due for this stage at dispatch/approval time (not a frozen
 // list from when the content was generated) — simpler than threading a recipient list
 // through the CSQ->approval pipeline, and correct as long as approval happens same-day,
@@ -248,17 +299,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { subject, body } = extractSubjectAndBody(content);
       const html = toHtml(body);
 
-      let sent = 0, failed = 0;
+      let sent = 0, failed = 0, unsubscribed = 0;
       for (const contact of dueContacts) {
         const contactId = contact.ghl_contact_id ?? await findContactIdByEmail(contact.email, apiKey);
         if (!contactId) { failed++; console.error(`[ghl-newsletter-dispatch] No GHL contact for ${contact.email} — skipped`); continue; }
         const personalizedHtml = personalize(html, contact.first_name);
-        const ok = await sendEmailToContact(contactId, subject, personalizedHtml, apiKey);
-        if (ok) { sent++; await markSequenceSent(contact.email, stage); } else { failed++; }
+        const outcome = await sendIfSubscribed(contactId, contact.email, 'sequence', subject, personalizedHtml, apiKey);
+        if (outcome === 'sent') { sent++; await markSequenceSent(contact.email, stage); }
+        else if (outcome === 'unsubscribed') { unsubscribed++; }
+        else { failed++; }
       }
 
-      console.log(`[ghl-newsletter-dispatch] jaylen_sequence_${stage}: ${sent} sent, ${failed} failed (approval ${approval_id})`);
-      res.status(200).json({ success: failed === 0, sent, failed });
+      console.log(`[ghl-newsletter-dispatch] jaylen_sequence_${stage}: ${sent} sent, ${unsubscribed} unsubscribed, ${failed} failed (approval ${approval_id})`);
+      res.status(200).json({ success: failed === 0, sent, unsubscribed, failed });
     } catch (err) {
       console.error('[ghl-newsletter-dispatch] Fatal error (sequence):', err);
       res.status(500).json({ error: String(err) });
@@ -280,12 +333,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { subject, body } = extractSubjectAndBody(content);
     const html = toHtml(body);
 
-    const results = await Promise.all(contacts.map(c => sendEmailToContact(c.id, subject, personalize(html, c.firstName), apiKey)));
-    const sent = results.filter(Boolean).length;
-    const failed = results.length - sent;
+    const results = await Promise.all(contacts.map(c => sendIfSubscribed(c.id, c.email, source.table, subject, personalize(html, c.firstName), apiKey)));
+    const sent = results.filter(r => r === 'sent').length;
+    const unsubscribed = results.filter(r => r === 'unsubscribed').length;
+    const failed = results.filter(r => r === 'failed').length;
 
-    console.log(`[ghl-newsletter-dispatch] ${trigger_type} (source: ${source.table}): ${sent} sent, ${failed} failed (approval ${approval_id})`);
-    res.status(200).json({ success: failed === 0, sent, failed });
+    console.log(`[ghl-newsletter-dispatch] ${trigger_type} (source: ${source.table}): ${sent} sent, ${unsubscribed} unsubscribed, ${failed} failed (approval ${approval_id})`);
+    res.status(200).json({ success: failed === 0, sent, unsubscribed, failed });
   } catch (err) {
     console.error('[ghl-newsletter-dispatch] Fatal error:', err);
     res.status(500).json({ error: String(err) });
