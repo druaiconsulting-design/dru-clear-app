@@ -7,6 +7,12 @@
 // the row in jaylen_sequence_progress that the daily sequence check reads from (see
 // runJaylen() in ghl-agent-trigger.ts).
 //
+// Nov 26, 2026 addition — a person who already has a member profile (free, Navigator or
+// Accelerator) and subscribes on the website is not a non-member. Their website yes turns on
+// newsletter_subscribed on their profile, their tier stays as it is, and they are not added to
+// non_members, not given the non-member tag, and not started on the welcome series — so they
+// receive only their own tier's edition, never two.
+//
 // Uses GHL_PRIVATE_INTEGRATIONS_KEY (contacts.readonly + contacts.write + conversations/message.write).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -62,6 +68,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!apiKey) { res.status(500).json({ error: 'GHL_PRIVATE_INTEGRATIONS_KEY not set' }); return; }
 
   try {
+    // Already a member? Their website yes goes onto their member profile and nothing else changes.
+    const { data: member, error: memberLookupError } = await supabase
+      .from('profiles')
+      .select('id, tier')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+    if (memberLookupError) {
+      console.error(`[jaylen-nonmember-signup] Member lookup failed for ${normalizedEmail}:`, memberLookupError);
+      res.status(500).json({ error: 'Member lookup failed' });
+      return;
+    }
+    if (member) {
+      const { error: carryError } = await supabase
+        .from('profiles')
+        .update({ newsletter_subscribed: true })
+        .eq('id', member.id);
+      if (carryError) {
+        console.error(`[jaylen-nonmember-signup] Could not turn on newsletter for member ${normalizedEmail}:`, carryError);
+        res.status(500).json({ error: 'Could not update member profile' });
+        return;
+      }
+      console.log(`[jaylen-nonmember-signup] ${normalizedEmail} is already a ${member.tier} member — newsletter turned on, not added to non-member list`);
+      res.status(200).json({ success: true, email: normalizedEmail, existingMember: true, tier: member.tier });
+      return;
+    }
+
     const contactId = await upsertGHLContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey);
     if (!contactId) {
       console.error(`[jaylen-nonmember-signup] Could not upsert GHL contact for ${normalizedEmail}`);
