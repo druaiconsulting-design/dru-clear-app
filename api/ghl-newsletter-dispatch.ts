@@ -181,7 +181,8 @@ async function sendEmailToContact(contactId: string, subject: string, html: stri
 // UNSUBSCRIBE SYNC (Nov 26, 2026). When someone clicks the {{unsubscribe}} link in an email,
 // GHL records it on their contact record. Before every send we read that record: a contact is
 // unsubscribed if GHL's overall do-not-disturb is on (`dnd`) or the email channel's do-not-
-// disturb status (`dndSettings.email.status`) is active or permanent. The result is true
+// disturb status (`dndSettings.email.status`) is active or permanent, or GHL's own
+// `unsubscribeEmail` flag is true. The result is true
 // (unsubscribed), false (subscribed) or null (GHL could not be read — the caller skips the send
 // so nobody is emailed after unsubscribing just because GHL had a bad moment).
 async function isUnsubscribedInGhl(contactId: string, apiKey: string): Promise<boolean | null> {
@@ -193,7 +194,7 @@ async function isUnsubscribedInGhl(contactId: string, apiKey: string): Promise<b
     const data = await res.json();
     const contact = data.contact ?? {};
     const emailStatus = String(contact.dndSettings?.email?.status ?? 'inactive').toLowerCase();
-    return contact.dnd === true || emailStatus === 'active' || emailStatus === 'permanent';
+    return contact.dnd === true || contact.unsubscribeEmail === true || emailStatus === 'active' || emailStatus === 'permanent';
   } catch (err) {
     console.error(`[ghl-newsletter-dispatch] Unsubscribe check error for contact ${contactId}:`, err);
     return null;
