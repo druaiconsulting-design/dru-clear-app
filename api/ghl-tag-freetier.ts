@@ -66,10 +66,30 @@ async function removeTags(contactId: string, tags: string[], apiKey: string): Pr
 // Closes out non-member status everywhere it's tracked. Never blocks or fails the response —
 // the free-tier tagging above already succeeded, which is what matters most; a hiccup here
 // just means a stale non-member record lingers, logged clearly so it's visible, not silent.
+//
+// Nov 26, 2026 addition — the website newsletter yes carries over: a person on the non_members
+// list said yes to the newsletter on the website, so when they take the assessment their new
+// member profile gets newsletter_subscribed = true, whether or not they ticked the assessment's
+// checkbox. This happens on their first conversion only (converted_at still empty). If their
+// profile row can't be found, they are left on the non-member list untouched so they keep
+// receiving the newsletter, and the log says why.
 async function closeOutNonMemberStatus(email: string, contactId: string, apiKey: string): Promise<void> {
   try {
-    const { data: existing } = await supabase.from('non_members').select('email').eq('email', email).maybeSingle();
+    const { data: existing } = await supabase.from('non_members').select('email, converted_at').eq('email', email).maybeSingle();
     if (!existing) return; // never was a non-member — nothing to close out
+
+    if (!existing.converted_at) {
+      const { data: carried, error: carryError } = await supabase
+        .from('profiles')
+        .update({ newsletter_subscribed: true })
+        .eq('email', email)
+        .select('id');
+      if (carryError || !carried || carried.length === 0) {
+        console.error(`[ghl-tag-freetier] Could not carry newsletter yes onto member profile for ${email} — left on non-member list:`, carryError ?? 'no profile row found');
+        return;
+      }
+      console.log(`[ghl-tag-freetier] ${email} newsletter yes carried onto member profile`);
+    }
 
     await supabase.from('non_members').update({ converted_at: new Date().toISOString() }).eq('email', email);
     await supabase.from('jaylen_sequence_progress').update({ sequence_complete: true }).eq('email', email);
