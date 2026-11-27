@@ -17,20 +17,25 @@ function cleanSource(raw: unknown): string {
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const source = cleanSource(req.query?.from);
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>LEAD, CLARITY, WIN!</title>
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Newsletter | DRU AI Consulting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  body { margin:0; padding:40px 20px; font-family: Georgia, serif; color:#0A2342; background:#ffffff; }
-  .card { max-width:420px; margin:0 auto; }
-  h1 { font-size:26px; line-height:1.3; text-align:center; margin:0 0 24px; }
-  label { display:block; font-size:15px; margin:0 0 6px; }
-  input { width:100%; box-sizing:border-box; padding:12px; font-size:16px; font-family:inherit; border:1px solid #b8c0cc; border-radius:6px; margin-bottom:18px; color:#0A2342; }
-  button { width:100%; padding:14px; font-size:17px; font-family:inherit; background:#0A2342; color:#ffffff; border:0; border-radius:6px; cursor:pointer; }
-  button[disabled] { opacity:0.6; cursor:default; }
-  #msg { font-size:15px; line-height:1.5; text-align:center; margin-top:16px; min-height:20px; }
-  #done { display:none; text-align:center; font-size:18px; line-height:1.6; }
+  body { margin:0; min-height:100vh; background:#0A2342; color:#FFFFFF; font-family:'Inter', sans-serif; display:flex; align-items:center; justify-content:center; padding:32px 20px; box-sizing:border-box; }
+  .card { width:100%; max-width:420px; text-align:center; }
+  .logo { height:140px; width:auto; display:block; margin:0 auto 20px; }
+  h1 { font-family:'Playfair Display', serif; color:#D4AF37; font-size:28px; line-height:1.3; font-weight:700; margin:0 0 24px; }
+  label { display:block; text-align:left; font-size:13px; color:#E6E6E6; margin:0 0 6px; }
+  input { width:100%; box-sizing:border-box; padding:12px 14px; font-size:16px; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.07); border:1px solid rgba(212,175,55,0.3); border-radius:6px; margin-bottom:18px; color:#FFFFFF; outline:none; }
+  input:focus { border-color:#D4AF37; }
+  button { width:100%; padding:14px; font-family:'Montserrat', sans-serif; font-weight:700; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; background:#D4AF37; color:#0A2342; border:0; border-radius:6px; cursor:pointer; }
+  button[disabled] { opacity:0.7; cursor:default; }
+  #msg { font-size:14px; line-height:1.5; color:#E8C84A; margin-top:16px; min-height:20px; }
+  #done { display:none; font-size:18px; line-height:1.6; color:#E6E6E6; }
 </style></head>
 <body><div class="card">
-<h1>LEAD, CLARITY, WIN!</h1>
+<img class="logo" src="/new-dru-clear-transparent-logo.png" alt="DRU AI Consulting">
+<h1>Subscribe to the newsletter</h1>
 <form id="f">
   <label for="n">First name</label>
   <input id="n" name="first_name" type="text" autocomplete="given-name" required>
@@ -39,7 +44,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   <button id="b" type="submit">Subscribe</button>
   <div id="msg" role="status"></div>
 </form>
-<div id="done">You are subscribed. Thank you.</div>
+<div id="done">You are subscribed to the newsletter. Thank you.</div>
 </div>
 <script>
   var SOURCE = ${JSON.stringify(source)};
