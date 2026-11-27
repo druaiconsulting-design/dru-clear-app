@@ -17,31 +17,34 @@ function cleanSource(raw: unknown): string {
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const source = cleanSource(req.query?.from);
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Newsletter | DRU AI Consulting</title>
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>LEAD, CLARITY, WIN! Newsletter | DRU AI Consulting</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  body { margin:0; min-height:100vh; background:#0A2342; color:#FFFFFF; font-family:'Inter', sans-serif; display:flex; align-items:center; justify-content:center; padding:32px 20px; box-sizing:border-box; }
-  .card { width:100%; max-width:420px; text-align:center; }
-  .logo { height:140px; width:auto; display:block; margin:0 auto 20px; }
-  h1 { font-family:'Playfair Display', serif; color:#D4AF37; font-size:28px; line-height:1.3; font-weight:700; margin:0 0 24px; }
-  label { display:block; text-align:left; font-size:13px; color:#E6E6E6; margin:0 0 6px; }
-  input { width:100%; box-sizing:border-box; padding:12px 14px; font-size:16px; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.07); border:1px solid rgba(212,175,55,0.3); border-radius:6px; margin-bottom:18px; color:#FFFFFF; outline:none; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#FAFAF8; color:#0A2342; font-family:'Inter', sans-serif; }
+  .bar { background:rgba(27,77,142,0.97); border-bottom:1px solid rgba(212,175,55,0.22); height:84px; display:flex; align-items:center; justify-content:center; }
+  .brand { font-family:'Playfair Display', serif; font-size:1.5rem; font-weight:700; color:#D4AF37; letter-spacing:0.02em; }
+  .card { max-width:460px; margin:0 auto; padding:44px 24px 56px; text-align:center; }
+  h1 { font-family:'Playfair Display', serif; color:#D4AF37; font-size:1.9rem; line-height:1.25; font-weight:700; margin:0 0 12px; }
+  .divider { width:48px; height:2px; background:#D4AF37; margin:0 auto 28px; }
+  form { display:flex; flex-direction:column; gap:14px; text-align:left; }
+  input { width:100%; padding:14px 16px; font-size:16px; font-family:'Inter', sans-serif; border-radius:6px; border:1px solid rgba(10,35,66,0.18); background:#ffffff; color:#0A2342; outline:none; }
   input:focus { border-color:#D4AF37; }
-  button { width:100%; padding:14px; font-family:'Montserrat', sans-serif; font-weight:700; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; background:#D4AF37; color:#0A2342; border:0; border-radius:6px; cursor:pointer; }
+  button { margin-top:4px; padding:15px 28px; font-family:'Montserrat', sans-serif; font-weight:700; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; background:#C2185B; color:#ffffff; border:0; border-radius:6px; cursor:pointer; }
   button[disabled] { opacity:0.7; cursor:default; }
-  #msg { font-size:14px; line-height:1.5; color:#E8C84A; margin-top:16px; min-height:20px; }
-  #done { display:none; font-size:18px; line-height:1.6; color:#E6E6E6; }
+  #msg { font-family:'Montserrat', sans-serif; font-size:0.75rem; color:rgba(10,35,66,0.65); text-align:center; min-height:18px; }
+  #done { display:none; font-size:1.1rem; line-height:1.6; color:#0A2342; }
 </style></head>
-<body><div class="card">
-<img class="logo" src="/new-dru-clear-transparent-logo.png" alt="DRU AI Consulting">
-<h1>Subscribe to the newsletter</h1>
+<body>
+<div class="bar"><span class="brand">DRU AI Consulting</span></div>
+<div class="card">
+<h1>LEAD, CLARITY, WIN! Newsletter</h1>
+<div class="divider"></div>
 <form id="f">
-  <label for="n">First name</label>
-  <input id="n" name="first_name" type="text" autocomplete="given-name" required>
-  <label for="e">Email</label>
-  <input id="e" name="email" type="email" autocomplete="email" required>
-  <button id="b" type="submit">Subscribe</button>
+  <input id="n" name="first_name" type="text" placeholder="First Name" autocomplete="given-name" required>
+  <input id="e" name="email" type="email" placeholder="Email Address" autocomplete="email" required>
+  <button id="b" type="submit">Subscribe Now!</button>
   <div id="msg" role="status"></div>
 </form>
 <div id="done">You are subscribed to the newsletter. Thank you.</div>
