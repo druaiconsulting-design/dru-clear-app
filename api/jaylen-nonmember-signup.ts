@@ -33,11 +33,11 @@ const GHL_VERSION = '2021-07-28';
 // duplicate-detection logic (the same logic that produced "This location does not allow
 // duplicated contacts" when this file tried to create a contact that already existed).
 // Replaces the separate search+create dance entirely — https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact
-async function upsertGHLContact(email: string, firstName: string, lastName: string, apiKey: string): Promise<string | null> {
+async function upsertGHLContact(email: string, firstName: string, lastName: string, apiKey: string, phone?: string): Promise<string | null> {
   const res = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
-    body: JSON.stringify({ locationId: GHL_LOCATION_ID, email, firstName, lastName }),
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, email, firstName, lastName, ...(phone ? { phone } : {}) }),
   });
   if (!res.ok) {
     console.error(`[jaylen-nonmember-signup] Upsert contact failed: ${res.status} ${await res.text()}`);
@@ -55,6 +55,17 @@ async function addTags(contactId: string, tags: string[], apiKey: string): Promi
   });
   if (!res.ok) console.error(`[jaylen-nonmember-signup] Add tags failed for ${contactId}: ${res.status} ${await res.text()}`);
   return res.ok;
+}
+
+// Social subscribe form (Nov 26, 2026): a non-member gives a phone number. GHL wants it in international form, so a
+// 10-digit US number becomes +1XXXXXXXXXX. Returns null when it is not a usable number.
+function normalizePhone(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (raw.trim().startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`;
+  return null;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -103,7 +114,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const contactId = await upsertGHLContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey);
+    // From the social form, a non-member must give a phone number before anything is saved. The form asks for it
+    // after the first press of Subscribe. The website path (no source) is unchanged.
+    let phone: string | undefined;
+    if (source) {
+      const normalizedPhone = normalizePhone(req.body?.phone);
+      if (!normalizedPhone) {
+        res.status(200).json({ success: false, needPhone: true });
+        return;
+      }
+      phone = normalizedPhone;
+    }
+
+    const contactId = await upsertGHLContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey, phone);
     if (!contactId) {
       console.error(`[jaylen-nonmember-signup] Could not upsert GHL contact for ${normalizedEmail}`);
       res.status(500).json({ error: 'Could not upsert GHL contact' });

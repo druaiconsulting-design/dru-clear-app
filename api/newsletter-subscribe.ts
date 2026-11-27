@@ -49,6 +49,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     <input id="l" name="last_name" type="text" placeholder="Last Name" autocomplete="family-name" required>
   </div>
   <input id="e" name="email" type="email" placeholder="Email Address" autocomplete="email" required>
+  <input id="p" name="phone" type="tel" placeholder="Phone Number" autocomplete="tel" style="display:none">
   <button id="b" type="submit">Subscribe Now!</button>
   <div id="msg" role="status"></div>
 </form>
@@ -63,9 +64,18 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     fetch('/api/jaylen-nonmember-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: form.email.value.trim(), first_name: form.first_name.value.trim(), last_name: form.last_name.value.trim(), source: SOURCE })
+      body: JSON.stringify({ email: form.email.value.trim(), first_name: form.first_name.value.trim(), last_name: form.last_name.value.trim(), phone: form.phone.value.trim(), source: SOURCE })
     }).then(function (r) {
       if (!r.ok) throw new Error('bad');
+      return r.json();
+    }).then(function (data) {
+      if (data && data.needPhone) {
+        var ph = document.getElementById('p');
+        ph.style.display = 'block'; ph.required = true; ph.focus();
+        msg.textContent = form.phone.value.trim() ? 'Please enter a valid phone number.' : 'Please add your phone number to finish subscribing.';
+        btn.disabled = false;
+        return;
+      }
       form.style.display = 'none';
       document.getElementById('done').style.display = 'block';
     }).catch(function () {
