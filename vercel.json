@@ -38,19 +38,72 @@
   "headers": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "empire.druaiconsulting.com" }],
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      "has": [
+        {
+          "type": "host",
+          "value": "empire.druaiconsulting.com"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
   "rewrites": [
     {
+      "source": "/api/jaylen-nonmember-signup",
+      "has": [
+        {
+          "type": "host",
+          "value": "subscribe.druaiconsulting.com"
+        }
+      ],
+      "destination": "/api/jaylen-nonmember-signup"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "subscribe.druaiconsulting.com"
+        }
+      ],
+      "destination": "/api/newsletter-subscribe"
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "subscribe.druaiconsulting.com"
+        }
+      ],
+      "destination": "/subscribe-not-found"
+    },
+    {
       "source": "/robots.txt",
-      "has": [{ "type": "host", "value": "empire.druaiconsulting.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "empire.druaiconsulting.com"
+        }
+      ],
       "destination": "/empire-robots.txt"
     },
-    { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
-    { "source": "/subscribe",         "destination": "/api/newsletter-subscribe" },
-    { "source": "/api/(.*)",          "destination": "/api/$1" },
-    { "source": "/(.*)",              "destination": "/index.html" }
+    {
+      "source": "/admin-launch.html",
+      "destination": "/admin-launch.html"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

@@ -1,6 +1,6 @@
 // api/newsletter-subscribe.ts
 // The subscribe form that opens from a link in a social media post (Nov 26, 2026), at
-// app.druaiconsulting.com/subscribe?from=<platform>.
+// subscribe.druaiconsulting.com/?from=<platform>.
 //
 // A plain page with only the form: first name, email and a Subscribe button, then a thank-you.
 // The page posts to the same signup the website form uses (api/jaylen-nonmember-signup.ts), which
@@ -15,7 +15,12 @@ function cleanSource(raw: unknown): string {
   return v.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
 }
 
+const SUBSCRIBE_HOST = 'subscribe.druaiconsulting.com';
+
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  // The form is public only at subscribe.druaiconsulting.com. The admin address does not serve it.
+  const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? '').split(',')[0].trim().toLowerCase();
+  if (host !== SUBSCRIBE_HOST) { res.status(404).send('Not found'); return; }
   const source = cleanSource(req.query?.from);
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>LEAD, CLARITY, WIN! Newsletter | DRU AI Consulting</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
