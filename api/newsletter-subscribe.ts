@@ -34,6 +34,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   input:focus { border-color:#D4AF37; }
   button { margin-top:4px; padding:15px 28px; font-family:'Montserrat', sans-serif; font-weight:700; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; background:#C2185B; color:#ffffff; border:0; border-radius:6px; cursor:pointer; }
   button[disabled] { opacity:0.7; cursor:default; }
+  .req { font-family:'Montserrat', sans-serif; font-size:0.75rem; color:rgba(10,35,66,0.65); text-align:center; }
   #msg { font-family:'Montserrat', sans-serif; font-size:0.75rem; color:rgba(10,35,66,0.65); text-align:center; min-height:18px; }
   #done { display:none; font-size:1.1rem; line-height:1.6; color:#0A2342; }
   .done-title { font-family:'Playfair Display', serif; font-size:1.6rem; font-weight:700; color:#D4AF37; margin-bottom:8px; }
@@ -45,12 +46,13 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 <div class="divider"></div>
 <form id="f">
   <div class="names">
-    <input id="n" name="first_name" type="text" placeholder="First Name" autocomplete="given-name" required>
-    <input id="l" name="last_name" type="text" placeholder="Last Name" autocomplete="family-name" required>
+    <input id="n" name="first_name" type="text" placeholder="First Name *" autocomplete="given-name" required>
+    <input id="l" name="last_name" type="text" placeholder="Last Name *" autocomplete="family-name" required>
   </div>
-  <input id="e" name="email" type="email" placeholder="Email Address" autocomplete="email" required>
-  <input id="p" name="phone" type="tel" placeholder="Phone Number" autocomplete="tel" style="display:none">
+  <input id="e" name="email" type="email" placeholder="Email Address *" autocomplete="email" required>
+  <input id="p" name="phone" type="tel" placeholder="Phone Number *" autocomplete="tel" style="display:none">
   <button id="b" type="submit">Subscribe Now!</button>
+  <div class="req">* Required</div>
   <div id="msg" role="status"></div>
 </form>
 <div id="done"><div class="done-title">You Are Subscribed!</div><div>Thank you, Enjoy!</div></div>
