@@ -72,7 +72,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       if (data && data.needPhone) {
         var ph = document.getElementById('p');
         ph.style.display = 'block'; ph.required = true; ph.focus();
-        msg.textContent = form.phone.value.trim() ? 'Please enter a valid phone number.' : 'Please add your phone number to finish subscribing.';
+        msg.textContent = form.phone.value.trim() ? 'Enter a valid phone number.' : '';
         btn.disabled = false;
         return;
       }
