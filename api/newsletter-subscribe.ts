@@ -28,6 +28,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   .card { max-width:460px; margin:0 auto; padding:44px 24px 56px; text-align:center; }
   h1 { font-family:'Playfair Display', serif; color:#D4AF37; font-size:1.9rem; line-height:1.25; font-weight:700; margin:0 0 12px; }
   .divider { width:48px; height:2px; background:#D4AF37; margin:0 auto 28px; }
+  .names { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   form { display:flex; flex-direction:column; gap:14px; text-align:left; }
   input { width:100%; padding:14px 16px; font-size:16px; font-family:'Inter', sans-serif; border-radius:6px; border:1px solid rgba(10,35,66,0.18); background:#ffffff; color:#0A2342; outline:none; }
   input:focus { border-color:#D4AF37; }
@@ -42,7 +43,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 <h1>LEAD, CLARITY, WIN! Newsletter</h1>
 <div class="divider"></div>
 <form id="f">
-  <input id="n" name="first_name" type="text" placeholder="First Name" autocomplete="given-name" required>
+  <div class="names">
+    <input id="n" name="first_name" type="text" placeholder="First Name" autocomplete="given-name" required>
+    <input id="l" name="last_name" type="text" placeholder="Last Name" autocomplete="family-name" required>
+  </div>
   <input id="e" name="email" type="email" placeholder="Email Address" autocomplete="email" required>
   <button id="b" type="submit">Subscribe Now!</button>
   <div id="msg" role="status"></div>
@@ -58,7 +62,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     fetch('/api/jaylen-nonmember-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: form.email.value.trim(), first_name: form.first_name.value.trim(), source: SOURCE })
+      body: JSON.stringify({ email: form.email.value.trim(), first_name: form.first_name.value.trim(), last_name: form.last_name.value.trim(), source: SOURCE })
     }).then(function (r) {
       if (!r.ok) throw new Error('bad');
       form.style.display = 'none';
