@@ -52,7 +52,7 @@ async function findContactIdByEmail(email: string, apiKey: string): Promise<stri
   return data.contact?.id ?? null;
 }
 
-const UNSUBSCRIBE_FOOTER = '<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #888;">DRU AI Consulting — 2002 11th Ave N #56 Texas City, Tx 77592 TX<br>If you\'d rather not receive these emails, <a href="{{unsubscribe}}" style="color: #888;">unsubscribe here</a>.</p>';
+const UNSUBSCRIBE_FOOTER = '<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #888;">DRU AI Consulting — 2002 11th Ave N #41 Texas City, Tx 77592 TX<br>If you\'d rather not receive these emails, <a href="{{unsubscribe}}" style="color: #888;">unsubscribe here</a>.</p>';
 
 function toHtml(body: string): string {
   const paragraphs = (body || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
