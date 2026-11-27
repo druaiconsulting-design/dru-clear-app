@@ -54,36 +54,6 @@
   ],
   "rewrites": [
     {
-      "source": "/api/jaylen-nonmember-signup",
-      "has": [
-        {
-          "type": "host",
-          "value": "subscribe.druaiconsulting.com"
-        }
-      ],
-      "destination": "/api/jaylen-nonmember-signup"
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "subscribe.druaiconsulting.com"
-        }
-      ],
-      "destination": "/api/newsletter-subscribe"
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "subscribe.druaiconsulting.com"
-        }
-      ],
-      "destination": "/subscribe-not-found"
-    },
-    {
       "source": "/robots.txt",
       "has": [
         {

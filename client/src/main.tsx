@@ -6,9 +6,26 @@ import "./index.css";
 // then the chart). Every other address behaves exactly as it always has.
 const isEmpireHost = window.location.hostname === "empire.druaiconsulting.com";
 
+// subscribe.druaiconsulting.com shows only the newsletter subscribe form, on every path.
+const isSubscribeHost = window.location.hostname === "subscribe.druaiconsulting.com";
+
 const root = createRoot(document.getElementById("root")!);
 
-if (isEmpireHost) {
+if (isSubscribeHost) {
+  document.title = "LEAD, CLARITY, WIN! Newsletter | DRU AI Consulting";
+
+  const robots = document.createElement("meta");
+  robots.name = "robots";
+  robots.content = "noindex, nofollow";
+  document.head.appendChild(robots);
+
+  // The Hub's home-screen settings point at the Hub, so they are removed here.
+  document.querySelectorAll('link[rel="manifest"]').forEach((el) => el.remove());
+
+  import("./subscribe/SubscribeApp").then(({ default: SubscribeApp }) => {
+    root.render(<SubscribeApp />);
+  });
+} else if (isEmpireHost) {
   document.title = "DRU AI Consulting — AI Empire Org Chart";
 
   // Ask search engines not to list the page.
