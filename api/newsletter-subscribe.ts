@@ -46,11 +46,11 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 <div class="divider"></div>
 <form id="f">
   <div class="names">
-    <input id="n" name="first_name" type="text" placeholder="First Name *" autocomplete="given-name" required>
-    <input id="l" name="last_name" type="text" placeholder="Last Name *" autocomplete="family-name" required>
+    <input id="n" name="first_name" type="text" placeholder="* First Name" autocomplete="given-name" required>
+    <input id="l" name="last_name" type="text" placeholder="* Last Name" autocomplete="family-name" required>
   </div>
-  <input id="e" name="email" type="email" placeholder="Email Address *" autocomplete="email" required>
-  <input id="p" name="phone" type="tel" placeholder="Phone Number *" autocomplete="tel" style="display:none">
+  <input id="e" name="email" type="email" placeholder="* Email Address" autocomplete="email" required>
+  <input id="p" name="phone" type="tel" placeholder="* Phone Number" autocomplete="tel" style="display:none">
   <button id="b" type="submit">Subscribe Now!</button>
   <div class="req">* Required</div>
   <div id="msg" role="status"></div>
