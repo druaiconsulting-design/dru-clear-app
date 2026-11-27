@@ -19,6 +19,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from '@supabase/supabase-js';
+import { unsubscribeUrl } from './_lib/newsletterUnsubscribe.js';
 export const config = { maxDuration: 60 };
 
 const supabase = createClient(
@@ -52,6 +53,9 @@ async function findContactIdByEmail(email: string, apiKey: string): Promise<stri
   return data.contact?.id ?? null;
 }
 
+// {{unsubscribe}} below is a placeholder that this app fills in with its own working unsubscribe
+// link for each recipient. GHL leaves its own {{unsubscribe}} tag blank for one-to-one
+// Conversations API messages (confirmed Nov 26, 2026), which is how these emails are sent.
 const UNSUBSCRIBE_FOOTER = '<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #888;">DRU AI Consulting — 2002 11th Ave N #41 Texas City, Tx 77592 TX<br>If you\'d rather not receive these emails, <a href="{{unsubscribe}}" style="color: #888;">unsubscribe here</a>.</p>';
 
 function toHtml(body: string): string {
@@ -72,6 +76,22 @@ async function sendEmailToContact(contactId: string, subject: string, html: stri
   } catch (err) {
     console.error(`[ghl-outreach-dispatch] Send error for contact ${contactId}:`, err);
     return false;
+  }
+}
+
+// The unsubscribe link is signed per email address, so a lead that arrives with only a GHL
+// contact id gets its address read from GHL first.
+async function getContactEmail(contactId: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
+    });
+    if (!res.ok) { console.error(`[ghl-outreach-dispatch] Contact read failed for ${contactId}: ${res.status} ${await res.text()}`); return null; }
+    const data = await res.json();
+    return data.contact?.email ?? null;
+  } catch (err) {
+    console.error(`[ghl-outreach-dispatch] Contact read error for ${contactId}:`, err);
+    return null;
   }
 }
 
@@ -112,9 +132,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const contactId = item.ghl_contact_id || (item.email ? await findContactIdByEmail(item.email, apiKey) : null);
     if (!contactId) { failed++; console.error('[ghl-outreach-dispatch] No contact_id or email for item — skipped'); continue; }
 
-    const html = toHtml(item.email_body);
+    // No email goes out without a working unsubscribe link, so a lead whose address cannot be
+    // found is skipped.
+    const recipientEmail = item.email || await getContactEmail(contactId, apiKey);
+    if (!recipientEmail) { failed++; console.error(`[ghl-outreach-dispatch] No email address for contact ${contactId} — skipped`); continue; }
+
+    const html = toHtml(item.email_body).split('{{unsubscribe}}').join(unsubscribeUrl(recipientEmail));
     const ok = await sendEmailToContact(contactId, item.subject, html, apiKey);
-    if (ok) { sent++; await logOutreach(contactId, item.email || '', item.subject, approval_id || null); }
+    if (ok) { sent++; await logOutreach(contactId, recipientEmail, item.subject, approval_id || null); }
     else failed++;
   }
 
