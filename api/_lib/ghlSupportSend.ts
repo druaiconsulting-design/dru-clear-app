@@ -9,6 +9,8 @@
 // GHL answers 200 as soon as it accepts the request; the workflow then finds the contact by email and sends
 // the email. The app can see a refused or unreachable request, and treats that as a failed send.
 
+import { unsubscribeUrl } from "./newsletterUnsubscribe.js";
+
 export const SUPPORT_FROM_ADDRESSES = ["support@support.druaiconsulting.com", "info@info.druaiconsulting.com"];
 
 const SEND_TIMEOUT_MS = 15000;
@@ -21,6 +23,21 @@ export function toHtml(text: string): string {
   const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   const body = paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("\n");
   return `<div style="font-family: Georgia, serif; font-size: 15px; line-height: 1.6; color: #0A2342;">${body}</div>`;
+}
+
+// The line at the bottom of every email Isaiah sends (Nov 26, 2026): asks the person to add the address the email
+// came from to their address book, and gives them the working unsubscribe link ("Want out of the loop").
+// The link is the app's own signed link, because GHL leaves its unsubscribe tag blank on messages the app hands over.
+function footerHtml(fromAddress: string, toEmail: string): string {
+  const address = fromAddress.trim().toLowerCase();
+  let link = "";
+  try { link = unsubscribeUrl(toEmail); } catch (err) { console.error("[ghlSupportSend] Could not build the unsubscribe link:", err); }
+  const outOfLoop = link
+    ? `<a href="${link}" style="color: #0A2342;">Want out of the loop</a>`
+    : "Want out of the loop";
+  return `<div style="font-family: Georgia, serif; font-size: 12px; line-height: 1.6; color: #555555; margin-top: 24px; border-top: 1px solid #dddddd; padding-top: 12px;">`
+    + `<p style="margin: 0 0 6px 0;">To make sure you stay informed, please add ${escapeHtml(address)} to your address book or whitelist.</p>`
+    + `<p style="margin: 0;">${outOfLoop}</p></div>`;
 }
 
 // The private web address of the workflow that sends from this support address, or null when it is not set.
@@ -75,7 +92,7 @@ export async function sendSupportEmail(e: SupportEmail): Promise<{ ok: boolean; 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: toEmail, subject: replySubject(e.originalSubject, e.fromAddress), message: toHtml(e.replyText) }),
+      body: JSON.stringify({ email: toEmail, subject: replySubject(e.originalSubject, e.fromAddress), message: toHtml(e.replyText) + footerHtml(e.fromAddress, toEmail) }),
       signal: controller.signal,
     });
     if (!res.ok) {
