@@ -21,6 +21,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from '@supabase/supabase-js';
+import { unsubscribeUrl } from './_lib/newsletterUnsubscribe.js';
 export const config = { maxDuration: 60 };
 
 const supabase = createClient(
@@ -139,10 +140,12 @@ function extractSubjectAndBody(content: string): { subject: string; body: string
   return { subject, body };
 }
 
-// {{unsubscribe}} is GHL's own merge tag — auto-converted to a real, working, tracked
-// unsubscribe link at send time (confirmed via GHL's official support docs). Added to every
-// email that passes through this function — which is all of them, Nia's and Jaylen's alike —
-// so there's exactly one place this could ever go missing, not one per prompt/agent.
+// {{unsubscribe}} below is a placeholder that THIS app fills in with its own unsubscribe link
+// for each recipient (see sendIfSubscribed -> unsubscribeUrl). GHL's own {{unsubscribe}} merge
+// tag works for bulk email, workflows and campaigns, but GHL leaves it blank for one-to-one
+// Conversations API messages (Nov 26, 2026 test: the link arrived empty), which is how every
+// email here is sent. Added to every email that passes through this function — which is all of
+// them, Nia's and Jaylen's alike — so there's exactly one place this could ever go missing.
 // Legally required (CAN-SPAM/GDPR), and per her explicit instruction Aug 19 2026: every email
 // must have this, no exceptions.
 const UNSUBSCRIBE_FOOTER = '<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #888;">DRU AI Consulting — 2002 11th Ave N #56 Texas City, Tx 77592 TX<br>If you\'d rather not receive these emails, <a href="{{unsubscribe}}" style="color: #888;">unsubscribe here</a>.</p>';
@@ -238,7 +241,8 @@ async function sendIfSubscribed(
   const unsubscribed = await isUnsubscribedInGhl(contactId, apiKey);
   if (unsubscribed === null) return 'failed';
   if (unsubscribed) { await recordUnsubscribe(email, table); return 'unsubscribed'; }
-  const result = await sendEmailToContact(contactId, subject, html, apiKey);
+  const personalLink = html.split('{{unsubscribe}}').join(unsubscribeUrl(email));
+  const result = await sendEmailToContact(contactId, subject, personalLink, apiKey);
   if (result === 'dnd') { await recordUnsubscribe(email, table); return 'unsubscribed'; }
   return result;
 }
