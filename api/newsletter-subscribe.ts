@@ -36,6 +36,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   button[disabled] { opacity:0.7; cursor:default; }
   #msg { font-family:'Montserrat', sans-serif; font-size:0.75rem; color:rgba(10,35,66,0.65); text-align:center; min-height:18px; }
   #done { display:none; font-size:1.1rem; line-height:1.6; color:#0A2342; }
+  .done-title { font-family:'Playfair Display', serif; font-size:1.6rem; font-weight:700; color:#D4AF37; margin-bottom:8px; }
 </style></head>
 <body>
 <div class="bar"><span class="brand">DRU AI Consulting</span></div>
@@ -51,7 +52,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   <button id="b" type="submit">Subscribe Now!</button>
   <div id="msg" role="status"></div>
 </form>
-<div id="done">You are subscribed to the newsletter. Thank you.</div>
+<div id="done"><div class="done-title">You Are Subscribed!</div><div>Thank you, Enjoy!</div></div>
 </div>
 <script>
   var SOURCE = ${JSON.stringify(source)};
