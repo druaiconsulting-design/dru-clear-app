@@ -163,18 +163,23 @@ function personalize(html: string, firstName: string | null | undefined): string
   return html.replace(/\{\{\s*contact\.first_name\s*\}\}/gi, firstName?.trim() || 'there');
 }
 
-async function sendEmailToContact(contactId: string, subject: string, html: string, apiKey: string): Promise<boolean> {
+// Returns 'sent', 'failed', or 'dnd' — 'dnd' means GHL itself refused the send because the
+// contact's email do-not-disturb is active, which is how GHL reports an unsubscribe.
+async function sendEmailToContact(contactId: string, subject: string, html: string, apiKey: string): Promise<'sent' | 'failed' | 'dnd'> {
   try {
     const res = await fetch(`${GHL_API_BASE}/conversations/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Version: GHL_VERSION },
       body: JSON.stringify({ type: 'Email', contactId, subject, html }),
     });
-    if (!res.ok) console.error(`[ghl-newsletter-dispatch] Send failed for contact ${contactId}: ${res.status} ${await res.text()}`);
-    return res.ok;
+    if (res.ok) return 'sent';
+    const text = await res.text();
+    if (res.status === 400 && text.includes('DND_ACTIVE_EMAIL')) return 'dnd';
+    console.error(`[ghl-newsletter-dispatch] Send failed for contact ${contactId}: ${res.status} ${text}`);
+    return 'failed';
   } catch (err) {
     console.error(`[ghl-newsletter-dispatch] Send error for contact ${contactId}:`, err);
-    return false;
+    return 'failed';
   }
 }
 
@@ -193,8 +198,14 @@ async function isUnsubscribedInGhl(contactId: string, apiKey: string): Promise<b
     if (!res.ok) { console.error(`[ghl-newsletter-dispatch] Unsubscribe check failed for contact ${contactId}: ${res.status} ${await res.text()}`); return null; }
     const data = await res.json();
     const contact = data.contact ?? {};
-    const emailStatus = String(contact.dndSettings?.email?.status ?? 'inactive').toLowerCase();
-    return contact.dnd === true || contact.unsubscribeEmail === true || emailStatus === 'active' || emailStatus === 'permanent';
+    // GHL's field names vary by API version (`email` vs `Email`), so the channel key is matched
+    // without regard to capitalisation.
+    const channels = Object.entries(contact.dndSettings ?? {}) as Array<[string, { status?: string }]>;
+    const emailChannelBlocked = channels.some(([key, value]) => {
+      const status = String(value?.status ?? 'inactive').toLowerCase();
+      return key.toLowerCase() === 'email' && (status === 'active' || status === 'permanent');
+    });
+    return contact.dnd === true || contact.unsubscribeEmail === true || emailChannelBlocked;
   } catch (err) {
     console.error(`[ghl-newsletter-dispatch] Unsubscribe check error for contact ${contactId}:`, err);
     return null;
@@ -227,7 +238,9 @@ async function sendIfSubscribed(
   const unsubscribed = await isUnsubscribedInGhl(contactId, apiKey);
   if (unsubscribed === null) return 'failed';
   if (unsubscribed) { await recordUnsubscribe(email, table); return 'unsubscribed'; }
-  return (await sendEmailToContact(contactId, subject, html, apiKey)) ? 'sent' : 'failed';
+  const result = await sendEmailToContact(contactId, subject, html, apiKey);
+  if (result === 'dnd') { await recordUnsubscribe(email, table); return 'unsubscribed'; }
+  return result;
 }
 
 // Re-computes who's currently due for this stage at dispatch/approval time (not a frozen
