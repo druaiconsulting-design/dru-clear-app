@@ -49,6 +49,7 @@
       "destination": "/empire-robots.txt"
     },
     { "source": "/admin-launch.html", "destination": "/admin-launch.html" },
+    { "source": "/subscribe",         "destination": "/api/newsletter-subscribe" },
     { "source": "/api/(.*)",          "destination": "/api/$1" },
     { "source": "/(.*)",              "destination": "/index.html" }
   ]

@@ -61,6 +61,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const { email, first_name, last_name } = req.body ?? {};
+  // Social subscribe form (Nov 26, 2026): the link in a post ends with the platform name, and the form passes
+  // it along. It becomes a "from-<platform>" tag on the person's GHL record. Letters, numbers and dashes only.
+  const rawSource = typeof req.body?.source === 'string' ? req.body.source : '';
+  const source = rawSource.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
   if (!email || typeof email !== 'string') { res.status(400).json({ error: 'email is required' }); return; }
   const normalizedEmail = email.toLowerCase().trim();
 
@@ -89,6 +93,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(500).json({ error: 'Could not update member profile' });
         return;
       }
+      // A member who subscribes from a social post gets the platform tag on their GHL record (best effort).
+      if (source) {
+        const memberContactId = await upsertGHLContact(normalizedEmail, first_name ?? '', last_name ?? '', apiKey);
+        if (memberContactId) await addTags(memberContactId, [`from-${source}`], apiKey);
+      }
       console.log(`[jaylen-nonmember-signup] ${normalizedEmail} is already a ${member.tier} member — newsletter turned on, not added to non-member list`);
       res.status(200).json({ success: true, email: normalizedEmail, existingMember: true, tier: member.tier });
       return;
@@ -101,7 +110,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const tagOk = await addTags(contactId, ['non-member'], apiKey);
+    // From the social form: also the newsletter tag and the platform tag. The website form's own direct GHL
+    // call already applies the newsletter tag there, so the website path (no source) stays exactly as it was.
+    const tagOk = await addTags(contactId, source ? ['non-member', 'newsletter', `from-${source}`] : ['non-member'], apiKey);
 
     // Record in non_members — this is what dispatch actually reads from now, not a GHL
     // tag search. Upsert since a re-signup shouldn't create a duplicate.
