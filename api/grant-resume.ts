@@ -84,13 +84,14 @@ async function callAnthropic(prompt: string, maxTokens = 800, model = "claude-ha
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    // Sonnet 5.5 thinks up front by default and the thinking counts against max_tokens; "between_tools" turns the up-front thinking off so the whole allowance goes to the written answer.
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }], ...(model === "claude-sonnet-5-5" ? { thinking: { type: "between_tools" } } : {}) }),
   });
   if (!res.ok) throw new Error(`Anthropic ${model} error ${res.status}`);
   const data = await res.json();
   console.log(`[${model}] stop_reason: ${data.stop_reason ?? 'unknown'}`);
   await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
-  return data.content?.[0]?.text ?? "";
+  return ((data.content ?? []) as Array<{ type: string; text?: string }>).filter(b => b.type === "text").map(b => b.text ?? "").join("");
 }
 
 // Sonnet — Isabella only
