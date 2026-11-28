@@ -14,7 +14,7 @@ import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAg
 import {
   findFunderQuestions, withFunderQuestions, getFunderQuestions, funderQuestionsForKwame, funderQuestionsReviewerNote, funderQuestionsChloeScope, chloeHitsRealMeaning,
   DEANNA_MARKER_FOR_FUNDER_QUESTIONS, assembleApplicationDraft, parseApplicationDraft, parseAnswersJson,
-  buildGrantHeader, buildApplicationBody, buildStuckCardOutput, buildNoQuestionsCardOutput,
+  buildGrantHeader, buildDraftHeader, buildApplicationBody, buildStuckCardOutput, buildNoQuestionsCardOutput,
 } from './_lib/grantApplication.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
@@ -1046,7 +1046,7 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${grantRow?.source_url ?? 'source URL not found'}`;
       const applicationBody = buildApplicationBody(currentDraft, grantRow);
       const finalOutput = applicationBody
-        ? `${buildGrantHeader(cleanName, grantRow)}\n\n---\n\n${applicationBody}\n\n---\n\n${submissionLine}`
+        ? `${buildDraftHeader(cleanName, grantRow)}\n\n---\n\n${applicationBody}\n\n---\n\n${submissionLine}`
         : `**${cleanName}** — ${grantRow?.funder ?? ''}\nAmount: ${grantRow?.amount_range ?? 'See link'} | Deadline: ${grantRow?.deadline ?? ''}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
 
       await dbUpdate("chief_of_staff_queue", currentId, {

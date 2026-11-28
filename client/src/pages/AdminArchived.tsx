@@ -139,7 +139,7 @@ export default function AdminArchived() {
   // SD/ED Reports get their own banner by category too (Oct 27, 2026): a sent
   // report's card is archived by the database the moment its status becomes
   // "sent", and it is excluded from the other lists so it never shows twice.
-  const readyToUse    = approvals.filter(a => a.status === "ready_to_use" && a.category !== "sd_report");
+  const readyToUse    = approvals.filter(a => a.status === "ready_to_use" && a.category !== "sd_report" && a.category !== "grant_applications");
   const readItems     = approvals.filter(a => a.status === "read" && a.category !== "grant_applications" && a.category !== "sd_report");
   const rejectedItems = approvals.filter(a => a.status === "rejected" && a.category !== "grant_applications" && a.category !== "sd_report");
   const grantItems    = approvals.filter(a => a.category === "grant_applications");

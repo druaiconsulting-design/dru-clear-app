@@ -308,7 +308,7 @@ function getDraftHeading(approval: Approval): string {
   if (approval.category === "support_reply")            return `${approval.agent_name}'s Reply Draft`;
   if (approval.category === "travis_video_production")  return "Caption & Copy";
   if (approval.category === "video_script")             return "Script";
-  return `${CATEGORY_LABELS[approval.category] ?? approval.division} Briefing`;
+  return `${CATEGORY_LABELS[approval.category] ?? approval.division}`;
 }
 
 function getStatusText(approval: Approval, status: "posting" | "posted" | "failed"): string {
@@ -2217,7 +2217,7 @@ export default function AdminApprovals() {
                           {getStatusText(approval, publishStatus[approval.id])}
                         </span>
                       )}
-                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:(approval.status === "approved" || approval.status === "posted") ? "#4CAF50" : (approval.status === "needs_your_input" || approval.status === "scheduled") ? "#D4AF37" : "#C2185B" }}>{approval.status === "needs_your_input" ? "Needs Your Feedback" : approval.status === "scheduled" && approval.scheduled_post_at ? `Scheduled for ${formatScheduledTime(approval.scheduled_post_at)} CT` : approval.status === "posted" ? "✓ Posted" : approval.status}</span>}
+                      {approval.status !== "pending" && !publishStatus[approval.id] && <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.55rem", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, color:(approval.status === "approved" || approval.status === "posted" || approval.status === "ready_to_use") ? "#4CAF50" : (approval.status === "needs_your_input" || approval.status === "scheduled") ? "#D4AF37" : "#C2185B" }}>{approval.status === "needs_your_input" ? "Needs Your Feedback" : approval.status === "scheduled" && approval.scheduled_post_at ? `Scheduled for ${formatScheduledTime(approval.scheduled_post_at)} CT` : approval.status === "posted" ? "✓ Posted" : approval.status === "ready_to_use" ? "Ready to Use" : approval.status}</span>}
                       <span style={{ fontFamily:"'Inter', sans-serif", color:"rgba(255,255,255,0.4)", fontSize:"0.6rem" }}>{timeAgo(approval.created_at)}</span>
                     </div>
                   </div>
@@ -2678,11 +2678,11 @@ export default function AdminApprovals() {
                       back through Kwame for an actual revision + review cycle, not a
                       chat thread. Only shows for a grant card genuinely still needing
                       her input after 2 automatic cycles. */}
-                  {approval.category === "grant_applications" && approval.status === "needs_your_input" && !(approval.output ?? "").includes("**No draft written.**") && (() => {
+                  {approval.category === "grant_applications" && (approval.status === "needs_your_input" || approval.status === "pending") && !(approval.output ?? "").includes("**No draft written.**") && (() => {
                     const gi = getGrantInput(approval.id);
                     return (
                       <div style={{ margin:"0 1rem 1rem", padding:"0.875rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:8 }}>
-                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>Give Kwame what he needs</p>
+                        <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>DeAnna's Finished Draft</p>
                         <textarea value={gi.text} onChange={e => setGrantInput(approval.id, { text:e.target.value })} disabled={gi.loading}
                           placeholder="Paste or type the real testimonial, figure, or detail the review said was missing..."
                           rows={3}

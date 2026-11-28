@@ -418,6 +418,14 @@ export function buildGrantHeader(cleanName: string, grantRow: Record<string, unk
   return lines.join('\n');
 }
 
+// R.E.A.L. spelled out under the header of every Kwame draft card and DeAnna's finished draft.
+// The four words come from REAL_STANDARD in agentKnowledge.ts.
+export const REAL_SPELLED_OUT = 'R.E.A.L. = Relatable, Educational, Actionable, Lovable';
+
+export function buildDraftHeader(cleanName: string, grantRow: Record<string, unknown> | null): string {
+  return `${buildGrantHeader(cleanName, grantRow)}\n\n${REAL_SPELLED_OUT}`;
+}
+
 const PLACEHOLDER = /\[DEANNA:\s*([^\]]*)\]/g;
 
 // The complete application, question by question. Returns null when the funder's
@@ -452,7 +460,7 @@ export function buildStuckCardOutput(cleanName: string, grantRow: Record<string,
   const body = buildApplicationBody(draft, grantRow);
   if (!body) return null;
   const why = summary && summary !== 'none' ? `\n\n**Waiting on:** ${summary}` : '';
-  return `${buildGrantHeader(cleanName, grantRow)}${why}\n\n---\n\n${body}`;
+  return `${buildDraftHeader(cleanName, grantRow)}${why}\n\n---\n\n${body}`;
 }
 
 // Card for a grant where the funder's questions are not available, so no draft was written.
