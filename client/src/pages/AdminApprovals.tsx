@@ -773,6 +773,8 @@ export default function AdminApprovals() {
   const [grantOpps, setGrantOpps]             = useState<{id:string;opportunity_name:string;funder:string;amount_range:string;deadline:string;fit_score:number;source_url:string;status:string;personal_story?:string;testimonials_success_stories?:string}[]>([]);
   const [draftingGrant, setDraftingGrant]     = useState<string | null>(null);
   const [draftedGrantMsg, setDraftedGrantMsg] = useState<Record<string, string>>({});
+  const [confirmDeleteGrant, setConfirmDeleteGrant] = useState<string | null>(null);
+  const [deletingGrant, setDeletingGrant]     = useState<string | null>(null);
   const [platformToggles, setPlatformToggles] = useState<Record<string, Record<string, boolean>>>({});
   // Contributor avatars — pulled live from Supabase `agents` table, keyed by
   // agents.name (which matches approval.agent_name exactly). Never hardcode a
@@ -847,6 +849,32 @@ export default function AdminApprovals() {
       .order("opportunity_name", { ascending: true });
     if (error) { console.error("[grant opportunities]", error); return; }
     setGrantOpps((data as typeof grantOpps) || []);
+  };
+
+  // "Delete This Grant" -- the grant is marked deleted (hidden everywhere, still on file so Adaeze never
+  // adds it back) and its text comes off the card. The page cannot change grant_opportunities itself, so
+  // /api/delete-grant does it for DeAnna's admin login.
+  const handleDeleteGrant = async (opportunity: { id: string; opportunity_name: string }, approvalId: string) => {
+    setDeletingGrant(opportunity.id);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch("/api/delete-grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+        body: JSON.stringify({ grant_id: opportunity.id, approval_id: approvalId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.ok) {
+        setConfirmDeleteGrant(null);
+        await fetchGrantOpps();
+        await fetchApprovals();
+      } else {
+        setDraftedGrantMsg(prev => ({ ...prev, [opportunity.opportunity_name]: `Failed: ${body.error || res.statusText}` }));
+      }
+    } catch {
+      setDraftedGrantMsg(prev => ({ ...prev, [opportunity.opportunity_name]: "Failed -- network error." }));
+    }
+    setDeletingGrant(null);
   };
 
   const handleDraftGrant = async (opportunity: { id: string; opportunity_name: string; personal_story?: string; testimonials_success_stories?: string }) => {
@@ -2335,6 +2363,32 @@ export default function AdminApprovals() {
                                     >
                                       {draftingGrant === matched.opportunity_name ? "Saving & sending to Kwame..." : "Have Kwame Draft This"}
                                     </button>
+                                    {confirmDeleteGrant === matched.id ? (
+                                      <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginTop:"0.5rem", flexWrap:"wrap" as const }}>
+                                        <span style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, color:"#C2185B" }}>Delete this grant?</span>
+                                        <button
+                                          onClick={() => handleDeleteGrant(matched, approval.id)}
+                                          disabled={deletingGrant === matched.id}
+                                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.35rem 0.7rem", borderRadius:6, border:"none", background:"#C2185B", color:"#FFFFFF", cursor: deletingGrant === matched.id ? "wait" : "pointer" }}
+                                        >
+                                          {deletingGrant === matched.id ? "Deleting..." : "Yes, delete"}
+                                        </button>
+                                        <button
+                                          onClick={() => setConfirmDeleteGrant(null)}
+                                          disabled={deletingGrant === matched.id}
+                                          style={{ fontFamily:"'Montserrat', sans-serif", fontSize:"0.6rem", fontWeight:700, padding:"0.35rem 0.7rem", borderRadius:6, border:"1px solid rgba(10,35,66,0.25)", background:"#FFFFFF", color:"#0A2342", cursor:"pointer" }}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => setConfirmDeleteGrant(matched.id)}
+                                        style={{ display:"block", width:"100%", marginTop:"0.5rem", fontFamily:"'Montserrat', sans-serif", fontSize:"0.62rem", fontWeight:700, padding:"0.45rem 0.75rem", borderRadius:6, cursor:"pointer", border:"1px solid rgba(194,24,91,0.45)", background:"#FFFFFF", color:"#C2185B" }}
+                                      >
+                                        Delete This Grant
+                                      </button>
+                                    )}
                                     {draftedGrantMsg[matched.opportunity_name] && (
                                       <p style={{ fontFamily:"'Inter', sans-serif", fontSize:"0.62rem", color:draftedGrantMsg[matched.opportunity_name].startsWith("Failed") ? "#C2185B" : "#2E7D32", margin:"0.4rem 0 0" }}>
                                         {draftedGrantMsg[matched.opportunity_name]}
