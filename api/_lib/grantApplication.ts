@@ -359,6 +359,18 @@ export function funderQuestionsReviewerNote(grantRow: Record<string, unknown> | 
   return `\n\nTHE FUNDER'S APPLICATION QUESTIONS: this draft is organized under the funder's own numbered questions, listed here. The question lines in the draft are the funder's wording and stay as they are. Review the answers under each question, and check that every numbered question has an answer that addresses it. Ask for changes to answers, within the questions the funder asks.\n${list}`;
 }
 
+// Chloe's R.E.A.L. check, scoped to the funder's questions. R.E.A.L. stays the standard
+// for how each answer is written; the funder's questions decide what the application holds.
+export function funderQuestionsChloeScope(grantRow: Record<string, unknown> | null): string {
+  if (getFunderQuestions(grantRow).length === 0) return '';
+  return `\n\nSCOPE OF YOUR REVIEW: R.E.A.L. is judged inside the answers to the funder's numbered questions. An R.E.A.L. element counts where a funder question gives it room. An element with no funder question to live in is left alone, and the application keeps exactly the funder's questions. Each correction note names the question number it belongs to and asks for changes to that answer.`;
+}
+
+export function chloeHitsRealMeaning(grantRow: Record<string, unknown> | null): string {
+  if (getFunderQuestions(grantRow).length === 0) return 'true only if the draft fully satisfies all four R.E.A.L. elements';
+  return "true when every R.E.A.L. element that a funder question gives room for is satisfied in the answers";
+}
+
 // ─── Assembling and reading the draft ────────────────────────────────────────
 
 const QUESTION_LINE = /^Question (\d+):\s*(.*)$/;
