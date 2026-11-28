@@ -11,6 +11,11 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { courseCardLabel } from "./_lib/simoneCourse.js";
 export const config = { maxDuration: 300 };
 import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getGoverningDocuments, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS, rewriteMaxTokens } from './_lib/agentKnowledge.js';
+import {
+  findFunderQuestions, withFunderQuestions, getFunderQuestions, funderQuestionsForKwame, funderQuestionsReviewerNote,
+  DEANNA_MARKER_FOR_FUNDER_QUESTIONS, assembleApplicationDraft, parseApplicationDraft, parseAnswersJson,
+  buildGrantHeader, buildApplicationBody, buildStuckCardOutput, buildNoQuestionsCardOutput,
+} from './_lib/grantApplication.js';
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -318,7 +323,7 @@ ${currentContent}`,
 // inputs, that contradicts hits_real:false and is overridden.
 async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chloeCorrections: string, grantRow: Record<string, unknown> | null): Promise<{ hitsReal: boolean; notes: string; summary: string }> {
   try {
-    const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Grant Application Reviewer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, detailed, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true),\n  \"summary\": string (ONE short, plain-English sentence for DeAnna describing what's missing, in her language, not Kwame's -- no R.E.A.L. element names, no jargon, no technical detail -- empty string if hits_real is true)\n}`;
+    const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Grant Application Reviewer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.${funderQuestionsReviewerNote(grantRow)}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (true only if the draft fully satisfies all four R.E.A.L. elements),\n  \"correction_notes\": string (specific, detailed, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true),\n  \"summary\": string (ONE short, plain-English sentence for DeAnna describing what's missing, in her language, not Kwame's -- no R.E.A.L. element names, no jargon, no technical detail -- empty string if hits_real is true)\n}`;
     const chloeRaw = await callAnthropic(chloePrompt, 1000);
     const chloeParsed = extractJSON(chloeRaw) as { hits_real?: boolean; correction_notes?: string; summary?: string } | null;
     let hitsReal = chloeParsed?.hits_real === true;
@@ -361,6 +366,19 @@ async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chlo
 // gap parked until this grant pipeline ships.)
 async function runKwameRevision(currentDraft: string, reviewerName: string, reviewerNotes: string, factsBlock: string, kwameCorrections: string, grantRow: Record<string, unknown> | null, agentKnowledge: string): Promise<string> {
   try {
+    // When the funder's questions are saved, the draft is organized under them and
+    // Kwame revises answers by number. The funder's question lines are written by
+    // the system from the saved list, so a revision never changes them.
+    const funderQs = getFunderQuestions(grantRow);
+    if (funderQs.length > 0) {
+      const answerPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). ${reviewerName} reviewed your draft and found gaps. Revise your answers to close them fully.\n\n${reviewerName.toUpperCase()}'S NOTES:\n${reviewerNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_FUNDER_QUESTIONS}\n\n${funderQuestionsForKwame(grantRow)}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nReturn each answer you revised, keyed by its question number. Answers you leave out stay exactly as they are.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"answers\": [{\"number\": 1, \"answer\": string (the revised answer text for that numbered question)}]\n}`;
+      const answerRaw = await callAnthropic(answerPrompt, GRANT_CONTENT_MAX_TOKENS);
+      const revised = parseAnswersJson(answerRaw);
+      if (revised.size === 0) return currentDraft;
+      const merged = parseApplicationDraft(currentDraft);
+      revised.forEach((text, number) => merged.set(number, text));
+      return assembleApplicationDraft(funderQs, merged);
+    }
     const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). ${reviewerName} reviewed your draft and found gaps. Revise your draft to close them fully.\n\n${reviewerName.toUpperCase()}'S NOTES:\n${reviewerNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap ${reviewerName} found)\n}`;
     const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS);
     const rewriteParsed = extractJSON(rewriteRaw) as { application_draft?: string } | null;
@@ -457,6 +475,40 @@ function buildNeedsFeedbackOutput(summary: string, questions: { question: string
   if (questions.length === 0) return `Needs Your Feedback — ${summary}`;
   const qBlocks = questions.map(q => `**Question:** ${q.question}\n**From Kwame's draft:** ${q.kwameContext}`).join('\n\n');
   return `**Needs Your Feedback**\n\n${qBlocks}`;
+}
+
+// One "Grant Application Drafts" card per grant -- updates the existing card for
+// this grant when there is one, otherwise creates it. Context on the card holds
+// the CSQ row id, so api/grant-resume.ts can go straight to the right draft.
+async function upsertGrantNeedsInputCard(cleanName: string, output: string, csqId: string, item: Record<string, unknown>): Promise<void> {
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+  const existingCardId = await findApprovalByTitle('grant_applications', cleanName);
+  if (existingCardId) {
+    await dbUpdate("approvals", existingCardId, {
+      output,
+      status: "needs_your_input",
+      task_brief: `${cleanName} — Needs Attention | ${today}`,
+      context: csqId,
+      notify_deanna: true,
+    });
+    return;
+  }
+  await dbInsert("approvals", {
+    source: "kwame_grant_stuck",
+    trigger_type: item.task ?? 'grant_application_draft',
+    agent_name: item.agent_name ?? 'Kwame Asante',
+    agent_role: item.division ?? 'Revenue, Growth & Sales',
+    division: item.division ?? 'Revenue, Growth & Sales',
+    task_brief: `${cleanName} — Needs Attention | ${today}`,
+    output,
+    status: "needs_your_input",
+    notify_deanna: true,
+    priority: "high",
+    category: "grant_applications",
+    platform: null,
+    title: cleanName,
+    context: csqId,
+  });
 }
 
 // ─── Step 2: Governance Panel (Haiku) ────────────────────────────────────────
@@ -836,11 +888,38 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         console.error('[on-demand] Kwame research call failed, writing from general knowledge instead:', error);
       }
 
-      const draftPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrectionsForDraft}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC) — DeAnna R. Upshaw, Leadership Strategist and AI Authority.\n\nGround every specific claim in these real facts about the business:\n${factsBlockForDraft}\n\nDraft an application for this specific grant opportunity, which DeAnna has personally reviewed and selected:\nOPPORTUNITY: ${grantRow?.opportunity_name}\nFUNDER: ${grantRow?.funder}\nAMOUNT: ${grantRow?.amount_range}\nELIGIBILITY: ${grantRow?.eligibility}\nDEADLINE: ${grantRow?.deadline}\nSOURCE: ${grantRow?.source_url}\n\nHere is what's already been researched about this specific funder -- use it directly, it's already gathered:\n${research || '(research unavailable this run -- write from the facts above and general knowledge of grant applications)'}\n\nWrite this application to satisfy the R.E.A.L. standard:\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach, and write fully original content in your own words for this specific funder:\n${REAL_FUNDED_EXAMPLE}\n\nUse the mission, track record, budget categories, personal story, and testimonials/success stories given above, plus the funder research above, as the real facts behind each R.E.A.L. element. Track record gives you real aggregate facts only -- how many clients, which categories, aggregate outcomes -- use it only for aggregate claims like these, never to construct an individual client's specific scene, quote, or before-and-after story. Any individual client story, scene, or quote may only come from the personal story and testimonials/success stories given above, used close to verbatim -- never invented, and never built out from a category mentioned in track record. If a section calls for an individual story and none is available above, follow the placeholder rule below instead of inventing one. Describe what the frameworks are designed to deliver in forward-looking language. Build the closing from whichever facts are strongest among personal story, testimonials, mission, track record, and budget categories.\n\n${DEANNA_MARKER_FOR_KWAME}\n\nWrite the application content in plain text, matching exactly what the funder research above says their application asks for -- their specific sections, questions, and word limits.\n\nAlso determine how this grant is actually submitted, using the funder research above: if a direct application email address was found, use it exactly. Otherwise mark it as a portal submission.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (the full application content, plain text, ready for DeAnna to review),\n  \"submission_method\": \"email\" | \"portal\",\n  \"submission_email\": string or null (only if submission_method is \"email\" and a real address was found)\n}`;
-      const draftRaw = await callAnthropic(draftPrompt, GRANT_CONTENT_MAX_TOKENS);
-      const draftParsed = extractJSON(draftRaw) as { application_draft?: string; submission_method?: string; submission_email?: string } | null;
+      // The funder's own application questions. Read from the funder's pages in
+      // full and saved on the grant row (reused on later drafts of this grant).
+      // Kwame answers exactly these. With none found, no draft is written.
+      const funderResult = await findFunderQuestions(grantRow, research);
+      grantRow = withFunderQuestions(grantRow, funderResult);
+      if (funderResult.questions.length === 0) {
+        const noQsName = String(initialItem?.context ?? '');
+        const noQsSummary = funderResult.status === 'portal_only'
+          ? "This funder shows its application questions only inside its own portal, so no draft was written."
+          : "The funder's application questions were not found, so no draft was written.";
+        await dbUpdate("chief_of_staff_queue", currentId, {
+          raw_output: `No draft written. ${funderResult.note}`,
+          isabella_flags: noQsSummary,
+          correction_notes: funderResult.note,
+          status: "needs_your_input",
+          governance_cleared: false,
+        });
+        await upsertGrantNeedsInputCard(noQsName, buildNoQuestionsCardOutput(noQsName, grantRow, funderResult), currentId, initialItem ?? {});
+        // Back to the list of grants so the draft can be started again later.
+        await dbUpdate("grant_opportunities", String(grantRow?.id ?? ''), { status: 'new' });
+        console.warn(`[on-demand] ⏸ No draft written for ${noQsName}: ${funderResult.note}`);
+        await releaseLock();
+        res.status(200).json({ success: false, reason: "funder_questions_not_found", flags: noQsSummary });
+        return;
+      }
 
-      if (!draftParsed?.application_draft) {
+      const draftPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrectionsForDraft}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC) — DeAnna R. Upshaw, Leadership Strategist and AI Authority.\n\nGround every specific claim in these real facts about the business:\n${factsBlockForDraft}\n\nDraft an application for this specific grant opportunity, which DeAnna has personally reviewed and selected:\nOPPORTUNITY: ${grantRow?.opportunity_name}\nFUNDER: ${grantRow?.funder}\nAMOUNT: ${grantRow?.amount_range}\nELIGIBILITY: ${grantRow?.eligibility}\nDEADLINE: ${grantRow?.deadline}\nSOURCE: ${grantRow?.source_url}\n\nHere is what's already been researched about this specific funder -- use it directly, it's already gathered:\n${research || '(research unavailable this run -- write from the facts above and general knowledge of grant applications)'}\n\nWrite this application to satisfy the R.E.A.L. standard:\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach, and write fully original content in your own words for this specific funder:\n${REAL_FUNDED_EXAMPLE}\n\nUse the mission, track record, budget categories, personal story, and testimonials/success stories given above, plus the funder research above, as the real facts behind each R.E.A.L. element. Track record gives you real aggregate facts only -- how many clients, which categories, aggregate outcomes -- use it only for aggregate claims like these, never to construct an individual client's specific scene, quote, or before-and-after story. Any individual client story, scene, or quote may only come from the personal story and testimonials/success stories given above, used close to verbatim -- never invented, and never built out from a category mentioned in track record. If a section calls for an individual story and none is available above, follow the placeholder rule below instead of inventing one. Describe what the frameworks are designed to deliver in forward-looking language. Build the closing from whichever facts are strongest among personal story, testimonials, mission, track record, and budget categories.\n\n${DEANNA_MARKER_FOR_FUNDER_QUESTIONS}\n\n${funderQuestionsForKwame(grantRow)}\n\nAlso determine how this grant is actually submitted, using the funder research above: if a direct application email address was found, use it exactly. Otherwise mark it as a portal submission.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"answers\": [{\"number\": 1, \"answer\": string (the answer text for that numbered funder question, plain text)}],\n  \"submission_method\": \"email\" | \"portal\",\n  \"submission_email\": string or null (only if submission_method is \"email\" and a real address was found)\n}`;
+      const draftRaw = await callAnthropic(draftPrompt, GRANT_CONTENT_MAX_TOKENS);
+      const draftParsed = extractJSON(draftRaw) as { submission_method?: string; submission_email?: string } | null;
+      const draftAnswers = parseAnswersJson(draftRaw);
+
+      if (!draftParsed || draftAnswers.size === 0) {
         console.error(`[on-demand] Kwame draft failed to generate. Raw response (first 500 chars): ${draftRaw.slice(0, 500)}`);
         await dbUpdate("chief_of_staff_queue", currentId, {
           status: "rejected",
@@ -861,7 +940,7 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
       // run's result instead of the pre-draft value.
       grantRow = { ...grantRow, submission_method: submissionMethod, submission_email: draftParsed.submission_email ?? null };
 
-      await dbUpdate("chief_of_staff_queue", currentId, { raw_output: String(draftParsed.application_draft) });
+      await dbUpdate("chief_of_staff_queue", currentId, { raw_output: assembleApplicationDraft(getFunderQuestions(grantRow), draftAnswers) });
       console.log(`[on-demand] ✅ Kwame drafted: ${grantRow?.opportunity_name ?? 'grant application'}`);
     }
 
@@ -891,6 +970,7 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
       ]);
       const factsBlock = `MISSION: ${orgProfileFacts?.mission_statement ?? 'Not provided'}\nBIO/CREDENTIALS: ${orgProfileFacts?.bio_credentials ?? 'Not provided'}\nTRACK RECORD: ${orgProfileFacts?.track_record ?? 'Not provided'}\nBUDGET CATEGORIES: ${orgProfileFacts?.standard_budget_categories ?? 'Not provided'}\nPERSONAL STORY: ${grantRow?.personal_story ?? 'Not provided'}\nTESTIMONIALS/SUCCESS STORIES: ${grantRow?.testimonials_success_stories ?? 'Not provided'}`;
       const cleanName = String(initialItem?.context ?? '') || String(item.context ?? '');
+      verifiedFacts += funderQuestionsReviewerNote(grantRow);
 
       const cycleResult = await runGrantReviewCycle(
         String(item.raw_output ?? ''), agentKnowledge, chloeCorrections, kwameCorrections,
@@ -919,8 +999,8 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
         // the CSQ row id, so grant-resume.ts can find the right draft directly
         // from the card, with no separate lookup.
         const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
-        const questions = await extractQuestionsForDeAnna(cycleResult.finalDraft, cycleResult.lastNotes);
-        const stuckOutput = buildNeedsFeedbackOutput(cycleResult.lastSummary, questions);
+        const stuckOutput = buildStuckCardOutput(cleanName, grantRow, cycleResult.finalDraft, cycleResult.lastSummary)
+          ?? buildNeedsFeedbackOutput(cycleResult.lastSummary, await extractQuestionsForDeAnna(cycleResult.finalDraft, cycleResult.lastNotes));
         const existingCardId = await findApprovalByTitle('grant_applications', cleanName);
         if (existingCardId) {
           await dbUpdate("approvals", existingCardId, {
@@ -963,7 +1043,10 @@ ${DEANNA_MARKER_FOR_REVIEWERS} Treat a properly-marked [DEANNA: ...] placeholder
       const submissionLine = method === 'email'
         ? `**Submission (email):** [Click to open a pre-filled email to ${grantRow?.submission_email}](mailto:${encodeURIComponent(String(grantRow?.submission_email))}?subject=${encodeURIComponent(`Grant Application — DRU AI Consulting — ${cleanName}`)}&body=${encodeURIComponent(currentDraft)}) -- review before sending, nothing sends automatically.`
         : `**Submission (portal):** This funder takes applications through their own site, not email. Apply directly here: ${grantRow?.source_url ?? 'source URL not found'}`;
-      const finalOutput = `**${cleanName}** — ${grantRow?.funder ?? ''}\nAmount: ${grantRow?.amount_range ?? 'See link'} | Deadline: ${grantRow?.deadline ?? ''}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
+      const applicationBody = buildApplicationBody(currentDraft, grantRow);
+      const finalOutput = applicationBody
+        ? `${buildGrantHeader(cleanName, grantRow)}\n\n---\n\n${applicationBody}\n\n---\n\n${submissionLine}`
+        : `**${cleanName}** — ${grantRow?.funder ?? ''}\nAmount: ${grantRow?.amount_range ?? 'See link'} | Deadline: ${grantRow?.deadline ?? ''}\n\n---\n\n${currentDraft}\n\n---\n\n${submissionLine}`;
 
       await dbUpdate("chief_of_staff_queue", currentId, {
         raw_output: finalOutput,

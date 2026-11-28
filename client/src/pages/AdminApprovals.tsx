@@ -2624,7 +2624,7 @@ export default function AdminApprovals() {
                       back through Kwame for an actual revision + review cycle, not a
                       chat thread. Only shows for a grant card genuinely still needing
                       her input after 2 automatic cycles. */}
-                  {approval.category === "grant_applications" && approval.status === "needs_your_input" && (() => {
+                  {approval.category === "grant_applications" && approval.status === "needs_your_input" && !(approval.output ?? "").includes("**No draft written.**") && (() => {
                     const gi = getGrantInput(approval.id);
                     return (
                       <div style={{ margin:"0 1rem 1rem", padding:"0.875rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:8 }}>
