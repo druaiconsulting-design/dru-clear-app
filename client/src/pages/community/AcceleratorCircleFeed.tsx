@@ -154,7 +154,7 @@ export default function AcceleratorCircleFeed({
           {/* ── Header ── */}
           <div style={{ marginBottom: 28, animation: 'ccFadeIn 0.5s ease both' }}>
             <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: '3px', fontWeight: 600, marginBottom: 8 }}>
-              DRU AI LEADERSHIP ECOSYSTEM™
+              DRU AI LEADERSHIP ECOSYSTEM
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div>

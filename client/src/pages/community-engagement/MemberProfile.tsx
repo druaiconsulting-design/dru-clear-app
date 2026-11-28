@@ -168,7 +168,7 @@ export default function MemberProfile({
             {isSelf && profile.pathway_stage && (
               <div style={{ background: '#F7F5EE', border: '1px solid #E8E4DF', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
                 <div style={{ color: '#B8941F', fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '2px', fontWeight: '600', marginBottom: '16px' }}>
-                  DRU AI TRANSFORMATION PATHWAY™
+                  DRU AI TRANSFORMATION PATHWAY
                 </div>
                 {/* Step indicator */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '14px', overflowX: 'auto', paddingBottom: '4px' }}>

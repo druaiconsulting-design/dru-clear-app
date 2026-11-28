@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio-writer.ts
+// DRU AI Leadership Ecosystem — api/hub-studio-writer.ts
 // Micro Drama Studio, Stage 2: the writing steps. Admin only.
 //   POST {action:'story_ideas', project_id, writer, mode, own_idea?, base_id?}
 //        mode: 'new' (three ideas, replaces the list) | 'more' (three more, added) |

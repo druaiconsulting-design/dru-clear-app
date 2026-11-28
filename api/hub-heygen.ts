@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-heygen.ts
+// DRU AI Leadership Ecosystem — api/hub-heygen.ts
 // Video Hub: Travis's videos made with HeyGen (HeyGen's current v3 API).
 //   GET  ?action=options → the agents (name, role, photo from the agents table: each agent's photo is the
 //        face) and the HeyGen voices saved in the team's Shared variables

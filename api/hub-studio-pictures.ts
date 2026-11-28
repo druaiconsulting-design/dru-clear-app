@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio-pictures.ts
+// DRU AI Leadership Ecosystem — api/hub-studio-pictures.ts
 // Micro Drama Studio, Stage 3: the Cast and Storyboard steps. Admin only.
 //   GET  ?view=cast&id=<project>        → characters with their pictures (as links the page can show)
 //   GET  ?view=frames&id=<project>      → scenes with their storyboard frames

@@ -1,5 +1,5 @@
 // ================================================================
-// DRU AI Leadership Ecosystem™ — Ask Agent Endpoint
+// DRU AI Leadership Ecosystem — Ask Agent Endpoint
 // File: api/ask-agent.ts
 // Runtime: Vercel Node.js Serverless
 //

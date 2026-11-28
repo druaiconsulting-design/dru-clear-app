@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/_lib/studioImages.ts
+// DRU AI Leadership Ecosystem — api/_lib/studioImages.ts
 // Pictures for the Micro Drama Studio (Stage 3): OpenAI picture calls, the private studio-media storage,
 // and signed links so the page can show the pictures. Every picture is logged for the Usage tab.
 // Files that start with an underscore are not served as routes.

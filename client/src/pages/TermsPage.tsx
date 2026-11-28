@@ -5,7 +5,7 @@ const TERMS = [
   { title: "Payment", body: "Full payment is required before services commence, except for the Full Ecosystem engagement, which requires 50% at signing and 50% at completion. All prices are in USD." },
   { title: "Non-Refundable Policy", body: "All payments are non-refundable. By completing your purchase, you acknowledge that you have reviewed the service description, understand the scope of your selected engagement, and are committing to your transformation pathway. No refunds will be issued for any reason including unused sessions, scheduling conflicts, or change of mind." },
   { title: "Rescheduling", body: "Sessions may be rescheduled with a minimum of 48 hours' notice. Sessions canceled with less than 48 hours' notice are forfeited." },
-  { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, and AI Sales Mastery™ — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
+  { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA, 5D Leadership, and AI Sales Mastery — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
   { title: "Agreement", body: "Completing payment constitutes your agreement to these terms." },
 ];
 

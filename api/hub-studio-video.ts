@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio-video.ts
+// DRU AI Leadership Ecosystem — api/hub-studio-video.ts
 // Micro Drama Studio, Stage 5: the Video step. Admin only.
 //   GET  ?view=video&id=<project>   → each scene's starting frame, prompt, settings and clip (as links the page can play)
 //   POST {action: ...} — save_clip_settings, make_clip, check_clip, cancel_clip, approve_clip, delete_clip, upload_clip

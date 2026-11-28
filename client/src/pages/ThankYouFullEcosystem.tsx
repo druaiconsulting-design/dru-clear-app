@@ -10,9 +10,9 @@ const NEXT_STEPS = [
 
 const FRAMEWORKS = [
   { name: "DRU CLEAR™", role: "Flagship Anchor · Connects all 4 frameworks", color: "#D4AF37" },
-  { name: "5D Leadership™", role: "5 Dimensions of transformational leadership", color: "#1E88E5" },
-  { name: "5C Cultural DNA™", role: "Culture transformation from the inside out", color: "#C2185B" },
-  { name: "AI Sales Mastery™", role: "DISC + AI revenue acceleration", color: "#C2185B" },
+  { name: "5D Leadership", role: "5 Dimensions of transformational leadership", color: "#1E88E5" },
+  { name: "5C Cultural DNA", role: "Culture transformation from the inside out", color: "#C2185B" },
+  { name: "AI Sales Mastery", role: "DISC + AI revenue acceleration", color: "#C2185B" },
 ];
 
 export default function ThankYouFullEcosystem() {
@@ -37,7 +37,7 @@ export default function ThankYouFullEcosystem() {
         {/* Badge */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
           <span style={{ background: "#C2185B", color: "#FFFFFF", fontFamily: "'Montserrat', sans-serif", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em", padding: "3px 16px", borderRadius: 20, textTransform: "uppercase" }}>
-            The Full DRU AI Leadership Ecosystem™
+            The Full DRU AI Leadership Ecosystem
           </span>
         </div>
 

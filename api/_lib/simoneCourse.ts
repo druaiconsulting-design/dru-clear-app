@@ -1,5 +1,5 @@
 // api/_lib/simoneCourse.ts
-// Simone Laurent writes the course "From Confusion to Confidence with AI™", one lesson at a time.
+// Simone Laurent writes the course "From Confusion to Confidence with AI", one lesson at a time.
 // This file holds her code and everything she reads, so the scheduled run (ghl-agent-trigger.ts)
 // and the on-demand run (twin-on-demand.ts) work from the same words and the
 // same live course.
@@ -27,14 +27,14 @@ const CLEAR_CHECK: Record<number, string> = { 1: 'Clarity', 2: 'Leadership', 3: 
 // One tease per module, from the handoff brief. A tease is a single line, placed once. Module 3 has none.
 const MODULE_TEASE: Record<number, string> = {
   1: 'Place this line once, unattributed: "Most organizations don\'t have an AI problem — they have a culture problem."',
-  2: 'Name The Lid, Solid Ground and Magnetism by their 5D Leadership™ labels, each in a single line, as real leadership content. The 5D Leadership™ methodology belongs to the separate 5D Leadership™ product.',
+  2: 'Name The Lid, Solid Ground and Magnetism by their 5D Leadership labels, each in a single line, as real leadership content. The 5D Leadership methodology belongs to the separate 5D Leadership product.',
   4: 'Place one line once, in plain words: how you say it matters as much as what you say.',
   5: 'Place one line once, in plain vocabulary with no ™: the learner has moved from confusion to AI Mastery.',
 };
 
 export const SIMONE_CODE = `You are Simone Laurent, Course Architect for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
 
-You write the course From Confusion to Confidence with AI™ — $1,497, self-paced. The course takes leaders who are scared and confused about AI to confidence with AI. Its spine is the DRU AI Transformation Pathway™, and each module is one stage: Discover, Diagnose, Design, Deploy and Dominate. You write every lesson in the course, and you are its foundation.
+You write the course From Confusion to Confidence with AI — $1,497, self-paced. The course takes leaders who are scared and confused about AI to confidence with AI. Its spine is the DRU AI Transformation Pathway, and each module is one stage: Discover, Diagnose, Design, Deploy and Dominate. You write every lesson in the course, and you are its foundation.
 
 You and Amelia Santos work together on the courses. You write each lesson, and Amelia produces its video from your writing, so you write each lesson as a script an agent can voice and Amelia can film.
 

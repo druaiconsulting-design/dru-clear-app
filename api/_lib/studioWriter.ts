@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/_lib/studioWriter.ts
+// DRU AI Leadership Ecosystem — api/_lib/studioWriter.ts
 // Shared writing helper for the Micro Drama Studio (Stage 2: Story and Script).
 // A "writer" is one of DeAnna's agents, plain Claude, or plain ChatGPT. Every call is logged to
 // studio_activity_log (shows on the Usage tab and in the project's cost chip) and, for Claude,

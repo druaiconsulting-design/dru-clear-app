@@ -29,7 +29,7 @@ const TERMS = [
   { title: "Payment", body: "Full payment is required before services commence, except for the Full Ecosystem engagement which requires 50% at signing and 50% at completion. All prices are in USD." },
   { title: "Non-Refundable Policy", body: "All payments are non-refundable. By completing your purchase you acknowledge that you have reviewed the service description, understand the scope of your selected engagement, and are committing to your transformation pathway. No refunds will be issued for any reason including unused sessions, scheduling conflicts, or change of mind." },
   { title: "Rescheduling", body: "Sessions may be rescheduled with a minimum of 48 hours notice. Sessions cancelled with less than 48 hours notice are forfeited." },
-  { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, and AI Sales Mastery™ — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
+  { title: "Intellectual Property", body: "All frameworks, materials, and methodologies — including DRU CLEAR™, 5C Cultural DNA, 5D Leadership, and AI Sales Mastery — are the proprietary intellectual property of DRU AI Consulting. Materials shared during engagements are for client use only and may not be reproduced or redistributed." },
   { title: "Agreement", body: "Completing payment constitutes your agreement to these terms." },
 ];
 
@@ -38,7 +38,7 @@ const FRAMEWORKS = [
     id: "dru-clear", badge: "The Connector", badgeColor: "#D4AF37",
     name: "DRU CLEAR™", tagline: "Align for AI Execution", theme: null,
     image: "/DRU%20CLEAR%20.png", price: "$7,500", paymentUrl: PAYMENT_DRU_CLEAR_URL,
-    intro: "Every organization has a starting point. DRU CLEAR™ is the framework that finds it — and builds the bridge from where you are to where AI can take you.\n\nAs the flagship framework of the DRU AI Leadership Ecosystem™, DRU CLEAR™ is the transformation pathway that connects all four frameworks into a unified, executable strategy. It is not just an assessment — it is a complete AI readiness diagnosis, strategy design, and execution alignment system built for organizations ready to lead in the AI era.",
+    intro: "Every organization has a starting point. DRU CLEAR™ is the framework that finds it — and builds the bridge from where you are to where AI can take you.\n\nAs the flagship framework of the DRU AI Leadership Ecosystem, DRU CLEAR™ is the transformation pathway that connects all four frameworks into a unified, executable strategy. It is not just an assessment — it is a complete AI readiness diagnosis, strategy design, and execution alignment system built for organizations ready to lead in the AI era.",
     dimensions: [
       { label: "Clarity",    desc: "Define your AI vision with precision. Where are you going, why does it matter, and what does success look like across your entire organization?" },
       { label: "Leadership", desc: "Ensure your leaders have the AI fluency, executive sponsorship, and strategic conviction to drive transformation from the top down and the inside out." },
@@ -51,10 +51,10 @@ const FRAMEWORKS = [
   },
   {
     id: "5c-cultural-dna", badge: "Culture", badgeColor: "#C2185B",
-    name: "5C Cultural DNA™", tagline: "Communication · Connection · Collaboration · Coaching · Culture Transformation",
+    name: "5C Cultural DNA", tagline: "Communication · Connection · Collaboration · Coaching · Culture Transformation",
     theme: "Learn IT. Live IT. Lead IT. Leadership Thinking with AI.",
     image: "/5C%20.png", price: "$6,000", paymentUrl: PAYMENT_5C_URL,
-    intro: "Most organizations don't have an AI problem — they have a culture problem. Before any technology can transform a business, the people, communication patterns, and leadership behaviors have to be ready to receive it.\n\nThe 5C Cultural DNA™ framework helps organizations discover and address cultural dysfunction, silos, and communication breakdowns that silently block progress.",
+    intro: "Most organizations don't have an AI problem — they have a culture problem. Before any technology can transform a business, the people, communication patterns, and leadership behaviors have to be ready to receive it.\n\nThe 5C Cultural DNA framework helps organizations discover and address cultural dysfunction, silos, and communication breakdowns that silently block progress.",
     dimensions: [
       { label: "Communication",       desc: "The foundation. How leaders and teams exchange information, share vision, and create clarity around AI strategy across every level of the organization." },
       { label: "Connection",          desc: "The relational layer. Building trust and meaningful relationships between people, departments, and leadership — the human bonds that make collaboration possible." },
@@ -67,9 +67,9 @@ const FRAMEWORKS = [
   },
   {
     id: "5d-leadership", badge: "Leadership", badgeColor: "#1E88E5",
-    name: "5D Leadership™", tagline: "Transformational Leadership Across Five Critical Dimensions",
+    name: "5D Leadership", tagline: "Transformational Leadership Across Five Critical Dimensions",
     theme: null, image: "/5D%20Leadership%20visual%20model%20design.png", price: "$6,500", paymentUrl: PAYMENT_5D_URL,
-    intro: "Most leadership development programs focus on skills. 5D Leadership™ focuses on the whole leader — building from the inside out across five critical dimensions that determine whether leadership actually transforms an organization or just manages it.\n\nThis AI-infused leadership methodology ensures that personal mastery, team effectiveness, organizational strength, and strategic impact all develop together — not in isolation.",
+    intro: "Most leadership development programs focus on skills. 5D Leadership focuses on the whole leader — building from the inside out across five critical dimensions that determine whether leadership actually transforms an organization or just manages it.\n\nThis AI-infused leadership methodology ensures that personal mastery, team effectiveness, organizational strength, and strategic impact all develop together — not in isolation.",
     dimensions: [
       { label: "I. Self",         desc: "Personal mastery. How a leader thinks, decides, and shows up — the foundation everything else is built on." },
       { label: "II. People",      desc: "Relational intelligence. How a leader connects with, develops, and brings out the best in the individuals around them." },
@@ -82,10 +82,10 @@ const FRAMEWORKS = [
   },
   {
     id: "ai-sales-mastery", badge: "Sales", badgeColor: "#C2185B",
-    name: "AI Sales Mastery™", tagline: "DISC Behavioral Insights + AI for Revenue Acceleration",
+    name: "AI Sales Mastery", tagline: "DISC Behavioral Insights + AI for Revenue Acceleration",
     theme: "Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.",
     image: "/AI%20Sales%20Mastery%20framework%20infographic.png", price: "$6,000", paymentUrl: PAYMENT_AI_SALES_URL,
-    intro: "The future of sales is not louder — it's smarter. AI Sales Mastery™ combines the proven power of DISC behavioral insights with AI to create a sales approach that feels natural, builds trust, and accelerates revenue without pressure tactics or guesswork.\n\nWhen you understand how your client thinks, decides, and communicates — and you use AI to personalize that understanding at scale — selling stops feeling like selling.",
+    intro: "The future of sales is not louder — it's smarter. AI Sales Mastery combines the proven power of DISC behavioral insights with AI to create a sales approach that feels natural, builds trust, and accelerates revenue without pressure tactics or guesswork.\n\nWhen you understand how your client thinks, decides, and communicates — and you use AI to personalize that understanding at scale — selling stops feeling like selling.",
     dimensions: [
       { label: "Hyper-Personalized Outreach at Scale", desc: "Reach the right person with the right message at the right time — every time — without losing the human touch." },
       { label: "Speak Your Client's Decision Language",  desc: "Every buyer has a behavioral style that drives how they evaluate, decide, and commit. DISC gives you the map. AI gives you the speed." },
@@ -129,7 +129,7 @@ function PathwaySection() {
   return (
     <div style={{ textAlign: "center" }}>
       <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "0.92rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#D4AF37", marginBottom: 12 }}>
-        The DRU AI Transformation Pathway™
+        The DRU AI Transformation Pathway
       </p>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 0 }}>
         {stages.map((stage, i, arr) => (
@@ -251,7 +251,7 @@ export default function Frameworks() {
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "rgba(10,35,66,0.45)", fontSize: "0.75rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Your Investment in Transformation</p>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.85rem", fontWeight: 700, lineHeight: 1.25, marginBottom: "0.875rem" }}>Every transformation begins<br />with clarity.</h1>
           <p style={{ color: "rgba(10,35,66,0.6)", fontFamily: "'Inter', sans-serif", fontSize: "0.82rem", lineHeight: 1.8, maxWidth: 500, margin: "0 auto 1.5rem" }}>
-            The DRU AI Transformation Pathway™ is a proven, sequential journey that moves you from awareness to full organizational activation. Every client walks the same five stages — no shortcuts, no skipped steps.
+            The DRU AI Transformation Pathway is a proven, sequential journey that moves you from awareness to full organizational activation. Every client walks the same five stages — no shortcuts, no skipped steps.
           </p>
           <PathwaySection />
         </div>
@@ -305,7 +305,7 @@ export default function Frameworks() {
           <div style={pRow}>
             <div style={{ flex: 1 }}>
               <p style={pName}>Strategic Diagnostic (SD)</p>
-              <p style={pSub}>90-min Zoom · Review of 5D Leadership™ + DRU CLEAR™</p>
+              <p style={pSub}>90-min Zoom · Review of 5D Leadership + DRU CLEAR™</p>
               <span style={pReportTag}>Includes: Strategic AI Insight Report</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
@@ -344,9 +344,9 @@ export default function Frameworks() {
           </div>
           {[
             { name: "DRU CLEAR™",       sub: "Flagship · Connects all 4 frameworks", price: "$7,500", gold: true },
-            { name: "5D Leadership™",   sub: "5 Dimensions of leadership",            price: "$6,500", gold: false },
-            { name: "5C Cultural DNA™", sub: "Culture transformation",                price: "$6,000", gold: false },
-            { name: "AI Sales Mastery™",sub: "DISC + AI revenue acceleration",        price: "$6,000", gold: false },
+            { name: "5D Leadership",   sub: "5 Dimensions of leadership",            price: "$6,500", gold: false },
+            { name: "5C Cultural DNA", sub: "Culture transformation",                price: "$6,000", gold: false },
+            { name: "AI Sales Mastery",sub: "DISC + AI revenue acceleration",        price: "$6,000", gold: false },
           ].map((fw) => (
             <div key={fw.name} style={fw.gold ? pRowGold : pRow}>
               <div style={{ flex: 1 }}>
@@ -405,7 +405,7 @@ export default function Frameworks() {
 
         {/* Framework Detail Cards */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>DRU AI Leadership Ecosystem™</p>
+          <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#D4AF37", fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>DRU AI Leadership Ecosystem</p>
           <h2 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "1.75rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.75rem" }}>Explore the Frameworks</h2>
           <p style={{ color: "rgba(10,35,66,0.65)", fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", lineHeight: 1.7, maxWidth: 500, margin: "0 auto" }}>
             Original IP designed to move organizations from AI uncertainty to AI authority. Each framework can be engaged individually, in pairs, or as a complete ecosystem.

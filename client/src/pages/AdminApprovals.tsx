@@ -175,7 +175,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
     { agent_id:"kwame",   agent_name:"Kwame Asante",     role:"Proposal Writer" },
     { agent_id:"adaeze",  agent_name:"Adaeze Nwosu",     role:"Grant Strategist" },
     { agent_id:"tariq",   agent_name:"Tariq Oladele",    role:"Revenue Acceleration Intelligence" },
-    { agent_id:"sasha",   agent_name:"Sasha Kim",        role:"AI Sales Mastery™ Intelligence" },
+    { agent_id:"sasha",   agent_name:"Sasha Kim",        role:"AI Sales Mastery Intelligence" },
   ],
   "Content & Brand": [
     { agent_id:"camila",  agent_name:"Camila Flores",    role:"Social Media Strategist" },
@@ -226,7 +226,7 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   ],
   "Community Connection": [
     { agent_id:"victor",     agent_name:"Victor",      role:"Community Engagement" },
-    { agent_id:"sasha",      agent_name:"Sasha",       role:"AI Sales Mastery™" },
+    { agent_id:"sasha",      agent_name:"Sasha",       role:"AI Sales Mastery" },
     { agent_id:"tariq",      agent_name:"Tariq",       role:"Sales Content" },
     { agent_id:"zoe",        agent_name:"Zoe Beaumont",role:"CC Division Leader" },
     { agent_id:"micah",      agent_name:"Micah Santos",role:"Member Experience" },
@@ -234,9 +234,9 @@ const DIVISION_AGENTS: Record<string, { agent_id: string; agent_name: string; ro
   "Social Media Response Team": [
     { agent_id:"solange",     agent_name:"Solange Dupont",   role:"Social Response  Entry Point" },
     { agent_id:"dominique",   agent_name:"Dominique Carter", role:"DRU CLEAR™ Social Response" },
-    { agent_id:"isaiah_webb", agent_name:"Isaiah Webb",      role:"5D Leadership™ Social Response" },
-    { agent_id:"nadia",       agent_name:"Nadia Osei",       role:"5C Cultural DNA™ Social Response" },
-    { agent_id:"elijah",      agent_name:"Elijah Brooks",    role:"AI Sales Mastery™ Social Response" },
+    { agent_id:"isaiah_webb", agent_name:"Isaiah Webb",      role:"5D Leadership Social Response" },
+    { agent_id:"nadia",       agent_name:"Nadia Osei",       role:"5C Cultural DNA Social Response" },
+    { agent_id:"elijah",      agent_name:"Elijah Brooks",    role:"AI Sales Mastery Social Response" },
   ],
 };
 

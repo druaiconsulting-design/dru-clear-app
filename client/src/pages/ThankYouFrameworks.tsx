@@ -169,7 +169,7 @@ export function ThankYou5D() {
       badgeLabel="Leadership"
       badgeColor="#1E88E5"
       badgeBg="rgba(30,136,229,0.1)"
-      frameworkName="5D Leadership™"
+      frameworkName="5D Leadership"
       tagline="Transformational Leadership Across Five Critical Dimensions"
       sessionCount={3}
       price="$6,500"
@@ -183,7 +183,7 @@ export function ThankYou5C() {
       badgeLabel="Culture"
       badgeColor="#C2185B"
       badgeBg="rgba(194,24,91,0.1)"
-      frameworkName="5C Cultural DNA™"
+      frameworkName="5C Cultural DNA"
       tagline="Communication · Connection · Collaboration · Coaching · Culture Transformation"
       sessionCount={3}
       price="$6,000"
@@ -197,7 +197,7 @@ export function ThankYouAISales() {
       badgeLabel="Sales"
       badgeColor="#C2185B"
       badgeBg="rgba(194,24,91,0.1)"
-      frameworkName="AI Sales Mastery™"
+      frameworkName="AI Sales Mastery"
       tagline="DISC Behavioral Insights + AI for Revenue Acceleration"
       sessionCount={3}
       price="$6,000"

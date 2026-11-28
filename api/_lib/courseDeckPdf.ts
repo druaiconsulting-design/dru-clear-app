@@ -108,7 +108,7 @@ function slideHtml(sl: DeckSlide, index: number, total: number, heading: string,
   const foot = `<div class="foot">DRU AI Consulting</div>${num}`;
   if (index === 0 && sl.kind === 'content') {
     const sub = sl.lines.map(l => `<p>${esc(l)}</p>`).join('');
-    return `<section class="s cover${hp}"><div class="bar"></div><div class="kicker">${esc(heading || 'From Confusion to Confidence with AI™')}</div><h1 class="fit-title">${esc(sl.title)}</h1><div class="rule"></div><div class="sub fit">${sub}</div>${art}${foot}</section>`;
+    return `<section class="s cover${hp}"><div class="bar"></div><div class="kicker">${esc(heading || 'From Confusion to Confidence with AI')}</div><h1 class="fit-title">${esc(sl.title)}</h1><div class="rule"></div><div class="sub fit">${sub}</div>${art}${foot}</section>`;
   }
   if (sl.kind === 'quiz') {
     const choiceRe = /^([A-D])[.)]\s*(.*)$/i;

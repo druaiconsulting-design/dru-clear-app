@@ -1,5 +1,5 @@
 // ================================================================
-// DRU AI Leadership Ecosystem™ — Training Material Extraction
+// DRU AI Leadership Ecosystem — Training Material Extraction
 // File: api/process-training-doc.ts
 // Runtime: Vercel Node.js Serverless
 //

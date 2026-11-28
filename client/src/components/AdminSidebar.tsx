@@ -209,7 +209,7 @@ export default function AdminSidebar({ collapsed, currentPath, mobileOpen = fals
             ))}
           </nav>
           <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(212,175,55,0.12)', fontFamily: 'Cinzel, serif', fontSize: 9, color: 'rgba(237,232,219,0.25)', letterSpacing: '0.12em', textAlign: 'center', flexShrink: 0 }}>
-            DRU AI LEADERSHIP ECOSYSTEM™
+            DRU AI LEADERSHIP ECOSYSTEM
           </div>
         </aside>
       </>
@@ -249,7 +249,7 @@ export default function AdminSidebar({ collapsed, currentPath, mobileOpen = fals
       </nav>
       {showText && (
         <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(212,175,55,0.12)', fontFamily: 'Cinzel, serif', fontSize: 9, color: 'rgba(237,232,219,0.25)', letterSpacing: '0.12em', textAlign: 'center', flexShrink: 0 }}>
-          DRU AI LEADERSHIP ECOSYSTEM™
+          DRU AI LEADERSHIP ECOSYSTEM
         </div>
       )}
     </aside>

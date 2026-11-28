@@ -705,7 +705,7 @@ function CalculatingScreen({ onDone }: { onDone: () => void }) {
       <div className="gold-spinner" />
       <div className="text-center">
         <p className="text-lg font-medium mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF" }}>Analyzing your responses</p>
-        <p className="text-sm" style={{ color: "rgba(230,230,230,0.6)" }}>across all 5 CLEAR™ pillars...</p>
+        <p className="text-sm" style={{ color: "rgba(230,230,230,0.6)" }}>across all 5 CLEAR pillars...</p>
       </div>
     </div>
   );
@@ -1121,9 +1121,9 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
             <p style={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.9rem", fontFamily: "'Montserrat', sans-serif" }}>Executive Diagnostic</p>
             <p style={{ color: "#D4AF37", fontSize: "1.4rem", fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>$4,997</p>
           </div>
-          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>A premium executive-level diagnostic designed for leaders prepared to implement clarity, complemented by a 90-day AI Roadmap, facilitated with DRU AI Transformation Pathway™ to progression.</p>
+          <p style={{ color: "rgba(230,230,230,0.75)", fontSize: "0.72rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>A premium executive-level diagnostic designed for leaders prepared to implement clarity, complemented by a 90-day AI Roadmap, facilitated with DRU AI Transformation Pathway to progression.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
-            {["Full executive diagnostic (25–35 additional deeper-level Qs)","Review of The DRU AI Leadership Ecosystem™ Four Frameworks","Executive AI Alignment Report (boardroom-ready)","Comprehensive gap analysis, including risk assessment","120-min Zoom executive briefing","Executive-level recommendations + sequencing"].map((item, i) => (
+            {["Full executive diagnostic (25–35 additional deeper-level Qs)","Review of The DRU AI Leadership Ecosystem Four Frameworks","Executive AI Alignment Report (boardroom-ready)","Comprehensive gap analysis, including risk assessment","120-min Zoom executive briefing","Executive-level recommendations + sequencing"].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span style={{ color: "#D4AF37", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
                 <span style={{ color: "#E6E6E6", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>
@@ -1139,7 +1139,7 @@ function DiagnoseScreen({ lead, scores, onSelectStrategic, onSelectExecutive, on
           </div>
           <p style={{ color: "rgba(230,230,230,0.7)", fontSize: "0.72rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>Strategic clarity, leadership, and AI choices. A thorough diagnostic designed to help leaders identify the fundamental gaps that affect alignment and execution.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
-            {["Expanded diagnostic (20–25 additional deeper-level Qs)","Review of The DRU AI Leadership Ecosystem™ Two Frameworks","Strategic AI Insight Report","Top five gaps and priority ranking","90-min Zoom strategy session","Priority findings and strategic direction"].map((item, i) => (
+            {["Expanded diagnostic (20–25 additional deeper-level Qs)","Review of The DRU AI Leadership Ecosystem Two Frameworks","Strategic AI Insight Report","Top five gaps and priority ranking","90-min Zoom strategy session","Priority findings and strategic direction"].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.7rem", marginTop: 1, flexShrink: 0 }}>✓</span>
                 <span style={{ color: "rgba(230,230,230,0.8)", fontSize: "0.7rem", lineHeight: 1.5 }}>{item}</span>

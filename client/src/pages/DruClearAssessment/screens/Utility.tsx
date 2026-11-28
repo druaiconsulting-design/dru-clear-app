@@ -88,7 +88,7 @@ export function CalculatingScreen({ onDone }: { onDone: () => void }) {
       <div className="gold-spinner" />
       <div className="text-center">
         <p className="text-lg font-medium mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF" }}>Analyzing your responses</p>
-        <p className="text-sm" style={{ color: "rgba(230,230,230,0.6)" }}>across all 5 CLEAR™ pillars...</p>
+        <p className="text-sm" style={{ color: "rgba(230,230,230,0.6)" }}>across all 5 CLEAR pillars...</p>
       </div>
     </div>
   );

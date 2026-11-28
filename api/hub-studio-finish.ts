@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio-finish.ts
+// DRU AI Leadership Ecosystem — api/hub-studio-finish.ts
 // Micro Drama Studio, Stage 6: the Finish step. Admin only.
 //   GET  ?view=finish&id=<project> → approved clips, recordings, music, the saved timeline/end card/versions, ad-policy result and exports
 //   POST {action: ...} — save_finish, ad_check, upload_url, register_export, delete_export, export_to_queue

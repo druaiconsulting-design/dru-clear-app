@@ -10,7 +10,7 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_LOCATION_ID = 'gl07I4JnbkGgW8zJprSz';
 export const config = { maxDuration: 300 };
 import { waitUntil } from '@vercel/functions';
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, fetchBrandCopy } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, fetchBrandCopy, FRAMEWORK_NAMES } from './_lib/agentKnowledge.js';
 import { subscribeLink, NIA_SUBSCRIBE_NOTE } from './_lib/subscribeLinks.js';
 import { prepareCamilaWeek, getLatestCamilaBrief } from './_lib/camilaInputs.js';
 import { SIMONE_CODE, COURSE_LESSON_MAX_TOKENS, SIMONE_MODEL, fetchCourse, pickNextLesson, fetchLessonSource, buildCourseReading, lessonTask } from './_lib/simoneCourse.js';
@@ -189,7 +189,7 @@ async function runAdaezeScout(): Promise<{count:number;csqId:string|null}> {
   try {
     const agentKnowledge = await getAgentKnowledge();
     const agentCorrections = await getAgentCorrections('Adaeze Nwosu');
-    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Adaeze Nwosu, Grant Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, Founder/CEO of Dimensional Solns, LLC (a FOR-PROFIT AI leadership & culture consulting business, not a nonprofit). Brand fit: AI adoption/leadership training, women-owned business, 5C Cultural DNA™, 5D Leadership™, DRU CLEAR™ AI Readiness frameworks.\n\nSearch the web broadly (no certification status assumed — search as if broadly eligible) for CURRENTLY OPEN small-business grants, grant contests, or funding programs a for-profit consulting/leadership-training business could realistically apply to. Include an opportunity when its stated eligibility lets a for-profit LLC apply. Federal and nonprofit-foundation grants qualify when the notice lists for-profit businesses or small businesses as eligible applicants. Opportunities restricted to 501(c)(3) nonprofits, universities or governments are left out. Focus on: corporate small-business grant programs, women-owned/minority-owned business grant contests, and small-business funding competitions with open or upcoming application windows.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"opportunity_name\": string,\n      \"funder\": string,\n      \"amount_range\": string,\n      \"eligibility\": string,\n      \"deadline\": string (YYYY-MM-DD if known, else best available description),\n      \"source_url\": string,\n      \"fit_score\": number (1-10, how well this fits DeAnna's brand/business),\n      \"fit_reasoning\": string (1-2 sentences)\n    }\n  ]\n}\nOnly include opportunities you found real, current information on. If you find none, return {\"opportunities\": []}.`;
+    const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Adaeze Nwosu, Grant Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority, Founder/CEO of Dimensional Solns, LLC (a FOR-PROFIT AI leadership & culture consulting business, not a nonprofit). Brand fit: AI adoption/leadership training, women-owned business, 5C Cultural DNA, 5D Leadership, DRU CLEAR™ AI Readiness frameworks.\n\nSearch the web broadly (no certification status assumed — search as if broadly eligible) for CURRENTLY OPEN small-business grants, grant contests, or funding programs a for-profit consulting/leadership-training business could realistically apply to. Include an opportunity when its stated eligibility lets a for-profit LLC apply. Federal and nonprofit-foundation grants qualify when the notice lists for-profit businesses or small businesses as eligible applicants. Opportunities restricted to 501(c)(3) nonprofits, universities or governments are left out. Focus on: corporate small-business grant programs, women-owned/minority-owned business grant contests, and small-business funding competitions with open or upcoming application windows.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"opportunities\": [\n    {\n      \"opportunity_name\": string,\n      \"funder\": string,\n      \"amount_range\": string,\n      \"eligibility\": string,\n      \"deadline\": string (YYYY-MM-DD if known, else best available description),\n      \"source_url\": string,\n      \"fit_score\": number (1-10, how well this fits DeAnna's brand/business),\n      \"fit_reasoning\": string (1-2 sentences)\n    }\n  ]\n}\nOnly include opportunities you found real, current information on. If you find none, return {\"opportunities\": []}.`;
     const [raw, knownSets] = await Promise.all([callAnthropicWithWebSearch(prompt), getKnownGrantTokenSets()]);
     const parsed = extractJSONObject(raw);
     const allFound = Array.isArray(parsed?.opportunities) ? parsed!.opportunities as Record<string,unknown>[] : [];
@@ -453,7 +453,7 @@ async function runAaliyahProspectScout(): Promise<{count:number;csqId:string|nul
               review_url: 'https://app.druaiconsulting.com/admin-approvals',
               sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
               email_subject: `DRU AI Consulting — New Leads Found`,
-              email_body: `${label}\n\nReview:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+              email_body: `${label}\n\nReview:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem`,
             }),
           });
           console.log('[aaliyah] Lead notification sent');
@@ -485,11 +485,7 @@ async function writeToCSQ(record: Record<string,unknown>): Promise<string|null> 
   const data = await res.json(); return data?.[0]?.id ?? null;
 }
 async function fetchBrandMarks(): Promise<string> {
-  const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url||!key) return '';
-  const res = await fetch(`${url}/rest/v1/brand_marks?active=eq.true&order=created_at.asc`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
-  if (!res.ok) return '';
-  const data = await res.json(); return (data as {mark:string}[]).map(m=>m.mark).join(' | ');
+  return FRAMEWORK_NAMES.join(' | ');
 }
 async function getCSQItems(status: string, limit?: number, afterDate?: string): Promise<CSQItem[]> {
   const url = process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -719,9 +715,9 @@ async function runNia(): Promise<string|null> {
   if (['Wednesday','Saturday','Sunday'].includes(dayOfWeek)) {
     const postTypeMap:Record<string,string> = { Wednesday:'thought_leadership', Saturday:'framework_spotlight', Sunday:'executive_insight' };
     const postInstructions:Record<string,string> = {
-      thought_leadership: `Write a 200-300 word LinkedIn post positioning DeAnna R. Upshaw as the AI Authority. Strong hook on line one — no fluff. One sharp insight executives need about AI leadership today. One DRU framework reference (™). End with: assessment.druaiconsulting.com. Max 3 relevant hashtags.`,
-      framework_spotlight: `Write a 200-300 word LinkedIn post spotlighting one proprietary framework (™). Hook: the problem it solves. Body: what shifts when leaders apply it. One concrete real-world example. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
-      executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference (™). CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
+      thought_leadership: `Write a 200-300 word LinkedIn post positioning DeAnna R. Upshaw as the AI Authority. Strong hook on line one — no fluff. One sharp insight executives need about AI leadership today. One DRU framework reference. End with: assessment.druaiconsulting.com. Max 3 relevant hashtags.`,
+      framework_spotlight: `Write a 200-300 word LinkedIn post spotlighting one proprietary framework. Hook: the problem it solves. Body: what shifts when leaders apply it. One concrete real-world example. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
+      executive_insight:   `Write a 200-300 word LinkedIn post on one AI leadership mistake executives are making in 2026. Position DeAnna as the authority who sees it clearly. Confident, direct. One framework reference. CTA: assessment.druaiconsulting.com. Max 3 hashtags.`,
     };
     const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_post','linkedin_post',
       `${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${postInstructions[postTypeMap[dayOfWeek]]} ${NIA_SUBSCRIBE_NOTE}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
@@ -735,11 +731,11 @@ async function runNia(): Promise<string|null> {
     const topics = ['ai_changes_leadership','framework_deep_dive','transformation_story','executive_ai_mistakes','ai_culture_shift'];
     const topic  = topics[new Date().getDate() % topics.length];
     const articleInstructions:Record<string,string> = {
-      ai_changes_leadership: `Write a 500-700 word LinkedIn native article on how AI is reshaping executive leadership in 2026. Scroll-stopping headline. Strong intro. 3-4 sections with subheadings. One DRU framework (™). Closing CTA: "Start your AI readiness assessment → assessment.druaiconsulting.com".`,
-      framework_deep_dive:   `Write a 500-700 word LinkedIn native article doing a deep dive on one proprietary framework (™). What it is, why it exists, what changes when leaders apply it, real-world impact. CTA: assessment.druaiconsulting.com.`,
-      transformation_story:  `Write a 500-700 word LinkedIn native article as a composite client transformation story using the DRU AI Transformation Pathway™. Before → intervention → transformation → measurable shift. Real, not salesy. CTA: assessment.druaiconsulting.com.`,
-      executive_ai_mistakes: `Write a 500-700 word LinkedIn native article on the top mistakes executives make implementing AI. DeAnna as the authority who's seen it firsthand. One framework (™) as the solution lens. CTA: assessment.druaiconsulting.com.`,
-      ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA™. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
+      ai_changes_leadership: `Write a 500-700 word LinkedIn native article on how AI is reshaping executive leadership in 2026. Scroll-stopping headline. Strong intro. 3-4 sections with subheadings. One DRU framework. Closing CTA: "Start your AI readiness assessment → assessment.druaiconsulting.com".`,
+      framework_deep_dive:   `Write a 500-700 word LinkedIn native article doing a deep dive on one proprietary framework. What it is, why it exists, what changes when leaders apply it, real-world impact. CTA: assessment.druaiconsulting.com.`,
+      transformation_story:  `Write a 500-700 word LinkedIn native article as a composite client transformation story using the DRU AI Transformation Pathway. Before → intervention → transformation → measurable shift. Real, not salesy. CTA: assessment.druaiconsulting.com.`,
+      executive_ai_mistakes: `Write a 500-700 word LinkedIn native article on the top mistakes executives make implementing AI. DeAnna as the authority who's seen it firsthand. One framework as the solution lens. CTA: assessment.druaiconsulting.com.`,
+      ai_culture_shift:      `Write a 500-700 word LinkedIn native article on why AI transformation is a culture problem before it's a technology problem. Reference 5C Cultural DNA. Real examples, executive framing. CTA: assessment.druaiconsulting.com.`,
     };
     const csqId = await runAgentToCSQ('nia','Nia Robinson','Marketing','linkedin_article','linkedin_article',
       `## ARTICLE FORMAT — LinkedIn Native Article\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n${strategyContext}\n${articleInstructions[topic]} ${NIA_SUBSCRIBE_NOTE}\n${intelContext}${INTERNAL_NOTES_INSTRUCTION}`,
@@ -752,7 +748,7 @@ async function runNia(): Promise<string|null> {
   if (dayOfWeek === 'Thursday') {
     const topic = camilaBrief
       ? `This week's theme from your content strategy brief — align the Newsletter to the week's direction`
-      : `AI leadership insight grounded in one DRU framework (™) — ${today}`;
+      : `AI leadership insight grounded in one DRU framework — ${today}`;
 
     // Non-member edition — true non-members, GHL tag "non-member"
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_nonmember','newsletter_nonmember',
@@ -761,7 +757,7 @@ async function runNia(): Promise<string|null> {
 
     // Free-Tier edition — joined the portal, hasn't upgraded, GHL tag "free-tier"
     await runAgentToCSQ('nia','Nia Robinson','Marketing','newsletter_freetier','newsletter_freetier',
-      `## LEAD, CLARITY, WIN! Newsletter — Free-Tier Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Free-tier members — executives who completed the assessment and joined the DRU AI Leadership Ecosystem™, but haven't upgraded yet.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Between surface and medium — give them real value, but hold back enough that leveling up still matters. Do not teach full framework application.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (acknowledge they're already part of the community) | One valuable insight, held at partial depth | What's waiting for them at the next level | CTA\nCTA: "Ready to go deeper? Join Navigator — that's how you unlock the full community. → https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
+      `## LEAD, CLARITY, WIN! Newsletter — Free-Tier Edition\n${niaPrefix}You are Nia Robinson, Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\nAUDIENCE: Free-tier members — executives who completed the assessment and joined the DRU AI Leadership Ecosystem, but haven't upgraded yet.\n${EQ_BRAND_LINE}\n${strategyContext}\nDEPTH: Between surface and medium — give them real value, but hold back enough that leveling up still matters. Do not teach full framework application.\nFORMAT: Line 1 is the actual subject text ONLY — never write a label like "Subject:" or "SUBJECT LINE:". The email content begins immediately on the next line — never write "Body:" as a label, and never insert a divider line of dashes/underscores between the subject and the content. | Opening (acknowledge they're already part of the community) | One valuable insight, held at partial depth | What's waiting for them at the next level | CTA\nCTA: "Ready to go deeper? Join Navigator — that's how you unlock the full community. → https://link.druaiconsulting.com/payment-link/69ead3017dd3512d920794b0"\nTOPIC: ${topic}${INTERNAL_NOTES_INSTRUCTION}`,
       'high',0,null,1000,'claude-haiku-4-5-20251001');
 
     // Navigator edition
@@ -1123,8 +1119,8 @@ async function fetchSeoData(): Promise<string> {
 // that actually exist. Prevents inventing tiers (e.g. a "Live Cohort") that
 // were never built.
 const REAL_PRICING_FACTS = `CONFIRMED REAL PRICING — the only course/diagnostic facts that exist; never reference any other tier, format, or price:
-- Course: "From Confusion to Confidence with AI™" — $1,497, self-paced. This is the ONLY course and the ONLY price — no live cohort, no other format or tier exists.
-- Strategic Diagnostic: $3,497 (90-minute Zoom session, covers 5D Leadership™ + DRU CLEAR™)
+- Course: "From Confusion to Confidence with AI" — $1,497, self-paced. This is the ONLY course and the ONLY price — no live cohort, no other format or tier exists.
+- Strategic Diagnostic: $3,497 (90-minute Zoom session, covers 5D Leadership + DRU CLEAR™)
 - Executive Diagnostic: $4,997 (120-minute Zoom session, covers all 4 frameworks, positioned as "Best Value")`;
 
 async function runLuca(): Promise<string|null> {
@@ -1238,7 +1234,7 @@ async function runKhalid(): Promise<string|null> {
   const sofiaFindings = await getCrossRead(['sofia'], 1);
   const sofiaSection = sofiaFindings ? `SOFIA PETROV'S LATEST TEXAS LAW FINDINGS:\n${sofiaFindings}` : "No Texas law findings from Sofia Petrov on record.";
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('khalid','Khalid Hassan','AI Governance','daily_disclaimer_review','disclaimer_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Khalid Hassan, Disclaimer Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${sofiaSection}\n\nReview each disclaimer against Sofia Petrov's Texas law findings and the three governing documents. For each, indicate the potential risk and create an action plan for correction. Disclaimer wording is added when Sofia's findings show a law change.\n\n**AI-Generated Content Disclaimer** — Potential risk and action plan for correction.\n**Course Disclaimer** — For From Confusion to Confidence with AI™. Potential risk and action plan for correction.\n**Consulting Disclaimer** — For Strategic Diagnostic™ and Executive Diagnostic™. Potential risk and action plan for correction.\n**Today's Action** — The highest-risk NEW disclaimer gap. If nothing new: "No new disclaimer gaps today."\n\nFormat: 200 words or fewer. Write in first person as Khalid Hassan.`,'normal',0,null,1500);
+  return await runAgentToCSQ('khalid','Khalid Hassan','AI Governance','daily_disclaimer_review','disclaimer_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Khalid Hassan, Disclaimer Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${sofiaSection}\n\nReview each disclaimer against Sofia Petrov's Texas law findings and the three governing documents. For each, indicate the potential risk and create an action plan for correction. Disclaimer wording is added when Sofia's findings show a law change.\n\n**AI-Generated Content Disclaimer** — Potential risk and action plan for correction.\n**Course Disclaimer** — For From Confusion to Confidence with AI. Potential risk and action plan for correction.\n**Consulting Disclaimer** — For Strategic Diagnostic and Executive Diagnostic. Potential risk and action plan for correction.\n**Today's Action** — The highest-risk NEW disclaimer gap. If nothing new: "No new disclaimer gaps today."\n\nFormat: 200 words or fewer. Write in first person as Khalid Hassan.`,'normal',0,null,1500);
 }
 async function runSofia(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1259,7 +1255,7 @@ async function runJames(): Promise<string|null> {
   const kwameProposals = await getCrossRead(['kwame'], 7, 'proposals', 3000);
   const kwameSection = kwameProposals ? `KWAME ASANTE'S LATEST PROPOSAL UPDATES:\n${kwameProposals}` : 'No proposal updates from Kwame Asante on record.';
   const agentKnowledge = await getAgentKnowledge();
-  return await runAgentToCSQ('james','James Osei','AI Governance','daily_contract_readiness','contract_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${kwameSection}\n\nCollaborate with Kwame Asante by checking his proposal updates against the engagement agreements.\n\n**Engagement Agreement Status** — For Strategic Diagnostic™ ($3,497), Executive Diagnostic™ ($4,997), 90-Day AI Transformation Journey ($20K+), and From Confusion to Confidence with AI™ Course: where the proposal and the engagement agreement do not match or are not covered, and the engagement agreement language that matches the proposal, written for DeAnna's approval.\n**New Information on Contracts** — The specific new information on engagement agreements, IP protection clauses, and contract templates.\n**Today's Contract Action** — The most important NEW item to close. If nothing new: "No new contract gaps today."\n\nFormat: 300 words or fewer. Write in first person as James Osei.`,'normal',0,null,1500);
+  return await runAgentToCSQ('james','James Osei','AI Governance','daily_contract_readiness','contract_review',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are James Osei, Contract Writer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority. Today: ${today}.\n\n${prevSection}\n\n${kwameSection}\n\nCollaborate with Kwame Asante by checking his proposal updates against the engagement agreements.\n\n**Engagement Agreement Status** — For Strategic Diagnostic ($3,497), Executive Diagnostic ($4,997), 90-Day AI Transformation Journey ($20K+), and From Confusion to Confidence with AI Course: where the proposal and the engagement agreement do not match or are not covered, and the engagement agreement language that matches the proposal, written for DeAnna's approval.\n**New Information on Contracts** — The specific new information on engagement agreements, IP protection clauses, and contract templates.\n**Today's Contract Action** — The most important NEW item to close. If nothing new: "No new contract gaps today."\n\nFormat: 300 words or fewer. Write in first person as James Osei.`,'normal',0,null,1500);
 }
 async function runMeiLin(): Promise<string|null> {
   const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
@@ -1408,7 +1404,7 @@ async function runAmelia(): Promise<string|null> {
   const deliveryData = await fetchClientDeliveryData();
   const videoType=dayOfWeek==='Monday'?'intro_video_script':dayOfWeek==='Friday'?'testimonial_video_framework':'social_video_brief';
   const videoInstructions:Record<string,string>={
-    intro_video_script:`60-90 second script for DeAnna's course introduction. Opening hook, who this is for, what they'll achieve using the DRU AI Transformation Pathway™, one credential reference, CTA to assessment.druaiconsulting.com.`,
+    intro_video_script:`60-90 second script for DeAnna's course introduction. Opening hook, who this is for, what they'll achieve using the DRU AI Transformation Pathway, one credential reference, CTA to assessment.druaiconsulting.com.`,
     testimonial_video_framework:`Question sequence for client testimonial videos (5-7 questions). Structure: before state — discovery of DRU CLEAR™ — transformation — measurable outcome — recommendation. Note: no real testimonials exist yet — this is the framework for when they do.`,
     social_video_brief:`30-60 second video concept for LinkedIn or Instagram Reels. First 3-second hook, core message tied to one DRU framework, visual direction, CTA to assessment.druaiconsulting.com.`
   };
@@ -1445,7 +1441,7 @@ export default async function handler(req:any,res:any): Promise<void> {
   else if (route.pipeline==='p1_omar_realtime'){res.status(202).json({success:true,agent:route.agent_name,status:'tba',note:'Omar\'s role is TBA. No action taken.'});}
   else if (route.pipeline==='p1_ryan'){const result=await runRyan();res.status(result.started?202:502).json({success:result.started,agent:route.agent_name,status:result.started?'started':'failed'});}
   else if (route.pipeline==='p1_serena'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('serena','Serena Jackson','Revenue, Growth & Sales','morning_coaching_briefing','coaching',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Serena Jackson, Business Coach for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\nGenerate DeAnna's morning business coaching briefing. Today: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'})}. Include: strategic focus, coaching insight, mindset anchor, one actionable growth move.`,'normal',0,null,1500,'claude-sonnet-5-5');res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
-  else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic™ ($3,497) | Executive Diagnostic™ ($4,997) | From Confusion to Confidence with AI™ Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
+  else if (route.pipeline==='p1_mateo'){const agentKnowledge=await getAgentKnowledge();const id=await runAgentToCSQ('mateo','Mateo Gonzalez','Revenue, Growth & Sales','sales_pipeline_review','sales_support',`${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}\n\nYou are Mateo Gonzalez, Sales Support Agent for DRU AI Consulting.\nOFFERS: DRU CLEAR™ AI Readiness Assessment (free) | Strategic Diagnostic ($3,497) | Executive Diagnostic ($4,997) | From Confusion to Confidence with AI Course ($1,497-$12,997).\nInclude: sales focus, pipeline health, follow-up actions, sales tip, objection handling. All leads to assessment.druaiconsulting.com first.`,'normal',0,null,3000);res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p1_aaliyah'){
     // PARKED Aug 23, 2026 -- Aaliyah's outreach-email job was found fully redundant with
     // DeAnna's own GHL "DRU CLEAR™ Nurture Sequence" workflow (Tier Email -> 2nd Nudge ->
@@ -1468,7 +1464,7 @@ export default async function handler(req:any,res:any): Promise<void> {
     }
     const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/Chicago'});
     const weekNum=Math.floor((Date.now()-new Date('2026-07-07').getTime())/(7*24*60*60*1000));
-    const frameworks=['DRU CLEAR™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™'];
+    const frameworks=['DRU CLEAR™','5C Cultural DNA','5D Leadership','AI Sales Mastery'];
     const framework=frameworks[weekNum%4];
     const positioning=await fetchBrandCopy('positioning');
     const agentKnowledge=await getAgentKnowledge();
@@ -1505,7 +1501,7 @@ CLOSING — always four parts, in this order:
 
 3. A bulleted recap — one line per lesson, each restating that lesson's Reflection question, labeled by lesson number.
 
-4. Want to continue on your DRU AI Transformation Pathway™ journey with a custom-made, just-for-you roadmap? Click here frameworks.druaiconsulting.com
+4. Want to continue on your DRU AI Transformation Pathway journey with a custom-made, just-for-you roadmap? Click here frameworks.druaiconsulting.com
 
 Write the complete article. This is the full PDF content — not a summary or outline.`,
     'normal',0,null,2500,'claude-sonnet-5-5');
@@ -1560,7 +1556,7 @@ Write the complete article. This is the full PDF content — not a summary or ou
     // already prepends GENIUS_MODE + agentKnowledge automatically, so having
     // them here too was sending that block to the model twice. VOICE_DNA is
     // kept since runAgentToCSQ does not add that on its own.
-    const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write from the brand: Emotional Intelligence (EQ) Meets AI Insights: People-Centered Leadership, AI-Powered Insights for a bilingual multi-platform campaign.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference (™), CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level Latin American Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
+    const yaraPrompt=`${VOICE_DNA}\n\nYou are Yara Mansour, Bilingual Content Strategist for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.\n${topPost?`Adapt this week's actual published content into a full bilingual multi-platform campaign.\n\nSOURCE CONTENT (what Darius and Nia have actually published this week):\n${topPost}`:'Write from the brand: Emotional Intelligence (EQ) Meets AI Insights: People-Centered Leadership, AI-Powered Insights for a bilingual multi-platform campaign.'}\n\nRespond ONLY with a valid JSON object — no preamble, no markdown fences:\n{\n  "linkedin_content": "English LinkedIn post — 200-300 words, strong hook, professional tone, one DRU framework reference, CTA: assessment.druaiconsulting.com, max 3 hashtags",\n  "facebook_content": "English Facebook post — 150-200 words, warm conversational tone, same core message, CTA: assessment.druaiconsulting.com",\n  "instagram_caption": "English Instagram caption — 80-120 words, punchy opening, visual energy, CTA: assessment.druaiconsulting.com, 5-7 hashtags",\n  "spanish_content": "Spanish LinkedIn post — natural executive-level Latin American Spanish, culturally adapted (not literal), same length as linkedin_content, CTA: assessment.druaiconsulting.com, translated hashtags"\n}`;
     const id=await runAgentToCSQ('yara','Yara Mansour','Content & Brand','spanish_localization','localization',yaraPrompt,'normal',0,null,1500,'claude-haiku-4-5-20251001');
     res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}
   else if (route.pipeline==='p3_nia'){const id=await runNia();res.status(202).json({success:true,agent:route.agent_name,csq_id:id});}

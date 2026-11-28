@@ -1,5 +1,5 @@
 // ================================================================
-// DRU AI Leadership Ecosystem™ — Ryan Nakamura, CRM Management Agent
+// DRU AI Leadership Ecosystem — Ryan Nakamura, CRM Management Agent
 // File: api/agents/ryan.ts
 // Division: Revenue & Growth
 // Role: CRM Management (GHL)

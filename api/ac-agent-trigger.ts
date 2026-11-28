@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/ac-agent-trigger.ts
+// DRU AI Leadership Ecosystem — api/ac-agent-trigger.ts
 // P10 Accelerator Circle Division — Matthew (Leader) / Petra (Member Experience) / Renata (Strategy) + upsell scan + reply
 // DAILY POST SCHEDULE (Central time): Mon Renata · Tue Renata · Wed Matthew's Mastermind + Renata · Thu Renata · Fri Renata · Sat Petra · Sun Petra
 // Matthew's Monday Weekly Challenge runs from api/matthew-weekly-challenge.ts
@@ -24,13 +24,7 @@ const AC_AGENT_ROUTES: Record<string, ACAgentRoute> = {
 };
 
 const TM_PAIRS: [RegExp, string][] = [
-  [/DRU CLEAR(?!™)/g,                           'DRU CLEAR™'],
-  [/DRU AI Leadership Ecosystem(?!™)/g,         'DRU AI Leadership Ecosystem™'],
-  [/DRU AI Transformation Pathway(?!™)/g,       'DRU AI Transformation Pathway™'],
-  [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
-  [/5D Leadership(?!™)/g,                       '5D Leadership™'],
-  [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
-  [/From Confusion to Confident with AI(?!™)/g, 'From Confusion to Confident with AI™'],
+  [/DRU CLEAR(?!™)/g, 'DRU CLEAR™'],
 ];
 function enforceTM(content: string): string {
   let corrected = content;
@@ -301,13 +295,13 @@ async function runACAgentReply(
 // all the members the scan found and sends it to DeAnna. A member already on an earlier card is not
 // listed again. Every post read is recorded in community_scan_log (see COMMUNITY_SCAN_LOG.sql).
 const AC_SCAN_PRODUCTS: Record<string, { name: string; signal: string }> = {
-  course:           { name: 'From Confusion to Confidence with AI™ course', signal: 'interest in on-demand learning' },
+  course:           { name: 'From Confusion to Confidence with AI course', signal: 'interest in on-demand learning' },
   strategic:        { name: 'Strategic Diagnostic',                      signal: 'interest in a focused 90-minute working session' },
   executive:        { name: 'Executive Diagnostic',                      signal: 'interest in a deeper 120-minute working session' },
   dru_clear:        { name: 'DRU CLEAR™',                                signal: 'clarity, AI readiness, connecting strategy' },
-  five_c:           { name: '5C Cultural DNA™',                          signal: 'culture, communication, collaboration, cultural shift' },
-  five_d:           { name: '5D Leadership™',                            signal: 'leadership development, team and organizational leadership' },
-  ai_sales_mastery: { name: 'AI Sales Mastery™',                         signal: 'sales, DISC, revenue, client relationships' },
+  five_c:           { name: '5C Cultural DNA',                          signal: 'culture, communication, collaboration, cultural shift' },
+  five_d:           { name: '5D Leadership',                            signal: 'leadership development, team and organizational leadership' },
+  ai_sales_mastery: { name: 'AI Sales Mastery',                         signal: 'sales, DISC, revenue, client relationships' },
   bundle_full:      { name: 'Full Ecosystem Bundle',                     signal: 'the full transformation, the entire program' },
   bundle_plus_two:  { name: 'DRU CLEAR™ + 2 Frameworks',                 signal: 'combining two frameworks' },
   bundle_plus_one:  { name: 'DRU CLEAR™ + 1 Framework',                  signal: 'adding a framework to DRU CLEAR™' },

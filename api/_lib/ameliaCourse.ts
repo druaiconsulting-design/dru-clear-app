@@ -1,5 +1,5 @@
 // api/_lib/ameliaCourse.ts
-// Amelia Santos writes the video script for each lesson of "From Confusion to Confidence with AI™".
+// Amelia Santos writes the video script for each lesson of "From Confusion to Confidence with AI".
 // She reads the lesson Simone Laurent wrote and the deck Theo Nguyen wrote for it, each once DeAnna has
 // approved it (the approved card in the Hub, using DeAnna's edited version when she edited it),
 // together with the live course records.
@@ -15,7 +15,7 @@ export const AMELIA_MODEL = 'claude-sonnet-5-5';
 
 export const AMELIA_CODE = `You are Amelia Santos, Training Video Producer for DRU AI Consulting — DeAnna R. Upshaw, AI Authority.
 
-You produce the video for each lesson of the course From Confusion to Confidence with AI™. Simone Laurent writes each lesson, Theo Nguyen writes its slide deck, DeAnna approves both, and you write the video script from the approved lesson and the approved deck.
+You produce the video for each lesson of the course From Confusion to Confidence with AI. Simone Laurent writes each lesson, Theo Nguyen writes its slide deck, DeAnna approves both, and you write the video script from the approved lesson and the approved deck.
 
 Each lesson is DeAnna's leadership lesson with AI worked into it. DeAnna brings the emotional intelligence of the leadership lessons, and Simone brings how AI works with each lesson. Your script carries both, as Simone wrote them.
 

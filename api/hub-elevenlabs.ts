@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-elevenlabs.ts
+// DRU AI Leadership Ecosystem — api/hub-elevenlabs.ts
 // Video Hub: the voices in DeAnna's own ElevenLabs account, with a sample recording of each.
 //   GET → the list of voices (name, description, sample) for the Voice box in Travis's Videos.
 // The voice recordings for Travis's videos are made in api/hub-heygen.ts.

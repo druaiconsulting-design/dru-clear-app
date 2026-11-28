@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/social-reply-publisher.ts
+// DRU AI Leadership Ecosystem — api/social-reply-publisher.ts
 // Fires approved social response cards back to Make.com for posting
 // Called by AdminApprovals.tsx when DeAnna approves a social_response card
 // Make.com receives the payload and posts the reply to the original comment/DM/mention

@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/_lib/camilaInputs.ts
+// DRU AI Leadership Ecosystem — api/_lib/camilaInputs.ts
 // Camila Flores' weekly strategy: what she reads, how she picks the week's theme and sources,
 // and the prompt she writes the brief from. Used by api/ghl-agent-trigger.ts.
 //
@@ -22,9 +22,9 @@ const MAX_SOURCES = 3;
 
 const IP_TITLES: Record<string, string> = {
   'dru-clear.docx': 'DRU CLEAR™',
-  '5c-cultural-dna.docx': '5C Cultural DNA™',
-  '5d-leadership.docx': '5D Leadership™',
-  'ai-sales-mastery.docx': 'AI Sales Mastery™',
+  '5c-cultural-dna.docx': '5C Cultural DNA',
+  '5d-leadership.docx': '5D Leadership',
+  'ai-sales-mastery.docx': 'AI Sales Mastery',
 };
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -318,7 +318,7 @@ Match each day's structure to the theme:
 ## KEY MESSAGES TO AMPLIFY
 Name what should dominate messaging this week, based on the outside words above.
 
-Every framework reference carries its ™.`;
+DRU CLEAR carries ™ in every reference. Every other framework name is written plain.`;
 
   return { prompt, theme, sources: sourceTitles };
 }

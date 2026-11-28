@@ -80,11 +80,11 @@ simone→Simone Laurent (Course Architect) | theo→Theo Nguyen (Presentations) 
 isaiah→Isaiah Carter (Support)
 zoe→Zoe Beaumont (Community Leader) | micah→Micah Santos (Member Experience)
 dominique→Dominique Carter (DRU CLEAR™ · Clarity & Alignment) | elijah→Elijah Brooks (DRU CLEAR™ · Leadership & Results)
-solange→Solange Dupont (5D Leadership™ · Self & People) | isaiah_webb→Isaiah Webb (5D Leadership™ · Team & Visionary)
-nadia→Nadia Osei (5C Cultural DNA™ · Communication) | victor→Victor Reyes (5C Cultural DNA™ · Culture)
-sasha→Sasha Kim (AI Sales Mastery™ · DISC) | tariq→Tariq Oladele (AI Sales Mastery™ · Revenue)
+solange→Solange Dupont (5D Leadership · Self & People) | isaiah_webb→Isaiah Webb (5D Leadership · Team & Visionary)
+nadia→Nadia Osei (5C Cultural DNA · Communication) | victor→Victor Reyes (5C Cultural DNA · Culture)
+sasha→Sasha Kim (AI Sales Mastery · DISC) | tariq→Tariq Oladele (AI Sales Mastery · Revenue)
 
-TRADEMARK: All proprietary frameworks carry ™: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™`;
+TRADEMARK: DRU CLEAR™ carries ™ every time. Write DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI plain, with no ™.`;
 
 const CLASSIFY_PROMPT = `You are a task router for DeAnna R. Upshaw's AI Twin. DeAnna is the CEO. You must detect if her message is asking for ANY work, content, or task to be created — even if she does not name a specific agent.
 

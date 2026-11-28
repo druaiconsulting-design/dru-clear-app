@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/_lib/studioData.ts
+// DRU AI Leadership Ecosystem — api/_lib/studioData.ts
 // Small database helpers shared by the Micro Drama Studio backends.
 // Files that start with an underscore are not served as routes.
 

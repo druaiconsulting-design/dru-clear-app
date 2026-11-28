@@ -261,7 +261,7 @@ export default function AdminMemberIntelligence() {
 
         <div style={{ marginTop:'1.5rem', textAlign:'center', padding:'0.75rem', background:'rgba(212,175,55,0.05)', border:'1px solid rgba(212,175,55,0.2)', borderRadius:8 }}>
           <p style={{ fontFamily:"'Montserrat', sans-serif", fontSize:'0.6rem', color:'rgba(212,175,55,0.7)', margin:0 }}>
-            Community Connections Growth and Development with the DRU AI Leadership Ecosystem™ · DRU AI Consulting © 2026
+            Community Connections Growth and Development with the DRU AI Leadership Ecosystem · DRU AI Consulting © 2026
           </p>
         </div>
 

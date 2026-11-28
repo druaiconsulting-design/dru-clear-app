@@ -29,7 +29,7 @@ VOICE FOR THIS COPY: Conversational, not robotic. Read like talking to a friend.
 // (e.g. a static agent-prompt map) and can't await the live brand_marks fetch below.
 // Content is identical to what getAgentKnowledge() enforces — kept in sync manually,
 // same safety-net pattern as FALLBACK_TM_MARKS.
-export const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: Add ™ only to these exact approved marks, written in full, in their original casing, every time: DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™. Every other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," and offer names like "Executive Diagnostic" — stays plain text, no matter how proprietary it sounds. In hashtags, write the mark as plain alphanumeric characters with no ™ and no spaces (e.g. #DRUCLEAR) — that is the correct, compliant hashtag form. Compliance clearance stamps, status lines, and reviewer signatures come from the external review process, issued after your content is written — leave them out of your own draft. SERVICE CLASSES: Keep all content within Classes 35, 41, 42. All CTAs point to assessment.druaiconsulting.com.`;
+export const TRADEMARK_RULES = `TRADEMARK REQUIREMENT: DRU CLEAR™ is the only mark that carries ™, written in full, in its original casing, every time. DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI are written plain, in full and in their original casing. Every other term — including brand phrases like "CLEAR," "Insight," "People-Centered Leadership," or "AI-Powered Insight," and offer names like "Executive Diagnostic" — stays plain text, no matter how proprietary it sounds. In hashtags, write the mark as plain alphanumeric characters with no ™ and no spaces (e.g. #DRUCLEAR) — that is the correct, compliant hashtag form. Compliance clearance stamps, status lines, and reviewer signatures come from the external review process, issued after your content is written — leave them out of your own draft. SERVICE CLASSES: Keep all content within Classes 35, 41, 42. All CTAs point to assessment.druaiconsulting.com.`;
 
 // ─── Grant drafting — shared across Kwame's draft, Kwame's rewrite, Chloe's
 // review, and Isabella's context (api/ghl-agent-trigger.ts and
@@ -76,7 +76,7 @@ export function rewriteMaxTokens(content: string, floor = 1500): number {
 // Framework meanings are stable IP — defined here so agents always have full
 // context even if Supabase is temporarily unavailable.
 const FRAMEWORK_KNOWLEDGE = `
-## THE DRU AI TRANSFORMATION PATHWAY™
+## THE DRU AI TRANSFORMATION PATHWAY
 The sequential journey every client walks — no shortcuts, no skipped steps:
 Discover → Diagnose → Design → Deploy → Dominate
 
@@ -115,7 +115,7 @@ leadership teams, and organizations that refuse to leave their AI future to chan
 
 ---
 
-### 5C Cultural DNA™ — Culture
+### 5C Cultural DNA — Culture
 Tagline: Communication · Connection · Collaboration · Coaching · Culture Transformation
 Theme: Learn IT. Live IT. Lead IT. Leadership Thinking with AI. | $6,000 | 3 sessions × 90 min
 
@@ -123,7 +123,7 @@ Most organizations don't have an AI problem — they have a CULTURE problem. Bef
 any technology can transform a business, the people, communication patterns, and
 leadership behaviors have to be ready to receive it.
 
-5C Cultural DNA™ helps organizations discover and address cultural dysfunction, silos,
+5C Cultural DNA helps organizations discover and address cultural dysfunction, silos,
 and communication breakdowns that silently block progress. It gives leaders a structured
 path to use AI as a strategic THINKING PARTNER — not a decision-maker.
 
@@ -146,10 +146,10 @@ intelligence work together.
 
 ---
 
-### 5D Leadership™ — Leadership
+### 5D Leadership — Leadership
 Tagline: Transformational Leadership Across Five Critical Dimensions | $6,500 | 3 sessions × 90 min
 
-5D Leadership™ focuses on the WHOLE leader — building from the inside out across five
+5D Leadership focuses on the WHOLE leader — building from the inside out across five
 critical dimensions that determine whether leadership actually TRANSFORMS an organization
 or just manages it. This is NOT a skills program. It is an AI-infused leadership
 methodology where personal mastery, team effectiveness, organizational strength, and
@@ -172,11 +172,11 @@ Organizations ready to develop leaders from the inside out across every tier.
 
 ---
 
-### AI Sales Mastery™ — Sales
+### AI Sales Mastery — Sales
 Tagline: DISC Behavioral Insights + AI for Revenue Acceleration | $6,000 | 3 sessions × 90 min
 Theme: Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.
 
-The future of sales is not louder — it's SMARTER. AI Sales Mastery™ combines the
+The future of sales is not louder — it's SMARTER. AI Sales Mastery combines the
 proven power of DISC behavioral insights with AI to create a sales approach that feels
 natural, builds trust, and accelerates revenue WITHOUT pressure tactics or guesswork.
 When you understand how your client thinks, decides, and communicates — and you use AI
@@ -201,8 +201,8 @@ want to accelerate revenue without sacrificing relationship.
 
 ## HOW THE FRAMEWORKS RELATE
 DRU CLEAR™ is the CONNECTOR — it anchors every engagement and connects all four
-frameworks into one unified strategy. The other three frameworks (5C Cultural DNA™,
-5D Leadership™, AI Sales Mastery™) can be engaged individually or together, but
+frameworks into one unified strategy. The other three frameworks (5C Cultural DNA,
+5D Leadership, AI Sales Mastery) can be engaged individually or together, but
 DRU CLEAR™ is always the anchor in any bundle.
 
 Bundle options (post-diagnostic):
@@ -212,12 +212,12 @@ Bundle options (post-diagnostic):
 
 Entry point diagnostics:
 - Executive Diagnostic: $4,997 — 120 min, all 4 frameworks
-- Strategic Diagnostic: $3,497 — 90 min, 5D Leadership™ + DRU CLEAR™
+- Strategic Diagnostic: $3,497 — 90 min, 5D Leadership + DRU CLEAR™
 
 ---
 
 ## COURSE OFFERING
-From Confusion to Confidence with AI™
+From Confusion to Confidence with AI
 - Self-Paced: $1,497 | Live Cohort: $7,997 | Cohort Mastermind: $12,997
 Delivered by AI Twin and agents. Entry via assessment only.
 `;
@@ -226,12 +226,19 @@ Delivered by AI Twin and agents. Entry via assessment only.
 // Safety net if Supabase fetch fails. Keep in sync with brand_marks table.
 const FALLBACK_TM_MARKS = [
   'DRU CLEAR™',
-  'DRU AI Leadership Ecosystem™',
-  'DRU AI Transformation Pathway™',
-  '5C Cultural DNA™',
-  '5D Leadership™',
-  'AI Sales Mastery™',
-  'From Confusion to Confidence with AI™',
+];
+
+// ─── Framework names ──────────────────────────────────────────────────────────
+// The names agents write about. Kept apart from brand_marks, which lists only
+// the marks that carry ™ (DRU CLEAR™ today). Plain names carry no ™.
+export const FRAMEWORK_NAMES = [
+  'DRU CLEAR™',
+  'DRU AI Leadership Ecosystem',
+  'DRU AI Transformation Pathway',
+  '5C Cultural DNA',
+  '5D Leadership',
+  'AI Sales Mastery',
+  'From Confusion to Confidence with AI',
 ];
 
 /**
@@ -374,14 +381,14 @@ export async function getAgentKnowledge(): Promise<string> {
 ║           Required context for ALL agent operations                          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-## PROTECTED INTELLECTUAL PROPERTY — ™ RULES (NON-NEGOTIABLE)
+## PROTECTED INTELLECTUAL PROPERTY — ™ RULES
 
-The following marks ALWAYS carry ™ — every single use, no exceptions:
+The mark that carries ™, every time it appears:
 ${tmList}
 
 RULES:
-1. Include ™ every time one of these marks appears — body copy, headings, CTAs, social posts, and emails alike
-2. Keep every other term, phrase, or framework name plain, with no ™
+1. Include ™ every time DRU CLEAR appears — body copy, headings, CTAs, social posts, and emails alike
+2. Write every other term, phrase, and framework name plain. These names are correct plain, in full and in original casing: DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI
 3. Write each mark exactly as shown above — full name, original casing — every single time (use bold or a colon if a heading needs emphasis, never a re-cased mark)
 4. 'DRU AI Consulting' is the registered business name and stays plain, no ™
 5. In hashtags, write the mark as plain alphanumeric characters with no ™ and no spaces (e.g. #DRUCLEAR) — this is the correct, compliant hashtag form, since hashtags never carry symbols or spaces on any platform
@@ -412,7 +419,7 @@ Compliance clearance stamps, status lines, reviewer names, and "cleared for publ
 ## REQUIRED CTA
 Every piece of content MUST include this link as the primary call to action:
 assessment.druaiconsulting.com
-This is the ONLY entry point into the DRU AI Leadership Ecosystem™.
+This is the ONLY entry point into the DRU AI Leadership Ecosystem.
 
 ---
 

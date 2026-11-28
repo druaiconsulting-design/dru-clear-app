@@ -1,8 +1,8 @@
-// DRU AI Leadership Ecosystem™ — api/social-response-trigger.ts
+// DRU AI Leadership Ecosystem — api/social-response-trigger.ts
 // Social Media Response Team — Real-time inbound handler
 // Platforms: Facebook, Instagram (LinkedIn handled manually)
-// Agents: Dominique (DRU CLEAR™), Isaiah (5D Leadership™), Nadia (5C Cultural DNA™),
-//         Elijah (AI Sales Mastery™), Solange (default catch-all)
+// Agents: Dominique (DRU CLEAR™), Isaiah (5D Leadership), Nadia (5C Cultural DNA),
+//         Elijah (AI Sales Mastery), Solange (default catch-all)
 // Architecture: Make.com List Posts → List Comments → fires here → dedup → classify → dual mode
 //   Dedup: social_processed_interactions table — each interaction_id handled exactly once
 //   Generic  → returns auto reply text for Make to post immediately
@@ -13,13 +13,7 @@ export const config = { maxDuration: 30 };
 import { GENIUS_MODE } from './_lib/agentKnowledge.js';
 
 const TM_PAIRS: [RegExp, string][] = [
-  [/DRU CLEAR(?!™)/g,                           'DRU CLEAR™'],
-  [/DRU AI Leadership Ecosystem(?!™)/g,         'DRU AI Leadership Ecosystem™'],
-  [/DRU AI Transformation Pathway(?!™)/g,       'DRU AI Transformation Pathway™'],
-  [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
-  [/5D Leadership(?!™)/g,                       '5D Leadership™'],
-  [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
-  [/From Confusion to Confidence with AI(?!™)/g, 'From Confusion to Confidence with AI™'],
+  [/DRU CLEAR(?!™)/g, 'DRU CLEAR™'],
 ];
 
 function enforceTM(content: string): string {
@@ -119,9 +113,9 @@ async function markProcessed(interaction_id: string, platform: string): Promise<
 
 const AGENT_MAP: Record<string, { name: string; role: string }> = {
   dominique: { name: 'Dominique Carter', role: 'DRU CLEAR™ Social Response'       },
-  isaiah:    { name: 'Isaiah Webb',       role: '5D Leadership™ Social Response'   },
-  nadia:     { name: 'Nadia Osei',        role: '5C Cultural DNA™ Social Response' },
-  elijah:    { name: 'Elijah Brooks',     role: 'AI Sales Mastery™ Social Response'},
+  isaiah:    { name: 'Isaiah Webb',       role: '5D Leadership Social Response'   },
+  nadia:     { name: 'Nadia Osei',        role: '5C Cultural DNA Social Response' },
+  elijah:    { name: 'Elijah Brooks',     role: 'AI Sales Mastery Social Response'},
   solange:   { name: 'Solange Dupont',    role: 'Social Response — Entry Point'    },
 };
 
@@ -142,9 +136,9 @@ Text: "${text}"
 
 PROPRIETARY IP TO RECOGNIZE:
 - DRU CLEAR™ (Clarity, Leadership, Execution, Alignment, Results) → agent: dominique
-- 5D Leadership™ (leadership dimensions, team, organizational transformation) → agent: isaiah
-- 5C Cultural DNA™ (culture, communication, collaboration, connection, commitment) → agent: nadia
-- AI Sales Mastery™ (DISC, buyer behavior, AI in sales, revenue, conversion) → agent: elijah
+- 5D Leadership (leadership dimensions, team, organizational transformation) → agent: isaiah
+- 5C Cultural DNA (culture, communication, collaboration, connection, commitment) → agent: nadia
+- AI Sales Mastery (DISC, buyer behavior, AI in sales, revenue, conversion) → agent: elijah
 - General / vague / motivational / how to start / first step / catch-all → agent: solange
 
 STEP 1 — CLASSIFY AGENT:
@@ -163,7 +157,7 @@ Decide whether a call to action serves this person. When the exchange reads best
 - https://assessment.druaiconsulting.com for someone who wants a starting point or to see where they stand
 - https://www.druaiconsulting.com/learn-more-frameworks for someone curious about the frameworks
 
-TRADEMARK: Write DRU CLEAR™, 5D Leadership™, 5C Cultural DNA™, AI Sales Mastery™ with ™.
+TRADEMARK: Write DRU CLEAR™ with ™. Write 5D Leadership, 5C Cultural DNA, and AI Sales Mastery plain, with no ™.
 
 Return valid JSON alone, with the reply in these fields:
 {"agent":"...","is_generic":true,"reply_text":"..."}`;

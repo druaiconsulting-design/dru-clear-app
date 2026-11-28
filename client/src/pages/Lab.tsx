@@ -58,7 +58,7 @@ export default function Lab() {
           <div style={{ maxWidth: 480, textAlign: "center" as const, border: "1px solid rgba(212,175,55,0.3)", borderRadius: 16, padding: "2.5rem 2rem", background: "rgba(212,175,55,0.04)" }}>
             <p style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🎬</p>
             <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.75rem" }}>Accelerator Exclusive</p>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.75rem", lineHeight: 1.3 }}>DeAnna's Leadership Lab™</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.75rem", lineHeight: 1.3 }}>DeAnna's Leadership Lab</h1>
             <p style={{ fontFamily: "'Inter', sans-serif", color: "rgba(230,230,230,0.5)", fontSize: "0.85rem", lineHeight: 1.6, marginBottom: "1.75rem" }}>
               Monthly exclusive sessions with DeAnna — strategy, leadership, and AI mastery — are available to Accelerator members only.
             </p>
@@ -80,7 +80,7 @@ export default function Lab() {
         {/* Header */}
         <div style={{ marginBottom: "2rem" }}>
           <p style={{ fontFamily: "'Montserrat', sans-serif", color: "#C2185B", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: "0.5rem" }}>Accelerator Exclusive</p>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>DeAnna's Leadership Lab™</h1>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#FFFFFF", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>DeAnna's Leadership Lab</h1>
           <p style={{ color: "rgba(230,230,230,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>Monthly exclusive sessions — strategy, leadership, and AI mastery</p>
         </div>
 

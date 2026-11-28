@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/generate-daily.ts
+// DRU AI Leadership Ecosystem — api/generate-daily.ts
 // Generates fresh Daily Connections content for all 5 pathway stages
 // Called by pg_cron at 12:00 UTC daily via Vercel edge
 
@@ -7,13 +7,13 @@ export const config = { maxDuration: 60 };
 const STAGES = ['discover', 'diagnose', 'design', 'deploy', 'dominate'];
 
 const FRAMEWORKS_BY_DAY = [
-  'From Confusion to Confidence with AI™',  // Sunday
+  'From Confusion to Confidence with AI',  // Sunday
   'DRU CLEAR™',                             // Monday
-  'DRU AI Leadership Ecosystem™',           // Tuesday
-  'DRU AI Transformation Pathway™',         // Wednesday
-  '5D Leadership™',                         // Thursday
-  '5C Cultural DNA™',                       // Friday
-  'AI Sales Mastery™',                      // Saturday
+  'DRU AI Leadership Ecosystem',           // Tuesday
+  'DRU AI Transformation Pathway',         // Wednesday
+  '5D Leadership',                         // Thursday
+  '5C Cultural DNA',                       // Friday
+  'AI Sales Mastery',                      // Saturday
 ];
 
 const PILLARS_BY_DAY = [
@@ -93,16 +93,16 @@ async function getExistingStages(today: string): Promise<Set<string>> {
 async function generateStageContent(
   stage: string, framework: string, badge: string, dateLabel: string
 ): Promise<{ insight: string; lesson: string; challenge: string; strategic_edge: string } | null> {
-  const prompt = `You are DeAnna R. Upshaw's AI content engine for the DRU AI Leadership Ecosystem™ Daily Connections feature.
+  const prompt = `You are DeAnna R. Upshaw's AI content engine for the DRU AI Leadership Ecosystem Daily Connections feature.
 
 Today: ${dateLabel}
 Featured Framework: ${framework}
 Pathway Stage: ${STAGE_LABELS[stage]}
 Stage Context: ${STAGE_CONTEXT[stage]}
 
-Generate premium daily content for an executive at the ${STAGE_LABELS[stage]} stage of the DRU AI Transformation Pathway™ (Discover → Diagnose → Design → Deploy → Dominate).
+Generate premium daily content for an executive at the ${STAGE_LABELS[stage]} stage of the DRU AI Transformation Pathway (Discover → Diagnose → Design → Deploy → Dominate).
 
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™
+TRADEMARK REQUIREMENT: Write DRU CLEAR™ with ™ every time. Write DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI plain, with no ™.
 
 CONTENT RULES:
 - Write as DeAnna speaking directly to the executive ("You are..." / "Your team..." / "I've seen...")

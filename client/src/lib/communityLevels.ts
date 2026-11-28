@@ -12,7 +12,7 @@
 // hardcoded) is used so badges never render blank.
 //
 // Also includes Gap Signal — admin-only — which compares a member's
-// Community Level position against their DRU AI Transformation Pathway™
+// Community Level position against their DRU AI Transformation Pathway
 // stage. The two are independent, standalone progressions (a member can be
 // maxed out on the leaderboard while still at Discover on their pathway
 // because they haven't paid for a diagnostic) — so this does NOT pair
@@ -120,7 +120,7 @@ export function levelStyle(name: string, levels: LevelTier[] = getCommunityLevel
 /** The default/floor tier name — used as the fallback when a profile has no level yet. */
 export const DEFAULT_LEVEL_NAME = 'Connected'
 
-// ── DRU AI Transformation Pathway™ stages — standalone, paid progression ──────
+// ── DRU AI Transformation Pathway stages — standalone, paid progression ──────
 export const PATHWAY_STAGES = ['Discover', 'Diagnose', 'Design', 'Deploy', 'Dominate'] as const
 
 const GAP_THRESHOLD_PCT = 15 // percentage points of separation before it tips out of "Aligned"

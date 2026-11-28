@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-send-to-bunny.ts
+// DRU AI Leadership Ecosystem — api/hub-send-to-bunny.ts
 // Video Hub step 2: copies a Hub video (kept in the private `hub-videos` bucket)
 // into one of three Bunny libraries. The original stays in the Hub.
 // Admin only: the caller's Supabase login must belong to DeAnna.

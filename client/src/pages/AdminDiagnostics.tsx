@@ -89,9 +89,9 @@ const STRENGTH_MESSAGES: Record<string, string> = {
 
 const FRAMEWORK_LABELS: Record<string, string> = {
   CLEAR: "DRU CLEAR™",
-  "5D_LEADERSHIP": "5D Leadership™ Reflection",
-  "5C_CULTURAL_DNA": "5C Cultural DNA™ Reflection",
-  AI_SALES_MASTERY: "AI Sales Mastery™ Reflection",
+  "5D_LEADERSHIP": "5D Leadership Reflection",
+  "5C_CULTURAL_DNA": "5C Cultural DNA Reflection",
+  AI_SALES_MASTERY: "AI Sales Mastery Reflection",
 };
 const FRAMEWORK_ORDER = ["CLEAR", "5D_LEADERSHIP", "5C_CULTURAL_DNA", "AI_SALES_MASTERY"];
 const PILLAR_ORDER: Record<string, string[]> = {

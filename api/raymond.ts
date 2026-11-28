@@ -326,7 +326,7 @@ async function runRaymondSynthesis(): Promise<{ cards_created: number; items_syn
             review_url: 'https://app.druaiconsulting.com/admin-approvals',
             sms_body: `DRU AI Consulting | ${label}\n\nReview: app.druaiconsulting.com/admin-approvals`,
             email_subject: `DRU AI Consulting — ${hasHighPriority ? '🚨 High Alert — ' : ''}Intelligence Hub Ready`,
-            email_body: `${label}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem™`,
+            email_body: `${label}\n\nReview and approve:\nhttps://app.druaiconsulting.com/admin-approvals\n\n— DRU AI Leadership Ecosystem`,
           }),
         });
         console.log(`[raymond] ONE daily notification sent — ${hasHighPriority ? 'HIGH ALERT' : 'standard'}`);

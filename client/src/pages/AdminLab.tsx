@@ -145,7 +145,7 @@ export default function AdminLab() {
         {/* ── Header ── */}
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontFamily: "'Playfair Display', serif", color: "#0A2342", fontSize: "2rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "0.25rem" }}>
-            DeAnna's Leadership Lab™
+            DeAnna's Leadership Lab
           </h1>
           <p style={{ color: "rgba(10,35,66,0.45)", fontFamily: "'Inter', sans-serif", fontSize: "0.8rem" }}>
             Publish monthly Leadership Lab videos and post videos to the community

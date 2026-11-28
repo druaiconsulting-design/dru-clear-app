@@ -87,14 +87,14 @@ export const TIER_RANK: Record<Tier, number> = { free: 0, paid: 1, navigator: 2,
 export const AGENT_FRAMEWORK_MAP: Record<string, { framework: string; specialty: string }> = {
   'Dominique Carter': { framework: 'DRU CLEAR™',                   specialty: 'Clarity & Leadership' },
   'Elijah Brooks':    { framework: 'DRU CLEAR™',                   specialty: 'Alignment, Execution & Results' },
-  'Tariq Oladele':    { framework: 'AI Sales Mastery™',            specialty: 'AI Revenue Acceleration' },
-  'Solange Dupont':   { framework: '5D Leadership™',               specialty: 'Self & People' },
-  'Isaiah Webb':      { framework: '5D Leadership™',               specialty: 'Team, Org & Visionary' },
-  'Nadia Osei':       { framework: '5C Cultural DNA™',             specialty: 'Communication & Connection' },
-  'Victor Reyes':     { framework: '5C Cultural DNA™',             specialty: 'Collaboration & Culture' },
-  'Sasha Kim':        { framework: 'AI Sales Mastery™',            specialty: 'DISC Behavioral Intelligence' },
-  'Zoe Beaumont':     { framework: 'DRU AI Leadership Ecosystem™', specialty: 'Community Leadership' },
-  'Micah Santos':     { framework: 'DRU AI Leadership Ecosystem™', specialty: 'Member Experience' },
+  'Tariq Oladele':    { framework: 'AI Sales Mastery',            specialty: 'AI Revenue Acceleration' },
+  'Solange Dupont':   { framework: '5D Leadership',               specialty: 'Self & People' },
+  'Isaiah Webb':      { framework: '5D Leadership',               specialty: 'Team, Org & Visionary' },
+  'Nadia Osei':       { framework: '5C Cultural DNA',             specialty: 'Communication & Connection' },
+  'Victor Reyes':     { framework: '5C Cultural DNA',             specialty: 'Collaboration & Culture' },
+  'Sasha Kim':        { framework: 'AI Sales Mastery',            specialty: 'DISC Behavioral Intelligence' },
+  'Zoe Beaumont':     { framework: 'DRU AI Leadership Ecosystem', specialty: 'Community Leadership' },
+  'Micah Santos':     { framework: 'DRU AI Leadership Ecosystem', specialty: 'Member Experience' },
 };
 
 export const ZOE_POST_TYPES: PostType[] = ['strategic_edge', 'daily_insight', 'framework_training'];

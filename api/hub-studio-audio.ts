@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio-audio.ts
+// DRU AI Leadership Ecosystem — api/hub-studio-audio.ts
 // Micro Drama Studio, Stage 4: the Audio step. Admin only.
 //   GET  ?view=preview&id=<project> → approved frames, recordings and music for the free film preview
 //   GET  ?view=audio&id=<project>   → the voices chosen, each scene's spoken lines and recording, and the music track

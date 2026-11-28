@@ -1,5 +1,5 @@
 // ================================================================
-// DRU AI Leadership Ecosystem™ — Omar Patel, Lead Scoring Agent
+// DRU AI Leadership Ecosystem — Omar Patel, Lead Scoring Agent
 // File: api/agents/omar.ts
 // Division: Revenue & Growth
 // Role: Lead Scoring

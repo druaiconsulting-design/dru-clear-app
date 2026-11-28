@@ -77,7 +77,7 @@ export default function AdminLeaderboard() {
         <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', letterSpacing: '3px', fontWeight: '600', color: '#B8941F', marginBottom: '6px' }}>
-              DRU AI LEADERSHIP ECOSYSTEM™
+              DRU AI LEADERSHIP ECOSYSTEM
             </div>
             <h1 style={{ fontFamily: "'Playfair Display', serif", color: '#0A2342', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
               Clarity Points Leaderboard
@@ -246,7 +246,7 @@ export default function AdminLeaderboard() {
 
                   {/* Points total footer */}
                   <div style={{ paddingTop: '16px', borderTop: '1px solid #F0EDE8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.4)', fontWeight: '600', letterSpacing: '0.3px' }}>CLARITY POINTS™</span>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '11px', color: 'rgba(10,35,66,0.4)', fontWeight: '600', letterSpacing: '0.3px' }}>CLARITY POINTS</span>
                     <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '22px', fontWeight: '700', color: '#D4AF37' }}>{clarityPts.toLocaleString()}</span>
                   </div>
 

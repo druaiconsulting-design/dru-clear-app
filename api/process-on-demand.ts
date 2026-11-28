@@ -247,11 +247,11 @@ ${agentKnowledge}
 ${VOICE_DNA}
 
 YOUR RESPONSIBILITIES — check ALL FIVE of these, not trademarks alone:
-1. TRADEMARKS: Every DRU proprietary framework name includes ™, in exact casing, and never abbreviated — the approved list and exact rules are in the knowledge base above
+1. TRADEMARKS: DRU CLEAR™ carries ™ in exact casing and is never abbreviated. DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI are written plain, in full and in exact casing, and a ™ on any of these six names is the item to flag — the exact rules are in the knowledge base above
 2. SERVICE CLASSES: Content stays within Classes 35, 41, 42 (see knowledge base above)
 3. VOICE: No banned words, hook-then-unpack structure honored wherever the content includes a hook or headline — see the VOICE rules above
 4. FACTUAL ACCURACY: Check every specific client result, dollar figure, percentage, testimonial, or case study against DeAnna's verified facts below (when given) or against the knowledge base above -- a claim that matches a verified fact is accurate even if it looks surprising or specific. A true fact stated in redundant, awkward, or imprecise wording (e.g. "Over 240+ clients" when the verified fact is "240+ clients") is NOT a factual accuracy failure -- only flag this check if a number, name, or claim is actually wrong, invented, or contradicts a verified fact
-5. FRAMEWORK ATTRIBUTION: If the content describes a framework's pillars or dimensions, check the names against the true definitions in the knowledge base above. A framework's pillars must be attributed to the correct framework — e.g. Clarity/Leadership/Execution/Alignment/Results belongs to DRU CLEAR™ and must never be labeled 5D Leadership™; Self/People/Team/Organization/Visionary belongs to 5D Leadership™ and must never be labeled DRU CLEAR™
+5. FRAMEWORK ATTRIBUTION: If the content describes a framework's pillars or dimensions, check the names against the true definitions in the knowledge base above. A framework's pillars must be attributed to the correct framework — e.g. Clarity/Leadership/Execution/Alignment/Results belongs to DRU CLEAR™ and must never be labeled 5D Leadership; Self/People/Team/Organization/Visionary belongs to 5D Leadership and must never be labeled DRU CLEAR™
 
 CLEARING STANDARD:
 - All five checks pass → cleared:true
@@ -534,7 +534,7 @@ You are the AI Governance and Legal & Finance panel for DRU AI Consulting. Isabe
 PANEL MEMBERS: Khalid Hassan (Disclaimers) · Sofia Petrov (Privacy) · James Osei (Contracts) · Mei Lin (Brand Protection)
 
 TRADEMARK RULE — NEVER BLOCK ON THIS, NO EXCEPTIONS:
-DeAnna's marks (DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™) all correctly use the ™ symbol, not ®. ™ denotes a claimed trademark and requires ZERO federal registration — pending, common-law, or unregistered marks all use ™ correctly and permanently, regardless of any USPTO filing's status. This is true no matter what stage any trademark application is in. Do NOT flag, question, request confirmation of, or block on trademark registration status, USPTO/EUIPO filing status, or "portfolio validation" — Isabella already cleared correct ™ usage, and that is the only thing that matters. This would only be a real concern if ® were used, which never happens here.
+DRU CLEAR™ is the mark that carries the ™ symbol, and it correctly uses ™, not ®. DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI are written plain, with no ™, and that is correct. ™ denotes a claimed trademark and requires ZERO federal registration — pending, common-law, or unregistered marks all use ™ correctly and permanently, regardless of any USPTO filing's status. This is true no matter what stage any trademark application is in. Do NOT flag, question, request confirmation of, or block on trademark registration status, USPTO/EUIPO filing status, or "portfolio validation" — Isabella already cleared correct ™ usage, and that is the only thing that matters. This would only be a real concern if ® were used, which never happens here.
 
 CONTENT TYPE: ${isClientFacing ? "CLIENT-FACING MARKETING" : "INTERNAL OPERATIONAL"}
 
@@ -547,12 +547,12 @@ ${isClientFacing
 5. Contains regulatory-specific financial, medical, or legal advice presented as verified fact
 
 DO NOT BLOCK FOR ANY OF THE FOLLOWING — these are standard and permitted in B2B marketing:
-- Presenting DRU proprietary frameworks (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, etc.) as established methodologies — they are DeAnna's registered IP
+- Presenting DRU proprietary frameworks (DRU CLEAR™, 5C Cultural DNA, 5D Leadership, etc.) as established methodologies — they are DeAnna's proprietary IP
 - Aspirational or authoritative language positioning DeAnna as an expert ("frameworks that guide executives", "proven approach")
 - Outcome-oriented marketing language ("designed to help leaders achieve...", "framework built to...")
 - Specific illustrative numbers used as examples, not contractual guarantees
 - LinkedIn post tone, hooks, or confident claims standard in B2B consulting marketing
-- Use of ™ on all approved DRU framework names
+- Use of ™ on DRU CLEAR and plain names for the other framework names
 
 If NONE of conditions 1-5 are explicitly present, you MUST return cleared:true regardless of tone, style, or marketing claims.`
   : `INTERNAL OPERATIONAL BLOCK CONDITIONS (block ONLY if ALL apply):
@@ -757,7 +757,7 @@ async function runTwinSynthesisOnItem(
   const synthesis = await callTwin(
     `${GENIUS_MODE}
 
-You are DeAnna's AI Twin — Master Orchestrator of the DRU AI Leadership Ecosystem™.
+You are DeAnna's AI Twin — Master Orchestrator of the DRU AI Leadership Ecosystem.
 
 Synthesize this on-demand agent output into an Intelligence Hub briefing card for DeAnna R. Upshaw, AI Authority.
 

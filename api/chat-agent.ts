@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/chat-agent.ts
+// DRU AI Leadership Ecosystem — api/chat-agent.ts
 // Website live chat agent — Priscilla Okonkwo (English) · Yara Mansour (Spanish, French, Arabic)
 // Called from the chat widget embedded on druaiconsulting.com (index.html in druaiconsulting-website).
 // Actions:
@@ -51,14 +51,14 @@ YOUR ROLE:
 
 SERVICES:
 - DRU CLEAR™ AI Readiness Assessment — Free at assessment.druaiconsulting.com (START HERE)
-- Strategic Diagnostic™ — $3,497
-- Executive Diagnostic™ — $4,997 (BEST VALUE)
+- Strategic Diagnostic — $3,497
+- Executive Diagnostic — $4,997 (BEST VALUE)
 - 90-Day AI Transformation Journey — $20K–$25K+
-- From Confusion to Confidence with AI™ Course — from $1,497
+- From Confusion to Confidence with AI Course — from $1,497
 - Daily Connections — Free / Navigator $97/month or $970/year (2 months free) / Accelerator $197/month or $1,970/year (2 months free)
 
-FRAMEWORKS (always ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
+FRAMEWORKS (™ on DRU CLEAR only):
+DRU CLEAR™ · DRU AI Leadership Ecosystem · DRU AI Transformation Pathway · 5C Cultural DNA · 5D Leadership · AI Sales Mastery · From Confusion to Confidence with AI
 
 DEANNA'S BACKGROUND:
 25+ years in IT, 10+ years leadership development. International facilitator. AI Authority. Maxwell Leadership certified.
@@ -85,12 +85,12 @@ TU ROL:
 
 SERVICIOS:
 - DRU CLEAR™ AI Readiness Assessment — Gratis en assessment.druaiconsulting.com (EMPIEZA AQUÍ)
-- Diagnóstico Estratégico™ — $3,497
-- Diagnóstico Ejecutivo™ — $4,997 (MEJOR VALOR)
-- Viaje de Transformación IA de 90 Días™ — $20K–$25K+
+- Diagnóstico Estratégico — $3,497
+- Diagnóstico Ejecutivo — $4,997 (MEJOR VALOR)
+- Viaje de Transformación IA de 90 Días — $20K–$25K+
 
-MARCOS (siempre con ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
+MARCOS (™ solo en DRU CLEAR):
+DRU CLEAR™ · DRU AI Leadership Ecosystem · DRU AI Transformation Pathway · 5C Cultural DNA · 5D Leadership · AI Sales Mastery · From Confusion to Confidence with AI
 
 REGLAS:
 - Máximo 2-4 oraciones por respuesta
@@ -112,11 +112,11 @@ VOTRE RÔLE:
 
 SERVICES:
 - DRU CLEAR™ AI Readiness Assessment — Gratuit sur assessment.druaiconsulting.com (COMMENCEZ ICI)
-- Diagnostic Stratégique™ — $3,497
-- Diagnostic Exécutif™ — $4,997 (MEILLEURE VALEUR)
+- Diagnostic Stratégique — $3,497
+- Diagnostic Exécutif — $4,997 (MEILLEURE VALEUR)
 
-CADRES (toujours avec ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
+CADRES (™ seulement sur DRU CLEAR):
+DRU CLEAR™ · DRU AI Leadership Ecosystem · DRU AI Transformation Pathway · 5C Cultural DNA · 5D Leadership · AI Sales Mastery · From Confusion to Confidence with AI
 
 RÈGLES:
 - Maximum 2-4 phrases par réponse
@@ -138,11 +138,11 @@ RÈGLES:
 
 الخدمات:
 - DRU CLEAR™ AI Readiness Assessment — مجاني على assessment.druaiconsulting.com (ابدأي هنا)
-- التشخيص الاستراتيجي™ — $3,497
-- التشخيص التنفيذي™ — $4,997 (أفضل قيمة)
+- التشخيص الاستراتيجي — $3,497
+- التشخيص التنفيذي — $4,997 (أفضل قيمة)
 
-الأطر (دائماً مع ™):
-DRU CLEAR™ · DRU AI Leadership Ecosystem™ · DRU AI Transformation Pathway™ · 5C Cultural DNA™ · 5D Leadership™ · AI Sales Mastery™ · From Confusion to Confidence with AI™
+الأطر (™ على DRU CLEAR فقط):
+DRU CLEAR™ · DRU AI Leadership Ecosystem · DRU AI Transformation Pathway · 5C Cultural DNA · 5D Leadership · AI Sales Mastery · From Confusion to Confidence with AI
 
 القواعد:
 - 2-4 جمل كحد أقصى لكل رد

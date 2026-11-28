@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/cc-agent-trigger.ts
+// DRU AI Leadership Ecosystem — api/cc-agent-trigger.ts
 // P9 Community Connection Division — Zoe (Leader) / Micah (Member Experience) / Victor (CC Strategy)
 // DAILY POST SCHEDULE (Central time): Mon Victor · Tue Victor · Wed Zoe's Mastermind + Victor · Thu Victor · Fri Victor · Sat Micah · Sun Micah
 // Zoe's Monday Weekly Leadership Challenge runs from api/zoe-weekly-challenge.ts
@@ -20,7 +20,7 @@ interface CCAgentRoute { agent_id: string; agent_name: string; task: string; pip
 const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
   // ── Daily community seed — follows the weekday schedule in the header ──
   cron_community_seed:     { agent_id: 'community_seed', agent_name: 'Community Seed',  task: 'daily_community_seed',     pipeline: 'p9_community_seed' },
-  // ── Sasha Kim — AI Sales Mastery™ DISC intelligence (Sun / Tue / Thu) ────────
+  // ── Sasha Kim — AI Sales Mastery DISC intelligence (Sun / Tue / Thu) ────────
   cron_sasha_sales_insight: { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
   cron_sasha_tuesday:       { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
   cron_sasha_thursday:      { agent_id: 'sasha', agent_name: 'Sasha Kim',    task: 'ai_sales_mastery_insight', pipeline: 'p9_sasha' },
@@ -34,13 +34,7 @@ const CC_AGENT_ROUTES: Record<string, CCAgentRoute> = {
 };
 
 const TM_PAIRS: [RegExp, string][] = [
-  [/DRU CLEAR(?!™)/g,                           'DRU CLEAR™'],
-  [/DRU AI Leadership Ecosystem(?!™)/g,         'DRU AI Leadership Ecosystem™'],
-  [/DRU AI Transformation Pathway(?!™)/g,       'DRU AI Transformation Pathway™'],
-  [/5C Cultural DNA(?!™)/g,                     '5C Cultural DNA™'],
-  [/5D Leadership(?!™)/g,                       '5D Leadership™'],
-  [/AI Sales Mastery(?!™)/g,                    'AI Sales Mastery™'],
-  [/From Confusion to Confidence with AI(?!™)/g, 'From Confusion to Confidence with AI™'],
+  [/DRU CLEAR(?!™)/g, 'DRU CLEAR™'],
 ];
 function enforceTM(content: string): string {
   let corrected = content;
@@ -148,7 +142,7 @@ async function getProspectSignals(limit = 8): Promise<string> {
 // The depth instruction both Sasha and Tariq need alongside GENIUS_MODE --
 // GENIUS_MODE sets the bar, this makes them actually use the material instead
 // of writing generic strategy prose that could apply to any company.
-const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Aaliyah found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™) — DISC and sales acceleration are one lens, not the only one.`;
+const GENIUS_DEPTH_INSTRUCTION = `DEPTH REQUIREMENT: Ground every insight in DeAnna's own training material and the real market signals below — trace each one back to something specific: a real signal Aaliyah found, a concept from DeAnna's own training content, a pattern across more than one data point. Write the kind of claim that could only come from this specific material, not a generic line that could describe any AI consulting business. Let the material set the length — write as much depth as it actually supports, and stop there. Reason across all four frameworks where the material connects to them (DRU CLEAR™, 5C Cultural DNA, 5D Leadership, AI Sales Mastery) — DISC and sales acceleration are one lens, not the only one.`;
 
 
 // Added after VOICE_DNA for community writing. The anchor-word line in VOICE_DNA belongs to
@@ -169,9 +163,9 @@ async function postAcknowledgmentComment(postId: string, firstName: string, sign
 }
 
 // ─── Agent Knowledge Base (inline) ─────────────────────────────────────────
-const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™','DRU AI Leadership Ecosystem™','DRU AI Transformation Pathway™','5C Cultural DNA™','5D Leadership™','AI Sales Mastery™','From Confusion to Confidence with AI™'];
+const CC_FALLBACK_TM_MARKS = ['DRU CLEAR™'];
 const FRAMEWORK_KNOWLEDGE = `
-## THE DRU AI TRANSFORMATION PATHWAY™
+## THE DRU AI TRANSFORMATION PATHWAY
 Sequential journey every client walks — no shortcuts, no skipped steps:
 Discover → Diagnose → Design → Deploy → Dominate
 - DISCOVER: Uncover where the organization is today and where AI can take them
@@ -191,7 +185,7 @@ execution alignment system that CONNECTS all four frameworks into a unified stra
 - A — ALIGNMENT: Unify around a single AI strategy. Break silos, synchronize departments.
 - R — RESULTS: Define, measure, and demonstrate ROI. What gets measured gets transformed.
 
-### 5C Cultural DNA™ — Culture | $6,000 | 3 sessions x 90 min
+### 5C Cultural DNA — Culture | $6,000 | 3 sessions x 90 min
 Theme: Learn IT. Live IT. Lead IT. Leadership Thinking with AI.
 Most organizations don't have an AI problem — they have a CULTURE problem.
 Gives leaders a path to use AI as a strategic THINKING PARTNER — not a decision-maker.
@@ -201,7 +195,7 @@ Gives leaders a path to use AI as a strategic THINKING PARTNER — not a decisio
 - COACHING: Development layer. Building confidence and competency from the inside out.
 - CULTURE TRANSFORMATION: Outcome. From resistance and fear to ownership and strategic adoption.
 
-### 5D Leadership™ — Leadership | $6,500 | 3 sessions x 90 min
+### 5D Leadership — Leadership | $6,500 | 3 sessions x 90 min
 Focuses on the WHOLE leader — building from the inside out. NOT a skills program.
 An AI-infused methodology where personal mastery and strategic impact develop together.
 - I. SELF: Personal mastery. How a leader thinks, decides, and shows up.
@@ -210,7 +204,7 @@ An AI-infused methodology where personal mastery and strategic impact develop to
 - IV. ORGANIZATION: Systemic strength. Aligns culture, strategy, and operations.
 - V. VISIONARY: Strategic impact. Sees beyond today, positions organization to lead.
 
-### AI Sales Mastery™ — Sales | $6,000 | 3 sessions x 90 min
+### AI Sales Mastery — Sales | $6,000 | 3 sessions x 90 min
 Theme: Personality Mastery + AI = Sales That Feel Natural, Trusted, and Effective.
 Combines DISC behavioral insights with AI. Selling stops feeling like selling.
 - HYPER-PERSONALIZED OUTREACH AT SCALE: Right person, right message, right time — every time.
@@ -223,7 +217,7 @@ Combines DISC behavioral insights with AI. Selling stops feeling like selling.
 DRU CLEAR™ is the CONNECTOR — anchors every engagement.
 Bundles: Full Ecosystem $26,000 | DRU CLEAR + 2 $19,500 | DRU CLEAR + 1 $13,500
 Diagnostics: Executive Diagnostic $4,997 (120 min) | Strategic Diagnostic $3,497 (90 min)
-Course: From Confusion to Confidence with AI™ — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
+Course: From Confusion to Confidence with AI — Self-Paced $1,497 | Cohort $7,997 | Mastermind $12,997
 `;
 async function getAgentKnowledge(): Promise<string> {
   let tmMarks: string[] = [];
@@ -236,7 +230,7 @@ async function getAgentKnowledge(): Promise<string> {
   } catch(err){console.error('[agentKnowledge] fetch error:',err);}
   if (tmMarks.length===0) tmMarks=CC_FALLBACK_TM_MARKS;
   const tmList=tmMarks.map(m=>`  - ${m}`).join('\n');
-  return `=== DRU AI CONSULTING — AGENT KNOWLEDGE BASE ===\n\nPROTECTED IP MARKS — TM REQUIRED ON EVERY USE, NO EXCEPTIONS:\n${tmList}\n\nRULES: Every mark above MUST include TM every time. NO other terms carry TM.\nDo NOT add TM to anything not on this list. 'DRU AI Consulting' = business name, NO TM.\nREQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)\n${FRAMEWORK_KNOWLEDGE}\n=== END AGENT KNOWLEDGE BASE ===`.trim();
+  return `=== DRU AI CONSULTING — AGENT KNOWLEDGE BASE ===\n\nPROTECTED IP MARK — TM REQUIRED ON EVERY USE:\n${tmList}\n\nRULES: The mark above includes TM every time. Every other term, including DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI, is written plain.\nTM goes on the mark above alone. 'DRU AI Consulting' = business name, NO TM.\nREQUIRED CTA: assessment.druaiconsulting.com (ONLY entry point into the ecosystem)\n${FRAMEWORK_KNOWLEDGE}\n=== END AGENT KNOWLEDGE BASE ===`.trim();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -291,7 +285,7 @@ Today's lens: ${todayLens}
 Write a mastermind conversation starter of 150-200 words. Your voice is peer-to-peer strategic depth in plain language: you are a fellow leader who sees AI implementation and company culture as one challenge. Share a tension, a pattern or an insight from inside the work, with today's lens as the topic. Close with a genuine question that has no easy answer. The post is a conversation, and its purpose is the room's reply.`);
 }
 
-// ─── Sasha Kim — AI Sales Mastery™ Intelligence (Sun / Tue / Thu) ────────────
+// ─── Sasha Kim — AI Sales Mastery Intelligence (Sun / Tue / Thu) ────────────
 // Covers ALL FOUR DISC profiles every run. Cross-reads Tariq before writing.
 async function runSasha(): Promise<{ approval_id: string | null; post_id: string | null }> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
@@ -300,7 +294,7 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
   // Cross-read Tariq's most recent briefs — same IP ecosystem, content should flow together
   const tariqContext = await getPeerCrossRead('tariq_revenue_intel', 2);
   const peerSection = tariqContext
-    ? `\n\nTARIQ'S RECENT REVENUE INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${tariqContext}\n`
+    ? `\n\nTARIQ'S RECENT REVENUE INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery ecosystem):\n${tariqContext}\n`
     : '';
 
   // Real material to actually reason about, instead of the static framework
@@ -315,12 +309,12 @@ async function runSasha(): Promise<{ approval_id: string | null; post_id: string
 
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Sasha Kim');
-  const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sasha Kim, AI Sales Mastery™ Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.
+  const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Sasha Kim, AI Sales Mastery Intelligence Specialist for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
+TRADEMARK REQUIREMENT: Write DRU CLEAR™ with ™ every time. Write DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI plain, with no ™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private sales intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
 ${peerSection}${trainingSection}${signalsSection}
-Write a DAILY AI SALES MASTERY™ INTELLIGENCE BRIEF. Apply DISC Behavioral Intelligence across ALL FOUR buyer profiles.
+Write a DAILY AI SALES MASTERY INTELLIGENCE BRIEF. Apply DISC Behavioral Intelligence across ALL FOUR buyer profiles.
 
 Cover ALL FOUR DISC profiles every brief — one section per profile:
 
@@ -332,8 +326,8 @@ S — STEADY: How S-style buyers evaluate AI investments. Their need for certain
 
 C — CONSCIENTIOUS: How C-style buyers research AI solutions. Their analytical triggers and what they need to commit. One behavioral signal that indicates readiness. One communication strategy that satisfies their need for detail.
 
-Where Tariq's recent revenue intelligence, DeAnna's training material, or Aaliyah's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery™ framework and their insights should echo each other.
-Draw the connection to DRU CLEAR™, 5C Cultural DNA™, or 5D Leadership™ wherever a DISC insight genuinely touches one of them — a D-style buyer's need for control connects to 5D Leadership's SELF dimension, an S-style buyer's need for relational safety connects to 5C's CONNECTION. Make the link only where it's real, not in every section.
+Where Tariq's recent revenue intelligence, DeAnna's training material, or Aaliyah's real signals connect — integrate them naturally and by name. They are both inside the AI Sales Mastery framework and their insights should echo each other.
+Draw the connection to DRU CLEAR™, 5C Cultural DNA, or 5D Leadership wherever a DISC insight genuinely touches one of them — a D-style buyer's need for control connects to 5D Leadership's SELF dimension, an S-style buyer's need for relational safety connects to 5C's CONNECTION. Make the link only where it's real, not in every section.
 Be specific, tactical, and immediately actionable. This is DeAnna's secret weapon.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
 
@@ -343,11 +337,11 @@ Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":".
     const firstBrace = cleaned.indexOf('{'); const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON');
     const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-    const title   = enforceTM(parsed.title   || 'Sasha Kim — AI Sales Mastery™ DISC Intelligence');
+    const title   = enforceTM(parsed.title   || 'Sasha Kim — AI Sales Mastery DISC Intelligence');
     const content = enforceTM(parsed.content || raw);
     const approval_id = await writeToApprovals({
       source: 'sasha_sales_intel', trigger_type: 'sales_intelligence',
-      agent_name: 'Sasha Kim', agent_role: 'AI Sales Mastery™ Intelligence',
+      agent_name: 'Sasha Kim', agent_role: 'AI Sales Mastery Intelligence',
       division: 'Revenue, Growth & Sales',
       task_brief: `DISC Intelligence — All 4 Profiles | ${today}`,
       original_content: null, output: `${title}\n\n${content}`, edited_output: null,
@@ -369,7 +363,7 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
   // Cross-read Sasha's most recent briefs — same IP ecosystem
   const sashaContext = await getPeerCrossRead('sasha_sales_intel', 2);
   const peerSection = sashaContext
-    ? `\n\nSASHA'S RECENT DISC INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery™ ecosystem):\n${sashaContext}\n`
+    ? `\n\nSASHA'S RECENT DISC INTELLIGENCE (cross-reference where relevant — same AI Sales Mastery ecosystem):\n${sashaContext}\n`
     : '';
 
   // Day-specific angle
@@ -403,13 +397,13 @@ async function runTariq(): Promise<{ approval_id: string | null; post_id: string
   const positioning = await fetchBrandCopy('positioning');
   const agentCorrections = await getAgentCorrections('Tariq Oladele');
   const prompt = `${GENIUS_MODE}\n\n${GENIUS_DEPTH_INSTRUCTION}\n\n${agentKnowledge}\n\n${VOICE_DNA}${agentCorrections}\n\nYou are Tariq Oladele, Revenue Acceleration Intelligence Analyst for DRU AI Consulting — DeAnna R. Upshaw. Her positioning is "${positioning}."
-TRADEMARK REQUIREMENT: Always include ™: DRU CLEAR™, DRU AI Leadership Ecosystem™, DRU AI Transformation Pathway™, 5C Cultural DNA™, 5D Leadership™, AI Sales Mastery™, From Confusion to Confidence with AI™.
+TRADEMARK REQUIREMENT: Write DRU CLEAR™ with ™ every time. Write DRU AI Leadership Ecosystem, DRU AI Transformation Pathway, 5C Cultural DNA, 5D Leadership, AI Sales Mastery, and From Confusion to Confidence with AI plain, with no ™.
 SERVICE CLASSES: All content within Classes 35, 41, 42 only.
 You are writing EXCLUSIVELY for DeAnna — this is private revenue intelligence, not community content. She is not a client -- she is your strategic-thinking partner on this framework, so go as deep as the material below actually supports.
 TODAY'S ANGLE: ${angle.label}
 ${peerSection}${trainingSection}${signalsSection}
 ${angle.instruction}
-Draw the connection to DRU CLEAR™, 5C Cultural DNA™, or 5D Leadership™ wherever this week's angle genuinely touches one of them — a conversion play often runs through 5D Leadership's PEOPLE dimension, a pipeline move often runs through DRU CLEAR's ALIGNMENT dimension. Make the link only where it's real, not in every section.
+Draw the connection to DRU CLEAR™, 5C Cultural DNA, or 5D Leadership wherever this week's angle genuinely touches one of them — a conversion play often runs through 5D Leadership's PEOPLE dimension, a pipeline move often runs through DRU CLEAR's ALIGNMENT dimension. Make the link only where it's real, not in every section.
 
 Be specific, tactical, and immediately actionable. This is DeAnna's competitive edge — every insight should feel like something she can act on today or this week.
 Return ONLY valid JSON with no preamble or markdown: {"title":"...","content":"..."}`;
@@ -512,13 +506,13 @@ async function runCCAgentReply(postId: string, postTitle: string, postContent: s
 // listed again. Every post read is recorded in community_scan_log (see COMMUNITY_SCAN_LOG.sql).
 const CC_SCAN_PRODUCTS: Record<string, { name: string; signal: string }> = {
   accelerator:      { name: 'Accelerator membership',                    signal: 'readiness for the deeper, peer-level work of the Accelerator Circle' },
-  course:           { name: 'From Confusion to Confidence with AI™ course', signal: 'interest in on-demand learning' },
+  course:           { name: 'From Confusion to Confidence with AI course', signal: 'interest in on-demand learning' },
   strategic:        { name: 'Strategic Diagnostic',                      signal: 'interest in a focused 90-minute working session' },
   executive:        { name: 'Executive Diagnostic',                      signal: 'interest in a deeper 120-minute working session' },
   dru_clear:        { name: 'DRU CLEAR™',                                signal: 'clarity, AI readiness, connecting strategy' },
-  five_c:           { name: '5C Cultural DNA™',                          signal: 'culture, communication, collaboration, cultural shift' },
-  five_d:           { name: '5D Leadership™',                            signal: 'leadership development, team and organizational leadership' },
-  ai_sales_mastery: { name: 'AI Sales Mastery™',                         signal: 'sales, DISC, revenue, client relationships' },
+  five_c:           { name: '5C Cultural DNA',                          signal: 'culture, communication, collaboration, cultural shift' },
+  five_d:           { name: '5D Leadership',                            signal: 'leadership development, team and organizational leadership' },
+  ai_sales_mastery: { name: 'AI Sales Mastery',                         signal: 'sales, DISC, revenue, client relationships' },
   bundle_full:      { name: 'Full Ecosystem Bundle',                     signal: 'the full transformation, the entire program' },
   bundle_plus_two:  { name: 'DRU CLEAR™ + 2 Frameworks',                 signal: 'combining two frameworks' },
   bundle_plus_one:  { name: 'DRU CLEAR™ + 1 Framework',                  signal: 'adding a framework to DRU CLEAR™' },

@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/cost-summary.ts
+// DRU AI Leadership Ecosystem — api/cost-summary.ts
 // Aggregates real Anthropic API spend from model_usage_log (written by every
 // agent trigger file's callAnthropic helper) into the numbers DeAnna actually
 // wants to see: today, this week, this month, and a by-model / by-source

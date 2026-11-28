@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/hub-studio.ts
+// DRU AI Leadership Ecosystem — api/hub-studio.ts
 // Micro Drama Studio, Stage 1: projects and the Usage tab.
 //   GET  ?view=projects        → every project (title, product, step reached, last change, estimated cost so far)
 //   GET  ?view=project&id=…    → one project

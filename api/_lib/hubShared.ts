@@ -1,4 +1,4 @@
-// DRU AI Leadership Ecosystem™ — api/_lib/hubShared.ts
+// DRU AI Leadership Ecosystem — api/_lib/hubShared.ts
 // Shared helpers for the Video Hub backends (HeyGen and ElevenLabs).
 // Files that start with an underscore are not served as routes.
 
