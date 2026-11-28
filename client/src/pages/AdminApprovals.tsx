@@ -2684,7 +2684,6 @@ export default function AdminApprovals() {
                       <div style={{ margin:"0 1rem 1rem", padding:"0.875rem", background:"rgba(212,175,55,0.05)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:8 }}>
                         <p style={{ fontFamily:"'Montserrat', sans-serif", color:"#D4AF37", fontSize:"0.58rem", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:"0.5rem" }}>DeAnna's Finished Draft</p>
                         <textarea value={gi.text} onChange={e => setGrantInput(approval.id, { text:e.target.value })} disabled={gi.loading}
-                          placeholder="Paste or type the real testimonial, figure, or detail the review said was missing..."
                           rows={3}
                           style={{ width:"100%", background:"#FFFFFF", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, color:"#0A2342", fontFamily:"'Inter', sans-serif", fontSize:"0.75rem", padding:"0.6rem 0.75rem", outline:"none", resize:"vertical" as const, opacity:gi.loading ? 0.6 : 1, marginBottom:"0.6rem" }} />
                         <button onClick={() => handleSendToKwame(approval)} disabled={gi.loading || !gi.text.trim()}
