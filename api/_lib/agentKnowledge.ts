@@ -63,6 +63,8 @@ export const DEANNA_MARKER_FOR_REVIEWERS = `A bracketed note like [DEANNA: ...] 
 // rewrite) -- two essays plus JSON wrapping runs long, and this is the number
 // that's proven to hold that content without truncating mid-generation.
 export const GRANT_CONTENT_MAX_TOKENS = 8000;
+// Kwame (drafting and revising) and Chloe (R.E.A.L. review) run on Sonnet 5.5.
+export const GRANT_MODEL = "claude-sonnet-5-5";
 
 // Room for a corrected rewrite to hold the full original: about one token per 3 characters of the
 // content, plus headroom, never below the floor. Course lessons run well past the old fixed limits.

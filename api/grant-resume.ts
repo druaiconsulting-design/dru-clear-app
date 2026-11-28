@@ -12,7 +12,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 export const config = { maxDuration: 300 };
-import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS } from './_lib/agentKnowledge.js';
+import { GENIUS_MODE, VOICE_DNA, getAgentKnowledge, getAgentCorrections, REAL_STANDARD, REAL_FUNDED_EXAMPLE, DEANNA_MARKER_FOR_KWAME, DEANNA_MARKER_FOR_REVIEWERS, GRANT_CONTENT_MAX_TOKENS, GRANT_MODEL } from './_lib/agentKnowledge.js';
 import {
   getFunderQuestions, funderQuestionsForKwame, funderQuestionsReviewerNote, funderQuestionsChloeScope, chloeHitsRealMeaning, DEANNA_MARKER_FOR_FUNDER_QUESTIONS,
   assembleApplicationDraft, parseApplicationDraft, parseAnswersJson, buildGrantHeader, buildApplicationBody, buildStuckCardOutput,
@@ -80,16 +80,16 @@ async function logModelUsage(model: string, inputTokens: number, outputTokens: n
   await fetch(`${SUPABASE_URL}/rest/v1/model_usage_log`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body: JSON.stringify({ source_file: "grant-resume", model, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd }) }).catch(() => {});
 }
 
-async function callAnthropic(prompt: string, maxTokens = 800): Promise<string> {
+async function callAnthropic(prompt: string, maxTokens = 800, model = "claude-haiku-4-5-20251001"): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
   });
-  if (!res.ok) throw new Error(`Anthropic Haiku error ${res.status}`);
+  if (!res.ok) throw new Error(`Anthropic ${model} error ${res.status}`);
   const data = await res.json();
-  console.log(`[haiku] stop_reason: ${data.stop_reason ?? 'unknown'}`);
-  await logModelUsage("claude-haiku-4-5-20251001", data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
+  console.log(`[${model}] stop_reason: ${data.stop_reason ?? 'unknown'}`);
+  await logModelUsage(model, data.usage?.input_tokens ?? 0, data.usage?.output_tokens ?? 0).catch(() => {});
   return data.content?.[0]?.text ?? "";
 }
 
@@ -176,7 +176,7 @@ OR:
 async function runChloeOnItem(currentDraft: string, agentKnowledge: string, chloeCorrections: string, grantRow: Record<string, unknown> | null): Promise<{ hitsReal: boolean; notes: string; summary: string }> {
   try {
     const chloePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${chloeCorrections}\n\nYou are Chloe Dubois, Grant Application Reviewer for DRU AI Consulting (Dimensional Solns, LLC). Kwame Asante, the Grant Writer, just finished the grant application draft below. Judge it specifically against the R.E.A.L. standard:\n\n${REAL_STANDARD}\n\nHere is a real, funded example that received a yes, showing what hitting R.E.A.L. actually looks like in practice -- use it as your reference point for the standard to reach:\n${REAL_FUNDED_EXAMPLE}\n\n${DEANNA_MARKER_FOR_REVIEWERS} Count that spot as satisfying its R.E.A.L. element, since DeAnna will supply the real answer before this goes out. Mark hits_real true when every other element already reads as satisfied and the remaining items are properly marked [DEANNA: ...] placeholders like this one. You may not ask Kwame to invent a specific client name, story, dollar figure, or vendor for anything properly marked as a [DEANNA: ...] placeholder, under any circumstance -- that is DeAnna's information to supply, not his to guess at.${funderQuestionsReviewerNote(grantRow)}${funderQuestionsChloeScope(grantRow)}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nKWAME'S DRAFT:\n${currentDraft}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"hits_real\": boolean (${chloeHitsRealMeaning(grantRow)}),\n  \"correction_notes\": string (specific, detailed, actionable instructions Kwame can act on to close exactly what's missing -- empty string if hits_real is true),\n  \"summary\": string (ONE short, plain-English sentence for DeAnna describing what's missing, in her language, not Kwame's -- no R.E.A.L. element names, no jargon, no technical detail -- empty string if hits_real is true)\n}`;
-    const chloeRaw = await callAnthropic(chloePrompt, 1000);
+    const chloeRaw = await callAnthropic(chloePrompt, 1000, GRANT_MODEL);
     const chloeParsed = extractJSON(chloeRaw) as { hits_real?: boolean; correction_notes?: string; summary?: string } | null;
     let hitsReal = chloeParsed?.hits_real === true;
     let notes = String(chloeParsed?.correction_notes ?? '');
@@ -216,7 +216,7 @@ async function runKwameRevision(currentDraft: string, reviewerName: string, revi
     const funderQs = getFunderQuestions(grantRow);
     if (funderQs.length > 0) {
       const answerPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). ${reviewerName} reviewed your draft and found gaps. Revise your answers to close them fully.\n\n${reviewerName.toUpperCase()}'S NOTES:\n${reviewerNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_FUNDER_QUESTIONS}\n\n${funderQuestionsForKwame(grantRow)}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nReturn each answer you revised, keyed by its question number. Answers you leave out stay exactly as they are.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"answers\": [{\"number\": 1, \"answer\": string (the revised answer text for that numbered question)}]\n}`;
-      const answerRaw = await callAnthropic(answerPrompt, GRANT_CONTENT_MAX_TOKENS);
+      const answerRaw = await callAnthropic(answerPrompt, GRANT_CONTENT_MAX_TOKENS, GRANT_MODEL);
       const revised = parseAnswersJson(answerRaw);
       if (revised.size === 0) return currentDraft;
       const merged = parseApplicationDraft(currentDraft);
@@ -224,7 +224,7 @@ async function runKwameRevision(currentDraft: string, reviewerName: string, revi
       return assembleApplicationDraft(funderQs, merged);
     }
     const rewritePrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). ${reviewerName} reviewed your draft and found gaps. Revise your draft to close them fully.\n\n${reviewerName.toUpperCase()}'S NOTES:\n${reviewerNotes}\n\nYOUR PREVIOUS DRAFT:\n${currentDraft}\n\nGround every specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (your fully revised application, closing every gap ${reviewerName} found)\n}`;
-    const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS);
+    const rewriteRaw = await callAnthropic(rewritePrompt, GRANT_CONTENT_MAX_TOKENS, GRANT_MODEL);
     const rewriteParsed = extractJSON(rewriteRaw) as { application_draft?: string } | null;
     return rewriteParsed?.application_draft ? String(rewriteParsed.application_draft) : currentDraft;
   } catch (error) {
@@ -242,7 +242,7 @@ async function runKwameIncorporation(currentDraft: string, deannaInput: string, 
   const funderQs = getFunderQuestions(grantRow);
   if (funderQs.length > 0) {
     const answerPrompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). DeAnna herself has now supplied the exact real information your draft was missing. Work it into the answers it belongs to, replacing the matching [DEANNA: ...] placeholder(s) with her real words, worked naturally into the sentence.\n\nWHAT THE REVIEW SAID WAS MISSING:\n${lastSummary}\n\nDEANNA'S REAL INPUT TO INCORPORATE:\n${deannaInput}\n\nYOUR CURRENT DRAFT:\n${currentDraft}\n\nGround every other specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_FUNDER_QUESTIONS}\n\n${funderQuestionsForKwame(grantRow)}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nReturn each answer you changed, keyed by its question number. Answers you leave out stay exactly as they are.\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"answers\": [{\"number\": 1, \"answer\": string (the answer text with DeAnna's real input incorporated)}]\n}`;
-    const answerRaw = await callAnthropic(answerPrompt, GRANT_CONTENT_MAX_TOKENS);
+    const answerRaw = await callAnthropic(answerPrompt, GRANT_CONTENT_MAX_TOKENS, GRANT_MODEL);
     const revised = parseAnswersJson(answerRaw);
     if (revised.size === 0) return currentDraft;
     const merged = parseApplicationDraft(currentDraft);
@@ -250,7 +250,7 @@ async function runKwameIncorporation(currentDraft: string, deannaInput: string, 
     return assembleApplicationDraft(funderQs, merged);
   }
   const prompt = `${GENIUS_MODE}\n\n${agentKnowledge}\n\n${VOICE_DNA}${kwameCorrections}\n\nYou are Kwame Asante, Grant Writer for DRU AI Consulting (Dimensional Solns, LLC). DeAnna herself has now supplied the exact real information your draft was missing. Incorporate it precisely -- replace the matching [DEANNA: ...] placeholder(s) with her real words, worked naturally into the sentence. Do not rewrite, rephrase, or restructure anything else in the draft.\n\nWHAT THE REVIEW SAID WAS MISSING:\n${lastSummary}\n\nDEANNA'S REAL INPUT TO INCORPORATE:\n${deannaInput}\n\nYOUR CURRENT DRAFT:\n${currentDraft}\n\nGround every other specific claim in these real facts about the business:\n${factsBlock}\n\n${DEANNA_MARKER_FOR_KWAME}\n\nGRANT OPPORTUNITY:\nFUNDER: ${grantRow?.funder ?? 'Not provided'}\nAMOUNT: ${grantRow?.amount_range ?? 'Not provided'}\n\nRespond with ONLY a single JSON object, no preamble, no markdown fences:\n{\n  \"application_draft\": string (the draft with DeAnna's real input fully incorporated)\n}`;
-  const raw = await callAnthropic(prompt, GRANT_CONTENT_MAX_TOKENS);
+  const raw = await callAnthropic(prompt, GRANT_CONTENT_MAX_TOKENS, GRANT_MODEL);
   const parsed = extractJSON(raw) as { application_draft?: string } | null;
   return parsed?.application_draft ? String(parsed.application_draft) : currentDraft;
 }
